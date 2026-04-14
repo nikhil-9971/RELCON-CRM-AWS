@@ -17,6 +17,7 @@ services:
       PORT: 3000
       MONGO_URI: ${MONGO_URI}
       SESSION_SECRET: ${SESSION_SECRET}
+      FRONTEND_URL: http://${EC2_HOST}
     ports:
       - "3001:3000"
     networks:
