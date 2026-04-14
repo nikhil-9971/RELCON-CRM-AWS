@@ -116,8 +116,9 @@ jobs:
             # .env file likho (secrets se)
             cat > .env << EOF
             DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}
-            MONGO_URI=${{ secrets.MONGO_URI }}
+            MONGO_URI=${{ secrets.MONO_URI }}
             SESSION_SECRET=${{ secrets.SESSION_SECRET }}
+            GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}
             EOF
 
             # Latest images pull karo (dono)
