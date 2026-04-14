@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>JioBP Status Records — RELCON CRM</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <script src="https://cdn.sheetjs.com/xlsx-0.18.5/package/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --sf-blue:       #0176d3;
+      --sf-blue-dk:    #014486;
+      --sf-blue-lt:    #e8f4fd;
+      --sf-blue-hover: #0b5faa;
+      --sf-green:      #2e844a;
+      --sf-green-lt:   #eaf5ea;
+      --sf-red:        #ba0517;
+      --sf-red-lt:     #fef1ee;
+      --sf-orange:     #dd5a0c;
+      --bg:        #f3f2f2;
+      --surface:   #ffffff;
+      --surface2:  #f9f9f9;
+      --border:    #dddbda;
+      --border-lt: #f3f2f2;
+      --txt:   #080707;
+      --txt2:  #3e3e3c;
+      --txt3:  #706e6b;
+      --txt4:  #aeaeac;
+      --r-sm: 4px; --r: 6px; --r-lg: 8px;
+      --sh-sm: 0 2px 4px rgba(0,0,0,0.09);
+      --sh-md: 0 8px 24px rgba(0,0,0,0.12);
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { font-size: 13px; -webkit-font-smoothing: antialiased; }
+    body { font-family: 'Inter', -apple-system, sans-serif; font-size: 13px; color: var(--txt); background: var(--bg); margin: 0; padding: 0; min-height: 100vh; }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-thumb { background: #c8c6c4; border-radius: 3px; }
+
+    /* DV-STRIP */
+    .dv-strip { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 20px; height: 52px; display: flex; align-items: center; gap: 12px; flex-shrink: 0; box-shadow: 0 1px 3px rgba(15,23,42,0.07); position: sticky; top: 0; z-index: 100; }
+    .dv-strip-icon { width: 28px; height: 28px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+    .dv-strip-title { font-size: 14px; font-weight: 700; color: var(--txt); letter-spacing: -0.2px; }
+    .dv-strip-sep { width: 1px; height: 18px; background: var(--border); }
+    .dv-strip-meta { font-size: 10px; font-weight: 500; color: var(--txt4); background: var(--surface2); border: 1px solid var(--border); padding: 2px 9px; border-radius: 9999px; }
+    .dv-strip-spacer { flex: 1; }
+
+    /* BODY */
+    .sf-body { padding: 16px 20px; max-width: 100%; margin: 0 auto; }
+    .sf-breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--txt3); margin-bottom: 10px; }
+    .sf-breadcrumb a { color: var(--sf-blue); text-decoration: none; }
+
+    /* PAGE HEADER */
+    .sf-page-header { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 14px 20px; margin-bottom: 12px; display: flex; align-items: center; gap: 14px; box-shadow: var(--sh-sm); flex-wrap: wrap; }
+    .sf-page-icon { width: 44px; height: 44px; border-radius: 10px; background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; box-shadow: 0 2px 8px rgba(22,163,74,0.4); flex-shrink: 0; }
+    .sf-page-title { font-size: 18px; font-weight: 700; color: var(--txt); letter-spacing: -0.3px; }
+    .sf-page-meta { font-size: 12px; color: var(--txt3); margin-top: 2px; }
+    .sf-page-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .sf-stat { display: flex; align-items: center; gap: 6px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r); padding: 6px 12px; }
+    .sf-stat-num { font-size: 18px; font-weight: 700; color: var(--sf-blue); }
+    .sf-stat-label { font-size: 10px; font-weight: 600; color: var(--txt3); text-transform: uppercase; letter-spacing: 0.4px; }
+
+    /* TOOLBAR */
+    .sf-toolbar { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--sh-sm); padding: 14px 20px; margin-bottom: 10px; display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+    .sf-filter-group { display: flex; flex-direction: column; gap: 4px; }
+    .sf-filter-label { font-size: 10px; font-weight: 600; color: var(--txt3); text-transform: uppercase; letter-spacing: 0.5px; }
+    .sf-input { font-family: 'Inter', sans-serif; font-size: 12px; color: var(--txt); background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 5px 9px; height: 32px; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
+    .sf-input:focus { border-color: var(--sf-blue); box-shadow: 0 0 0 3px rgba(1,118,211,0.12); }
+    .sf-input::placeholder { color: var(--txt4); }
+    .sf-search-input { width: 260px; padding-left: 30px; }
+    .sf-search-wrap { position: relative; }
+    .sf-search-wrap i { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: var(--txt4); font-size: 12px; pointer-events: none; }
+    .sf-toolbar-spacer { flex: 1; }
+
+    /* BUTTONS */
+    .sf-btn { font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 500; padding: 0 14px; height: 32px; border-radius: var(--r-sm); cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s; white-space: nowrap; }
+    .sf-btn-primary { background: var(--sf-blue); color: #fff; }
+    .sf-btn-primary:hover { background: var(--sf-blue-hover); transform: translateY(-1px); }
+    .sf-btn-neutral { background: var(--surface); color: var(--txt); border: 1px solid var(--border); }
+    .sf-btn-neutral:hover { background: var(--bg); }
+    .sf-btn-success { background: var(--sf-green); color: #fff; }
+    .sf-btn-success:hover { background: #1d5e31; transform: translateY(-1px); }
+    .sf-btn-danger { background: var(--sf-red); color: #fff; }
+    .sf-btn-danger:hover { background: #920210; }
+    .sf-btn-icon { width: 32px; padding: 0; justify-content: center; }
+
+    /* DROPDOWN */
+    .sf-dropdown { position: relative; }
+    .sf-dropdown-menu { position: absolute; right: 0; top: calc(100% + 4px); background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--sh-md); min-width: 180px; z-index: 100; overflow: hidden; display: none; }
+    .sf-dropdown-menu.open { display: block; }
+    .sf-dropdown-item { padding: 9px 14px; font-size: 12px; color: var(--txt2); cursor: pointer; display: flex; align-items: center; gap: 8px; transition: background 0.1s; }
+    .sf-dropdown-item:hover { background: var(--sf-blue-lt); color: var(--sf-blue); }
+
+    /* TABLE CARD */
+    .sf-table-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--sh-sm); overflow: hidden; }
+    .sf-table-header { padding: 10px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; background: var(--surface2); }
+    .sf-table-title { font-size: 12px; font-weight: 700; color: var(--txt); display: flex; align-items: center; gap: 6px; text-transform: uppercase; letter-spacing: 0.4px; }
+    .sf-record-count { background: var(--sf-blue-lt); color: var(--sf-blue); font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+    .sf-table-wrap { overflow-x: auto; overflow-y: auto; max-height: calc(100vh - 320px); }
+
+    table { width: 100%; border-collapse: collapse; font-size: 11px; min-width: 1400px; }
+    thead th { background: #1a2e4a !important; color: #e8f4fd !important; font-size: 10px !important; font-weight: 600 !important; text-transform: uppercase !important; letter-spacing: 0.6px !important; padding: 9px 12px !important; text-align: left !important; white-space: nowrap !important; border: none !important; border-right: 1px solid #253d5b !important; position: sticky; top: 0; z-index: 10; }
+    thead th:last-child { border-right: none !important; }
+    tbody tr { border-bottom: 1px solid var(--border-lt); transition: background 0.1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #f0f8ff; }
+    tbody td { padding: 7px 12px !important; font-size: 11px !important; color: var(--txt2) !important; vertical-align: middle !important; border: none !important; border-bottom: 1px solid var(--border-lt) !important; white-space: nowrap; }
+    tbody td:first-child { font-weight: 600; color: var(--sf-blue) !important; }
+
+    /* BADGES */
+    .sf-badge { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 600; white-space: nowrap; }
+    .sf-badge-green { background: var(--sf-green-lt); color: var(--sf-green); }
+    .sf-badge-red   { background: var(--sf-red-lt); color: var(--sf-red); }
+    .sf-badge-blue  { background: var(--sf-blue-lt); color: var(--sf-blue); }
+    .sf-badge-gray  { background: var(--surface2); color: var(--txt3); border: 1px solid var(--border); }
+
+    /* PAGINATION */
+    .sf-pagination { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-top: 1px solid var(--border); background: var(--surface2); flex-wrap: wrap; gap: 8px; }
+    .sf-pagination-info { font-size: 11px; color: var(--txt3); }
+    .sf-pagination-controls { display: flex; align-items: center; gap: 4px; }
+    .sf-page-btn { width: 30px; height: 30px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); color: var(--txt2); font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.12s; font-family: 'Inter', sans-serif; }
+    .sf-page-btn:hover { background: var(--sf-blue-lt); border-color: var(--sf-blue); color: var(--sf-blue); }
+    .sf-page-btn.active { background: var(--sf-blue); border-color: var(--sf-blue); color: #fff; font-weight: 700; }
+    .sf-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* MODALS */
+    .sf-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 500; display: flex; align-items: center; justify-content: center; }
+    .sf-modal-overlay.hidden { display: none; }
+    .sf-modal { background: var(--surface); border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.25); width: 90%; max-width: 840px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; }
+    .sf-modal-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: var(--surface2); flex-shrink: 0; }
+    .sf-modal-title { font-size: 15px; font-weight: 700; color: var(--txt); display: flex; align-items: center; gap: 8px; }
+    .sf-modal-body { padding: 20px; overflow-y: auto; flex: 1; }
+    .sf-modal-footer { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; background: var(--surface2); flex-shrink: 0; }
+    .sf-modal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+    .sf-modal-field { display: flex; flex-direction: column; gap: 4px; }
+    .sf-modal-label { font-size: 10px; font-weight: 600; color: var(--txt3); text-transform: uppercase; letter-spacing: 0.5px; }
+    .sf-modal-input { font-family: 'Inter', sans-serif; font-size: 12px; color: var(--txt); background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 5px 9px; height: 32px; outline: none; width: 100%; }
+    .sf-modal-input:focus { border-color: var(--sf-blue); box-shadow: 0 0 0 3px rgba(1,118,211,0.12); }
+
+    .sf-confirm-modal { background: var(--surface); border-radius: 12px; box-shadow: var(--sh-md); width: 380px; overflow: hidden; }
+    .sf-confirm-header { padding: 16px 20px; background: var(--sf-red-lt); border-bottom: 1px solid #f8d0ca; }
+    .sf-confirm-title { font-size: 15px; font-weight: 700; color: var(--sf-red); display: flex; align-items: center; gap: 8px; }
+    .sf-confirm-body { padding: 16px 20px; font-size: 13px; color: var(--txt2); }
+    .sf-confirm-footer { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+
+    /* LOADER */
+    .sf-loader { position: fixed; inset: 0; background: rgba(243,242,242,0.7); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 400; }
+    .sf-loader.hidden { display: none; }
+    .sf-spinner-lg { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--sf-blue); border-radius: 50%; animation: sf-spin 0.7s linear infinite; }
+    .sf-loader-text { font-size: 12px; color: var(--txt3); margin-top: 10px; font-weight: 500; }
+    @keyframes sf-spin { to { transform: rotate(360deg); } }
+
+    /* TOAST */
+    .sf-toast { position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 280px; max-width: 360px; background: var(--surface); border-radius: var(--r-lg); box-shadow: var(--sh-md); border: 1px solid var(--border); display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; transform: translateX(120%); transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1); }
+    .sf-toast.show { transform: translateX(0); }
+    .sf-toast-icon { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+    .sf-toast.success .sf-toast-icon { background: var(--sf-green-lt); color: var(--sf-green); }
+    .sf-toast.error .sf-toast-icon   { background: var(--sf-red-lt); color: var(--sf-red); }
+    .sf-toast-title { font-size: 12px; font-weight: 600; color: var(--txt); }
+    .sf-toast-msg   { font-size: 11px; color: var(--txt3); margin-top: 1px; }
+  </style>
+  <script src="config.js"></script>
+</head>
+<body>
+
+  <!-- DV-STRIP -->
+  <div class="dv-strip">
+    <div class="dv-strip-icon" style="background:rgba(5,150,105,0.1);color:#059669;">
+      <i class="fa-solid fa-gas-pump"></i>
+    </div>
+    <span class="dv-strip-title">JioBP Status Records</span>
+    <div class="dv-strip-sep"></div>
+    <span class="dv-strip-meta" id="dateBadge"></span>
+    <div class="dv-strip-spacer"></div>
+  </div>
+
+  <main class="sf-body">
+
+    <div class="sf-breadcrumb">
+      <a href="#">Home</a> <span>/</span>
+      <a href="#">Records</a> <span>/</span>
+      <span>JioBP Status Records</span>
+    </div>
+
+    <div class="sf-page-header">
+      <div class="sf-page-icon"><i class="fa-solid fa-gas-pump"></i></div>
+      <div>
+        <div class="sf-page-title">JioBP Status Records</div>
+        <div class="sf-page-meta">Jio BP field visit status and verification records</div>
+      </div>
+      <div class="sf-page-actions">
+        <div class="sf-stat">
+          <div>
+            <div class="sf-stat-num" id="totalCount">—</div>
+            <div class="sf-stat-label">Total Records</div>
+          </div>
+        </div>
+        <img src="./assets/JioBP.png" alt="JioBP" style="height:40px;opacity:0.85;" onerror="this.style.display='none'"/>
+      </div>
+    </div>
+
+    <div class="sf-toolbar">
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">Search Records</label>
+        <div class="sf-search-wrap">
+          <i class="fa-solid fa-search"></i>
+          <input type="text" id="searchInput" oninput="applySearch()" placeholder="Search anything..." class="sf-input sf-search-input"/>
+        </div>
+      </div>
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">From Date</label>
+        <input type="date" id="fromDate" class="sf-input" onchange="applyDateRangeFilter()"/>
+      </div>
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">To Date</label>
+        <input type="date" id="toDate" class="sf-input" onchange="applyDateRangeFilter()"/>
+      </div>
+      <button onclick="clearDateRangeFilter()" class="sf-btn sf-btn-neutral" style="align-self:flex-end;">
+        <i class="fa-solid fa-rotate-left"></i> Clear
+      </button>
+      <div class="sf-toolbar-spacer"></div>
+      <div class="sf-dropdown" id="exportDropdown" style="align-self:flex-end;">
+        <button class="sf-btn sf-btn-primary" onclick="toggleExportMenu()">
+          <i class="fa-solid fa-arrow-up-from-bracket"></i> Export
+          <i class="fa-solid fa-chevron-down" style="font-size:10px;"></i>
+        </button>
+        <div class="sf-dropdown-menu" id="exportMenu">
+          <div class="sf-dropdown-item" onclick="exportToExcel()">
+            <i class="fa-solid fa-file-excel" style="color:#2e844a;"></i> Export to Excel
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sf-table-card">
+      <div class="sf-table-header">
+        <div class="sf-table-title">
+          <i class="fa-solid fa-table-cells-large" style="color:#0176d3;"></i>
+          JioBP Status Records
+        </div>
+        <span class="sf-record-count" id="recordCountBadge">Loading...</span>
+        <div style="flex:1;"></div>
+        <span style="font-size:10px;color:#aeaeac;">50 per page</span>
+      </div>
+      <div class="sf-table-wrap">
+        <table id="statusTable">
+          <thead><tr id="tableHeader"></tr></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+      <div class="sf-pagination">
+        <div class="sf-pagination-info" id="paginationInfo">—</div>
+        <div class="sf-pagination-controls" id="pagination"></div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- EDIT MODAL -->
+  <div id="editModal" class="sf-modal-overlay hidden">
+    <div class="sf-modal">
+      <div class="sf-modal-header">
+        <div class="sf-modal-title"><i class="fa-solid fa-pen-to-square" style="color:#0176d3;"></i> Edit JioBP Record</div>
+        <button onclick="closeModal()" class="sf-btn sf-btn-neutral sf-btn-icon"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="sf-modal-body">
+        <div class="sf-modal-grid" id="editForm"></div>
+      </div>
+      <div class="sf-modal-footer">
+        <button onclick="closeModal()" class="sf-btn sf-btn-neutral"><i class="fa-solid fa-xmark"></i> Cancel</button>
+        <button onclick="saveEdit()" class="sf-btn sf-btn-success"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DELETE MODAL -->
+  <div id="deleteModal" class="sf-modal-overlay hidden">
+    <div class="sf-confirm-modal">
+      <div class="sf-confirm-header">
+        <div class="sf-confirm-title"><i class="fa-solid fa-triangle-exclamation"></i> Confirm Delete</div>
+      </div>
+      <div class="sf-confirm-body">Are you sure you want to permanently delete this record? This action cannot be undone.</div>
+      <div class="sf-confirm-footer">
+        <button onclick="cancelDelete()" class="sf-btn sf-btn-neutral"><i class="fa-solid fa-xmark"></i> Cancel</button>
+        <button onclick="confirmDelete()" class="sf-btn sf-btn-danger"><i class="fa-solid fa-trash"></i> Delete Record</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOADER -->
+  <div id="loader" class="sf-loader hidden">
+    <div class="sf-spinner-lg"></div>
+    <div class="sf-loader-text">Loading records...</div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="sf-toast" class="sf-toast">
+    <div class="sf-toast-icon" id="sf-toast-icon"><i class="fa-solid fa-check"></i></div>
+    <div>
+      <div class="sf-toast-title" id="sf-toast-title">Success</div>
+      <div class="sf-toast-msg" id="sf-toast-msg"></div>
+    </div>
+  </div>
+
+  <script>
+    const baseUrl = window.BACKEND_URL || "https://relcon-crm.onrender.com";
+    const token = localStorage.getItem("token");
+    let jioData = [], filteredData = [], currentUser = {}, deleteTargetId = null;
+    let currentPage = 1;
+    const rowsPerPage = 50;
+
+    document.getElementById('dateBadge').textContent =
+      new Date().toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+
+    function showLoader() { document.getElementById("loader").classList.remove("hidden"); }
+    function hideLoader() { document.getElementById("loader").classList.add("hidden"); }
+
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('sf-toast');
+      document.getElementById('sf-toast-icon').innerHTML = type === 'success' ? '<i class="fa-solid fa-check"></i>' : '<i class="fa-solid fa-xmark"></i>';
+      document.getElementById('sf-toast-title').textContent = type === 'success' ? 'Success' : 'Error';
+      document.getElementById('sf-toast-msg').textContent = message;
+      toast.className = 'sf-toast ' + type;
+      setTimeout(() => toast.classList.add('show'), 10);
+      setTimeout(() => toast.classList.remove('show'), 3800);
+    }
+
+    function getUserFromToken(t) {
+      try {
+        const p = JSON.parse(atob(t.split(".")[1]));
+        return { username:(p.username||p.name||"").trim().toLowerCase(), engineerName:(p.engineerName||"").trim(), role:(p.role||"").trim().toLowerCase() };
+      } catch { return { username:"", engineerName:"", role:"" }; }
+    }
+
+    async function fetchData() {
+      showLoader();
+      const res = await fetch(`${baseUrl}/jioBP/getAllJioBPStatus`, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      const { username, engineerName, role } = getUserFromToken(token);
+      currentUser = { username, role };
+      jioData = data.map(d => ({ ...d, ...d.planId, jioBPStatusId: d._id }))
+        .filter(d => role === "admin" ? true : (d.engineer || "").trim() === engineerName);
+      filteredData = [...jioData];
+      renderTable(filteredData);
+      hideLoader();
+    }
+
+    function renderTable(data) {
+      showLoader();
+      requestAnimationFrame(() => setTimeout(() => {
+        const start = (currentPage - 1) * rowsPerPage;
+        _renderTableNow(data.slice(start, start + rowsPerPage));
+        renderPagination(data.length);
+        document.getElementById("totalCount").textContent = data.length.toLocaleString();
+        document.getElementById("recordCountBadge").textContent = `${data.length} records`;
+        hideLoader();
+      }, 0));
+    }
+
+    const COLUMNS = [
+      { key:"engineer", label:"Engineer" }, { key:"region", label:"Region" },
+      { key:"roCode", label:"RO Code" }, { key:"roName", label:"RO Name" },
+      { key:"purpose", label:"Purpose of Visit" }, { key:"date", label:"Date" },
+      { key:"hpsdId", label:"HPSM ID" }, { key:"diagnosis", label:"Diagnosis" },
+      { key:"solution", label:"Solution" }, { key:"activeMaterialUsed", label:"Active Material Used" },
+      { key:"usedMaterialDetails", label:"Used Material Name & Code" },
+      { key:"faultyMaterialDetails", label:"Faulty Material Name & Code" },
+      { key:"spareRequired", label:"Spare Requirement" }, { key:"observationHours", label:"Observation (Hrs)" },
+      { key:"materialRequirement", label:"Material Requirement" },
+      { key:"relconsupport", label:"Support from RELCON" }, { key:"rbmlperson", label:"Informed RBML Person" },
+      { key:"status", label:"Status" }, { key:"actions", label:"Actions" },
+    ];
+
+    function _renderTableNow(data) {
+      document.getElementById("tableHeader").innerHTML = COLUMNS.map(c => `<th>${c.label}</th>`).join("");
+      document.getElementById("tableBody").innerHTML = data.map(record => {
+        const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(record))));
+        const isVerified = record.isVerified === true || record.isVerified === "true";
+        return `<tr>${COLUMNS.map(col => {
+          if (col.key === "actions") {
+            let html = "";
+            if (currentUser.username === "nikhil.trivedi") {
+              html = `<button class="sf-btn sf-btn-neutral" style="height:26px;padding:0 10px;font-size:11px;" onclick='handleEditClick("${encoded}")'>
+                <i class="fa-solid fa-pen"></i> Edit</button>
+                <button class="sf-btn sf-btn-danger" style="height:26px;padding:0 10px;font-size:11px;margin-left:4px;" onclick='deleteRecord("${record.jioBPStatusId}")'>
+                <i class="fa-solid fa-trash"></i></button>`;
+              if (!isVerified) html += `<button class="sf-btn sf-btn-success" style="height:26px;padding:0 10px;font-size:11px;margin-left:4px;" onclick='verifyRecord("${record.jioBPStatusId}")'>
+                <i class="fa-solid fa-check"></i> Verify</button>`;
+            } else {
+              html = isVerified
+                ? `<span class="sf-badge sf-badge-green"><i class="fa-solid fa-lock"></i> Verified</span>`
+                : `<span class="sf-badge sf-badge-gray">—</span>`;
+            }
+            return `<td style="text-align:center;">${html}</td>`;
+          }
+          let cell = record[col.key] || "";
+          if (col.key === "roCode" && isVerified && currentUser.username === "nikhil.trivedi")
+            cell += ` <span class="sf-badge sf-badge-green"><i class="fa-solid fa-check"></i> Verified</span>`;
+          if (col.key === "status") {
+            if (cell === "Resolved") cell = `<span class="sf-badge sf-badge-green"><i class="fa-solid fa-check"></i> Resolved</span>`;
+            else if (cell === "Unresolved") cell = `<span class="sf-badge sf-badge-red"><i class="fa-solid fa-xmark"></i> Unresolved</span>`;
+          }
+          if (col.key === "date") {
+            const iso = !isNaN(new Date(cell)) ? new Date(cell).toISOString().slice(0,10) : "";
+            return `<td data-date="${iso}">${cell}</td>`;
+          }
+          return `<td>${cell}</td>`;
+        }).join("")}</tr>`;
+      }).join("");
+    }
+
+    function renderPagination(totalRows) {
+      const pag = document.getElementById("pagination");
+      const info = document.getElementById("paginationInfo");
+      pag.innerHTML = "";
+      const totalPages = Math.max(1, Math.ceil(totalRows / rowsPerPage));
+      const from = totalRows === 0 ? 0 : (currentPage-1)*rowsPerPage+1;
+      const to   = Math.min(totalRows, currentPage*rowsPerPage);
+      info.textContent = `Showing ${from}–${to} of ${totalRows} records`;
+      const prev = document.createElement("button"); prev.innerHTML='<i class="fa-solid fa-chevron-left"></i>'; prev.className="sf-page-btn"; prev.disabled=currentPage===1; prev.onclick=()=>{if(currentPage>1){currentPage--;renderTable(filteredData);}};pag.appendChild(prev);
+      let sp=Math.max(1,currentPage-3), ep=Math.min(totalPages,sp+6); if(ep-sp<6)sp=Math.max(1,ep-6);
+      for(let i=sp;i<=ep;i++){const btn=document.createElement("button");btn.textContent=i;btn.className="sf-page-btn"+(i===currentPage?" active":"");btn.onclick=(()=>{const p=i;return()=>{currentPage=p;renderTable(filteredData);}})();pag.appendChild(btn);}
+      const next=document.createElement("button");next.innerHTML='<i class="fa-solid fa-chevron-right"></i>';next.className="sf-page-btn";next.disabled=currentPage===totalPages;next.onclick=()=>{if(currentPage<totalPages){currentPage++;renderTable(filteredData);}};pag.appendChild(next);
+    }
+
+    document.addEventListener("keydown",e=>{const tp=Math.ceil(filteredData.length/rowsPerPage);if(e.key==="ArrowRight"&&currentPage<tp){currentPage++;renderTable(filteredData);}if(e.key==="ArrowLeft"&&currentPage>1){currentPage--;renderTable(filteredData);}});
+
+    function applySearch() {
+      showLoader();
+      setTimeout(() => {
+        const q = document.getElementById("searchInput").value.toLowerCase().trim();
+        filteredData = q ? jioData.filter(r=>Object.values(r).some(v=>String(v).toLowerCase().includes(q))) : [...jioData];
+        currentPage=1; renderTable(filteredData); hideLoader();
+      }, 80);
+    }
+
+    function applyDateRangeFilter() {
+      showLoader();
+      setTimeout(()=>{
+        const from=document.getElementById("fromDate").value, to=document.getElementById("toDate").value;
+        const fd=from?new Date(from):null, td=to?new Date(to):null;
+        filteredData=jioData.filter(r=>{const d=new Date(r.date);return(!fd||d>=fd)&&(!td||d<=td);});
+        currentPage=1; renderTable(filteredData); hideLoader();
+      },80);
+    }
+
+    function clearDateRangeFilter() {
+      document.getElementById("fromDate").value=""; document.getElementById("toDate").value="";
+      filteredData=[...jioData]; currentPage=1; renderTable(filteredData);
+    }
+
+    function handleEditClick(encoded) {
+      try { openEditModal(JSON.parse(decodeURIComponent(escape(atob(encoded))))); }
+      catch { showToast("Unable to open editor.","error"); }
+    }
+
+    function openEditModal(record) {
+      const form=document.getElementById("editForm"); form.innerHTML="";
+      form.innerHTML+=`<input type="hidden" name="_id" value="${record.jioBPStatusId}"/>`;
+      const skip=["__v","createdAt","updatedAt","_id","jioBPStatusId","isVerified","taskGenerated"];
+      for(const[key,value]of Object.entries(record)){
+        if(skip.includes(key))continue;
+        let sv=key==="planId"&&typeof value==="object"&&value?._id?value._id:(value||"");
+        form.innerHTML+=`<div class="sf-modal-field"><label class="sf-modal-label">${key}</label><input type="text" name="${key}" value="${sv}" class="sf-modal-input"/></div>`;
+      }
+      document.getElementById("editModal").classList.remove("hidden");
+    }
+
+    function closeModal(){document.getElementById("editModal").classList.add("hidden");}
+
+    async function saveEdit(){
+      const form=document.getElementById("editForm"), fd=new FormData(form), updated={}, id=fd.get("_id");
+      fd.forEach((val,key)=>{if(key==="_id")return;if(key==="planId"){try{updated.planId=JSON.parse(val)._id||val;}catch{updated.planId=val;}}else if(key==="isVerified")updated.isVerified=val==="true";else updated[key]=val;});
+      const res=await fetch(`${baseUrl}/jioBP/updateJioBPStatus/${id}`,{method:"PUT",headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},body:JSON.stringify(updated)});
+      if(res.ok){closeModal();await fetchData();showToast("Record updated successfully.");}
+      else showToast("Failed to update record.","error");
+    }
+
+    function deleteRecord(id){deleteTargetId=id;document.getElementById("deleteModal").classList.remove("hidden");}
+    function cancelDelete(){deleteTargetId=null;document.getElementById("deleteModal").classList.add("hidden");}
+    async function confirmDelete(){
+      if(!deleteTargetId)return;
+      const res=await fetch(`${baseUrl}/jioBP/deleteJioBPStatus/${deleteTargetId}`,{method:"DELETE",headers:{Authorization:`Bearer ${token}`}});
+      document.getElementById("deleteModal").classList.add("hidden");
+      if(res.ok){showToast("Record deleted successfully.");await fetchData();}
+      else showToast("Delete failed.","error");
+      deleteTargetId=null;
+    }
+
+    async function verifyRecord(id){
+      if(!confirm("Mark this record as VERIFIED?"))return;
+      const res=await fetch(`${baseUrl}/jioBP/verifyStatus/${id}`,{method:"PUT",headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},body:JSON.stringify({isVerified:true})});
+      if(res.ok){showToast("Record marked as Verified.");await fetchData();}
+      else showToast("Verification failed.","error");
+    }
+
+    function toggleExportMenu(){document.getElementById("exportMenu").classList.toggle("open");setTimeout(()=>document.addEventListener("click",closeExportMenuH),10);}
+    function closeExportMenuH(e){if(!e.target.closest("#exportDropdown")){document.getElementById("exportMenu").classList.remove("open");document.removeEventListener("click",closeExportMenuH);}}
+
+    function exportToExcel(){
+      const table=document.getElementById("statusTable"), clone=table.cloneNode(true);
+      clone.querySelectorAll("tbody tr").forEach(row=>{if(row.style.display==="none"){row.remove();return;}row.querySelectorAll("td").forEach(td=>{td.innerHTML=td.innerText;});});
+      const today=new Date().toLocaleDateString("en-CA"), from=document.getElementById("fromDate").value, to=document.getElementById("toDate").value;
+      let fn="JioBP_Report"; if(from&&to)fn+=`_${from}_to_${to}`;else if(from)fn+=`_from_${from}`;else if(to)fn+=`_upto_${to}`;else fn+=`_${today}`;
+      const ws=XLSX.utils.table_to_sheet(clone), wb=XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb,ws,"JioBP Status"); XLSX.writeFile(wb,`${fn}.xlsx`);
+      document.getElementById("exportMenu").classList.remove("open");
+    }
+
+    fetchData();
+  </script>
+</body>
+</html>

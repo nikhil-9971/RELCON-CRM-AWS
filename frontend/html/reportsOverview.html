@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Reports Overview</title>
+
+    <!-- Poppins font -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+      /* Use Poppins everywhere */
+      :root {
+        --bg: #f5f7fa;
+        --muted: #6b7280;
+        --card-radius: 14px;
+        --accent-opacity: 0.06;
+      }
+
+      html,
+      body {
+        height: 100%;
+        font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        background: var(--bg);
+        color: #0f172a;
+        margin: 0;
+        padding: 0;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 28px auto;
+        padding: 0 20px;
+      }
+
+      .top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 22px;
+      }
+
+      .title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .title h1 {
+        font-size: 20px;
+        font-weight: 600;
+        margin: 0;
+        color: #0b1220;
+      }
+
+      .search {
+        min-width: 280px;
+        max-width: 420px;
+      }
+      .search input {
+        width: 100%;
+        padding: 10px 14px;
+        border-radius: 10px;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        background: #fff;
+        font-size: 14px;
+        box-shadow: 0 1px 0 rgba(2, 6, 23, 0.02);
+        outline: none;
+      }
+      .search input:focus {
+        box-shadow: 0 6px 18px rgba(2, 6, 23, 0.06);
+        border-color: rgba(59, 130, 246, 0.9);
+      }
+
+      /* grid */
+      .cards-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 18px;
+      }
+
+      /* card base */
+      .card {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        padding: 18px 20px;
+        border-radius: var(--card-radius);
+        background: linear-gradient(180deg, #ffffff, #fbfdff);
+        border: 1px solid rgba(15, 23, 42, 0.04);
+        cursor: pointer;
+        transition: transform 320ms cubic-bezier(0.2, 0.9, 0.3, 1),
+          box-shadow 320ms ease, filter 220ms ease;
+        min-height: 78px;
+        overflow: visible;
+        box-shadow: 0 6px 18px rgba(2, 6, 23, 0.04);
+      }
+
+      /* left accent bar for identity */
+      .card .left-accent {
+        width: 8px;
+        height: 64px;
+        border-radius: 8px;
+        flex: 0 0 8px;
+      }
+
+      .card .meta {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .card h3 {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 600;
+        color: #071326;
+      }
+      .card p {
+        margin: 6px 0 0 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      /* control (icon box) */
+      .card .control {
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.85),
+          rgba(255, 255, 255, 0.7)
+        );
+        box-shadow: 0 6px 18px rgba(2, 6, 23, 0.04);
+        border: 1px solid rgba(15, 23, 42, 0.03);
+        flex-shrink: 0;
+        color: inherit; /* will be set per theme */
+      }
+
+      /* make SVG use currentColor and visible */
+      .card .control svg {
+        width: 18px;
+        height: 18px;
+      }
+      .card .control svg .stroke {
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        fill: none;
+        stroke-opacity: 0.95;
+      }
+      .card .control svg .fill {
+        fill: currentColor;
+        fill-opacity: 0.95;
+      }
+
+      /* subtle decorative circle on top-right (soft glass) */
+      .card .glow {
+        position: absolute;
+        right: 14px;
+        top: 8px;
+        width: 76px;
+        height: 76px;
+        border-radius: 16px;
+        opacity: 0.08;
+        pointer-events: none;
+      }
+
+      /* hover (3D lift + slight rotate) */
+      .card:hover {
+        transform: translateY(-10px) rotateX(1deg) scale(1.01);
+        box-shadow: 0 26px 44px rgba(3, 10, 24, 0.12),
+          0 8px 20px rgba(3, 10, 24, 0.06);
+        filter: saturate(1.02);
+      }
+      .card:active {
+        transform: translateY(-4px) rotateX(0.5deg);
+      }
+
+      /* color themes */
+      .card[data-theme="green"] .left-accent {
+        background: linear-gradient(180deg, #06b6a4, #059669);
+      }
+      .card[data-theme="blue"] .left-accent {
+        background: linear-gradient(180deg, #60a5fa, #2563eb);
+      }
+      .card[data-theme="purple"] .left-accent {
+        background: linear-gradient(180deg, #a78bfa, #7c3aed);
+      }
+      .card[data-theme="orange"] .left-accent {
+        background: linear-gradient(180deg, #f6ad55, #f59e0b);
+      }
+      .card[data-theme="teal"] .left-accent {
+        background: linear-gradient(180deg, #34d399, #0d9488);
+      }
+      .card[data-theme="slate"] .left-accent {
+        background: linear-gradient(180deg, #94a3b8, #64748b);
+      }
+      .card[data-theme="rose"] .left-accent {
+        background: linear-gradient(180deg, #fb7185, #f43f5e);
+      }
+      .card[data-theme="cyan"] .left-accent {
+        background: linear-gradient(180deg, #06b6d4, #0596b6);
+      }
+
+      /* set control color per theme so SVG visible */
+      .card[data-theme="green"] .control {
+        color: #059669;
+      }
+      .card[data-theme="blue"] .control {
+        color: #2563eb;
+      }
+      .card[data-theme="purple"] .control {
+        color: #7c3aed;
+      }
+      .card[data-theme="orange"] .control {
+        color: #d97706;
+      }
+      .card[data-theme="teal"] .control {
+        color: #0d9488;
+      }
+      .card[data-theme="slate"] .control {
+        color: #475569;
+      }
+      .card[data-theme="rose"] .control {
+        color: #e11d48;
+      }
+      .card[data-theme="cyan"] .control {
+        color: #0596b6;
+      }
+
+      /* hidden state for restricted cards */
+      .card.hidden-by-role {
+        display: none !important;
+      }
+
+      /* small responsive */
+      @media (max-width: 640px) {
+        .container {
+          margin: 14px;
+        }
+        .cards-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      /* focus accessibility */
+      .card:focus {
+        outline: none;
+        box-shadow: 0 18px 34px rgba(3, 10, 24, 0.08),
+          0 6px 14px rgba(3, 10, 24, 0.05);
+        transform: translateY(-8px) scale(1.01);
+      }
+    </style>
+  
+  
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <!-- ⚡ RELCON Global Theme -->
+  <style>
+    :root{
+      --c-bg:#F4F6F9;--c-surface:#fff;--c-border:#E2E8F0;
+      --c-text:#0F172A;--c-text2:#475569;--c-text3:#94A3B8;
+      --c-primary:#2563EB;--c-primary-h:#1D4ED8;--c-primary-lt:#EFF6FF;
+      --c-success:#16A34A;--c-warning:#D97706;--c-danger:#DC2626;
+    }
+    [data-theme="dark"]{
+      --c-bg:#0B1120;--c-surface:#111827;--c-border:#1E293B;
+      --c-text:#F1F5F9;--c-text2:#94A3B8;--c-text3:#475569;
+      --c-primary:#3B82F6;--c-primary-lt:#172554;
+    }
+    body{font-family:'Inter',-apple-system,sans-serif!important;background:var(--c-bg)!important;color:var(--c-text)!important;}
+    h1,h2,.text-xl{color:#1E3A8A!important;}
+    [data-theme="dark"] h1,[data-theme="dark"] h2,[data-theme="dark"] .text-xl{color:#60A5FA!important;}
+
+    /* Tables */
+    table thead th,thead th,.bg-gray-200 th,.bg-gray-100 th{
+      background:#1E3A8A!important;color:#fff!important;
+      font-size:11px!important;text-transform:uppercase;letter-spacing:.6px;
+      padding:10px 12px!important;
+    }
+    tbody tr:hover{background:#EFF6FF!important;}
+    [data-theme="dark"] tbody tr:hover{background:#172554!important;}
+
+    /* Buttons */
+    .bg-green-600,.bg-blue-600,.bg-teal-600{background:var(--c-primary)!important;}
+    .bg-green-600:hover,.bg-blue-600:hover{background:var(--c-primary-h)!important;}
+    .bg-red-600,.bg-red-500{background:var(--c-danger)!important;}
+    .bg-yellow-500{background:var(--c-warning)!important;}
+    .text-green-600,.text-green-700,.text-blue-600{color:var(--c-primary)!important;}
+
+    /* Inputs */
+    input,select,textarea{
+      border:1.5px solid var(--c-border)!important;border-radius:6px!important;
+      font-family:inherit!important;background:var(--c-surface)!important;color:var(--c-text)!important;
+    }
+    input:focus,select:focus,textarea:focus{
+      border-color:var(--c-primary)!important;
+      box-shadow:0 0 0 3px rgba(37,99,235,.12)!important;outline:none!important;
+    }
+
+    /* Cards */
+    .bg-white,.card{background:var(--c-surface)!important;}
+    .shadow,.shadow-md,.shadow-lg{box-shadow:0 2px 12px rgba(0,0,0,.07)!important;}
+    .rounded,.rounded-lg,.rounded-xl{border-radius:8px!important;}
+
+    /* Scrollbar */
+    ::-webkit-scrollbar{width:5px;height:5px;}
+    ::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:3px;}
+    ::-webkit-scrollbar-thumb:hover{background:#94A3B8;}
+    [data-theme="dark"] ::-webkit-scrollbar-thumb{background:#1E293B;}
+  </style>
+
+
+
+
+
+
+
+
+  <!-- RELCON-MASTER-CSS -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style id="relcon-master">
+  /* ═══════════════════════════════════════════════════
+     RELCON CRM — Master Design System v3
+     Font: Inter  |  Light Theme Only  |  Enterprise UI
+  ═══════════════════════════════════════════════════ */
+
+  /* ── Design Tokens ─────────────────────────────── */
+  :root {
+    --brand:       #2563EB;
+    --brand-dk:    #1D4ED8;
+    --brand-lt:    #EFF6FF;
+    --brand-glow:  rgba(37,99,235,0.12);
+    --success:     #059669;
+    --success-lt:  #ECFDF5;
+    --warn:        #D97706;
+    --warn-lt:     #FFFBEB;
+    --danger:      #DC2626;
+    --danger-lt:   #FEF2F2;
+    --purple:      #7C3AED;
+
+    --bg:          #F1F5F9;
+    --surface:     #FFFFFF;
+    --surface2:    #F8FAFC;
+    --border:      #E2E8F0;
+    --border-lt:   #F1F5F9;
+
+    --txt:         #0F172A;
+    --txt2:        #1E293B;
+    --txt3:        #64748B;
+    --txt4:        #94A3B8;
+    --txt5:        #CBD5E1;
+
+    /* CRM Font Sizes — same as Salesforce Lightning */
+    --fs-xs:    10px;   /* labels, badges */
+    --fs-sm:    11px;   /* table headers, captions */
+    --fs-base:  13px;   /* body, table cells */
+    --fs-md:    14px;   /* emphasized body */
+    --fs-lg:    16px;   /* section titles */
+    --fs-xl:    20px;   /* page titles */
+    --fs-2xl:   24px;   /* hero numbers */
+
+    --lh:      1.5;
+    --r-xs:    4px;
+    --r-sm:    6px;
+    --r:       8px;
+    --r-lg:    12px;
+    --r-xl:    16px;
+    --r-full:  9999px;
+
+    --sh-xs:   0 1px 2px rgba(15,23,42,0.05);
+    --sh-sm:   0 1px 3px rgba(15,23,42,0.08), 0 1px 2px rgba(15,23,42,0.04);
+    --sh:      0 4px 6px rgba(15,23,42,0.07), 0 2px 4px rgba(15,23,42,0.05);
+    --sh-md:   0 10px 20px rgba(15,23,42,0.08), 0 4px 8px rgba(15,23,42,0.04);
+    --sh-lg:   0 20px 40px rgba(15,23,42,0.10), 0 8px 16px rgba(15,23,42,0.06);
+
+    --topbar-h: 52px;
+  }
+
+  /* ── Base ─────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; }
+  html {
+    font-size: var(--fs-base) !important;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+    font-size: var(--fs-base) !important;
+    font-weight: 400 !important;
+    line-height: var(--lh) !important;
+    color: var(--txt) !important;
+    background: var(--bg) !important;
+    margin: 0 !important; padding: 0 !important;
+    min-height: 100vh;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--txt4); }
+
+  /* ── PAGE SHELL — Same structure across ALL pages ── */
+  .crm-page {
+    display: flex; flex-direction: column;
+    min-height: 100vh;
+    background: var(--bg);
+  }
+
+  /* Top bar inside iframe pages */
+  .crm-topbar {
+    height: var(--topbar-h);
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center;
+    padding: 0 24px; gap: 12px;
+    flex-shrink: 0;
+    box-shadow: var(--sh-xs);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .crm-topbar-title {
+    font-size: var(--fs-md);
+    font-weight: 700;
+    color: var(--txt);
+    letter-spacing: -0.2px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .crm-topbar-title .icon {
+    width: 28px; height: 28px;
+    background: var(--brand-lt);
+    border-radius: var(--r-sm);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--brand); font-size: 13px;
+  }
+  .crm-topbar-meta {
+    font-size: var(--fs-xs);
+    font-weight: 500; color: var(--txt4);
+    background: var(--surface2);
+    padding: 3px 10px;
+    border-radius: var(--r-full);
+    border: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .crm-topbar-spacer { flex: 1; }
+  .crm-topbar-actions { display: flex; align-items: center; gap: 8px; }
+
+  /* Content body */
+  .crm-body {
+    flex: 1;
+    padding: 20px 24px;
+    max-width: 1440px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  /* ── CARD — universal container ─────────────────── */
+  .crm-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    box-shadow: var(--sh-sm);
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .crm-card-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--surface);
+    gap: 12px; flex-wrap: wrap;
+  }
+  .crm-card-title {
+    font-size: var(--fs-md);
+    font-weight: 700;
+    color: var(--txt);
+    letter-spacing: -0.2px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .crm-card-body { padding: 20px; }
+  .crm-card-footer {
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--surface2);
+    display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+  }
+
+  /* ── FILTERS BAR ─────────────────────────────────── */
+  .crm-filters {
+    display: flex; align-items: flex-end; gap: 10px;
+    flex-wrap: wrap; padding: 14px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+  .crm-filter-group { display: flex; flex-direction: column; gap: 4px; }
+  .crm-filter-group label {
+    font-size: var(--fs-xs) !important;
+    font-weight: 600 !important;
+    color: var(--txt4) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    margin: 0 !important;
+  }
+
+  /* ── TABLE ───────────────────────────────────────── */
+  .crm-table-wrap {
+    overflow-x: auto; overflow-y: auto;
+  }
+  .crm-table-wrap table,
+  table.crm-table {
+    width: 100%; border-collapse: collapse;
+    font-family: 'Inter', sans-serif !important;
+    font-size: var(--fs-base) !important;
+    min-width: 600px;
+  }
+  thead th,
+  .crm-table thead th,
+  table thead th {
+    background: #0F172A !important;
+    color: #F1F5F9 !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: var(--fs-sm) !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.7px !important;
+    padding: 10px 14px !important;
+    text-align: left !important;
+    white-space: nowrap !important;
+    border: none !important;
+    position: sticky; top: 0; z-index: 10;
+  }
+  thead th:first-child { border-radius: 0 !important; }
+  tbody tr {
+    border-bottom: 1px solid var(--border-lt) !important;
+    transition: background 0.1s;
+  }
+  tbody tr:last-child { border-bottom: none !important; }
+  tbody tr:hover { background: #EFF6FF !important; }
+  tbody td {
+    padding: 9px 14px !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: var(--fs-base) !important;
+    color: var(--txt2) !important;
+    vertical-align: middle !important;
+    border: none !important;
+    border-bottom: 1px solid var(--border-lt) !important;
+  }
+  tbody td:first-child { font-weight: 500; color: var(--txt) !important; }
+
+  /* ── STATUS BADGES ───────────────────────────────── */
+  .badge {
+    display: inline-flex; align-items: center;
+    padding: 2px 9px;
+    border-radius: var(--r-full);
+    font-size: var(--fs-xs) !important;
+    font-weight: 600 !important;
+    white-space: nowrap;
+    letter-spacing: 0.3px;
+  }
+  .badge-green  { background: var(--success-lt); color: var(--success); }
+  .badge-red    { background: var(--danger-lt);  color: var(--danger);  }
+  .badge-yellow { background: var(--warn-lt);    color: var(--warn);    }
+  .badge-blue   { background: var(--brand-lt);   color: var(--brand);   }
+  .badge-gray   { background: var(--surface2);   color: var(--txt3);    }
+
+  /* ── FORM ELEMENTS ───────────────────────────────── */
+  .crm-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+  }
+  .crm-form-grid-2 { grid-template-columns: repeat(2, 1fr); }
+  .crm-form-grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .crm-field { display: flex; flex-direction: column; gap: 5px; }
+  .crm-label {
+    font-size: var(--fs-xs) !important;
+    font-weight: 600 !important;
+    color: var(--txt3) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    font-family: 'Inter', sans-serif !important;
+  }
+  .crm-input,
+  input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]),
+  select, textarea {
+    font-family: 'Inter', sans-serif !important;
+    font-size: var(--fs-base) !important;
+    font-weight: 400 !important;
+    color: var(--txt) !important;
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--r-sm) !important;
+    padding: 7px 10px !important;
+    outline: none !important;
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s !important;
+    height: 36px !important;
+    line-height: 1.4 !important;
+    width: 100%;
+  }
+  textarea {
+    height: auto !important;
+    min-height: 80px;
+    resize: vertical;
+  }
+  select { -webkit-appearance: none; appearance: none; cursor: pointer; padding-right: 28px !important; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%2394A3B8' d='M1 1l5 5 5-5'/%3E%3C/svg%3E") !important; background-repeat: no-repeat !important; background-position: right 10px center !important; }
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--brand) !important;
+    background: var(--surface) !important;
+    box-shadow: 0 0 0 3px var(--brand-glow) !important;
+  }
+  input::placeholder, textarea::placeholder { color: var(--txt5) !important; font-size: var(--fs-base) !important; }
+  label, .label {
+    font-family: 'Inter', sans-serif !important;
+    font-size: var(--fs-xs) !important;
+    font-weight: 600 !important;
+    color: var(--txt3) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    display: block; margin-bottom: 5px !important;
+  }
+
+  /* ── BUTTONS ─────────────────────────────────────── */
+  button, .btn, [role=button] {
+    font-family: 'Inter', sans-serif !important;
+    font-size: var(--fs-base) !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    border-radius: var(--r-sm) !important;
+    transition: all 0.15s !important;
+    display: inline-flex; align-items: center; gap: 5px;
+    white-space: nowrap;
+  }
+  /* Primary */
+  .bg-green-600, .bg-green-500, .bg-blue-600, .bg-blue-500, .bg-blue-700 {
+    background: var(--brand) !important; color: #fff !important;
+    border: none !important; padding: 7px 14px !important;
+    height: 34px; box-shadow: 0 1px 2px rgba(37,99,235,0.2) !important;
+    font-weight: 500 !important;
+  }
+  .bg-green-600:hover, .bg-blue-600:hover, .bg-green-500:hover, .bg-blue-500:hover {
+    background: var(--brand-dk) !important;
+    box-shadow: 0 4px 8px rgba(37,99,235,0.25) !important;
+    transform: translateY(-1px) !important;
+  }
+  .hover\:bg-green-700:hover { background: var(--brand-dk) !important; }
+  /* Warning */
+  .bg-yellow-500, .bg-yellow-400 { background: var(--warn) !important; color:#fff!important; border:none!important; padding:7px 14px!important; height:34px; }
+  /* Danger */
+  .bg-red-600, .bg-red-500 { background: var(--danger) !important; color:#fff!important; border:none!important; padding:7px 14px!important; height:34px; }
+  /* Success */
+  .bg-emerald-600, .bg-teal-600 { background:var(--success)!important; color:#fff!important; }
+
+  /* ── CARDS / CONTAINERS ──────────────────────────── */
+  .bg-white, .card {
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--r-lg) !important;
+    box-shadow: var(--sh-sm) !important;
+  }
+  .bg-gray-100, .bg-gray-50 { background: var(--surface2) !important; }
+  .bg-gray-200 { background: #F1F5F9 !important; }
+  .shadow, .shadow-md, .shadow-lg { box-shadow: var(--sh-sm) !important; }
+  .rounded, .rounded-lg, .rounded-xl { border-radius: var(--r) !important; }
+  .max-w-7xl, .max-w-6xl, .max-w-5xl, .max-w-4xl { width: 100% !important; }
+
+  /* ── TYPOGRAPHY ──────────────────────────────────── */
+  h1, .text-2xl, .text-3xl {
+    font-family: 'Inter', sans-serif !important;
+    font-size: var(--fs-xl) !important; font-weight: 700 !important;
+    color: var(--txt) !important; letter-spacing: -0.4px; line-height: 1.3;
+  }
+  h2, .text-xl {
+    font-family: 'Inter', sans-serif !important;
+    font-size: var(--fs-lg) !important; font-weight: 700 !important;
+    color: var(--txt) !important; letter-spacing: -0.2px;
+  }
+  h3, .text-lg { font-size: var(--fs-md) !important; font-weight: 600 !important; color: var(--txt) !important; }
+  p { font-size: var(--fs-base) !important; color: var(--txt2) !important; }
+  .text-gray-700, .text-gray-800 { color: var(--txt2) !important; }
+  .text-gray-500, .text-gray-600, .text-gray-400 { color: var(--txt3) !important; }
+  .text-green-600, .text-green-700, .text-green-800 { color: var(--brand) !important; }
+  .text-blue-600, .text-blue-700 { color: var(--brand) !important; }
+  .text-red-600, .text-red-500 { color: var(--danger) !important; }
+  .font-bold { font-weight: 700 !important; }
+  .font-semibold { font-weight: 600 !important; }
+  .font-medium { font-weight: 500 !important; }
+
+  /* ── TABLE CONTAINERS ────────────────────────────── */
+  .overflow-x-auto, [class*="overflow-x-auto"] {
+    background: var(--surface) !important;
+    border-radius: var(--r-lg) !important;
+    border: 1px solid var(--border) !important;
+    box-shadow: var(--sh-sm) !important;
+  }
+  .border { border-color: var(--border) !important; }
+  .border-gray-300 { border-color: var(--border) !important; }
+
+  /* ── PAGE PADDING ────────────────────────────────── */
+  body.p-4, body.p-6, body[class*="p-"] {
+    padding: 0 !important;
+  }
+
+  /* ── MISC ────────────────────────────────────────── */
+  .p-6 { padding: 20px !important; }
+  .p-4 { padding: 16px !important; }
+  .mb-4 { margin-bottom: 14px !important; }
+  .gap-4 { gap: 12px !important; }
+  .focus\:ring-green-300:focus, .focus\:ring:focus {
+    box-shadow: 0 0 0 3px var(--brand-glow) !important;
+  }
+  .bg-green-100 { background: var(--brand-lt) !important; color: var(--brand) !important; }
+  .bg-red-100   { background: var(--danger-lt) !important; color: var(--danger) !important; }
+  .bg-yellow-100 { background: var(--warn-lt) !important; color: var(--warn) !important; }
+  .text-\[9px\], .text-\[10px\], .text-\[11px\] { font-size: var(--fs-xs) !important; }
+  .text-\[12px\], .text-xs, .text-sm { font-size: var(--fs-sm) !important; }
+  .text-\[13px\], .text-\[14px\] { font-size: var(--fs-base) !important; }
+  </style>
+  <script src="config.js"></script>
+</head>
+
+  <body style="padding:0;margin:0;">
+<div class="crm-page">
+  <div class="crm-topbar">
+    <div class="crm-topbar-title">
+      <span class="icon" style="background:rgba(37,99,235,0.1);color:#2563EB;width:28px;height:28px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">
+        <i class="fa-solid fa-folder-open"></i>
+      </span>
+      Reports
+    </div>
+    <div class="crm-topbar-spacer"></div>
+  </div>
+  <div class="crm-body">
+
+    <div class="container">
+      <div class="top">
+        <div class="title" aria-hidden>
+          <!-- small multicolor grid icon -->
+          <svg
+            width="28"
+            height="28"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden
+          >
+            <rect
+              x="2"
+              y="3"
+              width="7"
+              height="7"
+              rx="1.5"
+              fill="#06b6a4"
+            ></rect>
+            <rect
+              x="15"
+              y="3"
+              width="7"
+              height="7"
+              rx="1.5"
+              fill="#60a5fa"
+            ></rect>
+            <rect
+              x="2"
+              y="14"
+              width="7"
+              height="7"
+              rx="1.5"
+              fill="#a78bfa"
+            ></rect>
+            <rect
+              x="15"
+              y="14"
+              width="7"
+              height="7"
+              rx="1.5"
+              fill="#f6ad55"
+            ></rect>
+          </svg>
+          <h1>Reports</h1>
+        </div>
+
+        <div class="search" role="search" aria-label="Search reports">
+          <input
+            id="reportsSearch"
+            type="search"
+            placeholder="Search reports..."
+            oninput="filterCards()"
+          />
+        </div>
+      </div>
+
+      <div id="cardsContainer" class="cards-grid" role="list">
+        <!-- Card: Visit (visible to all) -->
+        <div
+          class="card"
+          data-theme="green"
+          data-key="visit"
+          onclick="openReport('dataView.html')"
+          role="button"
+          tabindex="0"
+          aria-label="Visit Report"
+        >
+          <div class="left-accent" aria-hidden></div>
+          <div class="meta">
+            <h3>Visit Report</h3>
+            <p>Visit history & visit-level exports</p>
+          </div>
+          <div class="control" aria-hidden>
+            <svg
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden
+            >
+              <rect
+                class="stroke"
+                x="4"
+                y="4"
+                width="16"
+                height="16"
+                rx="4"
+              ></rect>
+            </svg>
+          </div>
+          <div
+            class="glow"
+            aria-hidden
+            style="
+              background: radial-gradient(
+                circle at 30% 30%,
+                #06b6a4,
+                transparent 40%
+              );
+            "
+          ></div>
+        </div>
+
+        <!-- HPCL (admin-only) -->
+        <div
+          class="card"
+          data-theme="blue"
+          data-key="hpcl"
+          data-admin-only="true"
+          onclick="openReport('statusRecords.html')"
+          role="button"
+          tabindex="0"
+          aria-label="HPCL Status Report"
+        >
+          <div class="left-accent" aria-hidden></div>
+          <div class="meta">
+            <h3>HPCL Status Report</h3>
+            <p>Status records for HPCL sites</p>
+          </div>
+          <div class="control" aria-hidden>
+            <svg
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden
+            >
+              <rect
+                class="stroke"
+                x="5.5"
+                y="5.5"
+                width="13"
+                height="13"
+                rx="3"
+              ></rect>
+            </svg>
+          </div>
+          <div
+            class="glow"
+            aria-hidden
+            style="
+              background: radial-gradient(
+                circle at 30% 30%,
+                #60a5fa,
+                transparent 40%
+              );
+            "
+          ></div>
+        </div>
+
+        <!-- BPCL Visit (visible to all) -->
+        <div
+          class="card"
+          data-theme="purple"
+          data-key="bpcl-visit"
+          onclick="openReport('bpclVisitReport.html')"
+          role="button"
+          tabindex="0"
+          aria-label="BPCL Visit Report"
+        >
+          <div class="left-accent" aria-hidden></div>
+          <div class="meta">
+            <h3>BPCL Visit Report</h3>
+            <p>BPCL visit details</p>
+          </div>
+          <div class="control" aria-hidden>
+            <svg
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden
+            >
+              <rect
+                class="stroke"
+                x="6"
+                y="6"
+                width="12"
+                height="12"
+                rx="3"
+              ></rect>
+            </svg>
+          </div>
+          <div
+            class="glow"
+            aria-hidden
+            style="
+              background: radial-gradient(
+                circle at 30% 30%,
+                #a78bfa,
+                transparent 40%
+              );
+            "
+          ></div>
+        </div>
+
+        <!-- Jio BP (visible to all) -->
+        <div
+          class="card"
+          data-theme="orange"
+          data-key="jio-bp"
+          onclick="openReport('jioBPreport.html')"
+          role="button"
+          tabindex="0"
+          aria-label="Jio BP Status Report"
+        >
+          <div class="left-accent" aria-hidden></div>
+          <div class="meta">
+            <h3>Jio BP Status Report</h3>
+            <p>Jio BP records, export & verify</p>
+          </div>
+          <div class="control" aria-hidden>
+            <svg
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden
+            >
+              <rect
+                class="stroke"
+                x="5"
+                y="5"
+                width="14"
+                height="14"
+                rx="3"
+              ></rect>
+            </svg>
+          </div>
+          <div
+            class="glow"
+            aria-hidden
+            style="
+              background: radial-gradient(
+                circle at 30% 30%,
+                #f6ad55,
+                transparent 40%
+              );
+            "
+          ></div>
+        </div>
+
+        <!-- NEW: Active vs Faulty (visible to all) -->
+        <div
+          class="card"
+          data-theme="cyan"
+          data-key="active-vs-faulty"
+          onclick="openReport('activeVsFaulty.html')"
+          role="button"
+          tabindex="0"
+          aria-label="Active vs Faulty Report"
+        >
+          <div class="left-accent" aria-hidden></div>
+          <div class="meta">
+            <h3>Active vs Faulty</h3>
+            <p>HPCL & JIO BP details</p>
+          </div>
+          <div class="control" aria-hidden>
+            <!-- double arrows icon -->
+            <svg
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden
+            >
+              <path
+                class="stroke"
+                d="M5 12h6l-2-2m0 4l2-2M13 12h6l-2-2m0 4l2-2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              ></path>
+            </svg>
+          </div>
+          <div
+            class="glow"
+            aria-hidden
+            style="
+              background: radial-gradient(
+                circle at 30% 30%,
+                #06b6d4,
+                transparent 40%
+              );
+            "
+          ></div>
+        </div>
+
+        <!-- BPCL Status (visible to all) -->
+        <div
+          class="card"
+          data-theme="teal"
+          data-key="bpcl-status"
+          onclick="openReport('bpclStatusreport.html')"
+          role="button"
+          tabindex="0"
+          aria-label="BPCL Status Report"
+        >
+          <div class="left-accent" aria-hidden></div>
+          <div class="meta">
+            <h3>BPCL Status Report</h3>
+            <p>BPCL Status (IOT classes, SIM, ATG)</p>
+          </div>
+          <div class="control" aria-hidden>
+            <svg
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden
+            >
+              <rect
+                class="stroke"
+                x="5.5"
+                y="5.5"
+                width="13"
+                height="13"
+                rx="3"
+              ></rect>
+            </svg>
+          </div>
+          <div
+            class="glow"
+            aria-hidden
+            style="
+              background: radial-gradient(
+                circle at 30% 30%,
+                #34d399,
+                transparent 40%
+              );
+            "
+          ></div>
+        </div>
+
+        <!-- ATG (admin-only) -->
+        <div
+          class="card"
+          data-theme="slate"
+          data-key="atg"
+          data-admin-only="true"
+          onclick="openReport('atgRecords.html')"
+          role="button"
+          tabindex="0"
+          aria-label="ATG Report"
+        >
+          <div class="left-accent" aria-hidden></div>
+          <div class="meta">
+            <h3>ATG Report</h3>
+            <p>ATG record exports</p>
+          </div>
+          <div class="control" aria-hidden>
+            <svg
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden
+            >
+              <rect
+                class="stroke"
+                x="6"
+                y="6"
+                width="12"
+                height="12"
+                rx="3"
+              ></rect>
+            </svg>
+          </div>
+          <div
+            class="glow"
+            aria-hidden
+            style="
+              background: radial-gradient(
+                circle at 30% 30%,
+                #94a3b8,
+                transparent 40%
+              );
+            "
+          ></div>
+        </div>
+
+        <!-- Task (admin-only) -->
+        <div
+          class="card"
+          data-theme="rose"
+          data-key="task"
+          data-admin-only="true"
+          onclick="openReport('taskReport.html')"
+          role="button"
+          tabindex="0"
+          aria-label="Task Report"
+        >
+          <div class="left-accent" aria-hidden></div>
+          <div class="meta">
+            <h3>Task Report</h3>
+            <p>Task-based reports</p>
+          </div>
+          <div class="control" aria-hidden>
+            <svg
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden
+            >
+              <rect
+                class="stroke"
+                x="6.5"
+                y="6.5"
+                width="11"
+                height="11"
+                rx="2.5"
+              ></rect>
+            </svg>
+          </div>
+          <div
+            class="glow"
+            aria-hidden
+            style="
+              background: radial-gradient(
+                circle at 30% 30%,
+                #fb7185,
+                transparent 40%
+              );
+            "
+          ></div>
+        </div>
+
+        <!-- Earthing (visible to all) -->
+        <div
+          class="card"
+          data-theme="slate"
+          data-key="earthing"
+          onclick="openReport('earthingReport.html')"
+          role="button"
+          tabindex="0"
+          aria-label="Earthing Status Report"
+        >
+          <div class="left-accent" aria-hidden></div>
+          <div class="meta">
+            <h3>Earthing Status Report</h3>
+            <p>Earthing & related checks</p>
+          </div>
+          <div class="control" aria-hidden>
+            <svg
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden
+            >
+              <rect
+                class="stroke"
+                x="6"
+                y="6"
+                width="12"
+                height="12"
+                rx="3"
+              ></rect>
+            </svg>
+          </div>
+          <div
+            class="glow"
+            aria-hidden
+            style="
+              background: radial-gradient(
+                circle at 30% 30%,
+                #94a3b8,
+                transparent 40%
+              );
+            "
+          ></div>
+        </div>
+      </div>
+
+      <div style="margin-top: 18px; color: #6b7280; font-size: 13px">
+        Tip: Click on any card to open the report. Use the search box to quickly
+        find a report.
+      </div>
+    </div>
+
+    <script>
+      // Read token and return role in lowercase (admin/engineer/...)
+      function getRoleFromToken(token) {
+        try {
+          if (!token) return "";
+          const payload = JSON.parse(atob(token.split(".")[1]));
+          return (payload.role || "").toString().toLowerCase();
+        } catch (e) {
+          return "";
+        }
+      }
+
+      // On load hide admin-only cards for non-admin users
+      function applyRoleVisibility() {
+        const token = localStorage.getItem("token");
+        const role = getRoleFromToken(token);
+        const adminOnlyCards = Array.from(
+          document.querySelectorAll("[data-admin-only='true']")
+        );
+        if (role !== "admin") {
+          // hide admin-only cards for non-admins (engineer)
+          adminOnlyCards.forEach((c) => c.classList.add("hidden-by-role"));
+        } else {
+          // ensure visible for admin
+          adminOnlyCards.forEach((c) => c.classList.remove("hidden-by-role"));
+        }
+      }
+
+      function openReport(page) {
+        try {
+          if (window.parent && typeof window.parent.loadPage === "function") {
+            window.parent.loadPage(page);
+          } else {
+            window.top.location.href = page;
+          }
+        } catch (e) {
+          console.error(e);
+          window.top.location.href = page;
+        }
+      }
+
+      function filterCards() {
+        const q = (document.getElementById("reportsSearch").value || "")
+          .toLowerCase()
+          .trim();
+        const cards = Array.from(
+          document.querySelectorAll("#cardsContainer .card")
+        );
+        cards.forEach((c) => {
+          // if card hidden by role, keep it hidden regardless of search
+          if (c.classList.contains("hidden-by-role")) {
+            c.style.display = "none";
+            return;
+          }
+          const txt = (c.innerText || "").toLowerCase();
+          c.style.display = q === "" || txt.includes(q) ? "" : "none";
+        });
+      }
+
+      // keyboard accessibility
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          const active = document.activeElement;
+          if (active && active.classList && active.classList.contains("card")) {
+            active.click();
+            e.preventDefault();
+          }
+        }
+      });
+
+      // initialize on DOM ready
+      document.addEventListener("DOMContentLoaded", () => {
+        applyRoleVisibility();
+      });
+    </script>
+  
+  </div>
+</div>
+</body>
+</html>

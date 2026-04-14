@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Incident Manager — RELCON CRM</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <script src="https://cdn.sheetjs.com/xlsx-0.18.5/package/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --sf-blue:#0176d3; --sf-blue-dk:#014486; --sf-blue-lt:#e8f4fd; --sf-blue-hover:#0b5faa;
+      --sf-navy:#1a2e4a;
+      --sf-green:#2e844a; --sf-green-lt:#eaf5ea;
+      --sf-red:#ba0517;   --sf-red-lt:#fef1ee;
+      --sf-orange:#dd5a0c; --sf-orange-lt:#fff3e0;
+      --sf-yellow:#b8860b; --sf-yellow-lt:#fff8e6;
+      --sf-purple:#6b3fa0; --sf-purple-lt:#f5f0ff;
+      --bg:#f3f2f2; --surface:#fff; --surface2:#f9f9f9;
+      --border:#dddbda; --border-lt:#f3f2f2;
+      --txt:#080707; --txt2:#3e3e3c; --txt3:#706e6b; --txt4:#aeaeac;
+      --r-sm:4px; --r:6px; --r-lg:8px;
+      --sh-sm:0 2px 4px rgba(0,0,0,0.09); --sh-md:0 8px 24px rgba(0,0,0,0.12);
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html{font-size:13px;-webkit-font-smoothing:antialiased;}
+    body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;}
+    ::-webkit-scrollbar{width:5px;height:5px;}
+    ::-webkit-scrollbar-thumb{background:#c8c6c4;border-radius:3px;}
+
+    /* PAGE STRIP */
+    .dv-strip{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:52px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:200;box-shadow:0 1px 3px rgba(15,23,42,0.07);}
+    .dv-strip-icon{width:28px;height:28px;background:var(--sf-red-lt);border-radius:5px;display:flex;align-items:center;justify-content:center;color:var(--sf-red);font-size:13px;}
+    .dv-strip-title{font-size:14px;font-weight:700;color:var(--txt);letter-spacing:-0.2px;}
+    .dv-strip-sep{width:1px;height:18px;background:var(--border);}
+    .dv-strip-meta{font-size:10px;font-weight:500;color:var(--txt4);background:var(--surface2);border:1px solid var(--border);padding:2px 9px;border-radius:9999px;}
+    .dv-strip-spacer{flex:1;}
+
+    /* BODY */
+    .sf-body{padding:16px 20px;}
+    .sf-bc{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--txt3);margin-bottom:10px;}
+    .sf-bc a{color:var(--sf-blue);text-decoration:none;}
+    .sf-bc a:hover{text-decoration:underline;}
+
+    /* KPI CARDS */
+    .kpi-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:12px;margin-bottom:14px;}
+    .kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 16px;box-shadow:var(--sh-sm);display:flex;flex-direction:column;gap:4px;border-left:3px solid transparent;}
+    .kpi-card.blue{border-left-color:var(--sf-blue);}
+    .kpi-card.red{border-left-color:var(--sf-red);}
+    .kpi-card.green{border-left-color:var(--sf-green);}
+    .kpi-card.orange{border-left-color:var(--sf-orange);}
+    .kpi-card.yellow{border-left-color:var(--sf-yellow);}
+    .kpi-num{font-size:24px;font-weight:700;line-height:1;}
+    .kpi-num.blue{color:var(--sf-blue);} .kpi-num.red{color:var(--sf-red);} .kpi-num.green{color:var(--sf-green);} .kpi-num.orange{color:var(--sf-orange);} .kpi-num.yellow{color:var(--sf-yellow);}
+    .kpi-label{font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:0.5px;}
+
+    /* PAGE HEADER */
+    .sf-page-header{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 20px;margin-bottom:12px;display:flex;align-items:center;gap:14px;box-shadow:var(--sh-sm);flex-wrap:wrap;}
+    .sf-page-icon{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#e8594a,#ba0517);display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;box-shadow:0 2px 8px rgba(186,5,23,0.35);flex-shrink:0;}
+    .sf-page-title{font-size:18px;font-weight:700;color:var(--txt);letter-spacing:-0.3px;}
+    .sf-page-meta{font-size:12px;color:var(--txt3);margin-top:2px;}
+    .sf-page-actions{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+
+    /* TOOLBAR */
+    .sf-toolbar{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);padding:12px 20px;margin-bottom:10px;display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;}
+    .sf-filter-group{display:flex;flex-direction:column;gap:4px;}
+    .sf-filter-label{font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:0.5px;}
+    .sf-input,.sf-select{font-family:'Inter',sans-serif;font-size:12px;color:var(--txt);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:5px 9px;height:32px;outline:none;transition:border-color 0.15s,box-shadow 0.15s;}
+    .sf-input:focus,.sf-select:focus{border-color:var(--sf-blue);box-shadow:0 0 0 3px rgba(1,118,211,0.12);}
+    .sf-input::placeholder{color:var(--txt4);}
+    .sf-search-wrap{position:relative;}
+    .sf-search-wrap i{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--txt4);font-size:11px;pointer-events:none;}
+    .sf-search-input{padding-left:28px;width:230px;}
+    .sf-select{-webkit-appearance:none;appearance:none;padding-right:26px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath fill='%23aeaeac' d='M0 0l5 7 5-7z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;cursor:pointer;}
+    .sf-toolbar-spacer{flex:1;}
+
+    /* BUTTONS */
+    .sf-btn{font-family:'Inter',sans-serif;font-size:12px;font-weight:500;padding:0 14px;height:32px;border-radius:var(--r-sm);cursor:pointer;border:none;display:inline-flex;align-items:center;gap:6px;transition:all 0.15s;white-space:nowrap;}
+    .sf-btn-primary{background:var(--sf-blue);color:#fff;box-shadow:0 1px 3px rgba(1,118,211,0.3);}
+    .sf-btn-primary:hover{background:var(--sf-blue-hover);transform:translateY(-1px);}
+    .sf-btn-neutral{background:var(--surface);color:var(--txt);border:1px solid var(--border);}
+    .sf-btn-neutral:hover{background:var(--bg);}
+    .sf-btn-success{background:var(--sf-green);color:#fff;}
+    .sf-btn-success:hover{background:#1d5e31;transform:translateY(-1px);}
+    .sf-btn-danger{background:var(--sf-red);color:#fff;}
+    .sf-btn-danger:hover{background:#920210;}
+
+    /* FILE INPUT */
+    .sf-file-label{display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:500;height:32px;padding:0 14px;border-radius:var(--r-sm);background:var(--surface);color:var(--txt);border:1px solid var(--border);transition:all 0.15s;font-family:'Inter',sans-serif;}
+    .sf-file-label:hover{background:var(--bg);}
+    .sf-file-input{display:none;}
+
+    /* EXPORT DROPDOWN */
+    .sf-dropdown{position:relative;}
+    .sf-dropdown-menu{position:absolute;right:0;top:calc(100% + 4px);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-md);min-width:200px;z-index:300;overflow:hidden;display:none;}
+    .sf-dropdown-menu.open{display:block;}
+    .sf-dropdown-item{padding:9px 14px;font-size:12px;color:var(--txt2);cursor:pointer;display:flex;align-items:center;gap:8px;}
+    .sf-dropdown-item:hover{background:var(--sf-blue-lt);color:var(--sf-blue);}
+    .sf-dropdown-divider{height:1px;background:var(--border);}
+
+    /* TABLE CARD */
+    .sf-table-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);overflow:hidden;}
+    .sf-table-header{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--surface2);}
+    .sf-table-title{font-size:12px;font-weight:700;color:var(--txt);text-transform:uppercase;letter-spacing:0.4px;display:flex;align-items:center;gap:6px;}
+    .sf-record-count{background:var(--sf-blue-lt);color:var(--sf-blue);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;}
+
+    .sf-table-wrap{overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 390px);}
+    table{width:100%;border-collapse:collapse;font-size:11px;min-width:1200px;}
+    thead th{background:var(--sf-navy)!important;color:#e8f4fd!important;font-size:10px!important;font-weight:600!important;text-transform:uppercase!important;letter-spacing:0.6px!important;padding:9px 12px!important;text-align:left!important;white-space:nowrap!important;border:none!important;border-right:1px solid #253d5b!important;position:sticky;top:0;z-index:10;}
+    thead th:last-child{border-right:none!important;}
+    tbody tr{border-bottom:1px solid var(--border-lt);transition:background 0.1s;}
+    tbody tr:hover{background:#f0f8ff;}
+    tbody td{padding:7px 10px!important;font-size:11px!important;color:var(--txt2)!important;vertical-align:middle!important;border:none!important;border-bottom:1px solid var(--border-lt)!important;white-space:nowrap;}
+    tbody td:first-child{color:var(--txt4)!important;font-size:10px!important;}
+
+    /* Inline table controls */
+    .td-select,.td-input{font-family:'Inter',sans-serif;font-size:11px;color:var(--txt);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);outline:none;transition:border-color 0.15s;}
+    .td-select{height:28px;padding:2px 22px 2px 7px;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='6' viewBox='0 0 8 6'%3E%3Cpath fill='%23aeaeac' d='M0 0l4 6 4-6z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 6px center;}
+    .td-input{height:28px;padding:2px 7px;}
+    .td-textarea{font-family:'Inter',sans-serif;font-size:11px;color:var(--txt);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);outline:none;padding:4px 7px;resize:vertical;min-height:50px;white-space:normal;width:100%;min-width:150px;}
+    .td-select:focus,.td-input:focus,.td-textarea:focus{border-color:var(--sf-blue);box-shadow:0 0 0 2px rgba(1,118,211,0.1);}
+    .td-select:disabled,.td-input[readonly],.td-textarea[readonly]{background:var(--surface2)!important;color:var(--txt3)!important;cursor:default;}
+
+    /* BADGES */
+    .sf-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;white-space:nowrap;}
+    .badge-pending{background:var(--sf-yellow-lt);color:var(--sf-yellow);}
+    .badge-closed{background:var(--sf-green-lt);color:var(--sf-green);}
+    .badge-hpcl{background:var(--sf-orange-lt);color:var(--sf-orange);}
+
+    /* Action buttons */
+    .sf-ab{display:flex;gap:4px;align-items:center;}
+    .sf-action-btn{font-size:10px;font-weight:500;height:24px;padding:0 8px;border-radius:var(--r-sm);cursor:pointer;border:none;display:inline-flex;align-items:center;gap:3px;transition:all 0.12s;font-family:'Inter',sans-serif;}
+    .sf-ab-view{background:var(--sf-blue-lt);color:var(--sf-blue);border:1px solid #c5dff5;}
+    .sf-ab-view:hover{background:#cce8f7;}
+    .sf-ab-edit{background:var(--sf-yellow-lt);color:var(--sf-yellow);border:1px solid #f6c23e;}
+    .sf-ab-edit:hover{background:#fff0b3;}
+    .sf-ab-save{background:var(--sf-green-lt);color:var(--sf-green);border:1px solid #a3d9a5;}
+    .sf-ab-save:hover{background:#c8edcc;}
+    .sf-ab-delete{background:var(--sf-red-lt);color:var(--sf-red);border:1px solid #f5c6c3;}
+    .sf-ab-delete:hover{background:#fbd5d0;}
+
+    /* PAGINATION */
+    .sf-pagination{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--border);background:var(--surface2);flex-wrap:wrap;gap:8px;}
+    .sf-pagination-info{font-size:11px;color:var(--txt3);}
+    .sf-pag-controls{display:flex;align-items:center;gap:4px;}
+    .sf-page-btn{width:30px;height:30px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--txt2);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.12s;font-family:'Inter',sans-serif;}
+    .sf-page-btn:hover{background:var(--sf-blue-lt);border-color:var(--sf-blue);color:var(--sf-blue);}
+    .sf-page-btn.active{background:var(--sf-blue);border-color:var(--sf-blue);color:#fff;font-weight:700;}
+    .sf-page-btn:disabled{opacity:0.4;cursor:not-allowed;}
+
+    /* MODALS */
+    .sf-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:500;display:none;align-items:center;justify-content:center;}
+    .sf-overlay.open{display:flex;}
+    .sf-modal{background:var(--surface);border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,0.25);width:90%;max-width:660px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;}
+    .sf-modal-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface2);flex-shrink:0;}
+    .sf-modal-title{font-size:15px;font-weight:700;color:var(--txt);display:flex;align-items:center;gap:8px;}
+    .sf-modal-close{background:none;border:none;cursor:pointer;color:var(--txt3);font-size:16px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:var(--r-sm);}
+    .sf-modal-close:hover{background:var(--sf-red-lt);color:var(--sf-red);}
+    .sf-modal-body{flex:1;overflow-y:auto;padding:20px;}
+    .sf-modal-footer{padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;background:var(--surface2);flex-shrink:0;}
+    .sf-modal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;}
+    .sf-modal-field{display:flex;flex-direction:column;gap:4px;}
+    .sf-modal-field.full{grid-column:1/-1;}
+    .sf-modal-label{font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:0.5px;}
+    .sf-modal-req{color:var(--sf-red);margin-left:2px;}
+    .sf-modal-input,.sf-modal-select,.sf-modal-textarea{font-family:'Inter',sans-serif;font-size:12px;color:var(--txt);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:6px 10px;height:34px;outline:none;width:100%;transition:border-color 0.15s,box-shadow 0.15s;}
+    .sf-modal-input:focus,.sf-modal-select:focus,.sf-modal-textarea:focus{border-color:var(--sf-blue);box-shadow:0 0 0 3px rgba(1,118,211,0.12);}
+    .sf-modal-textarea{height:auto;min-height:72px;resize:vertical;}
+    .sf-modal-select{-webkit-appearance:none;appearance:none;padding-right:28px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath fill='%23aeaeac' d='M0 0l5 7 5-7z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center;}
+
+    /* Detail sections */
+    .det-section{margin-bottom:16px;}
+    .det-section-title{font-size:11px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:0.6px;border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:10px;}
+    .det-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;}
+    .det-field{display:flex;flex-direction:column;gap:2px;}
+    .det-label{font-size:10px;font-weight:600;color:var(--txt4);text-transform:uppercase;letter-spacing:0.4px;}
+    .det-value{font-size:12px;color:var(--txt);font-weight:500;}
+    .det-box{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;font-size:12px;color:var(--txt2);line-height:1.6;}
+
+    /* Confirm delete */
+    .sf-confirm-modal{background:var(--surface);border-radius:12px;box-shadow:var(--sh-md);width:380px;overflow:hidden;}
+    .sf-confirm-header{padding:16px 20px;background:var(--sf-red-lt);border-bottom:1px solid #f8d0ca;}
+    .sf-confirm-title{font-size:15px;font-weight:700;color:var(--sf-red);display:flex;align-items:center;gap:8px;}
+    .sf-confirm-body{padding:16px 20px;font-size:13px;color:var(--txt2);}
+    .sf-confirm-footer{padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;}
+
+    /* LOADER */
+    .sf-loader{position:fixed;inset:0;background:rgba(243,242,242,0.7);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:400;}
+    .sf-loader.hidden{display:none;}
+    .sf-spinner-lg{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--sf-blue);border-radius:50%;animation:sf-spin 0.7s linear infinite;}
+    .sf-loader-text{font-size:12px;color:var(--txt3);margin-top:10px;font-weight:500;}
+    @keyframes sf-spin{to{transform:rotate(360deg);}}
+
+    /* TOAST */
+    .sf-toast{position:fixed;top:20px;right:20px;z-index:9999;min-width:280px;max-width:360px;background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--sh-md);border:1px solid var(--border);display:flex;align-items:flex-start;gap:10px;padding:12px 14px;transform:translateX(120%);transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1);}
+    .sf-toast.show{transform:translateX(0);}
+    .sf-toast-icon{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
+    .sf-toast.success .sf-toast-icon{background:var(--sf-green-lt);color:var(--sf-green);}
+    .sf-toast.error   .sf-toast-icon{background:var(--sf-red-lt);color:var(--sf-red);}
+    .sf-toast.warn    .sf-toast-icon{background:var(--sf-yellow-lt);color:var(--sf-yellow);}
+    .sf-toast-title{font-size:12px;font-weight:600;color:var(--txt);}
+    .sf-toast-msg{font-size:11px;color:var(--txt3);margin-top:1px;}
+
+    .hidden{display:none!important;}
+  
+/* ════════════════════════════════════════════════
+   RELCON CRM — Mobile Responsive CSS (All Pages)
+   Breakpoints: 1024px (tablet), 768px (mobile), 480px (small)
+════════════════════════════════════════════════ */
+
+/* ── TABLET (≤1024px) ── */
+@media(max-width:1024px){
+  .sf-body{padding:12px 14px;}
+  .kpi-row{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;}
+  .sf-toolbar{gap:8px;padding:10px 14px;}
+  .sf-page-header{padding:12px 16px;}
+  .charts-grid{grid-template-columns:1fr;}
+  .sf-modal{max-width:92%;}
+  .sf-modal-grid{grid-template-columns:1fr 1fr;}
+}
+
+/* ── MOBILE (≤768px) ── */
+@media(max-width:768px){
+  /* Page strip */
+  .dv-strip{padding:0 12px;gap:8px;height:48px;}
+  .dv-strip-sep{display:none;}
+  .dv-strip-meta{display:none;}
+  .dv-last-updated{display:none;}
+  .dv-strip-title{font-size:13px;}
+
+  /* Body */
+  .sf-body{padding:10px 12px;}
+
+  /* Breadcrumb */
+  .sf-bc{display:none;}
+
+  /* KPI row — 2 columns on mobile */
+  .kpi-row{grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:10px;}
+  .kpi-card{padding:12px;}
+  .kpi-num,.kpi-value{font-size:20px!important;}
+  .kpi-label,.kpi-sub{font-size:9px!important;}
+  .kpi-icon{width:32px;height:32px;font-size:13px;}
+
+  /* Page header */
+  .sf-page-header{padding:10px 14px;gap:10px;}
+  .sf-page-icon{width:36px;height:36px;font-size:15px;}
+  .sf-page-title{font-size:15px;}
+  .sf-page-meta{font-size:10px;}
+  .sf-page-actions{margin-left:0;width:100%;justify-content:flex-end;}
+
+  /* Toolbar — stack vertically */
+  .sf-toolbar{
+    flex-direction:column;align-items:stretch;
+    padding:10px 12px;gap:8px;
+  }
+  .sf-filter-group{width:100%;}
+  .sf-filter-group .sf-input,
+  .sf-filter-group .sf-select{width:100%;height:36px;}
+  .sf-search-input{width:100%!important;}
+  .sf-toolbar-spacer{display:none;}
+  .sf-dropdown{width:100%;}
+  .sf-dropdown .sf-btn{width:100%;justify-content:center;}
+
+  /* Tab row */
+  .tab-row{overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap;padding-bottom:2px;}
+  .tab-row::-webkit-scrollbar{height:3px;}
+
+  /* Source tabs */
+  .src-tabs{overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap;}
+  .src-tab{font-size:11px;padding:3px 10px;height:26px;}
+
+  /* Table */
+  .sf-table-wrap{max-height:50vh;}
+  table{font-size:11px;}
+  thead th{padding:7px 8px!important;font-size:9px!important;}
+  tbody td{padding:6px 8px!important;font-size:11px!important;}
+
+  /* Table header — hide less important cols hint via overflow scroll */
+  .sf-table-card,.sf-table-wrap{-webkit-overflow-scrolling:touch;}
+
+  /* Section cards */
+  .sf-section-header{padding:10px 14px;flex-wrap:wrap;gap:6px;}
+  .sf-section-body{padding:12px 14px;}
+  .sf-section-title{font-size:12px;}
+
+  /* Buttons */
+  .sf-btn{font-size:11px;padding:0 10px;height:30px;}
+  .sf-btn-primary,.sf-btn-success,.sf-btn-neutral{height:34px;}
+
+  /* Charts */
+  .charts-grid{grid-template-columns:1fr;}
+  .chart-wrap{padding:10px 12px;}
+  .customer-cards{
+    grid-template-columns:repeat(3,1fr);
+    padding:0 12px 12px;gap:8px;
+  }
+  .customer-card{padding:8px 10px;gap:7px;}
+  .cust-dot{width:26px;height:26px;font-size:10px;}
+  .cust-count{font-size:14px;}
+
+  /* Modals */
+  .sf-overlay{align-items:flex-end;padding-bottom:0;}
+  .sf-modal{
+    width:100%!important;max-width:100%!important;
+    border-radius:16px 16px 0 0;
+    max-height:90vh;
+  }
+  .sf-modal-grid{grid-template-columns:1fr!important;}
+  .sf-modal-header{padding:14px 16px;}
+  .sf-modal-body{padding:14px 16px;}
+  .sf-modal-footer{padding:10px 16px;}
+
+  /* Pagination */
+  .sf-pagination{flex-direction:column;align-items:center;gap:6px;padding:8px 12px;}
+  .sf-pagination-info{font-size:10px;}
+  .sf-pag-controls{flex-wrap:wrap;justify-content:center;}
+  .sf-page-btn{width:28px;height:28px;font-size:11px;}
+
+  /* Toast */
+  .sf-toast{right:10px;left:10px;min-width:unset;top:auto;bottom:16px;max-width:100%;}
+
+  /* Date inputs in toolbar */
+  input[type="date"].sf-input{width:100%;}
+
+  /* AMC date controls */
+  .sf-section-header > div > div{flex-wrap:wrap;gap:6px!important;}
+  .sf-date-input{width:100%;height:34px;}
+
+  /* Rows per page */
+  #rowsSel{width:70px!important;}
+}
+
+/* ── SMALL PHONES (≤480px) ── */
+@media(max-width:480px){
+  .kpi-row{grid-template-columns:repeat(2,1fr);gap:6px;}
+  .kpi-card{padding:10px;}
+  .kpi-num,.kpi-value{font-size:18px!important;}
+  .dv-strip{height:44px;}
+  .dv-strip-title{font-size:12px;}
+  .dv-strip-icon{width:24px;height:24px;font-size:11px;}
+  .sf-body{padding:8px 10px;}
+  .sf-page-title{font-size:13px;}
+  .sf-page-icon{width:32px;height:32px;font-size:13px;}
+  .customer-cards{grid-template-columns:repeat(2,1fr);}
+
+  /* Table font smaller */
+  thead th{font-size:8px!important;padding:6px 6px!important;}
+  tbody td{font-size:10px!important;padding:5px 6px!important;}
+}
+</style>
+  <script src="config.js"></script>
+</head>
+<body>
+
+<!-- PAGE STRIP -->
+<div class="dv-strip">
+  <div class="dv-strip-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+  <span class="dv-strip-title">Incident Manager</span>
+  <div class="dv-strip-sep"></div>
+  <span class="dv-strip-meta" id="dateBadge"></span>
+  <div class="dv-strip-spacer"></div>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <img src="./assets/HPCL.png"  alt="HPCL"  style="height:28px;opacity:0.8;" onerror="this.style.display='none'"/>
+    <img src="./assets/JioBP.png" alt="JioBP" style="height:28px;opacity:0.8;" onerror="this.style.display='none'"/>
+    <img src="./assets/BPCL.png"  alt="BPCL"  style="height:28px;opacity:0.8;" onerror="this.style.display='none'"/>
+  </div>
+</div>
+
+<main class="sf-body">
+
+  <!-- Breadcrumb -->
+  <div class="sf-bc">
+    <a href="#">Home</a><span>/</span>
+    <a href="#">Records</a><span>/</span>
+    <span>Incident Manager</span>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="kpi-row">
+    <div class="kpi-card blue"><div class="kpi-num blue" id="kpiTotal">—</div><div class="kpi-label">Total Incidents</div></div>
+    <div class="kpi-card red"><div class="kpi-num red" id="kpiPending">—</div><div class="kpi-label">Pending</div></div>
+    <div class="kpi-card green"><div class="kpi-num green" id="kpiClosed">—</div><div class="kpi-label">Closed</div></div>
+    <div class="kpi-card orange"><div class="kpi-num orange" id="kpiHpcl">—</div><div class="kpi-label">HPCL Action Req.</div></div>
+    <div class="kpi-card yellow"><div class="kpi-num yellow" id="kpiToday">—</div><div class="kpi-label">Opened Today</div></div>
+  </div>
+
+  <!-- Page Header -->
+  <div class="sf-page-header">
+    <div class="sf-page-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+    <div>
+      <div class="sf-page-title">Incident Records</div>
+      <div class="sf-page-meta">Track, assign and close field incidents with full audit trail</div>
+    </div>
+    <div class="sf-page-actions">
+      <button class="sf-btn sf-btn-neutral" onclick="fetchIncidents()">
+        <i class="fa-solid fa-rotate-right"></i> Refresh
+      </button>
+      <button class="sf-btn sf-btn-danger" onclick="openAddModal()">
+        <i class="fa-solid fa-plus"></i> Add Incident
+      </button>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="sf-toolbar">
+    <div class="sf-filter-group">
+      <label class="sf-filter-label">Search</label>
+      <div class="sf-search-wrap">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="searchInput" class="sf-input sf-search-input" placeholder="Search anything…" oninput="applyFilters()"/>
+      </div>
+    </div>
+    <div class="sf-filter-group">
+      <label class="sf-filter-label">Status</label>
+      <select id="filterStatus" class="sf-input sf-select" style="width:170px;" onchange="applyFilters()">
+        <option value="">All Status</option>
+        <option>Pending</option>
+        <option>Close</option>
+        <option>HPCL Action Required</option>
+      </select>
+    </div>
+    <div class="sf-filter-group">
+      <label class="sf-filter-label">Region</label>
+      <select id="filterRegion" class="sf-input sf-select" style="width:130px;" onchange="applyFilters()">
+        <option value="">All Regions</option>
+      </select>
+    </div>
+    <div class="sf-filter-group">
+      <label class="sf-filter-label">Engineer</label>
+      <select id="filterEngineer" class="sf-input sf-select" style="width:155px;" onchange="applyFilters()">
+        <option value="">All Engineers</option>
+      </select>
+    </div>
+    <div class="sf-filter-group">
+      <label class="sf-filter-label">From Date</label>
+      <input type="date" id="filterFrom" class="sf-input" onchange="applyFilters()"/>
+    </div>
+    <div class="sf-filter-group">
+      <label class="sf-filter-label">To Date</label>
+      <input type="date" id="filterTo" class="sf-input" onchange="applyFilters()"/>
+    </div>
+    <button class="sf-btn sf-btn-neutral" onclick="clearFilters()" style="align-self:flex-end;">
+      <i class="fa-solid fa-rotate-left"></i> Clear
+    </button>
+    <div class="sf-toolbar-spacer"></div>
+    <label class="sf-file-label" style="align-self:flex-end;" title="Import Excel">
+      <i class="fa-solid fa-file-excel" style="color:var(--sf-green);"></i> Import Excel
+      <input type="file" id="excelFile" accept=".xlsx,.xls" class="sf-file-input"/>
+    </label>
+    <div class="sf-dropdown" id="exportDrop" style="align-self:flex-end;">
+      <button class="sf-btn sf-btn-primary" onclick="toggleExportMenu()">
+        <i class="fa-solid fa-arrow-up-from-bracket"></i> Export
+        <i class="fa-solid fa-chevron-down" style="font-size:10px;"></i>
+      </button>
+      <div class="sf-dropdown-menu" id="exportMenu">
+        <div class="sf-dropdown-item" onclick="exportToExcel()"><i class="fa-solid fa-file-excel" style="color:var(--sf-green);"></i> Export to Excel</div>
+        <div class="sf-dropdown-divider"></div>
+        <div class="sf-dropdown-item" onclick="exportToCSV()"><i class="fa-solid fa-table" style="color:var(--sf-blue);"></i> Export to CSV</div>
+        <div class="sf-dropdown-divider"></div>
+        <div class="sf-dropdown-item" onclick="window.print()"><i class="fa-solid fa-print" style="color:var(--txt3);"></i> Print Table</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="sf-table-card">
+    <div class="sf-table-header">
+      <div class="sf-table-title"><i class="fa-solid fa-table-cells-large" style="color:var(--sf-blue);"></i> Incident Records</div>
+      <span class="sf-record-count" id="recordCountBadge">Loading…</span>
+      <div style="flex:1;"></div>
+      <span style="font-size:10px;color:var(--txt4);">50 per page</span>
+    </div>
+    <div class="sf-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>RO Code</th>
+            <th>Site Name</th>
+            <th>Region</th>
+            <th>Incident ID</th>
+            <th>Incident Date</th>
+            <th>Complaint Remark</th>
+            <th>Assign Engineer</th>
+            <th>Close Remark</th>
+            <th>Close Date</th>
+            <th>Status</th>
+            <th style="text-align:center;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="incidentTable"></tbody>
+      </table>
+    </div>
+    <div class="sf-pagination">
+      <div class="sf-pagination-info" id="paginationInfo">—</div>
+      <div class="sf-pag-controls" id="pagination"></div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ADD / EDIT MODAL -->
+<div class="sf-overlay" id="incidentModal">
+  <div class="sf-modal">
+    <div class="sf-modal-header">
+      <div class="sf-modal-title" id="modalTitle"><i class="fa-solid fa-plus" style="color:var(--sf-red);"></i> Add New Incident</div>
+      <button class="sf-modal-close" onclick="closeAddModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="sf-modal-body">
+      <input type="hidden" id="editIncidentId"/>
+      <div class="sf-modal-grid">
+        <div class="sf-modal-field">
+          <label class="sf-modal-label">RO Code <span class="sf-modal-req">*</span></label>
+          <input type="text" id="newRoCode" class="sf-modal-input" placeholder="e.g. BHR001"/>
+        </div>
+        <div class="sf-modal-field">
+          <label class="sf-modal-label">Site Name <span class="sf-modal-req">*</span></label>
+          <input type="text" id="newSiteName" class="sf-modal-input" placeholder="Site name"/>
+        </div>
+        <div class="sf-modal-field">
+          <label class="sf-modal-label">Region</label>
+          <input type="text" id="newRegion" class="sf-modal-input" placeholder="Region"/>
+        </div>
+        <div class="sf-modal-field">
+          <label class="sf-modal-label">Incident ID <span class="sf-modal-req">*</span></label>
+          <input type="text" id="newIncidentId" class="sf-modal-input" placeholder="INC-XXXX"/>
+        </div>
+        <div class="sf-modal-field">
+          <label class="sf-modal-label">Incident Date <span class="sf-modal-req">*</span></label>
+          <input type="date" id="newIncidentDate" class="sf-modal-input"/>
+        </div>
+        <div class="sf-modal-field">
+          <label class="sf-modal-label">Assign Engineer</label>
+          <select id="newAssignEngineer" class="sf-modal-select"></select>
+        </div>
+        <div class="sf-modal-field">
+          <label class="sf-modal-label">Status</label>
+          <select id="newStatus" class="sf-modal-select">
+            <option value="Pending">Pending</option>
+            <option value="Close">Close</option>
+            <option value="HPCL Action Required">HPCL Action Required</option>
+          </select>
+        </div>
+        <div class="sf-modal-field">
+          <label class="sf-modal-label">Close Date</label>
+          <input type="date" id="newCloseDate" class="sf-modal-input"/>
+        </div>
+        <div class="sf-modal-field full">
+          <label class="sf-modal-label">Complaint Remark <span class="sf-modal-req">*</span></label>
+          <textarea id="newComplaintRemark" class="sf-modal-textarea" placeholder="Describe the complaint in detail…"></textarea>
+        </div>
+        <div class="sf-modal-field full">
+          <label class="sf-modal-label">Close Remark</label>
+          <textarea id="newCloseRemark" class="sf-modal-textarea" placeholder="Resolution / close remark…"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="sf-modal-footer">
+      <button class="sf-btn sf-btn-neutral" onclick="closeAddModal()"><i class="fa-solid fa-xmark"></i> Cancel</button>
+      <button class="sf-btn sf-btn-success" onclick="saveIncidentModal()"><i class="fa-solid fa-floppy-disk"></i> Save Incident</button>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL VIEW MODAL -->
+<div class="sf-overlay" id="detailModal">
+  <div class="sf-modal" style="max-width:700px;">
+    <div class="sf-modal-header">
+      <div class="sf-modal-title"><i class="fa-solid fa-file-lines" style="color:var(--sf-blue);"></i> Incident Details</div>
+      <button class="sf-modal-close" onclick="document.getElementById('detailModal').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="sf-modal-body" id="detailBody"></div>
+    <div class="sf-modal-footer">
+      <button class="sf-btn sf-btn-neutral" onclick="document.getElementById('detailModal').classList.remove('open')"><i class="fa-solid fa-xmark"></i> Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE CONFIRM MODAL -->
+<div class="sf-overlay" id="deleteModal">
+  <div class="sf-confirm-modal">
+    <div class="sf-confirm-header">
+      <div class="sf-confirm-title"><i class="fa-solid fa-triangle-exclamation"></i> Confirm Delete</div>
+    </div>
+    <div class="sf-confirm-body">Are you sure you want to permanently delete this incident? This action cannot be undone.</div>
+    <div class="sf-confirm-footer">
+      <button class="sf-btn sf-btn-neutral" onclick="cancelDelete()"><i class="fa-solid fa-xmark"></i> Cancel</button>
+      <button class="sf-btn sf-btn-danger" onclick="confirmDeleteAction()"><i class="fa-solid fa-trash"></i> Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- LOADER -->
+<div id="loader" class="sf-loader hidden">
+  <div class="sf-spinner-lg"></div>
+  <div class="sf-loader-text">Loading incidents…</div>
+</div>
+
+<!-- TOAST -->
+<div id="sf-toast" class="sf-toast">
+  <div class="sf-toast-icon" id="sf-toast-icon"><i class="fa-solid fa-check"></i></div>
+  <div>
+    <div class="sf-toast-title" id="sf-toast-title">Success</div>
+    <div class="sf-toast-msg"   id="sf-toast-msg"></div>
+  </div>
+</div>
+
+<script>
+const BASE_URL = window.BACKEND_URL || "https://relcon-crm.onrender.com";
+let allData = [], filteredData = [];
+let currentPage = 1;
+const rowsPerPage = 50;
+let deleteTargetId = null;
+let editMode = false;
+
+const ENGINEERS = ["Abhishek Pathak","Amit Kumar","Banti Kumar","Gautam Kumar","Gautam Kumar (Purnia)","Kaushal Pandey","Prabhat Mishra","Raushan Kumar","Rajanish Mishra","Shaurav Kumar","Vinit Kumar","Vicky Vikrant","Rajan Pandey","Shubhendu Giri","Prerak Singh","Kirtivardhan","Kuldeep Kumar","RAVI PRATAP"];
+const ADMIN_USERS = ["nikhil.trivedi","anurag.mishra"];
+
+/* ── Init ── */
+document.getElementById('dateBadge').textContent = new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+populateEngineerSelect(document.getElementById('newAssignEngineer'));
+
+/* ── Helpers ── */
+function getUser(){ try{return JSON.parse(localStorage.getItem('user'))||{};}catch(e){return {};} }
+function isAdmin(){ const u=getUser(); return ADMIN_USERS.includes(u.username)&&u.role==='admin'; }
+function esc(s){ return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmtDate(d){ if(!d)return '—'; try{return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return d;} }
+function today(){ return new Date().toISOString().slice(0,10); }
+
+function populateEngineerSelect(el, sel=''){
+  el.innerHTML='<option value="">— Select Engineer —</option>'+ENGINEERS.map(n=>`<option value="${n}"${n===sel?' selected':''}>${n}</option>`).join('');
+}
+
+function showLoader(msg='Loading…'){ document.querySelector('.sf-loader-text').textContent=msg; document.getElementById('loader').classList.remove('hidden'); }
+function hideLoader(){ document.getElementById('loader').classList.add('hidden'); }
+
+function showToast(title, type='success', msg=''){
+  const icons={success:'fa-check',error:'fa-xmark',warn:'fa-exclamation'};
+  const t=document.getElementById('sf-toast');
+  document.getElementById('sf-toast-icon').innerHTML=`<i class="fa-solid ${icons[type]||'fa-check'}"></i>`;
+  document.getElementById('sf-toast-title').textContent=title;
+  document.getElementById('sf-toast-msg').textContent=msg;
+  t.className='sf-toast '+type;
+  setTimeout(()=>t.classList.add('show'),10);
+  setTimeout(()=>t.classList.remove('show'),3800);
+}
+
+/* ── KPI ── */
+function updateKPIs(data){
+  const tod=today();
+  document.getElementById('kpiTotal').textContent   = data.length;
+  document.getElementById('kpiPending').textContent = data.filter(x=>x.status==='Pending').length;
+  document.getElementById('kpiClosed').textContent  = data.filter(x=>x.status==='Close').length;
+  document.getElementById('kpiHpcl').textContent    = data.filter(x=>x.status==='HPCL Action Required').length;
+  document.getElementById('kpiToday').textContent   = data.filter(x=>(x.incidentDate||'').slice(0,10)===tod).length;
+}
+
+/* ── Fetch ── */
+async function fetchIncidents(){
+  showLoader('Loading incidents…');
+  try{
+    const res=await fetch(`${BASE_URL}/getAllIncidents`);
+    const r=await res.json();
+    if(r.success&&r.incidents){
+      allData=r.incidents;
+      updateKPIs(allData);
+      populateDynamicFilters(allData);
+      applyFilters();
+    } else showToast('Fetch failed','error','Could not load incidents.');
+  }catch(e){ showToast('Server error','error',e.message); }
+  hideLoader();
+}
+
+function populateDynamicFilters(data){
+  const regions=[...new Set(data.map(x=>x.region).filter(Boolean))].sort();
+  const engs=[...new Set(data.map(x=>x.assignEngineer).filter(Boolean))].sort();
+  const rSel=document.getElementById('filterRegion');
+  rSel.innerHTML='<option value="">All Regions</option>'+regions.map(r=>`<option>${esc(r)}</option>`).join('');
+  const eSel=document.getElementById('filterEngineer');
+  eSel.innerHTML='<option value="">All Engineers</option>'+engs.map(e=>`<option>${esc(e)}</option>`).join('');
+}
+
+/* ── Filters ── */
+function applyFilters(){
+  const q=document.getElementById('searchInput').value.trim().toLowerCase();
+  const st=document.getElementById('filterStatus').value;
+  const reg=document.getElementById('filterRegion').value;
+  const eng=document.getElementById('filterEngineer').value;
+  const fr=document.getElementById('filterFrom').value;
+  const to=document.getElementById('filterTo').value;
+  filteredData=allData.filter(item=>{
+    if(st&&item.status!==st) return false;
+    if(reg&&item.region!==reg) return false;
+    if(eng&&item.assignEngineer!==eng) return false;
+    if(fr&&(item.incidentDate||'')<fr) return false;
+    if(to&&(item.incidentDate||'')>to) return false;
+    if(q&&!Object.values(item).some(v=>String(v).toLowerCase().includes(q))) return false;
+    return true;
+  });
+  currentPage=1; renderTable(filteredData);
+}
+function clearFilters(){
+  ['searchInput','filterStatus','filterRegion','filterEngineer','filterFrom','filterTo'].forEach(id=>document.getElementById(id).value='');
+  applyFilters();
+}
+
+/* ── Render Table ── */
+function renderTable(data){
+  const start=(currentPage-1)*rowsPerPage;
+  const page=data.slice(start,start+rowsPerPage);
+  const admin=isAdmin();
+  document.getElementById('recordCountBadge').textContent=`${data.length} records`;
+  document.getElementById('paginationInfo').textContent=`Showing ${Math.min(start+1,data.length)||0}–${Math.min(start+rowsPerPage,data.length)} of ${data.length}`;
+  const tbody=document.getElementById('incidentTable');
+  if(!page.length){ tbody.innerHTML=`<tr><td colspan="12" style="text-align:center;padding:28px;color:var(--txt3);">No incidents found.</td></tr>`; renderPagination(data.length); return; }
+  tbody.innerHTML=page.map((item,i)=>{
+    const idx=start+i;
+    const isClosed=item.status==='Close';
+    const statusBadge=item.status==='Close'
+      ?`<span class="sf-badge badge-closed"><i class="fa-solid fa-circle-check" style="font-size:8px;"></i> Close</span>`
+      :item.status==='HPCL Action Required'
+        ?`<span class="sf-badge badge-hpcl"><i class="fa-solid fa-circle-exclamation" style="font-size:8px;"></i> HPCL Req.</span>`
+        :`<span class="sf-badge badge-pending"><i class="fa-regular fa-clock" style="font-size:8px;"></i> Pending</span>`;
+    return `<tr>
+      <td>${idx+1}</td>
+      <td style="color:var(--sf-blue)!important;font-weight:600;">${esc(item.roCode||'')}</td>
+      <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;" title="${esc(item.siteName||'')}">${esc(item.siteName||'')}</td>
+      <td>${esc(item.region||'')}</td>
+      <td style="font-family:monospace;font-size:10px;">${esc(item.incidentId||'')}</td>
+      <td>${fmtDate(item.incidentDate)}</td>
+      <td style="max-width:150px;white-space:normal;font-size:10px;color:var(--txt3);" title="${esc(item.complaintRemark||'')}">${esc((item.complaintRemark||'').slice(0,60))}${(item.complaintRemark||'').length>60?'…':''}</td>
+      <td>
+        ${admin&&!isClosed
+          ?`<select id="engineer-${idx}" class="td-select" onchange="checkFields(${idx})" style="min-width:120px;"><option value="">—Select—</option>${ENGINEERS.map(n=>`<option value="${n}"${item.assignEngineer===n?' selected':''}>${n}</option>`).join('')}</select>`
+          :`<span style="font-size:11px;">${esc(item.assignEngineer||'—')}</span>`}
+      </td>
+      <td style="min-width:130px;white-space:normal;">
+        ${admin&&!isClosed
+          ?`<textarea id="remark-${idx}" class="td-textarea" rows="2" onchange="checkFields(${idx})">${esc(item.closeRemark||'')}</textarea>`
+          :`<span style="font-size:10px;color:var(--txt3);">${esc(item.closeRemark||'—')}</span>`}
+      </td>
+      <td>
+        ${admin&&!isClosed
+          ?`<input type="date" id="date-${idx}" class="td-input" value="${esc(item.incidentcloseDate||'')}" onchange="checkFields(${idx})"/>`
+          :`<span style="font-size:11px;">${fmtDate(item.incidentcloseDate)}</span>`}
+      </td>
+      <td>
+        ${admin&&!isClosed
+          ?`<select id="status-${idx}" class="td-select" onchange="checkFields(${idx})"><option${item.status==='Pending'?' selected':''}>Pending</option><option${item.status==='Close'?' selected':''}>Close</option><option${item.status==='HPCL Action Required'?' selected':''}>HPCL Action Required</option></select>`
+          :statusBadge}
+      </td>
+      <td>
+        <div class="sf-ab">
+          <button class="sf-action-btn sf-ab-view" onclick="viewDetail(${idx})" title="View Details"><i class="fa-solid fa-eye"></i></button>
+          ${admin?`
+            <button id="saveBtn-${idx}" class="sf-action-btn sf-ab-save hidden" onclick="saveRow(${idx})" title="Save changes"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+            <button class="sf-action-btn sf-ab-edit" onclick="openEditModal(${idx})" title="Edit"><i class="fa-solid fa-pen"></i></button>
+            <button class="sf-action-btn sf-ab-delete" onclick="promptDelete(${idx})" title="Delete"><i class="fa-solid fa-trash"></i></button>
+          `:''}
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  renderPagination(data.length);
+}
+
+/* ── Inline save ── */
+function checkFields(idx){
+  const eng=document.getElementById(`engineer-${idx}`)?.value?.trim();
+  const rem=document.getElementById(`remark-${idx}`)?.value?.trim();
+  const dt=document.getElementById(`date-${idx}`)?.value?.trim();
+  const st=document.getElementById(`status-${idx}`)?.value?.trim();
+  const btn=document.getElementById(`saveBtn-${idx}`);
+  if(btn) btn.classList.toggle('hidden',!(eng&&rem&&dt&&st));
+}
+function saveRow(idx){
+  const start=(currentPage-1)*rowsPerPage;
+  const item=filteredData[start+idx]||filteredData[idx];
+  if(!item) return;
+  const payload={
+    incidentId:item.incidentId,
+    assignEngineer:document.getElementById(`engineer-${idx}`)?.value,
+    closeRemark:document.getElementById(`remark-${idx}`)?.value,
+    incidentcloseDate:document.getElementById(`date-${idx}`)?.value,
+    status:document.getElementById(`status-${idx}`)?.value,
+  };
+  showLoader('Saving…');
+  fetch(`${BASE_URL}/updateIncidentStatus`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+    .then(r=>r.json()).then(res=>{
+      hideLoader();
+      if(res.success){ showToast('Incident updated','success','Changes saved successfully.'); Object.assign(item,payload); renderTable(filteredData); }
+      else showToast('Update failed','error');
+    }).catch(()=>{ hideLoader(); showToast('Server error','error'); });
+}
+
+/* ── Detail View ── */
+function viewDetail(idx){
+  const start=(currentPage-1)*rowsPerPage;
+  const item=filteredData[start+idx]||filteredData[idx];
+  if(!item) return;
+  const statusBadge=item.status==='Close'?`<span class="sf-badge badge-closed">Closed</span>`:item.status==='HPCL Action Required'?`<span class="sf-badge badge-hpcl">HPCL Action Required</span>`:`<span class="sf-badge badge-pending">Pending</span>`;
+  document.getElementById('detailBody').innerHTML=`
+    <div class="det-section">
+      <div class="det-section-title">Incident Information</div>
+      <div class="det-grid">
+        <div class="det-field"><div class="det-label">Incident ID</div><div class="det-value" style="font-family:monospace;">${esc(item.incidentId||'—')}</div></div>
+        <div class="det-field"><div class="det-label">RO Code</div><div class="det-value" style="color:var(--sf-blue);">${esc(item.roCode||'—')}</div></div>
+        <div class="det-field"><div class="det-label">Site Name</div><div class="det-value">${esc(item.siteName||'—')}</div></div>
+        <div class="det-field"><div class="det-label">Region</div><div class="det-value">${esc(item.region||'—')}</div></div>
+        <div class="det-field"><div class="det-label">Incident Date</div><div class="det-value">${fmtDate(item.incidentDate)}</div></div>
+        <div class="det-field"><div class="det-label">Status</div><div class="det-value">${statusBadge}</div></div>
+      </div>
+    </div>
+    <div class="det-section">
+      <div class="det-section-title">Complaint</div>
+      <div class="det-box">${esc(item.complaintRemark||'—')}</div>
+    </div>
+    <div class="det-section">
+      <div class="det-section-title">Resolution</div>
+      <div class="det-grid" style="margin-bottom:10px;">
+        <div class="det-field"><div class="det-label">Assigned Engineer</div><div class="det-value">${esc(item.assignEngineer||'—')}</div></div>
+        <div class="det-field"><div class="det-label">Close Date</div><div class="det-value">${fmtDate(item.incidentcloseDate)}</div></div>
+      </div>
+      <div class="det-box">${esc(item.closeRemark||'No close remark yet.')}</div>
+    </div>`;
+  document.getElementById('detailModal').classList.add('open');
+}
+
+/* ── Add/Edit Modal ── */
+function openAddModal(){
+  editMode=false;
+  document.getElementById('editIncidentId').value='';
+  document.getElementById('modalTitle').innerHTML=`<i class="fa-solid fa-plus" style="color:var(--sf-red);"></i> Add New Incident`;
+  ['newRoCode','newSiteName','newRegion','newIncidentId','newComplaintRemark','newCloseRemark'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('newIncidentDate').value=today();
+  document.getElementById('newCloseDate').value='';
+  document.getElementById('newStatus').value='Pending';
+  populateEngineerSelect(document.getElementById('newAssignEngineer'));
+  document.getElementById('incidentModal').classList.add('open');
+}
+function openEditModal(idx){
+  const start=(currentPage-1)*rowsPerPage;
+  const item=filteredData[start+idx]||filteredData[idx];
+  if(!item) return;
+  editMode=true;
+  document.getElementById('editIncidentId').value=item.incidentId||'';
+  document.getElementById('modalTitle').innerHTML=`<i class="fa-solid fa-pen-to-square" style="color:var(--sf-blue);"></i> Edit Incident`;
+  document.getElementById('newRoCode').value=item.roCode||'';
+  document.getElementById('newSiteName').value=item.siteName||'';
+  document.getElementById('newRegion').value=item.region||'';
+  document.getElementById('newIncidentId').value=item.incidentId||'';
+  document.getElementById('newIncidentDate').value=item.incidentDate||'';
+  document.getElementById('newComplaintRemark').value=item.complaintRemark||'';
+  document.getElementById('newCloseRemark').value=item.closeRemark||'';
+  document.getElementById('newCloseDate').value=item.incidentcloseDate||'';
+  document.getElementById('newStatus').value=item.status||'Pending';
+  populateEngineerSelect(document.getElementById('newAssignEngineer'),item.assignEngineer||'');
+  document.getElementById('incidentModal').classList.add('open');
+}
+function closeAddModal(){ document.getElementById('incidentModal').classList.remove('open'); }
+
+function saveIncidentModal(){
+  const payload={
+    roCode:document.getElementById('newRoCode').value.trim(),
+    siteName:document.getElementById('newSiteName').value.trim(),
+    region:document.getElementById('newRegion').value.trim(),
+    incidentId:document.getElementById('newIncidentId').value.trim(),
+    incidentDate:document.getElementById('newIncidentDate').value.trim(),
+    complaintRemark:document.getElementById('newComplaintRemark').value.trim(),
+    assignEngineer:document.getElementById('newAssignEngineer').value,
+    closeRemark:document.getElementById('newCloseRemark').value.trim(),
+    incidentcloseDate:document.getElementById('newCloseDate').value.trim(),
+    status:document.getElementById('newStatus').value,
+  };
+  if(!payload.roCode||!payload.siteName||!payload.incidentId||!payload.incidentDate||!payload.complaintRemark){
+    showToast('Validation Error','warn','Please fill all required fields marked with *'); return;
+  }
+  showLoader(editMode?'Updating…':'Adding…');
+  const url=editMode?`${BASE_URL}/updateIncidentStatus`:`${BASE_URL}/addIncident`;
+  fetch(url,{method:editMode?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+    .then(r=>r.json()).then(res=>{
+      hideLoader();
+      if(res.success){ showToast(editMode?'Incident updated':'Incident added successfully','success'); closeAddModal(); fetchIncidents(); }
+      else showToast('Operation failed','error',res.message||'');
+    }).catch(()=>{ hideLoader(); showToast('Server error','error'); });
+}
+
+/* ── Delete ── */
+function promptDelete(idx){
+  const start=(currentPage-1)*rowsPerPage;
+  const item=filteredData[start+idx]||filteredData[idx];
+  deleteTargetId=item?.incidentId||null;
+  document.getElementById('deleteModal').classList.add('open');
+}
+function cancelDelete(){ deleteTargetId=null; document.getElementById('deleteModal').classList.remove('open'); }
+function confirmDeleteAction(){
+  if(!deleteTargetId) return;
+  showLoader('Deleting…');
+  fetch(`${BASE_URL}/deleteIncident/${deleteTargetId}`,{method:'DELETE'})
+    .then(r=>r.json()).then(res=>{
+      hideLoader(); document.getElementById('deleteModal').classList.remove('open');
+      if(res.success){ showToast('Incident deleted','success'); fetchIncidents(); }
+      else showToast('Delete failed','error');
+      deleteTargetId=null;
+    }).catch(()=>{ hideLoader(); showToast('Server error','error'); deleteTargetId=null; });
+}
+
+/* ── Pagination ── */
+function renderPagination(total){
+  const tp=Math.max(1,Math.ceil(total/rowsPerPage));
+  const c=document.getElementById('pagination'); c.innerHTML='';
+  const prev=document.createElement('button');
+  prev.innerHTML='<i class="fa-solid fa-chevron-left" style="font-size:10px;"></i>';
+  prev.className='sf-page-btn'; prev.disabled=currentPage===1;
+  prev.onclick=()=>{ if(currentPage>1){currentPage--;renderTable(filteredData);} };
+  c.appendChild(prev);
+  let s=Math.max(1,currentPage-3),e=Math.min(tp,s+6);
+  if(e-s<6) s=Math.max(1,e-6);
+  for(let i=s;i<=e;i++){
+    const b=document.createElement('button');
+    b.textContent=i; b.className='sf-page-btn'+(i===currentPage?' active':'');
+    b.onclick=(p=>()=>{currentPage=p;renderTable(filteredData);})(i);
+    c.appendChild(b);
+  }
+  const next=document.createElement('button');
+  next.innerHTML='<i class="fa-solid fa-chevron-right" style="font-size:10px;"></i>';
+  next.className='sf-page-btn'; next.disabled=currentPage===tp;
+  next.onclick=()=>{ if(currentPage<tp){currentPage++;renderTable(filteredData);} };
+  c.appendChild(next);
+}
+
+/* ── Excel Import ── */
+document.getElementById('excelFile').addEventListener('change',async e=>{
+  const file=e.target.files[0]; if(!file) return;
+  showLoader('Importing Excel…');
+  const data=await file.arrayBuffer();
+  const wb=XLSX.read(data);
+  const json=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+  const imported=json.map(item=>({
+    roCode:item["RO Code"]||'',siteName:item["Site Name"]||'',region:item["Region"]||'',
+    incidentId:item["Incident ID"]||'',incidentDate:fmtExcelDate(item["Incident Date"]),
+    complaintRemark:item["Complain Remark"]||'',assignEngineer:item["Assign to Engineer"]||'',
+    closeRemark:item["Incident Close Remark"]||'',
+    incidentcloseDate:fmtExcelDate(item["Incident Close Date"]),status:item["Status"]||'Pending',
+  }));
+  try{
+    const res=await fetch(`${BASE_URL}/bulkImportIncident`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({incidents:imported})});
+    const r=await res.json(); hideLoader();
+    if(r.success){ showToast(`${imported.length} incidents imported`,'success'); fetchIncidents(); }
+    else showToast('Import failed','error');
+  }catch(err){ hideLoader(); showToast('Server error','error'); }
+  e.target.value='';
+});
+function fmtExcelDate(v){ if(typeof v==='number'){const d=new Date((v-25569)*86400*1000);return d.toLocaleDateString('en-CA');} return v||''; }
+
+/* ── Export ── */
+function toggleExportMenu(){ document.getElementById('exportMenu').classList.toggle('open'); setTimeout(()=>document.addEventListener('click',closeExportMenu),10); }
+function closeExportMenu(e){ const m=document.getElementById('exportMenu'); if(!e.target.closest('#exportDrop')){m.classList.remove('open');document.removeEventListener('click',closeExportMenu);} }
+function exportToExcel(){
+  const ws=XLSX.utils.json_to_sheet(filteredData);
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Incidents');
+  XLSX.writeFile(wb,`Incidents_${today()}.xlsx`);
+  showToast('Excel exported','success'); toggleExportMenu();
+}
+function exportToCSV(){
+  const keys=['roCode','siteName','region','incidentId','incidentDate','complaintRemark','assignEngineer','closeRemark','incidentcloseDate','status'];
+  const csv=[keys.join(','),...filteredData.map(r=>keys.map(k=>`"${String(r[k]??'').replaceAll('"','""')}"`).join(','))].join('\n');
+  const a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
+  a.download=`Incidents_${today()}.csv`; a.click();
+  showToast('CSV exported','success'); toggleExportMenu();
+}
+
+window.onload=fetchIncidents;
+</script>
+<script src="errorLogger.js"></script>
+</body>
+</html>

@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RO Master — RELCON CRM</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <script src="https://cdn.sheetjs.com/xlsx-0.18.5/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* ══════════════════════════════════════════
+       RELCON CRM — Salesforce Lightning Design System
+       RO Master View | Matched with statusRecords.html
+    ══════════════════════════════════════════ */
+    :root {
+      --sf-blue:       #0176d3;
+      --sf-blue-dk:    #014486;
+      --sf-blue-lt:    #e8f4fd;
+      --sf-blue-hover: #0b5faa;
+      --sf-navy:       #032d60;
+
+      --sf-green:      #2e844a;
+      --sf-green-lt:   #eaf5ea;
+      --sf-red:        #ba0517;
+      --sf-red-lt:     #fef1ee;
+      --sf-orange:     #dd5a0c;
+      --sf-orange-lt:  #fff3e0;
+      --sf-yellow:     #ffd200;
+      --sf-amber:      #b8860b;
+      --sf-amber-lt:   #fff8e6;
+
+      --bg:        #f3f2f2;
+      --surface:   #ffffff;
+      --surface2:  #f9f9f9;
+      --border:    #dddbda;
+      --border-lt: #f3f2f2;
+
+      --txt:   #080707;
+      --txt2:  #3e3e3c;
+      --txt3:  #706e6b;
+      --txt4:  #aeaeac;
+
+      --topbar-h: 52px;
+      --fs-xs:    10px;
+      --fs-sm:    11px;
+      --fs-base:  13px;
+      --fs-md:    14px;
+      --fs-lg:    16px;
+      --fs-xl:    20px;
+
+      --r-sm: 4px; --r: 6px; --r-lg: 8px;
+      --sh-sm: 0 2px 4px rgba(0,0,0,0.09);
+      --sh:    0 4px 8px rgba(0,0,0,0.1);
+      --sh-md: 0 8px 24px rgba(0,0,0,0.12);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html { font-size: var(--fs-base); -webkit-font-smoothing: antialiased; }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      font-size: var(--fs-base); color: var(--txt);
+      background: var(--bg); margin: 0; padding: 0;
+      min-height: 100vh;
+    }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-thumb { background: #c8c6c4; border-radius: 3px; }
+
+    /* ── BODY ── */
+    .sf-body { padding: 16px 20px; max-width: 100%; margin: 0 auto; }
+
+    /* ── BREADCRUMB ── */
+    .sf-breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--txt3); margin-bottom: 10px; }
+    .sf-breadcrumb a { color: var(--sf-blue); text-decoration: none; }
+    .sf-breadcrumb a:hover { text-decoration: underline; }
+
+    /* ── PAGE HEADER ── */
+    .sf-page-header { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 14px 20px; margin-bottom: 12px; display: flex; align-items: center; gap: 14px; box-shadow: var(--sh-sm); flex-wrap: wrap; }
+    .sf-page-icon { width: 44px; height: 44px; border-radius: 10px; background: linear-gradient(135deg, #3b7dd8 0%, #0176d3 100%); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; box-shadow: 0 2px 8px rgba(1,118,211,0.4); flex-shrink: 0; }
+    .sf-page-title { font-size: 18px; font-weight: 700; color: var(--txt); letter-spacing: -0.3px; }
+    .sf-page-meta { font-size: 12px; color: var(--txt3); margin-top: 2px; }
+    .sf-page-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+    /* ── RECORD COUNT BADGES ── */
+    .sf-stat { display: flex; align-items: center; gap: 6px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r); padding: 6px 12px; }
+    .sf-stat-num { font-size: 18px; font-weight: 700; color: var(--sf-blue); }
+    .sf-stat-label { font-size: 10px; font-weight: 600; color: var(--txt3); text-transform: uppercase; letter-spacing: 0.4px; }
+
+    /* ── TOOLBAR CARD ── */
+    .sf-toolbar {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-lg); box-shadow: var(--sh-sm);
+      padding: 14px 20px; margin-bottom: 10px;
+      display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap;
+    }
+    .sf-filter-group { display: flex; flex-direction: column; gap: 4px; }
+    .sf-filter-label { font-size: 10px; font-weight: 600; color: var(--txt3); text-transform: uppercase; letter-spacing: 0.5px; }
+    .sf-input, .sf-select {
+      font-family: 'Inter', sans-serif; font-size: 12px; color: var(--txt);
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-sm); padding: 5px 9px; height: 32px;
+      outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .sf-input:focus, .sf-select:focus { border-color: var(--sf-blue); box-shadow: 0 0 0 3px rgba(1,118,211,0.12); }
+    .sf-input::placeholder { color: var(--txt4); }
+    .sf-search-input { width: 240px; padding-left: 30px; }
+    .sf-search-wrap { position: relative; }
+    .sf-search-wrap i { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: var(--txt4); font-size: 12px; pointer-events: none; }
+    .sf-toolbar-spacer { flex: 1; }
+
+    /* ── BUTTONS ── */
+    .sf-btn { font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 500; padding: 0 14px; height: 32px; border-radius: var(--r-sm); cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s; white-space: nowrap; }
+    .sf-btn-primary { background: var(--sf-blue); color: #fff; box-shadow: 0 1px 3px rgba(1,118,211,0.3); }
+    .sf-btn-primary:hover { background: var(--sf-blue-hover); box-shadow: 0 3px 8px rgba(1,118,211,0.35); transform: translateY(-1px); }
+    .sf-btn-neutral { background: var(--surface); color: var(--txt); border: 1px solid var(--border); }
+    .sf-btn-neutral:hover { background: var(--bg); }
+    .sf-btn-success { background: var(--sf-green); color: #fff; }
+    .sf-btn-success:hover { background: #1d5e31; transform: translateY(-1px); }
+    .sf-btn-warn { background: var(--sf-orange); color: #fff; }
+    .sf-btn-warn:hover { background: #b84d09; }
+    .sf-btn-danger { background: var(--sf-red); color: #fff; }
+    .sf-btn-danger:hover { background: #920210; }
+    .sf-btn-icon { width: 32px; padding: 0; justify-content: center; }
+
+    /* Action buttons in table */
+    .sf-action-btn { font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 500; padding: 0 8px; height: 26px; border-radius: var(--r-sm); cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 4px; transition: all 0.15s; }
+    .sf-action-edit  { background: var(--sf-amber-lt); color: var(--sf-amber); border: 1px solid #f6c23e; }
+    .sf-action-edit:hover  { background: #fff0b3; }
+    .sf-action-delete { background: var(--sf-red-lt); color: var(--sf-red); border: 1px solid #f5c6c3; }
+    .sf-action-delete:hover { background: #fbd5d0; }
+
+    /* Export dropdown */
+    .sf-dropdown { position: relative; }
+    .sf-dropdown-menu {
+      position: absolute; right: 0; top: calc(100% + 4px);
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-lg); box-shadow: var(--sh-md);
+      min-width: 200px; z-index: 100; overflow: hidden;
+      display: none;
+    }
+    .sf-dropdown-menu.open { display: block; }
+    .sf-dropdown-item { padding: 9px 14px; font-size: 12px; color: var(--txt2); cursor: pointer; display: flex; align-items: center; gap: 8px; transition: background 0.1s; }
+    .sf-dropdown-item:hover { background: var(--sf-blue-lt); color: var(--sf-blue); }
+    .sf-dropdown-divider { height: 1px; background: var(--border); margin: 2px 0; }
+
+    /* ── TABLE CARD ── */
+    .sf-table-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--sh-sm); overflow: hidden; }
+    .sf-table-header { padding: 10px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; background: var(--surface2); }
+    .sf-table-title { font-size: 12px; font-weight: 700; color: var(--txt); display: flex; align-items: center; gap: 6px; text-transform: uppercase; letter-spacing: 0.4px; }
+    .sf-record-count { background: var(--sf-blue-lt); color: var(--sf-blue); font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+
+    .sf-table-wrap { overflow-x: auto; overflow-y: auto; max-height: calc(100vh - 320px); }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; min-width: 1200px; }
+    thead th {
+      background: #1a2e4a !important;
+      color: #e8f4fd !important;
+      font-size: 10px !important; font-weight: 600 !important;
+      text-transform: uppercase !important; letter-spacing: 0.6px !important;
+      padding: 9px 12px !important; text-align: left !important;
+      white-space: nowrap !important; border: none !important;
+      border-right: 1px solid #253d5b !important;
+      position: sticky; top: 0; z-index: 10;
+    }
+    thead th:last-child { border-right: none !important; }
+    tbody tr { border-bottom: 1px solid var(--border-lt); transition: background 0.1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #f0f8ff; }
+    tbody td { padding: 7px 12px !important; font-size: 11px !important; color: var(--txt2) !important; vertical-align: middle !important; border: none !important; border-bottom: 1px solid var(--border-lt) !important; white-space: nowrap; }
+    tbody td:first-child { font-weight: 600; color: var(--sf-blue) !important; }
+
+    /* ── BADGES ── */
+    .sf-badge { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 600; white-space: nowrap; letter-spacing: 0.2px; }
+    .sf-badge-green  { background: var(--sf-green-lt); color: var(--sf-green); }
+    .sf-badge-red    { background: var(--sf-red-lt); color: var(--sf-red); }
+    .sf-badge-orange { background: var(--sf-orange-lt); color: var(--sf-orange); }
+    .sf-badge-blue   { background: var(--sf-blue-lt); color: var(--sf-blue); }
+    .sf-badge-amber  { background: var(--sf-amber-lt); color: var(--sf-amber); border: 1px solid #f6c23e; }
+    .sf-badge-gray   { background: var(--surface2); color: var(--txt3); border: 1px solid var(--border); }
+
+    /* ── PAGINATION ── */
+    .sf-pagination { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-top: 1px solid var(--border); background: var(--surface2); flex-wrap: wrap; gap: 8px; }
+    .sf-pagination-info { font-size: 11px; color: var(--txt3); }
+    .sf-pagination-controls { display: flex; align-items: center; gap: 4px; }
+    .sf-page-btn { width: 30px; height: 30px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); color: var(--txt2); font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.12s; font-family: 'Inter', sans-serif; }
+    .sf-page-btn:hover { background: var(--sf-blue-lt); border-color: var(--sf-blue); color: var(--sf-blue); }
+    .sf-page-btn.active { background: var(--sf-blue); border-color: var(--sf-blue); color: #fff; font-weight: 700; }
+    .sf-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── MODAL ── */
+    .sf-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 500; display: flex; align-items: center; justify-content: center; }
+    .sf-modal-overlay.hidden { display: none; }
+    .sf-modal { background: var(--surface); border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.25); width: 90%; max-width: 760px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; }
+    .sf-modal-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: var(--surface2); flex-shrink: 0; }
+    .sf-modal-title { font-size: 15px; font-weight: 700; color: var(--txt); display: flex; align-items: center; gap: 8px; }
+    .sf-modal-body { padding: 20px; overflow-y: auto; flex: 1; }
+    .sf-modal-footer { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; background: var(--surface2); flex-shrink: 0; }
+    .sf-modal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+    .sf-modal-field { display: flex; flex-direction: column; gap: 4px; }
+    .sf-modal-label { font-size: 10px; font-weight: 600; color: var(--txt3); text-transform: uppercase; letter-spacing: 0.5px; }
+    .sf-modal-input { font-family: 'Inter', sans-serif; font-size: 12px; color: var(--txt); background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 5px 9px; height: 32px; outline: none; width: 100%; }
+    .sf-modal-input:focus { border-color: var(--sf-blue); box-shadow: 0 0 0 3px rgba(1,118,211,0.12); }
+    .sf-modal-input.readonly { background: var(--surface2); color: var(--txt3); }
+
+    /* Delete confirm modal */
+    .sf-confirm-modal { background: var(--surface); border-radius: 12px; box-shadow: var(--sh-md); width: 380px; overflow: hidden; }
+    .sf-confirm-header { padding: 16px 20px; background: var(--sf-red-lt); border-bottom: 1px solid #f8d0ca; }
+    .sf-confirm-title { font-size: 15px; font-weight: 700; color: var(--sf-red); display: flex; align-items: center; gap: 8px; }
+    .sf-confirm-body { padding: 16px 20px; font-size: 13px; color: var(--txt2); }
+    .sf-confirm-footer { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+
+    /* ── LOADER ── */
+    .sf-loader { position: fixed; inset: 0; background: rgba(243,242,242,0.7); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 400; }
+    .sf-loader.hidden { display: none; }
+    .sf-spinner-lg { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--sf-blue); border-radius: 50%; animation: sf-spin 0.7s linear infinite; }
+    .sf-loader-text { font-size: 12px; color: var(--txt3); margin-top: 10px; font-weight: 500; }
+    @keyframes sf-spin { to { transform: rotate(360deg); } }
+
+    /* ── TOAST ── */
+    .sf-toast { position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 280px; max-width: 360px; background: var(--surface); border-radius: var(--r-lg); box-shadow: var(--sh-md); border: 1px solid var(--border); display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; transform: translateX(120%); transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1); }
+    .sf-toast.show { transform: translateX(0); }
+    .sf-toast-icon { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+    .sf-toast.success .sf-toast-icon { background: var(--sf-green-lt); color: var(--sf-green); }
+    .sf-toast.error .sf-toast-icon   { background: var(--sf-red-lt); color: var(--sf-red); }
+    .sf-toast-title { font-size: 12px; font-weight: 600; color: var(--txt); }
+    .sf-toast-msg   { font-size: 11px; color: var(--txt3); margin-top: 1px; }
+
+    /* ── PAGE STRIP ── */
+    .dv-strip {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+      box-shadow: 0 1px 3px rgba(15,23,42,0.07);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .dv-strip-icon {
+      width: 28px; height: 28px;
+      background: #e8f4fd;
+      border-radius: 5px;
+      display: flex; align-items: center; justify-content: center;
+      color: #0176d3; font-size: 13px;
+    }
+    .dv-strip-title {
+      font-size: 14px; font-weight: 700;
+      color: var(--txt); letter-spacing: -0.2px;
+    }
+    .dv-strip-sep { width: 1px; height: 18px; background: var(--border); }
+    .dv-strip-meta {
+      font-size: 10px; font-weight: 500; color: var(--txt4);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 2px 9px; border-radius: 9999px;
+    }
+    .dv-strip-spacer { flex: 1; }
+    .hidden { display: none !important; }
+  
+/* ════════════════════════════════════════════════
+   RELCON CRM — Mobile Responsive CSS (All Pages)
+   Breakpoints: 1024px (tablet), 768px (mobile), 480px (small)
+════════════════════════════════════════════════ */
+
+/* ── TABLET (≤1024px) ── */
+@media(max-width:1024px){
+  .sf-body{padding:12px 14px;}
+  .kpi-row{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;}
+  .sf-toolbar{gap:8px;padding:10px 14px;}
+  .sf-page-header{padding:12px 16px;}
+  .charts-grid{grid-template-columns:1fr;}
+  .sf-modal{max-width:92%;}
+  .sf-modal-grid{grid-template-columns:1fr 1fr;}
+}
+
+/* ── MOBILE (≤768px) ── */
+@media(max-width:768px){
+  /* Page strip */
+  .dv-strip{padding:0 12px;gap:8px;height:48px;}
+  .dv-strip-sep{display:none;}
+  .dv-strip-meta{display:none;}
+  .dv-last-updated{display:none;}
+  .dv-strip-title{font-size:13px;}
+
+  /* Body */
+  .sf-body{padding:10px 12px;}
+
+  /* Breadcrumb */
+  .sf-bc{display:none;}
+
+  /* KPI row — 2 columns on mobile */
+  .kpi-row{grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:10px;}
+  .kpi-card{padding:12px;}
+  .kpi-num,.kpi-value{font-size:20px!important;}
+  .kpi-label,.kpi-sub{font-size:9px!important;}
+  .kpi-icon{width:32px;height:32px;font-size:13px;}
+
+  /* Page header */
+  .sf-page-header{padding:10px 14px;gap:10px;}
+  .sf-page-icon{width:36px;height:36px;font-size:15px;}
+  .sf-page-title{font-size:15px;}
+  .sf-page-meta{font-size:10px;}
+  .sf-page-actions{margin-left:0;width:100%;justify-content:flex-end;}
+
+  /* Toolbar — stack vertically */
+  .sf-toolbar{
+    flex-direction:column;align-items:stretch;
+    padding:10px 12px;gap:8px;
+  }
+  .sf-filter-group{width:100%;}
+  .sf-filter-group .sf-input,
+  .sf-filter-group .sf-select{width:100%;height:36px;}
+  .sf-search-input{width:100%!important;}
+  .sf-toolbar-spacer{display:none;}
+  .sf-dropdown{width:100%;}
+  .sf-dropdown .sf-btn{width:100%;justify-content:center;}
+
+  /* Tab row */
+  .tab-row{overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap;padding-bottom:2px;}
+  .tab-row::-webkit-scrollbar{height:3px;}
+
+  /* Source tabs */
+  .src-tabs{overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap;}
+  .src-tab{font-size:11px;padding:3px 10px;height:26px;}
+
+  /* Table */
+  .sf-table-wrap{max-height:50vh;}
+  table{font-size:11px;}
+  thead th{padding:7px 8px!important;font-size:9px!important;}
+  tbody td{padding:6px 8px!important;font-size:11px!important;}
+
+  /* Table header — hide less important cols hint via overflow scroll */
+  .sf-table-card,.sf-table-wrap{-webkit-overflow-scrolling:touch;}
+
+  /* Section cards */
+  .sf-section-header{padding:10px 14px;flex-wrap:wrap;gap:6px;}
+  .sf-section-body{padding:12px 14px;}
+  .sf-section-title{font-size:12px;}
+
+  /* Buttons */
+  .sf-btn{font-size:11px;padding:0 10px;height:30px;}
+  .sf-btn-primary,.sf-btn-success,.sf-btn-neutral{height:34px;}
+
+  /* Charts */
+  .charts-grid{grid-template-columns:1fr;}
+  .chart-wrap{padding:10px 12px;}
+  .customer-cards{
+    grid-template-columns:repeat(3,1fr);
+    padding:0 12px 12px;gap:8px;
+  }
+  .customer-card{padding:8px 10px;gap:7px;}
+  .cust-dot{width:26px;height:26px;font-size:10px;}
+  .cust-count{font-size:14px;}
+
+  /* Modals */
+  .sf-overlay{align-items:flex-end;padding-bottom:0;}
+  .sf-modal{
+    width:100%!important;max-width:100%!important;
+    border-radius:16px 16px 0 0;
+    max-height:90vh;
+  }
+  .sf-modal-grid{grid-template-columns:1fr!important;}
+  .sf-modal-header{padding:14px 16px;}
+  .sf-modal-body{padding:14px 16px;}
+  .sf-modal-footer{padding:10px 16px;}
+
+  /* Pagination */
+  .sf-pagination{flex-direction:column;align-items:center;gap:6px;padding:8px 12px;}
+  .sf-pagination-info{font-size:10px;}
+  .sf-pag-controls{flex-wrap:wrap;justify-content:center;}
+  .sf-page-btn{width:28px;height:28px;font-size:11px;}
+
+  /* Toast */
+  .sf-toast{right:10px;left:10px;min-width:unset;top:auto;bottom:16px;max-width:100%;}
+
+  /* Date inputs in toolbar */
+  input[type="date"].sf-input{width:100%;}
+
+  /* AMC date controls */
+  .sf-section-header > div > div{flex-wrap:wrap;gap:6px!important;}
+  .sf-date-input{width:100%;height:34px;}
+
+  /* Rows per page */
+  #rowsSel{width:70px!important;}
+}
+
+/* ── SMALL PHONES (≤480px) ── */
+@media(max-width:768px){ .sf-table-wrap{max-height:45vh!important;} }
+@media(max-width:480px){
+  .kpi-row{grid-template-columns:repeat(2,1fr);gap:6px;}
+  .kpi-card{padding:10px;}
+  .kpi-num,.kpi-value{font-size:18px!important;}
+  .dv-strip{height:44px;}
+  .dv-strip-title{font-size:12px;}
+  .dv-strip-icon{width:24px;height:24px;font-size:11px;}
+  .sf-body{padding:8px 10px;}
+  .sf-page-title{font-size:13px;}
+  .sf-page-icon{width:32px;height:32px;font-size:13px;}
+  .customer-cards{grid-template-columns:repeat(2,1fr);}
+
+  /* Table font smaller */
+  thead th{font-size:8px!important;padding:6px 6px!important;}
+  tbody td{font-size:10px!important;padding:5px 6px!important;}
+}
+</style>
+  <script src="config.js"></script>
+</head>
+<body>
+
+  <!-- ══ PAGE STRIP ══ -->
+  <div class="dv-strip">
+    <div class="dv-strip-icon"><i class="fa-solid fa-database"></i></div>
+    <span class="dv-strip-title">RO Master</span>
+    <div class="dv-strip-sep"></div>
+    <span class="dv-strip-meta" id="dateBadge"></span>
+    <div class="dv-strip-spacer"></div>
+  </div>
+
+  <!-- ══ BODY ══ -->
+  <main class="sf-body">
+
+    <!-- Breadcrumb -->
+    <div class="sf-breadcrumb">
+      <a href="#">Home</a> <span>/</span>
+      <a href="#">Records</a> <span>/</span>
+      <span>RO Master</span>
+    </div>
+
+    <!-- Page Header -->
+    <div class="sf-page-header">
+      <div class="sf-page-icon"><i class="fa-solid fa-database"></i></div>
+      <div>
+        <div class="sf-page-title">RO Master Records</div>
+        <div class="sf-page-meta">Search, filter &amp; manage RO Master data</div>
+      </div>
+      <div class="sf-page-actions">
+        <div class="sf-stat">
+          <div>
+            <div class="sf-stat-num" id="totalCount">—</div>
+            <div class="sf-stat-label">Total Records</div>
+          </div>
+        </div>
+        <button onclick="loadData()" class="sf-btn sf-btn-neutral">
+          <i class="fa-solid fa-rotate-right"></i> Refresh
+        </button>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="sf-toolbar">
+      <!-- Search -->
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">Search Records</label>
+        <div class="sf-search-wrap">
+          <i class="fa-solid fa-search"></i>
+          <input type="text" id="searchInput" oninput="applySearch()" placeholder="Search RO Code / Name / Region..." class="sf-input sf-search-input" />
+        </div>
+      </div>
+
+      <!-- Zone -->
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">Zone</label>
+        <select id="zoneFilter" class="sf-input sf-select" onchange="applyFilters()" style="width:130px;">
+          <option value="">All Zones</option>
+        </select>
+      </div>
+
+      <!-- Engineer -->
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">Engineer</label>
+        <select id="engineerFilter" class="sf-input sf-select" onchange="applyFilters()" style="width:150px;">
+          <option value="">All Engineers</option>
+        </select>
+      </div>
+
+      <!-- Phase -->
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">Phase</label>
+        <select id="phaseFilter" class="sf-input sf-select" onchange="applyFilters()" style="width:120px;">
+          <option value="">All Phases</option>
+        </select>
+      </div>
+
+      <!-- Site Status -->
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">Site Status</label>
+        <select id="siteStatusFilter" class="sf-input sf-select" onchange="applyFilters()" style="width:130px;">
+          <option value="">All Status</option>
+          <option>AMC</option>
+          <option>PROJECT</option>
+          <option>WARRANTY</option>
+          <option>OTHER</option>
+        </select>
+      </div>
+
+      <button onclick="clearFilters()" class="sf-btn sf-btn-neutral" style="align-self:flex-end;">
+        <i class="fa-solid fa-rotate-left"></i> Clear
+      </button>
+
+      <div class="sf-toolbar-spacer"></div>
+
+      <!-- Export Dropdown -->
+      <div class="sf-dropdown" style="align-self:flex-end;" id="exportDropdown">
+        <button class="sf-btn sf-btn-primary" onclick="toggleExportMenu()">
+          <i class="fa-solid fa-arrow-up-from-bracket"></i> Export
+          <i class="fa-solid fa-chevron-down" style="font-size:10px;"></i>
+        </button>
+        <div class="sf-dropdown-menu" id="exportMenu">
+          <div class="sf-dropdown-item" onclick="exportROMasterCSV()">
+            <i class="fa-solid fa-table" style="color:var(--sf-green);"></i>
+            Export All Records (CSV)
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table Card -->
+    <div class="sf-table-card">
+      <div class="sf-table-header">
+        <div class="sf-table-title">
+          <i class="fa-solid fa-table-cells-large" style="color:var(--sf-blue);"></i>
+          RO Master Records
+        </div>
+        <span class="sf-record-count" id="recordCountBadge">Loading...</span>
+        <div style="flex:1;"></div>
+        <span style="font-size:10px;color:var(--txt4);">Showing 50 per page</span>
+      </div>
+
+      <div class="sf-table-wrap">
+        <table id="romasterTable">
+          <thead><tr id="tableHeader"></tr></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="sf-pagination">
+        <div class="sf-pagination-info" id="paginationInfo">—</div>
+        <div class="sf-pagination-controls" id="pagination"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ══ EDIT MODAL ══ -->
+  <div id="editModal" class="sf-modal-overlay hidden">
+    <div class="sf-modal">
+      <div class="sf-modal-header">
+        <div class="sf-modal-title"><i class="fa-solid fa-pen-to-square" style="color:var(--sf-blue);"></i> Edit RO Master</div>
+        <button onclick="closeEditModal()" class="sf-btn sf-btn-neutral sf-btn-icon"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="sf-modal-body">
+        <div class="sf-modal-grid" id="editForm"></div>
+      </div>
+      <div class="sf-modal-footer">
+        <button onclick="closeEditModal()" class="sf-btn sf-btn-neutral"><i class="fa-solid fa-xmark"></i> Cancel</button>
+        <button onclick="saveEdit()" class="sf-btn sf-btn-success"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ DELETE CONFIRM MODAL ══ -->
+  <div id="deleteModal" class="sf-modal-overlay hidden">
+    <div class="sf-confirm-modal">
+      <div class="sf-confirm-header">
+        <div class="sf-confirm-title"><i class="fa-solid fa-triangle-exclamation"></i> Confirm Delete</div>
+      </div>
+      <div class="sf-confirm-body">Are you sure you want to permanently delete this RO Master record? This action cannot be undone.</div>
+      <div class="sf-confirm-footer">
+        <button onclick="cancelDelete()" class="sf-btn sf-btn-neutral"><i class="fa-solid fa-xmark"></i> Cancel</button>
+        <button onclick="performDelete()" class="sf-btn sf-btn-danger"><i class="fa-solid fa-trash"></i> Delete Record</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ LOADER ══ -->
+  <div id="loader" class="sf-loader hidden">
+    <div class="sf-spinner-lg"></div>
+    <div class="sf-loader-text">Loading records...</div>
+  </div>
+
+  <!-- ══ TOAST ══ -->
+  <div id="sf-toast" class="sf-toast">
+    <div class="sf-toast-icon" id="sf-toast-icon"><i class="fa-solid fa-check"></i></div>
+    <div>
+      <div class="sf-toast-title" id="sf-toast-title">Success</div>
+      <div class="sf-toast-msg" id="sf-toast-msg"></div>
+    </div>
+  </div>
+
+  <script>
+    const baseUrl = window.BACKEND_URL || "https://relcon-crm.onrender.com";
+    const token = localStorage.getItem("token");
+    let allData = [];
+    let filteredData = [];
+    let currentPage = 1;
+    const rowsPerPage = 50;
+    let latestStatusMap = {};
+
+    // Date badge
+    document.getElementById('dateBadge').textContent =
+      new Date().toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+
+    const columns = [
+      { key: "roCode",           label: "RO Code" },
+      { key: "roName",           label: "RO Name" },
+      { key: "zone",             label: "Zone" },
+      { key: "region",           label: "Region" },
+      { key: "phase",            label: "Phase" },
+      { key: "engineer",         label: "Engineer" },
+      { key: "amcQtr",           label: "AMC Qtr" },
+      { key: "siteStatus",       label: "Site Status" },
+      { key: "lastVisitDate",    label: "Last Visit Date" },
+      { key: "bosIP",            label: "BOS IP" },
+      { key: "fccIP",            label: "FCC IP" },
+      { key: "siteActivestatus", label: "Site Active Status" },
+      { key: "lastAMCqtr",       label: "Last AMC Qtr" },
+      { key: "actions",          label: "Actions" },
+    ];
+
+    /* ── Loader / Toast ── */
+    function showLoader() { document.getElementById("loader").classList.remove("hidden"); }
+    function hideLoader() { document.getElementById("loader").classList.add("hidden"); }
+
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('sf-toast');
+      document.getElementById('sf-toast-icon').innerHTML = type === 'success'
+        ? '<i class="fa-solid fa-check"></i>'
+        : '<i class="fa-solid fa-xmark"></i>';
+      document.getElementById('sf-toast-title').textContent = type === 'success' ? 'Success' : 'Error';
+      document.getElementById('sf-toast-msg').textContent = message;
+      toast.className = 'sf-toast ' + type;
+      setTimeout(() => toast.classList.add('show'), 10);
+      setTimeout(() => toast.classList.remove('show'), 3800);
+    }
+
+    /* ── Helpers ── */
+    function escapeHtml(s) {
+      if (s === undefined || s === null) return "";
+      return String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
+    }
+
+    function formatVisitDate(d) {
+      if (!d) return "";
+      const dateObj = typeof d === "string" || typeof d === "number" ? new Date(d) : d;
+      if (!dateObj || isNaN(dateObj.getTime())) return String(d);
+      return dateObj.toLocaleDateString("en-GB", { day:"2-digit", month:"short", year:"numeric" });
+    }
+
+    /* ── API Calls ── */
+    async function fetchWithTimeout(url, options={}, timeoutMs=30000){
+      const controller=new AbortController();
+      const tid=setTimeout(()=>controller.abort(),timeoutMs);
+      try{
+        const res=await fetch(url,{...options,signal:controller.signal});
+        clearTimeout(tid);
+        return res;
+      }catch(e){
+        clearTimeout(tid);
+        if(e.name==='AbortError') throw new Error('Request timeout — server shayad start ho raha hai, thodi der baad retry karein.');
+        throw e;
+      }
+    }
+
+    async function getCurrentUser() {
+      try {
+        const res = await fetchWithTimeout(baseUrl + "/user", { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) return null;
+        return await res.json();
+      } catch (e) { return null; }
+    }
+
+    async function fetchROMasterList() {
+      const paths = ["/romaster/list","/romaster/all","/romaster","/api/romaster","/api/romaster/list","/romaster/getAll"];
+      for (const path of paths) {
+        try {
+          const res = await fetchWithTimeout(baseUrl + path, { headers: { Authorization: `Bearer ${token}` } });
+          if (!res.ok) continue;
+          const data = await res.json();
+          if (Array.isArray(data)) return data;
+          if (Array.isArray(data.data)) return data.data;
+        } catch (e) { console.warn('fetchROMasterList path failed:', path, e.message); }
+      }
+      return null;
+    }
+
+    async function fetchLatestStatusMap() {
+      const map = {};
+      try {
+        const res = await fetchWithTimeout(baseUrl + "/getMergedStatusRecords", { headers: { Authorization: `Bearer ${token}` } });
+        if (res.ok) {
+          const statuses = await res.json();
+          statuses.forEach(s => {
+            const rc = (s.roCode || "").toString().trim().toUpperCase();
+            const d = s.date ? new Date(s.date) : new Date(0);
+            const ts = isNaN(d.getTime()) ? 0 : d.getTime();
+            const existing = map[rc];
+            if (!existing || (existing._ts || 0) < ts) map[rc] = Object.assign({}, s, { _ts: ts });
+          });
+        }
+      } catch (e) { console.warn('fetchLatestStatusMap (status) failed:', e.message); }
+      try {
+        const res2 = await fetchWithTimeout(baseUrl + "/getDailyPlans", { headers: { Authorization: `Bearer ${token}` } });
+        if (res2.ok) {
+          const plans = await res2.json();
+          const list = Array.isArray(plans) ? plans : (Array.isArray(plans.data) ? plans.data : []);
+          list.forEach(p => {
+            const rc = (p.roCode || "").toString().trim().toUpperCase();
+            if (!rc) return;
+            const d = p.date ? new Date(p.date) : new Date(0);
+            const ts = isNaN(d.getTime()) ? 0 : d.getTime();
+            if (ts === 0) return;
+            const existing = map[rc];
+            if (!existing || (existing._ts || 0) < ts) map[rc] = { date: p.date, _ts: ts, _source: "dailyplan" };
+          });
+        }
+      } catch (e) { console.warn('fetchLatestStatusMap (plans) failed:', e.message); }
+      return map;
+    }
+
+    /* ── Load Data ── */
+    async function loadData() {
+      showLoader();
+      currentPage = 1;
+      try {
+        const user = await getCurrentUser();
+        if (!user) {
+          document.getElementById("tableBody").innerHTML =
+            `<tr><td colspan="${columns.length}" style="text-align:center;padding:24px;color:var(--txt3);">Not authenticated. Please login.</td></tr>`;
+          return;
+        }
+        try { localStorage.setItem("user", JSON.stringify(user)); } catch(e) {}
+
+        const data = await fetchROMasterList();
+        if (!data) {
+          document.getElementById("tableBody").innerHTML =
+            `<tr><td colspan="${columns.length}" style="text-align:center;padding:24px;color:var(--txt3);">Failed to fetch RO Master data.</td></tr>`;
+          return;
+        }
+        allData = data;
+        latestStatusMap = await fetchLatestStatusMap();
+        populateFilters(allData);
+
+        const isAdmin = user.role === "admin";
+        if (!isAdmin) {
+          const name = (user.engineerName || user.username || "").trim().toLowerCase();
+          filteredData = allData.filter(r => (r.engineer || "").trim().toLowerCase() === name);
+        } else {
+          filteredData = allData.slice();
+        }
+
+        renderTable(filteredData);
+      } catch(e) {
+        showToast('Data load failed: ' + e.message, 'error');
+        console.error('loadData failed:', e);
+        document.getElementById("tableBody").innerHTML =
+          `<tr><td colspan="${columns.length}" style="text-align:center;padding:24px;color:var(--txt3);">${e.message}</td></tr>`;
+      } finally {
+        hideLoader();
+      }
+    }
+
+    /* ── Filters ── */
+    function populateFilters(rows) {
+      const zones = new Set(), engs = new Set(), phases = new Set();
+      rows.forEach(r => {
+        if (r.zone) zones.add(r.zone);
+        if (r.engineer) engs.add(r.engineer);
+        if (r.phase) phases.add(r.phase);
+      });
+      const zoneSel = document.getElementById("zoneFilter");
+      zoneSel.innerHTML = '<option value="">All Zones</option>';
+      Array.from(zones).sort().forEach(z => zoneSel.innerHTML += `<option>${z}</option>`);
+      const engSel = document.getElementById("engineerFilter");
+      engSel.innerHTML = '<option value="">All Engineers</option>';
+      Array.from(engs).sort().forEach(e => engSel.innerHTML += `<option>${e}</option>`);
+      const phaseSel = document.getElementById("phaseFilter");
+      phaseSel.innerHTML = '<option value="">All Phases</option>';
+      Array.from(phases).sort().forEach(p => phaseSel.innerHTML += `<option>${p}</option>`);
+    }
+
+    function applySearch() { currentPage = 1; applyFilters(); }
+
+    function applyFilters() {
+      setTimeout(() => {
+        const q = document.getElementById("searchInput").value.trim().toLowerCase();
+        const zone   = document.getElementById("zoneFilter").value;
+        const eng    = document.getElementById("engineerFilter").value;
+        const phase  = document.getElementById("phaseFilter").value;
+        const status = document.getElementById("siteStatusFilter").value;
+        const user   = JSON.parse(localStorage.getItem("user") || "null") || {};
+        const isAdmin = user.role === "admin";
+        let base = allData.slice();
+        if (!isAdmin) {
+          const name = (user.engineerName || user.username || "").trim().toLowerCase();
+          base = base.filter(r => (r.engineer || "").trim().toLowerCase() === name);
+        }
+        filteredData = base.filter(r => {
+          if (zone   && (r.zone || "") !== zone)    return false;
+          if (eng    && (r.engineer || "") !== eng)  return false;
+          if (phase  && (r.phase || "") !== phase)   return false;
+          if (status && (r.siteStatus || "") !== status) return false;
+          if (q) { return Object.values(r).some(v => String(v).toLowerCase().includes(q)); }
+          return true;
+        });
+        renderTable(filteredData);
+      }, 60);
+    }
+
+    function clearFilters() {
+      document.getElementById("searchInput").value = "";
+      document.getElementById("zoneFilter").value = "";
+      document.getElementById("engineerFilter").value = "";
+      document.getElementById("phaseFilter").value = "";
+      document.getElementById("siteStatusFilter").value = "";
+      applyFilters();
+    }
+
+    /* ── Render Table ── */
+    function renderTable(data) {
+      showLoader();
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          const start = (currentPage - 1) * rowsPerPage;
+          _renderTableNow(data.slice(start, start + rowsPerPage));
+          renderPagination(data.length);
+          document.getElementById("totalCount").textContent = data.length.toLocaleString();
+          document.getElementById("recordCountBadge").textContent = `${data.length} records`;
+          document.getElementById("paginationInfo").textContent =
+            `Showing ${Math.min(start + 1, data.length)}–${Math.min(start + rowsPerPage, data.length)} of ${data.length} records`;
+          hideLoader();
+        }, 0);
+      });
+    }
+
+    function _renderTableNow(data) {
+      const header = document.getElementById("tableHeader");
+      header.innerHTML = columns.map(c => `<th>${c.label}</th>`).join("");
+
+      const tbody = document.getElementById("tableBody");
+      const user = JSON.parse(localStorage.getItem("user") || "null") || {};
+      const role = user.role || "";
+
+      if (!data.length) {
+        tbody.innerHTML = `<tr><td colspan="${columns.length}" style="text-align:center;padding:28px;color:var(--txt3);">No records found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = data.map(row => {
+        const id = row._id || row.roCode || "";
+        const rcUpper = (row.roCode || "").toString().trim().toUpperCase();
+        const latest = latestStatusMap[rcUpper] || {};
+
+        const cells = columns.map(col => {
+          if (col.key === "actions") {
+            let actions = "";
+            if (role === "admin") {
+              actions = `<button class="sf-action-btn sf-action-edit" onclick='openEdit("${id}")'><i class="fa-solid fa-pen"></i> Edit</button>
+                         <button class="sf-action-btn sf-action-delete" onclick='confirmDelete("${id}")'><i class="fa-solid fa-trash"></i> Delete</button>`;
+            }
+            return `<td style="text-align:center;">${actions}</td>`;
+          }
+          if (col.key === "lastVisitDate") {
+            const v = latest.date || latest.visitDate || "";
+            return `<td>${escapeHtml(formatVisitDate(v))}</td>`;
+          }
+          if (col.key === "bosIP") {
+            const v = latest.bosIP || row.bosIP || "";
+            return `<td>${escapeHtml(v)}</td>`;
+          }
+          if (col.key === "fccIP") {
+            const v = latest.fccIP || row.fccIP || "";
+            return `<td>${escapeHtml(v)}</td>`;
+          }
+          // Badge for siteStatus
+          if (col.key === "siteStatus") {
+            const v = row[col.key] || "";
+            let badge = v;
+            if (v === "AMC")      badge = `<span class="sf-badge sf-badge-green">${v}</span>`;
+            else if (v === "PROJECT") badge = `<span class="sf-badge sf-badge-blue">${v}</span>`;
+            else if (v === "WARRANTY") badge = `<span class="sf-badge sf-badge-amber">${v}</span>`;
+            else if (v)           badge = `<span class="sf-badge sf-badge-gray">${v}</span>`;
+            return `<td>${badge}</td>`;
+          }
+          // Badge for siteActivestatus
+          if (col.key === "siteActivestatus") {
+            const v = row[col.key] || "";
+            let badge = v;
+            if (v === "ACTIVE" || v === "Active") badge = `<span class="sf-badge sf-badge-green"><i class="fa-solid fa-circle" style="font-size:6px;"></i> ${v}</span>`;
+            else if (v)  badge = `<span class="sf-badge sf-badge-red">${v}</span>`;
+            return `<td>${badge}</td>`;
+          }
+          const val = row[col.key] !== undefined && row[col.key] !== null ? row[col.key] : "";
+          return `<td>${escapeHtml(val)}</td>`;
+        }).join("");
+
+        return `<tr data-id="${id}">${cells}</tr>`;
+      }).join("");
+    }
+
+    /* ── Pagination ── */
+    function renderPagination(totalRows) {
+      const totalPages = Math.max(1, Math.ceil(totalRows / rowsPerPage));
+      const container = document.getElementById("pagination");
+      container.innerHTML = "";
+
+      const prev = document.createElement("button");
+      prev.innerHTML = `<i class="fa-solid fa-chevron-left" style="font-size:10px;"></i>`;
+      prev.className = "sf-page-btn";
+      prev.disabled = currentPage === 1;
+      prev.onclick = () => { if (currentPage > 1) { currentPage--; renderTable(filteredData); } };
+      container.appendChild(prev);
+
+      const maxButtons = 7;
+      let startPage = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+      let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+      if (endPage - startPage < maxButtons - 1) startPage = Math.max(1, endPage - maxButtons + 1);
+
+      for (let i = startPage; i <= endPage; i++) {
+        const btn = document.createElement("button");
+        btn.textContent = i;
+        btn.className = "sf-page-btn" + (i === currentPage ? " active" : "");
+        btn.onclick = ((p) => () => { currentPage = p; renderTable(filteredData); })(i);
+        container.appendChild(btn);
+      }
+
+      const next = document.createElement("button");
+      next.innerHTML = `<i class="fa-solid fa-chevron-right" style="font-size:10px;"></i>`;
+      next.className = "sf-page-btn";
+      next.disabled = currentPage === totalPages;
+      next.onclick = () => { if (currentPage < totalPages) { currentPage++; renderTable(filteredData); } };
+      container.appendChild(next);
+    }
+
+    /* ── Edit Modal ── */
+    let editingId = null;
+    function openEdit(id) {
+      const rec = allData.find(r => r._id === id || r.roCode === id || r.id === id);
+      if (!rec) { showToast("Record not found", "error"); return; }
+      editingId = rec._id || id;
+      const form = document.getElementById("editForm");
+      form.innerHTML = "";
+      const keys = ["zone","roCode","roName","region","phase","engineer","amcQtr","siteStatus","siteActivestatus","lastAMCqtr"];
+      keys.forEach(k => {
+        const val = rec[k] || "";
+        const isReadonly = k === "roCode";
+        form.innerHTML += `
+          <div class="sf-modal-field">
+            <label class="sf-modal-label">${k}</label>
+            <input type="text" name="${k}" value="${escapeHtml(val)}"
+              ${isReadonly ? "readonly" : ""}
+              class="sf-modal-input${isReadonly ? ' readonly' : ''}" />
+          </div>`;
+      });
+      document.getElementById("editModal").classList.remove("hidden");
+    }
+
+    function closeEditModal() {
+      document.getElementById("editModal").classList.add("hidden");
+      editingId = null;
+    }
+
+    async function saveEdit() {
+      if (!editingId) return showToast("No record selected", "error");
+      const inputs = document.querySelectorAll('#editForm input');
+      const payload = {};
+      inputs.forEach(inp => {
+        let v = inp.value;
+        if (inp.name === "roCode" && typeof v === "string") v = v.toUpperCase();
+        payload[inp.name] = v;
+      });
+      const paths = [`/romaster/update/${editingId}`,`/romaster/${editingId}`,`/api/romaster/update/${editingId}`,`/api/romaster/${editingId}`];
+      let success = false;
+      for (const path of paths) {
+        try {
+          const res = await fetch(baseUrl + path, {
+            method: "PUT",
+            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          if (res.ok) { success = true; break; }
+        } catch(e) {}
+      }
+      if (success) {
+        showToast("Record updated successfully.");
+        closeEditModal();
+        await loadData();
+      } else {
+        showToast("Update failed. Endpoint not found.", "error");
+      }
+    }
+
+    /* ── Delete ── */
+    let deleteTarget = null;
+    function confirmDelete(id) {
+      deleteTarget = id;
+      document.getElementById("deleteModal").classList.remove("hidden");
+    }
+    function cancelDelete() {
+      deleteTarget = null;
+      document.getElementById("deleteModal").classList.add("hidden");
+    }
+    async function performDelete() {
+      if (!deleteTarget) return;
+      const paths = [`/romaster/delete/${deleteTarget}`,`/romaster/${deleteTarget}`,`/api/romaster/delete/${deleteTarget}`,`/api/romaster/${deleteTarget}`];
+      let deleted = false;
+      for (const path of paths) {
+        try {
+          const res = await fetch(baseUrl + path, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+          if (res.ok) { deleted = true; break; }
+        } catch(e) {}
+      }
+      document.getElementById("deleteModal").classList.add("hidden");
+      if (deleted) {
+        showToast("Record deleted successfully.");
+        await loadData();
+      } else {
+        showToast("Delete failed. Endpoint not found.", "error");
+      }
+      deleteTarget = null;
+    }
+
+    /* ── Export CSV ── */
+    function exportROMasterCSV() {
+      if (!filteredData || filteredData.length === 0) { showToast("No data to export", "error"); return; }
+      const keys = ["roCode","roName","zone","region","phase","engineer","amcQtr","siteStatus","lastVisitDate","bosIP","fccIP","siteActivestatus","lastAMCqtr"];
+      const header = keys.join(",");
+      const rows = filteredData.map(r => {
+        const rc = (r.roCode || "").toString().trim().toUpperCase();
+        const latest = latestStatusMap[rc] || {};
+        const values = keys.map(k => {
+          let v = "";
+          if (k === "lastVisitDate") v = latest.date || latest.visitDate || "";
+          else if (k === "bosIP") v = latest.bosIP || r.bosIP || "";
+          else if (k === "fccIP") v = latest.fccIP || r.fccIP || "";
+          else v = r[k] || "";
+          return `"${String(v).replaceAll('"','""')}"`;
+        });
+        return values.join(",");
+      });
+      const csv = [header, ...rows].join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `romaster_export_${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toggleExportMenu();
+      showToast("CSV exported successfully.");
+    }
+
+    /* ── Export Dropdown Toggle ── */
+    function toggleExportMenu() {
+      document.getElementById("exportMenu").classList.toggle("open");
+      setTimeout(() => document.addEventListener("click", closeExportMenu), 10);
+    }
+    function closeExportMenu(e) {
+      const menu = document.getElementById("exportMenu");
+      if (!e.target.closest("#exportDropdown")) {
+        menu.classList.remove("open");
+        document.removeEventListener("click", closeExportMenu);
+      }
+    }
+
+    // Initial load
+    loadData();
+  </script>
+<script src="errorLogger.js"></script>
+</body>
+</html>

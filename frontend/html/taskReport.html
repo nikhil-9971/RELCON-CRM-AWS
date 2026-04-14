@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Task Report | RELCON</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      body {
+        font-family: "Plus Jakarta Sans", sans-serif;
+        background-color: #f9fafb;
+        font-size: 12px;
+      }
+    </style>
+  
+  
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <!-- ⚡ RELCON Global Theme -->
+  <style>
+    :root{
+      --c-bg:#F4F6F9;--c-surface:#fff;--c-border:#E2E8F0;
+      --c-text:#0F172A;--c-text2:#475569;--c-text3:#94A3B8;
+      --c-primary:#2563EB;--c-primary-h:#1D4ED8;--c-primary-lt:#EFF6FF;
+      --c-success:#16A34A;--c-warning:#D97706;--c-danger:#DC2626;
+    }
+    [data-theme="dark"]{
+      --c-bg:#0B1120;--c-surface:#111827;--c-border:#1E293B;
+      --c-text:#F1F5F9;--c-text2:#94A3B8;--c-text3:#475569;
+      --c-primary:#3B82F6;--c-primary-lt:#172554;
+    }
+    body{font-family:'Inter',-apple-system,sans-serif!important;background:var(--c-bg)!important;color:var(--c-text)!important;}
+    h1,h2,.text-xl{color:#1E3A8A!important;}
+    [data-theme="dark"] h1,[data-theme="dark"] h2,[data-theme="dark"] .text-xl{color:#60A5FA!important;}
+
+    /* Tables */
+    table thead th,thead th,.bg-gray-200 th,.bg-gray-100 th{
+      background:#1E3A8A!important;color:#fff!important;
+      font-size:11px!important;text-transform:uppercase;letter-spacing:.6px;
+      padding:10px 12px!important;
+    }
+    tbody tr:hover{background:#EFF6FF!important;}
+    [data-theme="dark"] tbody tr:hover{background:#172554!important;}
+
+    /* Buttons */
+    .bg-green-600,.bg-blue-600,.bg-teal-600{background:var(--c-primary)!important;}
+    .bg-green-600:hover,.bg-blue-600:hover{background:var(--c-primary-h)!important;}
+    .bg-red-600,.bg-red-500{background:var(--c-danger)!important;}
+    .bg-yellow-500{background:var(--c-warning)!important;}
+    .text-green-600,.text-green-700,.text-blue-600{color:var(--c-primary)!important;}
+
+    /* Inputs */
+    input,select,textarea{
+      border:1.5px solid var(--c-border)!important;border-radius:6px!important;
+      font-family:inherit!important;background:var(--c-surface)!important;color:var(--c-text)!important;
+    }
+    input:focus,select:focus,textarea:focus{
+      border-color:var(--c-primary)!important;
+      box-shadow:0 0 0 3px rgba(37,99,235,.12)!important;outline:none!important;
+    }
+
+    /* Cards */
+    .bg-white,.card{background:var(--c-surface)!important;}
+    .shadow,.shadow-md,.shadow-lg{box-shadow:0 2px 12px rgba(0,0,0,.07)!important;}
+    .rounded,.rounded-lg,.rounded-xl{border-radius:8px!important;}
+
+    /* Scrollbar */
+    ::-webkit-scrollbar{width:5px;height:5px;}
+    ::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:3px;}
+    ::-webkit-scrollbar-thumb:hover{background:#94A3B8;}
+    [data-theme="dark"] ::-webkit-scrollbar-thumb{background:#1E293B;}
+  </style>
+
+
+
+
+
+
+
+
+  <!-- RELCON-MASTER-CSS -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style id="relcon-master">
+  /* ═══════════════════════════════════════════════════
+     RELCON CRM — Master Design System v3
+     Font: Inter  |  Light Theme Only  |  Enterprise UI
+  ═══════════════════════════════════════════════════ */
+
+  /* ── Design Tokens ─────────────────────────────── */
+  :root {
+    --brand:       #2563EB;
+    --brand-dk:    #1D4ED8;
+    --brand-lt:    #EFF6FF;
+    --brand-glow:  rgba(37,99,235,0.12);
+    --success:     #059669;
+    --success-lt:  #ECFDF5;
+    --warn:        #D97706;
+    --warn-lt:     #FFFBEB;
+    --danger:      #DC2626;
+    --danger-lt:   #FEF2F2;
+    --purple:      #7C3AED;
+
+    --bg:          #F1F5F9;
+    --surface:     #FFFFFF;
+    --surface2:    #F8FAFC;
+    --border:      #E2E8F0;
+    --border-lt:   #F1F5F9;
+
+    --txt:         #0F172A;
+    --txt2:        #1E293B;
+    --txt3:        #64748B;
+    --txt4:        #94A3B8;
+    --txt5:        #CBD5E1;
+
+    /* CRM Font Sizes — same as Salesforce Lightning */
+    --fs-xs:    10px;   /* labels, badges */
+    --fs-sm:    11px;   /* table headers, captions */
+    --fs-base:  13px;   /* body, table cells */
+    --fs-md:    14px;   /* emphasized body */
+    --fs-lg:    16px;   /* section titles */
+    --fs-xl:    20px;   /* page titles */
+    --fs-2xl:   24px;   /* hero numbers */
+
+    --lh:      1.5;
+    --r-xs:    4px;
+    --r-sm:    6px;
+    --r:       8px;
+    --r-lg:    12px;
+    --r-xl:    16px;
+    --r-full:  9999px;
+
+    --sh-xs:   0 1px 2px rgba(15,23,42,0.05);
+    --sh-sm:   0 1px 3px rgba(15,23,42,0.08), 0 1px 2px rgba(15,23,42,0.04);
+    --sh:      0 4px 6px rgba(15,23,42,0.07), 0 2px 4px rgba(15,23,42,0.05);
+    --sh-md:   0 10px 20px rgba(15,23,42,0.08), 0 4px 8px rgba(15,23,42,0.04);
+    --sh-lg:   0 20px 40px rgba(15,23,42,0.10), 0 8px 16px rgba(15,23,42,0.06);
+
+    --topbar-h: 52px;
+  }
+
+  /* ── Base ─────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; }
+  html {
+    font-size: var(--fs-base) !important;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+    font-size: var(--fs-base) !important;
+    font-weight: 400 !important;
+    line-height: var(--lh) !important;
+    color: var(--txt) !important;
+    background: var(--bg) !important;
+    margin: 0 !important; padding: 0 !important;
+    min-height: 100vh;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--txt4); }
+
+  /* ── PAGE SHELL — Same structure across ALL pages ── */
+  .crm-page {
+    display: flex; flex-direction: column;
+    min-height: 100vh;
+    background: var(--bg);
+  }
+
+  /* Top bar inside iframe pages */
+  .crm-topbar {
+    height: var(--topbar-h);
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center;
+    padding: 0 24px; gap: 12px;
+    flex-shrink: 0;
+    box-shadow: var(--sh-xs);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .crm-topbar-title {
+    font-size: var(--fs-md);
+    font-weight: 700;
+    color: var(--txt);
+    letter-spacing: -0.2px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .crm-topbar-title .icon {
+    width: 28px; height: 28px;
+    background: var(--brand-lt);
+    border-radius: var(--r-sm);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--brand); font-size: 13px;
+  }
+  .crm-topbar-meta {
+    font-size: var(--fs-xs);
+    font-weight: 500; color: var(--txt4);
+    background: var(--surface2);
+    padding: 3px 10px;
+    border-radius: var(--r-full);
+    border: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .crm-topbar-spacer { flex: 1; }
+  .crm-topbar-actions { display: flex; align-items: center; gap: 8px; }
+
+  /* Content body */
+  .crm-body {
+    flex: 1;
+    padding: 20px 24px;
+    max-width: 1440px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  /* ── CARD — universal container ─────────────────── */
+  .crm-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    box-shadow: var(--sh-sm);
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .crm-card-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--surface);
+    gap: 12px; flex-wrap: wrap;
+  }
+  .crm-card-title {
+    font-size: var(--fs-md);
+    font-weight: 700;
+    color: var(--txt);
+    letter-spacing: -0.2px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .crm-card-body { padding: 20px; }
+  .crm-card-footer {
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--surface2);
+    display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+  }
+
+  /* ── FILTERS BAR ─────────────────────────────────── */
+  .crm-filters {
+    display: flex; align-items: flex-end; gap: 10px;
+    flex-wrap: wrap; padding: 14px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+  .crm-filter-group { display: flex; flex-direction: column; gap: 4px; }
+  .crm-filter-group label {
+    font-size: var(--fs-xs) !important;
+    font-weight: 600 !important;
+    color: var(--txt4) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    margin: 0 !important;
+  }
+
+  /* ── TABLE ───────────────────────────────────────── */
+  .crm-table-wrap {
+    overflow-x: auto; overflow-y: auto;
+  }
+  .crm-table-wrap table,
+  table.crm-table {
+    width: 100%; border-collapse: collapse;
+    font-family: 'Inter', sans-serif !important;
+    font-size: var(--fs-base) !important;
+    min-width: 600px;
+  }
+  thead th,
+  .crm-table thead th,
+  table thead th {
+    background: #0F172A !important;
+    color: #F1F5F9 !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: var(--fs-sm) !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.7px !important;
+    padding: 10px 14px !important;
+    text-align: left !important;
+    white-space: nowrap !important;
+    border: none !important;
+    position: sticky; top: 0; z-index: 10;
+  }
+  thead th:first-child { border-radius: 0 !important; }
+  tbody tr {
+    border-bottom: 1px solid var(--border-lt) !important;
+    transition: background 0.1s;
+  }
+  tbody tr:last-child { border-bottom: none !important; }
+  tbody tr:hover { background: #EFF6FF !important; }
+  tbody td {
+    padding: 9px 14px !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: var(--fs-base) !important;
+    color: var(--txt2) !important;
+    vertical-align: middle !important;
+    border: none !important;
+    border-bottom: 1px solid var(--border-lt) !important;
+  }
+  tbody td:first-child { font-weight: 500; color: var(--txt) !important; }
+
+  /* ── STATUS BADGES ───────────────────────────────── */
+  .badge {
+    display: inline-flex; align-items: center;
+    padding: 2px 9px;
+    border-radius: var(--r-full);
+    font-size: var(--fs-xs) !important;
+    font-weight: 600 !important;
+    white-space: nowrap;
+    letter-spacing: 0.3px;
+  }
+  .badge-green  { background: var(--success-lt); color: var(--success); }
+  .badge-red    { background: var(--danger-lt);  color: var(--danger);  }
+  .badge-yellow { background: var(--warn-lt);    color: var(--warn);    }
+  .badge-blue   { background: var(--brand-lt);   color: var(--brand);   }
+  .badge-gray   { background: var(--surface2);   color: var(--txt3);    }
+
+  /* ── FORM ELEMENTS ───────────────────────────────── */
+  .crm-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+  }
+  .crm-form-grid-2 { grid-template-columns: repeat(2, 1fr); }
+  .crm-form-grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .crm-field { display: flex; flex-direction: column; gap: 5px; }
+  .crm-label {
+    font-size: var(--fs-xs) !important;
+    font-weight: 600 !important;
+    color: var(--txt3) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    font-family: 'Inter', sans-serif !important;
+  }
+  .crm-input,
+  input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]),
+  select, textarea {
+    font-family: 'Inter', sans-serif !important;
+    font-size: var(--fs-base) !important;
+    font-weight: 400 !important;
+    color: var(--txt) !important;
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--r-sm) !important;
+    padding: 7px 10px !important;
+    outline: none !important;
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s !important;
+    height: 36px !important;
+    line-height: 1.4 !important;
+    width: 100%;
+  }
+  textarea {
+    height: auto !important;
+    min-height: 80px;
+    resize: vertical;
+  }
+  select { -webkit-appearance: none; appearance: none; cursor: pointer; padding-right: 28px !important; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%2394A3B8' d='M1 1l5 5 5-5'/%3E%3C/svg%3E") !important; background-repeat: no-repeat !important; background-position: right 10px center !important; }
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--brand) !important;
+    background: var(--surface) !important;
+    box-shadow: 0 0 0 3px var(--brand-glow) !important;
+  }
+  input::placeholder, textarea::placeholder { color: var(--txt5) !important; font-size: var(--fs-base) !important; }
+  label, .label {
+    font-family: 'Inter', sans-serif !important;
+    font-size: var(--fs-xs) !important;
+    font-weight: 600 !important;
+    color: var(--txt3) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    display: block; margin-bottom: 5px !important;
+  }
+
+  /* ── BUTTONS ─────────────────────────────────────── */
+  button, .btn, [role=button] {
+    font-family: 'Inter', sans-serif !important;
+    font-size: var(--fs-base) !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    border-radius: var(--r-sm) !important;
+    transition: all 0.15s !important;
+    display: inline-flex; align-items: center; gap: 5px;
+    white-space: nowrap;
+  }
+  /* Primary */
+  .bg-green-600, .bg-green-500, .bg-blue-600, .bg-blue-500, .bg-blue-700 {
+    background: var(--brand) !important; color: #fff !important;
+    border: none !important; padding: 7px 14px !important;
+    height: 34px; box-shadow: 0 1px 2px rgba(37,99,235,0.2) !important;
+    font-weight: 500 !important;
+  }
+  .bg-green-600:hover, .bg-blue-600:hover, .bg-green-500:hover, .bg-blue-500:hover {
+    background: var(--brand-dk) !important;
+    box-shadow: 0 4px 8px rgba(37,99,235,0.25) !important;
+    transform: translateY(-1px) !important;
+  }
+  .hover\:bg-green-700:hover { background: var(--brand-dk) !important; }
+  /* Warning */
+  .bg-yellow-500, .bg-yellow-400 { background: var(--warn) !important; color:#fff!important; border:none!important; padding:7px 14px!important; height:34px; }
+  /* Danger */
+  .bg-red-600, .bg-red-500 { background: var(--danger) !important; color:#fff!important; border:none!important; padding:7px 14px!important; height:34px; }
+  /* Success */
+  .bg-emerald-600, .bg-teal-600 { background:var(--success)!important; color:#fff!important; }
+
+  /* ── CARDS / CONTAINERS ──────────────────────────── */
+  .bg-white, .card {
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--r-lg) !important;
+    box-shadow: var(--sh-sm) !important;
+  }
+  .bg-gray-100, .bg-gray-50 { background: var(--surface2) !important; }
+  .bg-gray-200 { background: #F1F5F9 !important; }
+  .shadow, .shadow-md, .shadow-lg { box-shadow: var(--sh-sm) !important; }
+  .rounded, .rounded-lg, .rounded-xl { border-radius: var(--r) !important; }
+  .max-w-7xl, .max-w-6xl, .max-w-5xl, .max-w-4xl { width: 100% !important; }
+
+  /* ── TYPOGRAPHY ──────────────────────────────────── */
+  h1, .text-2xl, .text-3xl {
+    font-family: 'Inter', sans-serif !important;
+    font-size: var(--fs-xl) !important; font-weight: 700 !important;
+    color: var(--txt) !important; letter-spacing: -0.4px; line-height: 1.3;
+  }
+  h2, .text-xl {
+    font-family: 'Inter', sans-serif !important;
+    font-size: var(--fs-lg) !important; font-weight: 700 !important;
+    color: var(--txt) !important; letter-spacing: -0.2px;
+  }
+  h3, .text-lg { font-size: var(--fs-md) !important; font-weight: 600 !important; color: var(--txt) !important; }
+  p { font-size: var(--fs-base) !important; color: var(--txt2) !important; }
+  .text-gray-700, .text-gray-800 { color: var(--txt2) !important; }
+  .text-gray-500, .text-gray-600, .text-gray-400 { color: var(--txt3) !important; }
+  .text-green-600, .text-green-700, .text-green-800 { color: var(--brand) !important; }
+  .text-blue-600, .text-blue-700 { color: var(--brand) !important; }
+  .text-red-600, .text-red-500 { color: var(--danger) !important; }
+  .font-bold { font-weight: 700 !important; }
+  .font-semibold { font-weight: 600 !important; }
+  .font-medium { font-weight: 500 !important; }
+
+  /* ── TABLE CONTAINERS ────────────────────────────── */
+  .overflow-x-auto, [class*="overflow-x-auto"] {
+    background: var(--surface) !important;
+    border-radius: var(--r-lg) !important;
+    border: 1px solid var(--border) !important;
+    box-shadow: var(--sh-sm) !important;
+  }
+  .border { border-color: var(--border) !important; }
+  .border-gray-300 { border-color: var(--border) !important; }
+
+  /* ── PAGE PADDING ────────────────────────────────── */
+  body.p-4, body.p-6, body[class*="p-"] {
+    padding: 0 !important;
+  }
+
+  /* ── MISC ────────────────────────────────────────── */
+  .p-6 { padding: 20px !important; }
+  .p-4 { padding: 16px !important; }
+  .mb-4 { margin-bottom: 14px !important; }
+  .gap-4 { gap: 12px !important; }
+  .focus\:ring-green-300:focus, .focus\:ring:focus {
+    box-shadow: 0 0 0 3px var(--brand-glow) !important;
+  }
+  .bg-green-100 { background: var(--brand-lt) !important; color: var(--brand) !important; }
+  .bg-red-100   { background: var(--danger-lt) !important; color: var(--danger) !important; }
+  .bg-yellow-100 { background: var(--warn-lt) !important; color: var(--warn) !important; }
+  .text-\[9px\], .text-\[10px\], .text-\[11px\] { font-size: var(--fs-xs) !important; }
+  .text-\[12px\], .text-xs, .text-sm { font-size: var(--fs-sm) !important; }
+  .text-\[13px\], .text-\[14px\] { font-size: var(--fs-base) !important; }
+  </style>
+  <script src="config.js"></script>
+</head>
+  <body style="padding:0;margin:0;">
+<div class="crm-page">
+  <div class="crm-topbar">
+    <div class="crm-topbar-title">
+      <span class="icon" style="background:rgba(37,99,235,0.1);color:#2563EB;width:28px;height:28px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">
+        <i class="fa-solid fa-file-check"></i>
+      </span>
+      Task Report
+    </div>
+    <div class="crm-topbar-spacer"></div>
+  </div>
+  <div class="crm-body">
+
+    <div class="max-w-7xl mx-auto bg-white p-5 shadow rounded">
+      <div class="flex justify-between mb-4">
+        <h2 class="text-xl font-semibold">✅ Submitted Tasks Report</h2>
+        <button
+          onclick="fetchTasks()"
+          class="bg-blue-600 text-white px-4 py-1 rounded"
+        >
+          🔄 Refresh
+        </button>
+      </div>
+
+      <div>
+        <button
+          onclick="exportToCSV()"
+          class="bg-green-600 text-white px-2 py-1 rounded ml-2 text-[10px]"
+        >
+          ⬇️ Export CSV
+        </button>
+      </div>
+
+      <div
+        class="overflow-x-auto max-h-[75vh] overflow-y-auto border border-gray-300 rounded"
+      >
+        <table class="min-w-max table-auto w-full text-[10px]">
+          <thead class="bg-gray-200 sticky top-0 z-10">
+            <tr>
+              <th class="border px-2 py-1">RO Code</th>
+              <th class="border px-2 py-1">Region</th>
+              <th class="border px-2 py-1">RO Name</th>
+              <th class="border px-2 py-1">Date</th>
+              <th class="border px-2 py-1">Engineer</th>
+              <th class="border px-2 py-1">Issue</th>
+              <th class="border px-2 py-1">Mail Date</th>
+              <th class="border px-2 py-1">Completed By</th>
+              <th class="border px-2 py-1">Sent Mail Date</th>
+              <th class="border px-2 py-1">Previous Status</th>
+              <th class="border px-2 py-1">Current Status</th>
+              <th class="border px-2 py-1">Next Follow-up Date</th>
+              <th class="border px-2 py-1">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="taskTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div
+      id="editModal"
+      class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center hidden"
+    >
+      <div class="bg-white p-4 rounded shadow-lg w-[90%] max-w-md">
+        <h3 class="text-lg font-semibold mb-2">Edit Task</h3>
+        <input
+          id="editRoCode"
+          placeholder="RO Code"
+          class="w-full border p-1 mb-2"
+        />
+        <input
+          id="editRoName"
+          placeholder="RO Name"
+          class="w-full border p-1 mb-2"
+        />
+        <input id="editDate" type="date" class="w-full border p-1 mb-2" />
+        <input
+          id="editEngineer"
+          placeholder="Engineer"
+          class="w-full border p-1 mb-2"
+        />
+        <input
+          id="editIssue"
+          placeholder="Issue"
+          class="w-full border p-1 mb-2"
+        />
+        <input id="editMailDate" type="date" class="w-full border p-1 mb-2" />
+        <input
+          id="editCompletedBy"
+          placeholder="Completed By"
+          class="w-full border p-1 mb-2"
+        />
+        <input
+          id="editMailReply"
+          placeholder="Mail Reply"
+          class="w-full border p-1 mb-2"
+        />
+        <button
+          onclick="saveEdit()"
+          class="bg-blue-600 text-white px-3 py-1 rounded mr-2"
+        >
+          💾 Save
+        </button>
+        <button
+          onclick="closeEditModal()"
+          class="bg-gray-400 px-3 py-1 rounded"
+        >
+          ❌ Cancel
+        </button>
+        <input type="hidden" id="editTaskId" />
+      </div>
+    </div>
+
+    <script>
+      const baseUrl = window.BACKEND_URL || "https://relcon-crm.onrender.com";
+      const token = localStorage.getItem("token");
+      const user = JSON.parse(localStorage.getItem("user")) || {};
+      const isAdmin = user.role === "admin";
+      const isNikhilTrivedi = user.username === "nikhil.trivedi";
+
+      function addDays(dateStr, days) {
+        const d = new Date(dateStr);
+        d.setDate(d.getDate() + days);
+        return d.toLocaleDateString("en-CA");
+      }
+
+      async function fetchTasks() {
+        const res = await fetch(`${baseUrl}/getTasks`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const tasks = await res.json(); // ✅ Defined and scoped here
+        console.log("Loaded tasks:", tasks); // Should show an array
+        console.log("Trying filter:", tasks.filter); // Should be a function
+
+        if (!Array.isArray(tasks)) {
+          console.error("Invalid data received", tasks);
+          return;
+        }
+
+        const tbody = document.getElementById("taskTableBody");
+        tbody.innerHTML = "";
+
+        const todayStr = new Date().toLocaleDateString("en-CA");
+
+        const submittedTasks = tasks.filter(
+          (task) =>
+            task.status === "Resolved" ||
+            task.status === "Done" ||
+            task.status === "Inprocess"
+        );
+
+        submittedTasks.forEach((task) => {
+          const followUpDate = task.mailDate
+            ? new Date(
+                new Date(task.mailDate).getTime() + 7 * 24 * 60 * 60 * 1000
+              )
+            : null;
+          const followUpDateStr = followUpDate
+            ? followUpDate.toLocaleDateString("en-CA")
+            : "-";
+
+          let disableFollowup = false;
+          let currentStatusOption = `
+        <select onchange="updateTaskStatus('${
+          task._id
+        }', this.value)" class="border px-2 py-1 rounded">
+          <option value="Pending">Pending</option>
+       <option value="Inprocess" ${
+         task.status === "Inprocess" ? "selected" : ""
+       }>In Process</option>
+
+          <option value="Done">Resolved</option>
+        </select>
+      `;
+
+          // ✅ Disable dropdown if "Resolved" selected
+          if (task.status === "Done") {
+            disableFollowup = true;
+            currentStatusOption = `
+          <select disabled class="border px-2 py-1 rounded bg-green-200 text-gray-500 cursor-not-allowed">
+            <option>Resolved</option>
+          </select>
+        `;
+          }
+
+          // ✅ Skip auto-follow-up for "Done" tasks
+          if (
+            followUpDateStr === todayStr &&
+            !disableFollowup &&
+            (!task.followUpDates || !task.followUpDates.includes(todayStr))
+          ) {
+            updateTaskStatus(task._id, "Follow-up", true);
+          }
+
+          let mailReplyDisplay = "-";
+          if (task.mailDate) {
+            mailReplyDisplay = task.mailDate;
+            if (task.followUpDates && Array.isArray(task.followUpDates)) {
+              mailReplyDisplay += ", " + task.followUpDates.join(", ");
+            }
+          }
+
+          const row = document.createElement("tr");
+          row.innerHTML = `
+        <td class="border px-2 py-1">${task.roCode}</td>
+        <td class="border px-2 py-1">${task.region || "-"}</td>
+  <td class="border px-2 py-1">${task.roName}</td>
+  <td class="border px-2 py-1">${task.date}</td>
+  <td class="border px-2 py-1">${task.engineer}</td>
+  <td class="border px-2 py-1 text-red-600">
+    ${task.issue}
+    ${task.voltageReading ? " (Voltage: " + task.voltageReading + ")" : ""}
+    ${task.duRemark ? " (Remark: " + task.duRemark + ")" : ""}
+    ${task.tankRemark ? "(Remark: " + task.tankRemark + ")" : ""}
+  </td>
+  <td class="border px-2 py-1">${task.mailDate || "-"}</td>
+  <td class="border px-2 py-1">${task.completedBy || "-"}</td>
+  <td class="border px-2 py-1">${mailReplyDisplay}</td>
+  <td class="border px-2 py-1 text-green-600 font-medium">${
+    task.previousStatus || "Mailed"
+  }</td>
+  <td class="border px-2 py-1">${currentStatusOption}</td>
+  <td class="border px-2 py-1">${followUpDateStr}</td>
+  <td class="border px-2 py-1 text-center">
+    ${
+      isAdmin && isNikhilTrivedi
+        ? `
+        <button onclick="editTask('${task._id}')" class="px-2 py-1 text-[11px] rounded bg-blue-50 text-blue-700 hover:bg-blue-100 mr-1">Edit</button>
+<button onclick="deleteTask('${task._id}')" class="px-2 py-1 text-[11px] rounded bg-red-50 text-red-700 hover:bg-red-100 ml-2">Delete</button>`
+        : "-"
+    }
+  </td>      `;
+          tbody.appendChild(row);
+        });
+      }
+
+      async function updateTaskStatus(id, status, followUp = false) {
+        await fetch(`${baseUrl}/updateTask/${id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ status, followUp }),
+        });
+
+        // If status is Resolved, disable dropdown immediately
+        if (status === "Done") {
+          const dropdown = document.querySelector(
+            `select[onchange="updateTaskStatus('${id}', this.value)"]`
+          );
+          if (dropdown) {
+            dropdown.setAttribute("disabled", true);
+            dropdown.classList.add(
+              "bg-gray-200",
+              "text-gray-500",
+              "cursor-not-allowed"
+            );
+          }
+        }
+
+        fetchTasks();
+      }
+      function editTask(id) {
+        fetch(`${baseUrl}/getTask/${id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+          .then((res) => res.json())
+          .then((task) => {
+            document.getElementById("editTaskId").value = id;
+            document.getElementById("editRoCode").value = task.roCode;
+            document.getElementById("editRoName").value = task.roName;
+            document.getElementById("editDate").value = task.date;
+            document.getElementById("editEngineer").value = task.engineer;
+            document.getElementById("editIssue").value = task.issue;
+            document.getElementById("editMailDate").value = task.mailDate || "";
+            document.getElementById("editCompletedBy").value =
+              task.completedBy || "";
+            document.getElementById("editMailReply").value =
+              task.mailReply || "";
+            document.getElementById("editModal").classList.remove("hidden");
+          });
+      }
+
+      function closeEditModal() {
+        document.getElementById("editModal").classList.add("hidden");
+      }
+
+      function saveEdit() {
+        const id = document.getElementById("editTaskId").value;
+        const updatedFields = {
+          roCode: document.getElementById("editRoCode").value,
+          roName: document.getElementById("editRoName").value,
+          date: document.getElementById("editDate").value,
+          engineer: document.getElementById("editEngineer").value,
+          issue: document.getElementById("editIssue").value,
+          mailDate: document.getElementById("editMailDate").value,
+          completedBy: document.getElementById("editCompletedBy").value,
+          mailReply: document.getElementById("editMailReply").value,
+        };
+        fetch(`${baseUrl}/updateTask/${id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(updatedFields),
+        }).then(() => {
+          closeEditModal();
+          fetchTasks();
+        });
+      }
+
+      function deleteTask(id) {
+        if (confirm("Are you sure you want to delete this task?")) {
+          fetch(`${baseUrl}/deleteTask/${id}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${token}` },
+          }).then(() => fetchTasks());
+        }
+      }
+
+      function exportToCSV() {
+        const headers = [
+          "RO Code",
+          "Region",
+          "RO Name",
+          "Date",
+          "Engineer",
+          "Issue",
+          "Mail Date",
+          "Completed By",
+          "Sent Mail Dates",
+          "Previous Status",
+          "Current Status",
+          "Next Follow-up Date",
+        ];
+
+        const rows = [headers];
+
+        const table = document.getElementById("taskTableBody");
+        const trs = table.querySelectorAll("tr");
+
+        trs.forEach((tr) => {
+          const row = [];
+          const tds = tr.querySelectorAll("td");
+
+          // Extract only the first 11 columns safely
+          for (let i = 0; i < 11; i++) {
+            const td = tds[i];
+            let text = "";
+
+            const select = td.querySelector("select");
+            if (select) {
+              text = select.options[select.selectedIndex].text;
+            } else if (td.querySelector("input")) {
+              text = td.querySelector("input").value;
+            } else if (td.querySelector("textarea")) {
+              text = td.querySelector("textarea").value;
+            } else {
+              text = td.textContent.trim().replace(/\n/g, " ");
+            }
+
+            row.push(`"${text}"`); // Wrap in quotes to preserve commas
+          }
+
+          rows.push(row);
+        });
+
+        const csvContent = rows.map((e) => e.join(",")).join("\n");
+
+        const blob = new Blob(["\ufeff" + csvContent], {
+          type: "text/csv;charset=utf-8;",
+        });
+
+        const today = new Date().toLocaleDateString("en-CA");
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `TaskReport-${today}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+
+      window.onload = fetchTasks;
+    </script>
+  
+  </div>
+</div>
+</body>
+</html>

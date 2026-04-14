@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Create Daily Plan — RELCON CRM</title>
+  <link href="https://fonts.googleapis.com/css2?family=Salesforce+Sans:wght@400;600&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* ══════════════════════════════════════════
+       RELCON CRM — Salesforce Lightning Design System
+       Version 4.0 | Enterprise Grade
+    ══════════════════════════════════════════ */
+    :root {
+      --sf-blue:       #0176d3;
+      --sf-blue-dk:    #014486;
+      --sf-blue-lt:    #e8f4fd;
+      --sf-blue-hover: #0b5faa;
+      --sf-navy:       #032d60;
+
+      --sf-green:      #2e844a;
+      --sf-green-lt:   #eaf5ea;
+      --sf-red:        #ba0517;
+      --sf-red-lt:     #fef1ee;
+      --sf-orange:     #dd5a0c;
+      --sf-orange-lt:  #fff3e0;
+      --sf-yellow:     #ffd200;
+      --sf-purple:     #5867e8;
+
+      --bg:            #f3f2f2;
+      --surface:       #ffffff;
+      --surface2:      #f9f9f9;
+      --border:        #dddbda;
+      --border-lt:     #f3f2f2;
+
+      --txt:           #080707;
+      --txt2:          #3e3e3c;
+      --txt3:          #706e6b;
+      --txt4:          #aeaeac;
+
+      --topbar-h:      52px;
+      --fs-xs:         10px;
+      --fs-sm:         11px;
+      --fs-base:       13px;
+      --fs-md:         14px;
+      --fs-lg:         16px;
+      --fs-xl:         20px;
+
+      --r-sm:  4px;
+      --r:     6px;
+      --r-lg:  8px;
+
+      --sh-sm: 0 2px 4px rgba(0,0,0,0.09);
+      --sh:    0 4px 8px rgba(0,0,0,0.1);
+      --sh-md: 0 8px 24px rgba(0,0,0,0.12);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html { font-size: var(--fs-base); -webkit-font-smoothing: antialiased; }
+    body {
+      font-family: 'Inter', 'Salesforce Sans', -apple-system, sans-serif;
+      font-size: var(--fs-base);
+      font-weight: 400;
+      color: var(--txt);
+      background: var(--bg);
+      margin: 0; padding: 0;
+      min-height: 100vh;
+    }
+
+    /* ── PAGE BODY ── */
+    .sf-body { padding: 16px 20px; max-width: 1200px; margin: 0 auto; }
+
+    /* ── BREADCRUMB ── */
+    .sf-breadcrumb {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 11px; color: var(--txt3);
+      margin-bottom: 10px;
+    }
+    .sf-breadcrumb a { color: var(--sf-blue); text-decoration: none; }
+    .sf-breadcrumb a:hover { text-decoration: underline; }
+    .sf-breadcrumb-sep { color: var(--txt4); }
+
+    /* ── PAGE HEADER ── */
+    .sf-page-header {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: 16px 20px;
+      margin-bottom: 12px;
+      display: flex; align-items: center; gap: 14px;
+      box-shadow: var(--sh-sm);
+    }
+    .sf-page-icon {
+      width: 48px; height: 48px; border-radius: 10px;
+      background: linear-gradient(135deg, #06a0d1 0%, #0176d3 100%);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 20px;
+      box-shadow: 0 2px 8px rgba(1,118,211,0.4);
+      flex-shrink: 0;
+    }
+    .sf-page-title { font-size: 20px; font-weight: 700; color: var(--txt); letter-spacing: -0.3px; }
+    .sf-page-subtitle { font-size: 12px; color: var(--txt3); margin-top: 2px; }
+    .sf-page-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+
+    /* ── RECORD FORM CARD ── */
+    .sf-record-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      box-shadow: var(--sh-sm);
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .sf-record-header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 8px;
+    }
+    .sf-record-header-title {
+      font-size: 13px; font-weight: 700;
+      color: var(--txt);
+      display: flex; align-items: center; gap: 8px;
+      text-transform: uppercase; letter-spacing: 0.4px;
+    }
+    .sf-record-header-badge {
+      font-size: 10px; font-weight: 600;
+      background: var(--sf-blue-lt); color: var(--sf-blue);
+      padding: 2px 8px; border-radius: 20px;
+      border: 1px solid #b3d4f0;
+    }
+    .sf-record-body { padding: 20px; }
+
+    /* ── LIGHTNING FORM GRID ── */
+    .sf-form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0;
+    }
+    .sf-form-grid-full { grid-column: 1 / -1; }
+
+    .sf-field {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border-lt);
+      display: flex; flex-direction: column; gap: 3px;
+      position: relative;
+    }
+    .sf-field:nth-child(odd) { border-right: 1px solid var(--border-lt); }
+
+    .sf-label {
+      font-size: 10px !important;
+      font-weight: 600 !important;
+      color: var(--txt3) !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.6px !important;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .sf-label .req { color: var(--sf-red); margin-left: 1px; }
+
+    .sf-input, .sf-select {
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--txt);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      padding: 6px 10px;
+      height: 34px;
+      width: 100%;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .sf-input:focus, .sf-select:focus {
+      border-color: var(--sf-blue);
+      box-shadow: 0 0 0 3px rgba(1,118,211,0.14);
+      background: #fff;
+    }
+    .sf-input[readonly] {
+      background: var(--surface2);
+      color: var(--txt3);
+      cursor: not-allowed;
+    }
+    .sf-input::placeholder { color: var(--txt4); font-size: 12px; }
+    .sf-select {
+      -webkit-appearance: none; appearance: none; cursor: pointer;
+      padding-right: 28px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%23706e6b' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 10px center;
+    }
+
+    /* Search row */
+    .sf-search-row {
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+      display: flex; align-items: flex-end; gap: 10px;
+    }
+    .sf-search-row .sf-field { padding: 0; border: none; flex: 1; gap: 4px; }
+
+    /* ── BUTTONS ── */
+    .sf-btn {
+      font-family: 'Inter', sans-serif;
+      font-size: 13px; font-weight: 500;
+      padding: 0 16px; height: 32px;
+      border-radius: var(--r-sm);
+      cursor: pointer; border: none;
+      display: inline-flex; align-items: center; gap: 6px;
+      transition: all 0.15s; white-space: nowrap;
+      text-decoration: none;
+    }
+    .sf-btn-primary {
+      background: var(--sf-blue); color: #fff;
+      box-shadow: 0 1px 3px rgba(1,118,211,0.3);
+    }
+    .sf-btn-primary:hover {
+      background: var(--sf-blue-hover);
+      box-shadow: 0 3px 8px rgba(1,118,211,0.35);
+      transform: translateY(-1px);
+    }
+    .sf-btn-neutral {
+      background: var(--surface); color: var(--txt);
+      border: 1px solid var(--border);
+    }
+    .sf-btn-neutral:hover { background: var(--bg); }
+    .sf-btn-success {
+      background: var(--sf-green); color: #fff;
+      box-shadow: 0 1px 3px rgba(46,132,74,0.3);
+    }
+    .sf-btn-success:hover { background: #1d5e31; transform: translateY(-1px); }
+    .sf-btn-warn {
+      background: var(--sf-orange); color: #fff;
+    }
+    .sf-btn-warn:hover { background: #b84d09; }
+    .sf-btn-sm { height: 28px; padding: 0 12px; font-size: 12px; }
+    .sf-btn-lg { height: 40px; padding: 0 24px; font-size: 14px; font-weight: 600; }
+
+    /* ── LAST VISIT BOX ── */
+    .sf-info-box {
+      background: #fff8e6;
+      border: 1px solid #f6c23e;
+      border-radius: var(--r);
+      padding: 10px 16px;
+      margin: 12px 20px;
+      display: none;
+      align-items: center; gap: 10px;
+    }
+    .sf-info-box.visible { display: flex; }
+    .sf-info-box .icon { color: #b8860b; font-size: 16px; }
+    .sf-info-box-content { font-size: 12px; }
+    .sf-info-box-content strong { color: var(--txt); font-weight: 600; }
+    .sf-info-box-content span { color: var(--sf-red); font-weight: 600; }
+
+    /* ── TOAST ── */
+    .sf-toast {
+      position: fixed; top: 20px; right: 20px; z-index: 9999;
+      min-width: 280px; max-width: 380px;
+      background: var(--surface);
+      border-radius: var(--r-lg);
+      box-shadow: var(--sh-md);
+      border: 1px solid var(--border);
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 14px 16px;
+      transform: translateX(120%);
+      transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .sf-toast.show { transform: translateX(0); }
+    .sf-toast-icon {
+      width: 30px; height: 30px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; flex-shrink: 0;
+    }
+    .sf-toast.success .sf-toast-icon { background: var(--sf-green-lt); color: var(--sf-green); }
+    .sf-toast.error .sf-toast-icon { background: var(--sf-red-lt); color: var(--sf-red); }
+    .sf-toast-title { font-size: 13px; font-weight: 600; color: var(--txt); }
+    .sf-toast-msg { font-size: 12px; color: var(--txt3); margin-top: 2px; }
+
+    /* ── FOOTER BAR ── */
+    .sf-footer {
+      border-top: 2px solid var(--sf-blue);
+      background: var(--surface);
+      padding: 12px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .sf-footer-logos { display: flex; align-items: center; gap: 12px; }
+    .sf-footer-logos img { height: 24px; opacity: 0.8; }
+    .sf-dev-tag { font-size: 10px; color: var(--txt4); letter-spacing: 0.3px; }
+
+    /* ── SPINNER ── */
+    @keyframes sf-spin { to { transform: rotate(360deg); } }
+    .sf-spinner {
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: sf-spin 0.7s linear infinite;
+    }
+
+    /* ── SECTION DIVIDER ── */
+    .sf-section-label {
+      font-size: 10px; font-weight: 700;
+      color: var(--txt3); text-transform: uppercase; letter-spacing: 0.8px;
+      padding: 10px 20px 6px;
+      border-bottom: 1px solid var(--border-lt);
+      background: var(--surface2);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .sf-section-label::before {
+      content: ''; display: block;
+      width: 3px; height: 12px;
+      background: var(--sf-blue);
+      border-radius: 2px;
+    }
+
+    @media (max-width: 640px) {
+      .sf-form-grid { grid-template-columns: 1fr; }
+      .sf-field:nth-child(odd) { border-right: none; }
+      .sf-body { padding: 10px 12px; }
+    }
+  
+    /* ── PAGE STRIP (dataView style — iframe safe) ── */
+    .dv-strip {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+      box-shadow: 0 1px 3px rgba(15,23,42,0.07);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .dv-strip-icon {
+      width: 28px; height: 28px;
+      background: var(--sf-blue-lt, #e8f4fd);
+      border-radius: 5px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--sf-blue, #0176d3); font-size: 13px;
+    }
+    .dv-strip-title {
+      font-size: 14px; font-weight: 700;
+      color: var(--txt, #080707); letter-spacing: -0.2px;
+    }
+    .dv-strip-sep { width: 1px; height: 18px; background: var(--border, #dddbda); }
+    .dv-strip-meta {
+      font-size: 10px; font-weight: 500; color: var(--txt4, #aeaeac);
+      background: var(--surface2, #f9f9f9);
+      border: 1px solid var(--border, #dddbda);
+      padding: 2px 9px; border-radius: 9999px;
+    }
+    .dv-strip-spacer { flex: 1; }
+
+  </style>
+  <script src="config.js"></script>
+</head>
+<body>
+
+  <!-- ══ PAGE STRIP ══ -->
+  <div class="dv-strip">
+    <div class="dv-strip-icon"><i class="fa-solid fa-calendar-plus"></i></div>
+    <span class="dv-strip-title">Create Daily Plan</span>
+    <div class="dv-strip-sep"></div>
+    <span class="dv-strip-meta" id="currentDateBadge"></span>
+    <div class="dv-strip-spacer"></div>
+  </div>
+
+  <!-- ══ MAIN BODY ══ -->
+  <main class="sf-body">
+
+    <!-- Breadcrumb -->
+    <div class="sf-breadcrumb">
+      <a href="#">Home</a>
+      <span class="sf-breadcrumb-sep">/</span>
+      <a href="#">Daily Plans</a>
+      <span class="sf-breadcrumb-sep">/</span>
+      <span>New Record</span>
+    </div>
+
+    <!-- Page Header -->
+    <div class="sf-page-header">
+      <div class="sf-page-icon"><i class="fa-solid fa-calendar-plus"></i></div>
+      <div>
+        <div class="sf-page-title">Manually Plan Creation</div>
+        <div class="sf-page-subtitle">Create a new daily visit plan for field engineers</div>
+      </div>
+      <div class="sf-page-actions">
+        <button type="button" class="sf-btn sf-btn-neutral"><i class="fa-solid fa-xmark"></i> Cancel</button>
+        <button type="button" onclick="document.getElementById('formId').requestSubmit()" class="sf-btn sf-btn-success sf-btn-lg" id="submitBtn">
+          <span id="submitText"><i class="fa-solid fa-floppy-disk"></i> Save Record</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Record Form Card -->
+    <div class="sf-record-card">
+      <form id="formId" onsubmit="handleSubmit(event)">
+
+        <!-- RO Code Search Section -->
+        <div class="sf-section-label">
+          <span>RO Lookup</span>
+          <span style="color:#aeaeac;font-weight:400;">Search by RO Code to auto-fill details</span>
+        </div>
+        <div class="sf-search-row">
+          <div class="sf-field" style="max-width:320px;">
+            <label class="sf-label"><i class="fa-solid fa-magnifying-glass"></i> RO Code <span class="req">*</span></label>
+            <input id="roCode" type="text" placeholder="e.g. BPH001234" maxlength="12" class="sf-input" style="text-transform:uppercase;" />
+          </div>
+          <button type="button" onclick="fetchROInfo()" class="sf-btn sf-btn-warn" id="searchBtn">
+            <span id="searchIcon"><i class="fa-solid fa-search"></i></span>
+            <span>Search</span>
+          </button>
+        </div>
+
+        <!-- Last Visit Info -->
+        <div class="sf-info-box" id="lastVisitBox">
+          <div class="icon"><i class="fa-solid fa-circle-info"></i></div>
+          <div class="sf-info-box-content">
+            <strong>Last Visit Date:</strong> <span id="lastVisitDate"></span>
+            &nbsp;&nbsp;|&nbsp;&nbsp;
+            <strong>Last Purpose:</strong> <span id="lastPurpose"></span>
+          </div>
+        </div>
+
+        <!-- RO Information -->
+        <div class="sf-section-label">RO & Location Information</div>
+        <div class="sf-form-grid">
+          <div class="sf-field">
+            <label class="sf-label"><i class="fa-solid fa-gas-pump"></i> RO Name <span class="req">*</span></label>
+            <input id="roName" type="text" class="sf-input" />
+          </div>
+          <div class="sf-field">
+            <label class="sf-label"><i class="fa-solid fa-city"></i> Zone <span class="req">*</span></label>
+            <input id="zone" type="text" class="sf-input" />
+          </div>
+          <div class="sf-field">
+            <label class="sf-label"><i class="fa-solid fa-map-location-dot"></i> Region <span class="req">*</span></label>
+            <input id="region" type="text" class="sf-input" />
+          </div>
+          <div class="sf-field">
+            <label class="sf-label"><i class="fa-brands fa-get-pocket"></i> Phase <span class="req">*</span></label>
+            <select id="phase" class="sf-select">
+              <option disabled selected>— Select Phase —</option>
+              <option>HPCL/Phase-X</option>
+              <option>HPCL/Phase-IX</option>
+              <option>HPCL/Phase-XI</option>
+              <option>HPCL/Phase-XII</option>
+              <option>HPCL/Phase-XIII</option>
+              <option>RBML</option>
+              <option>BPCL/IOT</option>
+              <option>NPL</option>
+              <option>NO PLAN</option>
+              <option>IN LEAVE</option>
+              <option>HPCL OFFICE</option>
+              <option>NAYARA/PHASE-V</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Visit Details -->
+        <div class="sf-section-label">Visit Details</div>
+        <div class="sf-form-grid">
+          <div class="sf-field">
+            <label class="sf-label"><i class="fa-regular fa-calendar-days"></i> Schedule Date <span class="req">*</span></label>
+            <input id="date" type="date" class="sf-input" />
+          </div>
+          <div class="sf-field">
+            <label class="sf-label"><i class="fa-solid fa-wrench"></i> Issue Type <span class="req">*</span></label>
+            <select id="issueType" class="sf-select">
+              <option disabled selected>— Select Issue Type —</option>
+              <option>Issue Visit</option>
+              <option>PM Visit</option>
+              <option>Issue & PM Visit</option>
+              <option>ATG Visit</option>
+              <option>ATG & PM Visit</option>
+              <option>Survey</option>
+              <option>Power ON</option>
+              <option>SAT</option>
+              <option>NO PLAN</option>
+              <option>HPCL OFFICE</option>
+              <option>IN LEAVE</option>
+            </select>
+          </div>
+          <div class="sf-field">
+            <label class="sf-label"><i class="fa-solid fa-user-gear"></i> Engineer Name <span class="req">*</span></label>
+            <select id="engineer" class="sf-select">
+              <option disabled selected>— Select Engineer —</option>
+              <option>Abhishek Pathak</option>
+              <option>Amit Kumar</option>
+              <option>Banti Kumar</option>
+              <option>Gautam Kumar</option>
+              <option>Gautam Kumar (Purnia)</option>
+              <option>Kaushal Pandey</option>
+              <option>Kuldeep Kumar</option>
+              <option>Prerak Singh</option>
+              <option>Rajan Pandey</option>
+              <option>Rajanish Mishra</option>
+              <option>Raushan Kumar</option>
+              <option>RAVI PRATAP</option>
+              <option>Shaurav Kumar</option>
+              <option>Shubhendu Giri</option>
+              <option>Vicky Vikrant</option>
+              <option>Vinit Kumar</option>
+            </select>
+          </div>
+          <div class="sf-field">
+            <label class="sf-label"><i class="fa-solid fa-id-badge"></i> Employee ID <span class="req">*</span></label>
+            <input id="empId" type="text" class="sf-input" readonly />
+          </div>
+          <div class="sf-field">
+            <label class="sf-label"><i class="fa-solid fa-layer-group"></i> AMC Year / Quarter <span class="req">*</span></label>
+            <input id="amcQtr" type="text" class="sf-input" />
+          </div>
+          <div class="sf-field">
+            <label class="sf-label"><i class="fa-solid fa-ticket"></i> Incident / Complaint ID <span class="req">*</span></label>
+            <input id="incidentId" type="text" class="sf-input" placeholder="Enter NA if not available" />
+          </div>
+          <div class="sf-field sf-form-grid-full">
+            <label class="sf-label"><i class="fa-solid fa-list-check"></i> Purpose of Visit <span class="req">*</span></label>
+            <input id="purpose" type="text" class="sf-input" oninput="this.value = this.value.toUpperCase();" placeholder="Describe purpose..." />
+          </div>
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="sf-footer">
+          <div class="sf-footer-logos">
+            <img src="./assets/HPCL.png" alt="HPCL" onerror="this.style.display='none'" />
+            <img src="./assets/JioBP.png" alt="JioBP" onerror="this.style.display='none'" />
+            <img src="./assets/BPCL.png" alt="BPCL" onerror="this.style.display='none'" />
+            <span class="sf-dev-tag">Developed by Advit Software &nbsp;|&nbsp; v27.10.25</span>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button type="button" class="sf-btn sf-btn-neutral" onclick="document.getElementById('formId').reset()">
+              <i class="fa-solid fa-rotate-left"></i> Reset
+            </button>
+            <button type="submit" class="sf-btn sf-btn-success sf-btn-lg" id="submitBtn2">
+              <span id="submitText2"><i class="fa-solid fa-floppy-disk"></i> Save Record</span>
+            </button>
+          </div>
+        </div>
+
+      </form>
+    </div>
+  </main>
+
+  <!-- Toast Notification -->
+  <div id="sf-toast" class="sf-toast">
+    <div class="sf-toast-icon" id="sf-toast-icon"><i class="fa-solid fa-check"></i></div>
+    <div>
+      <div class="sf-toast-title" id="sf-toast-title">Success</div>
+      <div class="sf-toast-msg" id="sf-toast-msg"></div>
+    </div>
+  </div>
+
+  <script>
+    const baseUrl = window.BACKEND_URL || "https://relcon-crm.onrender.com";
+    const HPCL_START_QTR_DATE = "2026-01-01";
+    const HPCL_END_QTR_DATE   = "2026-03-31";
+
+    // Set date badge in header
+    document.getElementById('currentDateBadge').textContent =
+      new Date().toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+
+    // Set today's date
+    document.getElementById('date').value = new Date().toLocaleDateString('en-CA');
+
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('sf-toast');
+      const icon  = document.getElementById('sf-toast-icon');
+      const title = document.getElementById('sf-toast-title');
+      const msg   = document.getElementById('sf-toast-msg');
+
+      toast.className = 'sf-toast ' + type;
+      icon.innerHTML  = type === 'success' ? '<i class="fa-solid fa-check"></i>' : '<i class="fa-solid fa-xmark"></i>';
+      title.textContent = type === 'success' ? 'Record Saved' : 'Action Failed';
+      msg.textContent = message;
+
+      setTimeout(() => toast.classList.add('show'), 10);
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3500);
+    }
+
+    function setBtnLoading(loading) {
+      ['submitBtn','submitBtn2'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.disabled = loading;
+      });
+      ['submitText','submitText2'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = loading
+          ? '<span class="sf-spinner"></span> Saving...'
+          : '<i class="fa-solid fa-floppy-disk"></i> Save Record';
+      });
+    }
+
+    async function handleSubmit(event) {
+      event.preventDefault();
+      if (!validateForm()) return;
+
+      const data = {
+        roCode:     document.getElementById('roCode').value.trim().toUpperCase(),
+        date:       document.getElementById('date').value,
+        zone:       document.getElementById('zone').value,
+        roName:     document.getElementById('roName').value,
+        region:     document.getElementById('region').value,
+        phase:      document.getElementById('phase').value,
+        issueType:  document.getElementById('issueType').value,
+        engineer:   document.getElementById('engineer').value,
+        empId:      document.getElementById('empId').value,
+        amcQtr:     document.getElementById('amcQtr').value,
+        incidentId: document.getElementById('incidentId').value.toUpperCase(),
+        purpose:    document.getElementById('purpose').value.toUpperCase(),
+      };
+
+      const validationResult = await validateHPCLAMC(data);
+      if (!validationResult.isValid) { showToast(validationResult.message, 'error'); return; }
+
+      setBtnLoading(true);
+
+      try {
+        const checkRes = await fetch(`${baseUrl}/checkDuplicate?roCode=${data.roCode}&date=${data.date}&engineer=${data.engineer}`, { credentials: 'include' });
+        const exists = await checkRes.json();
+        if (exists?.duplicate) { showToast('Visit record already submitted for this date.', 'error'); setBtnLoading(false); return; }
+      } catch (err) { showToast('Error validating duplicate record.', 'error'); setBtnLoading(false); return; }
+
+      const response = await fetch(`${baseUrl}/saveDailyPlan`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data), credentials: 'include',
+      });
+      setBtnLoading(false);
+      if (response.ok) { showToast('Daily plan submitted successfully!'); document.getElementById('formId').reset(); document.getElementById('date').value = new Date().toLocaleDateString('en-CA'); }
+      else showToast('Error submitting plan. Please retry.', 'error');
+    }
+
+    async function fetchROInfo() {
+      const roCode = document.getElementById('roCode').value.trim().toUpperCase();
+      if (!roCode) return showToast('Please enter an RO Code first.', 'error');
+
+      const icon = document.getElementById('searchIcon');
+      icon.innerHTML = '<span class="sf-spinner" style="border-color:rgba(255,255,255,0.4);border-top-color:#fff;"></span>';
+
+      try {
+        const res = await fetch(`${baseUrl}/romaster/getROInfo/${roCode}`, { credentials: 'include' });
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        document.getElementById('roName').value  = data.roName  || '';
+        document.getElementById('zone').value    = data.zone    || '';
+        document.getElementById('region').value  = data.region  || '';
+        document.getElementById('phase').value   = data.phase   || '';
+        document.getElementById('engineer').value = data.engineer || '';
+        await fetchEmpIdIfEngineerExists();
+        ['roName','zone','region'].forEach(id => document.getElementById(id).readOnly = true);
+        document.getElementById('phase').disabled = true;
+
+        const lastRes = await fetch(`${baseUrl}/getLastVisit/${roCode}`, { credentials: 'include' });
+        if (lastRes.ok) {
+          const lastData = await lastRes.json();
+          if (lastData.lastDate || lastData.lastPurpose) {
+            document.getElementById('lastVisitDate').textContent = lastData.lastDate || 'N/A';
+            document.getElementById('lastPurpose').textContent   = lastData.lastPurpose || 'N/A';
+            document.getElementById('lastVisitBox').classList.add('visible');
+          }
+        }
+        showToast('RO information loaded successfully.');
+      } catch (err) {
+        showToast('RO Code not found in master data.', 'error');
+      } finally {
+        icon.innerHTML = '<i class="fa-solid fa-search"></i>';
+      }
+    }
+
+    document.getElementById('issueType').addEventListener('change', async function () {
+      const selectedType = this.value;
+      const roCode = document.getElementById('roCode').value.trim().toUpperCase();
+      if (!roCode) return;
+      if (['PM Visit','Issue & PM Visit','ATG & PM Visit'].includes(selectedType)) {
+        try {
+          const res = await fetch(`${baseUrl}/romaster/getROInfo/${roCode}`, { credentials: 'include' });
+          if (!res.ok) throw new Error();
+          const data = await res.json();
+          document.getElementById('amcQtr').value = data.amcQtr || '';
+          document.getElementById('amcQtr').readOnly = true;
+        } catch { showToast('Unable to fetch AMC Quarter.', 'error'); }
+      } else {
+        document.getElementById('amcQtr').readOnly = false;
+        document.getElementById('amcQtr').value = 'Excluding PM Visit';
+      }
+    });
+
+    document.getElementById('phase').addEventListener('change', function () {
+      const selectedPhase = this.value;
+      const setRegionDropdown = () => {
+        const regionContainer = document.getElementById('region').parentElement;
+        regionContainer.innerHTML = `
+          <label class="sf-label"><i class="fa-solid fa-map-location-dot"></i> Region <span class="req">*</span></label>
+          <select id="region" class="sf-select">
+            <option>BEGUSARAI RET RO</option><option>PATNA RET RO</option>
+            <option>JHARKHAND</option><option>LUCKNOW RET RO</option>
+          </select>`;
+        const rd = document.getElementById('region');
+        const setZone = r => {
+          document.getElementById('zone').value = (r==='BEGUSARAI RET RO'||r==='PATNA RET RO'||r==='JHARKHAND') ? 'ECZ' : (r==='LUCKNOW RET RO') ? 'NCZ' : '';
+        };
+        setZone(rd.value);
+        rd.addEventListener('change', () => setZone(rd.value));
+      };
+      if (selectedPhase === 'NO PLAN') {
+        Object.assign({},{ roCode:'N/A',roName:'NO PLAN',issueType:'NO PLAN',purpose:'NO PLAN',amcQtr:'NO PLAN',incidentId:'NA' });
+        ['roCode','roName','issueType','purpose','amcQtr','incidentId'].forEach((id,i) => {
+          const vals = ['N/A','NO PLAN','NO PLAN','NO PLAN','NO PLAN','NA'];
+          if(document.getElementById(id)) document.getElementById(id).value = vals[i];
+        });
+        setRegionDropdown();
+      } else if (selectedPhase === 'IN LEAVE') {
+        ['roCode','roName','issueType','purpose','amcQtr','incidentId'].forEach((id,i) => {
+          const vals = ['N/A','IN LEAVE','IN LEAVE','IN LEAVE','IN LEAVE','NA'];
+          if(document.getElementById(id)) document.getElementById(id).value = vals[i];
+        });
+        setRegionDropdown();
+      } else if (selectedPhase === 'HPCL OFFICE') {
+        ['roCode','roName','issueType','amcQtr','incidentId'].forEach((id,i) => {
+          const vals = ['N/A','HPCL OFFICE','HPCL OFFICE','HPCL OFFICE','NA'];
+          if(document.getElementById(id)) document.getElementById(id).value = vals[i];
+        });
+        setRegionDropdown();
+      } else {
+        const rc = document.getElementById('region').parentElement;
+        rc.innerHTML = `<label class="sf-label"><i class="fa-solid fa-map-location-dot"></i> Region <span class="req">*</span></label><input id="region" type="text" class="sf-input" />`;
+      }
+    });
+
+    async function fetchEmpIdIfEngineerExists() {
+      const engineer = document.getElementById('engineer')?.value?.trim();
+      if (!engineer) return;
+      try {
+        const res = await fetch(`${baseUrl}/getEmpId/${encodeURIComponent(engineer)}`);
+        document.getElementById('empId').value = res.ok ? (await res.json()).empId || '' : '';
+      } catch { document.getElementById('empId').value = ''; }
+    }
+    document.getElementById('engineer').addEventListener('change', fetchEmpIdIfEngineerExists);
+    window.addEventListener('DOMContentLoaded', fetchEmpIdIfEngineerExists);
+
+    async function validateHPCLAMC(data) {
+      const validHPCLPhases = ['HPCL/Phase-X','HPCL/Phase-IX','HPCL/Phase-XI','HPCL/Phase-XII','HPCL/Phase-XIII'];
+      if (!data.phase || !validHPCLPhases.includes(data.phase)) return { isValid: true };
+      if (data.issueType === 'POWER ON OR SAT') return { isValid: true };
+      const isPMVisit = ['PM Visit','Issue & PM Visit','ATG & PM Visit'].includes(data.issueType);
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return { isValid: true };
+        const response = await fetch(`${baseUrl}/getDailyPlans`, { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, credentials: 'include' });
+        if (!response.ok) return { isValid: true };
+        const plans = await response.json();
+        const roPlans = plans.filter(plan => {
+          const pd = new Date(plan.date), sd = new Date(HPCL_START_QTR_DATE), ed = new Date(HPCL_END_QTR_DATE);
+          return plan.roCode === data.roCode && ['PM Visit','Issue & PM Visit','ATG & PM Visit'].includes(plan.issueType) && pd >= sd && pd <= ed;
+        });
+        if (roPlans.length === 0 && !isPMVisit) return { isValid: false, message: 'AMC Pending — Please select Issue & PM Visit or PM Visit.' };
+        if (roPlans.length > 0 && isPMVisit) {
+          const latest = roPlans.reduce((a,b) => new Date(a.date) > new Date(b.date) ? a : b);
+          return { isValid: false, message: `AMC Already Done on ${new Date(latest.date).toLocaleDateString('en-GB')}. Please change Issue Type.` };
+        }
+        return { isValid: true };
+      } catch { return { isValid: true }; }
+    }
+
+    function validateForm() {
+      const fields = ['roCode','date','roName','zone','region','phase','issueType','engineer','empId','amcQtr','incidentId','purpose'];
+      for (let id of fields) {
+        const field = document.getElementById(id);
+        if (!field) continue;
+        const val = field.value?.trim();
+        if (!val || val.startsWith('— Select')) { showToast(`Please fill in the "${id}" field.`, 'error'); field.focus(); return false; }
+      }
+      return true;
+    }
+  </script>
+</body>
+</html>

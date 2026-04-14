@@ -1,0 +1,1342 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>BPCL Status Records</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.sheetjs.com/xlsx-0.18.5/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      body {
+        font-family: "Plus Jakarta Sans", sans-serif;
+        background-color: var(--page-bg);
+        font-size: 12px;
+      }
+      th,
+      td {
+        white-space: nowrap;
+      }
+      thead th {
+        position: sticky;
+        top: 0;
+        background-color: #f3f4f6;
+        z-index: 1;
+      }
+    </style>
+  
+  
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <!-- ⚡ RELCON Global Theme -->
+  <style>
+    :root{
+      --c-bg:#F4F6F9;--c-surface:#fff;--c-border:#E2E8F0;
+      --c-text:#0F172A;--c-text2:#475569;--c-text3:#94A3B8;
+      --c-primary:#2563EB;--c-primary-h:#1D4ED8;--c-primary-lt:#EFF6FF;
+      --c-success:#16A34A;--c-warning:#D97706;--c-danger:#DC2626;
+    }
+    [data-theme="dark"]{
+      --c-bg:#0B1120;--c-surface:#111827;--c-border:#1E293B;
+      --c-text:#F1F5F9;--c-text2:#94A3B8;--c-text3:#475569;
+      --c-primary:#3B82F6;--c-primary-lt:#172554;
+    }
+    body{font-family:'Inter',-apple-system,sans-serif!important;background:var(--c-bg)!important;color:var(--c-text)!important;}
+    h1,h2,.text-xl{color:#1E3A8A!important;}
+    [data-theme="dark"] h1,[data-theme="dark"] h2,[data-theme="dark"] .text-xl{color:#60A5FA!important;}
+
+    /* Tables */
+    table thead th,thead th,.bg-gray-200 th,.bg-gray-100 th{
+      background:#1E3A8A!important;color:#fff!important;
+      font-size:11px!important;text-transform:uppercase;letter-spacing:.6px;
+      padding:10px 12px!important;
+    }
+    tbody tr:hover{background:#EFF6FF!important;}
+    [data-theme="dark"] tbody tr:hover{background:#172554!important;}
+
+    /* Buttons */
+    .bg-green-600,.bg-blue-600,.bg-teal-600{background:var(--c-primary)!important;}
+    .bg-green-600:hover,.bg-blue-600:hover{background:var(--c-primary-h)!important;}
+    .bg-red-600,.bg-red-500{background:var(--c-danger)!important;}
+    .bg-yellow-500{background:var(--c-warning)!important;}
+    .text-green-600,.text-green-700,.text-blue-600{color:var(--c-primary)!important;}
+
+    /* Inputs */
+    input,select,textarea{
+      border:1.5px solid var(--c-border)!important;border-radius:6px!important;
+      font-family:inherit!important;background:var(--c-surface)!important;color:var(--c-text)!important;
+    }
+    input:focus,select:focus,textarea:focus{
+      border-color:var(--c-primary)!important;
+      box-shadow:0 0 0 3px rgba(37,99,235,.12)!important;outline:none!important;
+    }
+
+    /* Cards */
+    .bg-white,.card{background:var(--c-surface)!important;}
+    .shadow,.shadow-md,.shadow-lg{box-shadow:0 2px 12px rgba(0,0,0,.07)!important;}
+    .rounded,.rounded-lg,.rounded-xl{border-radius:8px!important;}
+
+    /* Scrollbar */
+    ::-webkit-scrollbar{width:5px;height:5px;}
+    ::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:3px;}
+    ::-webkit-scrollbar-thumb:hover{background:#94A3B8;}
+    [data-theme="dark"] ::-webkit-scrollbar-thumb{background:#1E293B;}
+  </style>
+
+
+
+
+
+
+
+
+  <!-- RELCON-MASTER-CSS -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style id="relcon-master">
+  /* ═══════════════════════════════════════════════════
+     RELCON CRM — Master Design System v3
+     Font: Inter  |  Light Theme Only  |  Enterprise UI
+  ═══════════════════════════════════════════════════ */
+
+  /* ── Design Tokens ─────────────────────────────── */
+  :root {
+    --brand:       #2563EB;
+    --brand-dk:    #1D4ED8;
+    --brand-lt:    #EFF6FF;
+    --brand-glow:  rgba(37,99,235,0.12);
+    --success:     #059669;
+    --success-lt:  #ECFDF5;
+    --warn:        #D97706;
+    --warn-lt:     #FFFBEB;
+    --danger:      #DC2626;
+    --danger-lt:   #FEF2F2;
+    --purple:      #7C3AED;
+
+    --bg:          #F1F5F9;
+    --surface:     #FFFFFF;
+    --surface2:    #F8FAFC;
+    --border:      #E2E8F0;
+    --border-lt:   #F1F5F9;
+
+    --txt:         #0F172A;
+    --txt2:        #1E293B;
+    --txt3:        #64748B;
+    --txt4:        #94A3B8;
+    --txt5:        #CBD5E1;
+
+    /* CRM Font Sizes — same as Salesforce Lightning */
+    --fs-xs:    10px;   /* labels, badges */
+    --fs-sm:    11px;   /* table headers, captions */
+    --fs-base:  13px;   /* body, table cells */
+    --fs-md:    14px;   /* emphasized body */
+    --fs-lg:    16px;   /* section titles */
+    --fs-xl:    20px;   /* page titles */
+    --fs-2xl:   24px;   /* hero numbers */
+
+    --lh:      1.5;
+    --r-xs:    4px;
+    --r-sm:    6px;
+    --r:       8px;
+    --r-lg:    12px;
+    --r-xl:    16px;
+    --r-full:  9999px;
+
+    --sh-xs:   0 1px 2px rgba(15,23,42,0.05);
+    --sh-sm:   0 1px 3px rgba(15,23,42,0.08), 0 1px 2px rgba(15,23,42,0.04);
+    --sh:      0 4px 6px rgba(15,23,42,0.07), 0 2px 4px rgba(15,23,42,0.05);
+    --sh-md:   0 10px 20px rgba(15,23,42,0.08), 0 4px 8px rgba(15,23,42,0.04);
+    --sh-lg:   0 20px 40px rgba(15,23,42,0.10), 0 8px 16px rgba(15,23,42,0.06);
+
+    --topbar-h: 52px;
+  }
+
+  /* ── Base ─────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; }
+  html {
+    font-size: var(--fs-base) !important;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+    font-size: var(--fs-base) !important;
+    font-weight: 400 !important;
+    line-height: var(--lh) !important;
+    color: var(--txt) !important;
+    background: var(--bg) !important;
+    margin: 0 !important; padding: 0 !important;
+    min-height: 100vh;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--txt4); }
+
+  /* ── PAGE SHELL — Same structure across ALL pages ── */
+  .crm-page {
+    display: flex; flex-direction: column;
+    min-height: 100vh;
+    background: var(--bg);
+  }
+
+  /* Top bar inside iframe pages */
+  .crm-topbar {
+    height: var(--topbar-h);
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center;
+    padding: 0 24px; gap: 12px;
+    flex-shrink: 0;
+    box-shadow: var(--sh-xs);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .crm-topbar-title {
+    font-size: var(--fs-md);
+    font-weight: 700;
+    color: var(--txt);
+    letter-spacing: -0.2px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .crm-topbar-title .icon {
+    width: 28px; height: 28px;
+    background: var(--brand-lt);
+    border-radius: var(--r-sm);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--brand); font-size: 13px;
+  }
+  .crm-topbar-meta {
+    font-size: var(--fs-xs);
+    font-weight: 500; color: var(--txt4);
+    background: var(--surface2);
+    padding: 3px 10px;
+    border-radius: var(--r-full);
+    border: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .crm-topbar-spacer { flex: 1; }
+  .crm-topbar-actions { display: flex; align-items: center; gap: 8px; }
+
+  /* Content body */
+  .crm-body {
+    flex: 1;
+    padding: 20px 24px;
+    max-width: 1440px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  /* ── CARD — universal container ─────────────────── */
+  .crm-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    box-shadow: var(--sh-sm);
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .crm-card-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--surface);
+    gap: 12px; flex-wrap: wrap;
+  }
+  .crm-card-title {
+    font-size: var(--fs-md);
+    font-weight: 700;
+    color: var(--txt);
+    letter-spacing: -0.2px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .crm-card-body { padding: 20px; }
+  .crm-card-footer {
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--surface2);
+    display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+  }
+
+  /* ── FILTERS BAR ─────────────────────────────────── */
+  .crm-filters {
+    display: flex; align-items: flex-end; gap: 10px;
+    flex-wrap: wrap; padding: 14px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+  .crm-filter-group { display: flex; flex-direction: column; gap: 4px; }
+  .crm-filter-group label {
+    font-size: var(--fs-xs) !important;
+    font-weight: 600 !important;
+    color: var(--txt4) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    margin: 0 !important;
+  }
+
+  /* ── TABLE ───────────────────────────────────────── */
+  .crm-table-wrap {
+    overflow-x: auto; overflow-y: auto;
+  }
+  .crm-table-wrap table,
+  table.crm-table {
+    width: 100%; border-collapse: collapse;
+    font-family: 'Inter', sans-serif !important;
+    font-size: var(--fs-base) !important;
+    min-width: 600px;
+  }
+  thead th,
+  .crm-table thead th,
+  table thead th {
+    background: #0F172A !important;
+    color: #F1F5F9 !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: var(--fs-sm) !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.7px !important;
+    padding: 10px 14px !important;
+    text-align: left !important;
+    white-space: nowrap !important;
+    border: none !important;
+    position: sticky; top: 0; z-index: 10;
+  }
+  thead th:first-child { border-radius: 0 !important; }
+  tbody tr {
+    border-bottom: 1px solid var(--border-lt) !important;
+    transition: background 0.1s;
+  }
+  tbody tr:last-child { border-bottom: none !important; }
+  tbody tr:hover { background: #EFF6FF !important; }
+  tbody td {
+    padding: 9px 14px !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: var(--fs-base) !important;
+    color: var(--txt2) !important;
+    vertical-align: middle !important;
+    border: none !important;
+    border-bottom: 1px solid var(--border-lt) !important;
+  }
+  tbody td:first-child { font-weight: 500; color: var(--txt) !important; }
+
+  /* ── STATUS BADGES ───────────────────────────────── */
+  .badge {
+    display: inline-flex; align-items: center;
+    padding: 2px 9px;
+    border-radius: var(--r-full);
+    font-size: var(--fs-xs) !important;
+    font-weight: 600 !important;
+    white-space: nowrap;
+    letter-spacing: 0.3px;
+  }
+  .badge-green  { background: var(--success-lt); color: var(--success); }
+  .badge-red    { background: var(--danger-lt);  color: var(--danger);  }
+  .badge-yellow { background: var(--warn-lt);    color: var(--warn);    }
+  .badge-blue   { background: var(--brand-lt);   color: var(--brand);   }
+  .badge-gray   { background: var(--surface2);   color: var(--txt3);    }
+
+  /* ── FORM ELEMENTS ───────────────────────────────── */
+  .crm-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+  }
+  .crm-form-grid-2 { grid-template-columns: repeat(2, 1fr); }
+  .crm-form-grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .crm-field { display: flex; flex-direction: column; gap: 5px; }
+  .crm-label {
+    font-size: var(--fs-xs) !important;
+    font-weight: 600 !important;
+    color: var(--txt3) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    font-family: 'Inter', sans-serif !important;
+  }
+  .crm-input,
+  input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]),
+  select, textarea {
+    font-family: 'Inter', sans-serif !important;
+    font-size: var(--fs-base) !important;
+    font-weight: 400 !important;
+    color: var(--txt) !important;
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--r-sm) !important;
+    padding: 7px 10px !important;
+    outline: none !important;
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s !important;
+    height: 36px !important;
+    line-height: 1.4 !important;
+    width: 100%;
+  }
+  textarea {
+    height: auto !important;
+    min-height: 80px;
+    resize: vertical;
+  }
+  select { -webkit-appearance: none; appearance: none; cursor: pointer; padding-right: 28px !important; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%2394A3B8' d='M1 1l5 5 5-5'/%3E%3C/svg%3E") !important; background-repeat: no-repeat !important; background-position: right 10px center !important; }
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--brand) !important;
+    background: var(--surface) !important;
+    box-shadow: 0 0 0 3px var(--brand-glow) !important;
+  }
+  input::placeholder, textarea::placeholder { color: var(--txt5) !important; font-size: var(--fs-base) !important; }
+  label, .label {
+    font-family: 'Inter', sans-serif !important;
+    font-size: var(--fs-xs) !important;
+    font-weight: 600 !important;
+    color: var(--txt3) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    display: block; margin-bottom: 5px !important;
+  }
+
+  /* ── BUTTONS ─────────────────────────────────────── */
+  button, .btn, [role=button] {
+    font-family: 'Inter', sans-serif !important;
+    font-size: var(--fs-base) !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    border-radius: var(--r-sm) !important;
+    transition: all 0.15s !important;
+    display: inline-flex; align-items: center; gap: 5px;
+    white-space: nowrap;
+  }
+  /* Primary */
+  .bg-green-600, .bg-green-500, .bg-blue-600, .bg-blue-500, .bg-blue-700 {
+    background: var(--brand) !important; color: #fff !important;
+    border: none !important; padding: 7px 14px !important;
+    height: 34px; box-shadow: 0 1px 2px rgba(37,99,235,0.2) !important;
+    font-weight: 500 !important;
+  }
+  .bg-green-600:hover, .bg-blue-600:hover, .bg-green-500:hover, .bg-blue-500:hover {
+    background: var(--brand-dk) !important;
+    box-shadow: 0 4px 8px rgba(37,99,235,0.25) !important;
+    transform: translateY(-1px) !important;
+  }
+  .hover\:bg-green-700:hover { background: var(--brand-dk) !important; }
+  /* Warning */
+  .bg-yellow-500, .bg-yellow-400 { background: var(--warn) !important; color:#fff!important; border:none!important; padding:7px 14px!important; height:34px; }
+  /* Danger */
+  .bg-red-600, .bg-red-500 { background: var(--danger) !important; color:#fff!important; border:none!important; padding:7px 14px!important; height:34px; }
+  /* Success */
+  .bg-emerald-600, .bg-teal-600 { background:var(--success)!important; color:#fff!important; }
+
+  /* ── CARDS / CONTAINERS ──────────────────────────── */
+  .bg-white, .card {
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--r-lg) !important;
+    box-shadow: var(--sh-sm) !important;
+  }
+  .bg-gray-100, .bg-gray-50 { background: var(--surface2) !important; }
+  .bg-gray-200 { background: #F1F5F9 !important; }
+  .shadow, .shadow-md, .shadow-lg { box-shadow: var(--sh-sm) !important; }
+  .rounded, .rounded-lg, .rounded-xl { border-radius: var(--r) !important; }
+  .max-w-7xl, .max-w-6xl, .max-w-5xl, .max-w-4xl { width: 100% !important; }
+
+  /* ── TYPOGRAPHY ──────────────────────────────────── */
+  h1, .text-2xl, .text-3xl {
+    font-family: 'Inter', sans-serif !important;
+    font-size: var(--fs-xl) !important; font-weight: 700 !important;
+    color: var(--txt) !important; letter-spacing: -0.4px; line-height: 1.3;
+  }
+  h2, .text-xl {
+    font-family: 'Inter', sans-serif !important;
+    font-size: var(--fs-lg) !important; font-weight: 700 !important;
+    color: var(--txt) !important; letter-spacing: -0.2px;
+  }
+  h3, .text-lg { font-size: var(--fs-md) !important; font-weight: 600 !important; color: var(--txt) !important; }
+  p { font-size: var(--fs-base) !important; color: var(--txt2) !important; }
+  .text-gray-700, .text-gray-800 { color: var(--txt2) !important; }
+  .text-gray-500, .text-gray-600, .text-gray-400 { color: var(--txt3) !important; }
+  .text-green-600, .text-green-700, .text-green-800 { color: var(--brand) !important; }
+  .text-blue-600, .text-blue-700 { color: var(--brand) !important; }
+  .text-red-600, .text-red-500 { color: var(--danger) !important; }
+  .font-bold { font-weight: 700 !important; }
+  .font-semibold { font-weight: 600 !important; }
+  .font-medium { font-weight: 500 !important; }
+
+  /* ── TABLE CONTAINERS ────────────────────────────── */
+  .overflow-x-auto, [class*="overflow-x-auto"] {
+    background: var(--surface) !important;
+    border-radius: var(--r-lg) !important;
+    border: 1px solid var(--border) !important;
+    box-shadow: var(--sh-sm) !important;
+  }
+  .border { border-color: var(--border) !important; }
+  .border-gray-300 { border-color: var(--border) !important; }
+
+  /* ── PAGE PADDING ────────────────────────────────── */
+  body.p-4, body.p-6, body[class*="p-"] {
+    padding: 0 !important;
+  }
+
+  /* ── MISC ────────────────────────────────────────── */
+  .p-6 { padding: 20px !important; }
+  .p-4 { padding: 16px !important; }
+  .mb-4 { margin-bottom: 14px !important; }
+  .gap-4 { gap: 12px !important; }
+  .focus\:ring-green-300:focus, .focus\:ring:focus {
+    box-shadow: 0 0 0 3px var(--brand-glow) !important;
+  }
+  .bg-green-100 { background: var(--brand-lt) !important; color: var(--brand) !important; }
+  .bg-red-100   { background: var(--danger-lt) !important; color: var(--danger) !important; }
+  .bg-yellow-100 { background: var(--warn-lt) !important; color: var(--warn) !important; }
+  .text-\[9px\], .text-\[10px\], .text-\[11px\] { font-size: var(--fs-xs) !important; }
+  .text-\[12px\], .text-xs, .text-sm { font-size: var(--fs-sm) !important; }
+  .text-\[13px\], .text-\[14px\] { font-size: var(--fs-base) !important; }
+  </style>
+  <script src="config.js"></script>
+</head>
+  <body style="padding:0;margin:0;">
+<div class="crm-page">
+  <div class="crm-topbar">
+    <div class="crm-topbar-title">
+      <span class="icon" style="background:rgba(37,99,235,0.1);color:#2563EB;width:28px;height:28px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">
+        <i class="fa-solid fa-file-lines"></i>
+      </span>
+      BPCL Status Report
+    </div>
+    <div class="crm-topbar-spacer"></div>
+  </div>
+  <div class="crm-body">
+
+    <div class="max-w-7xl mx-auto bg-white p-6 shadow rounded">
+      <div class="flex justify-between items-center mb-4">
+        <h1 class="text-xl font-bold">📄 BPCL Status Report</h1>
+        <div class="flex items-center gap-2">
+          <img src="./assets/BPCL.png" alt="BPCL" class="h-14" />
+        </div>
+        <button
+          id="exportBtn"
+          class="bg-green-600 text-white px-4 py-2 rounded"
+        >
+          📤 Export
+        </button>
+      </div>
+
+      <!-- Filter -->
+      <div class="flex flex-wrap items-center gap-4 mb-4">
+        <div>
+          <label
+            for="fromDate"
+            class="block text-[12px] font-medium text-gray-700"
+            >📅 From:</label
+          >
+          <input
+            type="date"
+            id="fromDate"
+            class="border border-gray-300 rounded px-2 py-1 text-[12px]"
+          />
+        </div>
+        <div>
+          <label
+            for="toDate"
+            class="block text-[12px] font-medium text-gray-700"
+            >📅 To:</label
+          >
+          <input
+            type="date"
+            id="toDate"
+            class="border border-gray-300 rounded px-2 py-1 text-[12px]"
+          />
+        </div>
+
+        <!-- Engineer filter -->
+        <div>
+          <label
+            for="engineerFilter"
+            class="block text-[12px] font-medium text-gray-700"
+            >👷 Engineer:</label
+          >
+          <select
+            id="engineerFilter"
+            class="border border-gray-300 rounded px-2 py-1 text-[12px] bg-white"
+          >
+            <option value="ALL">All Engineers</option>
+          </select>
+        </div>
+
+        <div class="self-end">
+          <button
+            id="clearFiltersBtn"
+            class="bg-yellow-500 text-white px-4 py-2 rounded"
+          >
+            ♻️ Clear Filter
+          </button>
+        </div>
+      </div>
+
+      <!-- Search -->
+      <div class="mb-4">
+        <input
+          type="text"
+          id="searchInput"
+          placeholder="🔎 Search anything..."
+          class="w-full border px-3 py-2 rounded"
+        />
+      </div>
+
+      <div
+        class="overflow-x-auto max-h-[75vh] overflow-y-auto border border-gray-300 rounded"
+      >
+        <table id="statusTable" class="min-w-max table-auto w-full text-[10px]">
+          <thead class="bg-blue-400 sticky top-0 z-10">
+            <tr id="tableHeader"></tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div
+      id="editModal"
+      class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50"
+    >
+      <div
+        class="bg-white p-6 rounded shadow max-h-[80vh] overflow-y-auto w-[90%] max-w-4xl"
+      >
+        <h2 class="text-lg font-bold mb-4">Edit BPCL Record</h2>
+        <form id="editForm" class="grid grid-cols-2 gap-4 text-xs"></form>
+        <div class="mt-4 flex justify-end">
+          <button
+            id="modalCancelBtn"
+            class="bg-gray-500 text-white px-4 py-1 rounded mr-2"
+          >
+            Cancel
+          </button>
+          <button
+            id="modalSaveBtn"
+            class="bg-green-600 text-white px-4 py-1 rounded"
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete Modal -->
+    <div
+      id="deleteModal"
+      class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 flex transition duration-200 ease-out"
+    >
+      <div class="bg-white p-6 rounded shadow max-w-sm text-sm">
+        <h3 class="text-lg font-bold text-red-600 mb-4">Confirm Delete</h3>
+        <p class="mb-4">Are you sure you want to delete this record?</p>
+        <div class="flex justify-end gap-2">
+          <button
+            id="deleteCancelBtn"
+            class="px-4 py-1 rounded bg-gray-400 text-white"
+          >
+            Cancel
+          </button>
+          <button
+            id="deleteConfirmBtn"
+            class="px-4 py-1 rounded bg-red-600 text-white"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div
+      id="toast"
+      class="fixed top-5 right-5 hidden bg-green-600 text-white px-4 py-2 rounded shadow-lg z-50 text-sm"
+    ></div>
+
+    <!-- Loader -->
+    <div
+      id="loader"
+      class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 hidden"
+    >
+      <div
+        class="w-12 h-12 border-4 border-white border-t-blue-600 rounded-full animate-spin"
+      ></div>
+    </div>
+
+    <script>
+      // ---------- Config ----------
+      const baseUrl = window.BACKEND_URL || "https://relcon-crm.onrender.com";
+
+      // State
+      let bpclData = [];
+      let currentUser = {};
+      let deleteTargetId = null;
+
+      // ---------- Utilities ----------
+      function getUserFromToken(token) {
+        try {
+          const payload = JSON.parse(atob(token.split(".")[1]));
+          return {
+            username: (payload.username || payload.name || "")
+              .trim()
+              .toLowerCase(),
+            engineerName: (payload.engineerName || "").trim(),
+            role: (payload.role || "").trim().toLowerCase(),
+          };
+        } catch (e) {
+          return { username: "", engineerName: "", role: "" };
+        }
+      }
+
+      function showLoader() {
+        document.getElementById("loader").classList.remove("hidden");
+      }
+      function hideLoader() {
+        document.getElementById("loader").classList.add("hidden");
+      }
+      function showToast(msg) {
+        const toast = document.getElementById("toast");
+        toast.textContent = msg;
+        toast.classList.remove("hidden");
+        setTimeout(() => toast.classList.add("hidden"), 3000);
+      }
+
+      // ---------- Fetch & Render ----------
+      async function fetchData() {
+        showLoader();
+        try {
+          const res = await fetch(`${baseUrl}/bpclStatus/getAllBPCLStatus`, {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          });
+          const data = await res.json();
+
+          const { username, engineerName, role } = getUserFromToken(
+            localStorage.getItem("token")
+          );
+          currentUser = { username, role };
+
+          bpclData = (data || [])
+            .map((d) => ({
+              ...d,
+              ...d.planId,
+              bpclStatusId: d._id,
+              planId: d.planId,
+            }))
+            .filter((d) =>
+              role === "admin"
+                ? true
+                : (d.engineer || "").trim() === engineerName
+            );
+
+          renderTable(bpclData);
+          populateEngineerFilter(bpclData);
+          applyAllFilters(); // apply initial filters
+        } catch (err) {
+          console.error("Error fetching BPCL data", err);
+          alert("Error fetching BPCL data");
+        } finally {
+          hideLoader();
+        }
+      }
+
+      function renderTable(data) {
+        showLoader();
+        setTimeout(() => {
+          const columns = [
+            { key: "engineer", label: "Engineer" },
+            { key: "region", label: "Region" },
+            { key: "roCode", label: "RO Code" },
+            { key: "roName", label: "RO Name" },
+            { key: "date", label: "Date" },
+            { key: "class1DeviceCount", label: "Class1 (With SIM) Count" },
+            { key: "class1Devices", label: "Class1 (With SIM) Devices" },
+            { key: "class1WithoutSimCount", label: "Class1 (No SIM) Count" },
+            {
+              key: "class1WithoutSimDevices",
+              label: "Class1 (No SIM) Devices",
+            },
+            { key: "class2DeviceCount", label: "Class2 Count" },
+            { key: "class2Devices", label: "Class2 Devices" },
+            { key: "relconAtgProvided", label: "RELCON ATG Provided" },
+            { key: "relconAtgCount", label: "RELCON ATG Count" },
+            { key: "relconAtgDetails", label: "RELCON ATG Details" },
+            { key: "jioSimNumber", label: "Jio SIM Number" },
+            { key: "airtelSimNumber", label: "Airtel SIM Number" },
+            { key: "isVerified", label: "Verified" },
+            { key: "actions", label: "Actions" },
+          ];
+
+          document.getElementById("tableHeader").innerHTML = columns
+            .map(
+              (col) =>
+                `<th class='border px-3 py-2 bg-blue-400 text-center font-semibold text-white'>${col.label}</th>`
+            )
+            .join("");
+
+          document.getElementById("tableBody").innerHTML = data
+            .map((record) => {
+              const encoded = btoa(
+                unescape(encodeURIComponent(JSON.stringify(record)))
+              );
+              const isVerified =
+                record.isVerified === true || record.isVerified === "true";
+
+              const row = columns
+                .map((col) => {
+                  if (col.key === "actions") {
+                    if (currentUser.role === "admin") {
+                      return `<td class="border text-center px-2 py-1">
+                    <button class="px-2 py-1 text-[11px] rounded bg-blue-50 text-blue-700 hover:bg-blue-100 mr-1" onclick='handleEditClick("${encoded}")'>Edit</button>
+                    <button class="px-2 py-1 text-[11px] rounded bg-red-50 text-red-700 hover:bg-red-100 ml-2" onclick='deleteRecord("${
+                      record.bpclStatusId
+                    }")'>Delete</button>
+                    ${
+                      isVerified
+                        ? ""
+                        : `<button class="bg-green-600 text-white px-2 py-1 rounded ml-2" onclick='verifyRecord("${record.bpclStatusId}")'>✅ Verify</button>`
+                    }
+                  </td>`;
+                    } else {
+                      const token = localStorage.getItem("token");
+                      const engName =
+                        getUserFromToken(token).engineerName || "";
+                      const isOwner =
+                        (record.engineer || "").trim() === engName.trim();
+                      if (isVerified) {
+                        return `<td class="border text-center px-2 py-1 text-green-700 font-semibold">🟢 Verified</td>`;
+                      } else if (isOwner) {
+                        return `<td class="border text-center px-2 py-1">
+                      <button class="px-2 py-1 text-[11px] rounded bg-blue-50 text-blue-700 hover:bg-blue-100 mr-1" onclick='handleEditClick("${encoded}")'>Edit</button>
+                      <span class="text-gray-500 italic text-[11px] ml-2">No delete</span>
+                    </td>`;
+                      } else {
+                        return `<td class="border text-center px-2 py-1 text-gray-400 italic">Not allowed</td>`;
+                      }
+                    }
+                  }
+
+                  // value handling: arrays -> join with comma, booleans/date special cases
+                  let value = record[col.key];
+                  if (Array.isArray(value)) value = value.join(", ");
+
+                  if (col.key === "isVerified") {
+                    return `<td class='border text-center px-2 py-1'>${
+                      isVerified ? "🟢 Yes" : "❌ No"
+                    }</td>`;
+                  }
+
+                  if (col.key === "date") {
+                    let parsedDate = new Date(value);
+                    const isValidDate = !isNaN(parsedDate);
+                    const iso = isValidDate
+                      ? parsedDate.toISOString().slice(0, 10)
+                      : "";
+                    return `<td class='border text-center px-2 py-1' data-date="${iso}">${
+                      value || ""
+                    }</td>`;
+                  }
+
+                  return `<td class='border text-center px-2 py-1'>${
+                    value === undefined || value === null ? "" : value
+                  }</td>`;
+                })
+                .join("");
+
+              return `<tr>${row}</tr>`;
+            })
+            .join("");
+
+          hideLoader();
+        }, 100);
+      }
+
+      function populateEngineerFilter(data) {
+        const sel = document.getElementById("engineerFilter");
+        const current = sel.value || "ALL";
+        const engineers = Array.from(
+          new Set(
+            (data || []).map((d) => (d.engineer || "").trim()).filter(Boolean)
+          )
+        ).sort();
+        sel.innerHTML = '<option value="ALL">All Engineers</option>';
+        engineers.forEach((eng) => {
+          const opt = document.createElement("option");
+          opt.value = eng;
+          opt.textContent = eng;
+          sel.appendChild(opt);
+        });
+        if (current && Array.from(sel.options).some((o) => o.value === current))
+          sel.value = current;
+      }
+
+      // ---------- Filtering ----------
+      function applyAllFilters() {
+        showLoader();
+        setTimeout(() => {
+          const searchValue = (
+            document.getElementById("searchInput").value || ""
+          )
+            .toLowerCase()
+            .trim();
+          const fromDate = new Date(document.getElementById("fromDate").value);
+          const toDate = new Date(document.getElementById("toDate").value);
+          const engineerFilter =
+            document.getElementById("engineerFilter").value || "ALL";
+
+          const headerCells = Array.from(
+            document.querySelectorAll("#statusTable thead th")
+          );
+          let dateColIndex = -1;
+          let engineerColIndex = -1;
+          headerCells.forEach((th, i) => {
+            const txt = th.innerText.trim().toLowerCase();
+            if (txt === "date") dateColIndex = i;
+            if (txt === "engineer") engineerColIndex = i;
+          });
+
+          const rows = Array.from(
+            document.querySelectorAll("#statusTable tbody tr")
+          );
+          rows.forEach((row) => {
+            const cells = Array.from(row.querySelectorAll("td"));
+            const rowText = row.textContent.toLowerCase();
+
+            const matchesSearch = !searchValue || rowText.includes(searchValue);
+            const engCell =
+              engineerColIndex > -1
+                ? cells[engineerColIndex] &&
+                  cells[engineerColIndex].innerText.trim()
+                : "";
+            const matchesEngineer =
+              engineerFilter === "ALL" ||
+              (engCell || "").toLowerCase() === engineerFilter.toLowerCase();
+
+            let matchesDate = true;
+            if (dateColIndex > -1) {
+              const dateCell = cells[dateColIndex];
+              const rowDateStr = dateCell
+                ? dateCell.getAttribute("data-date")
+                : "";
+              if (!rowDateStr) matchesDate = true;
+              else {
+                const rowDate = new Date(rowDateStr);
+                matchesDate =
+                  (!isNaN(fromDate) ? rowDate >= fromDate : true) &&
+                  (!isNaN(toDate) ? rowDate <= toDate : true);
+              }
+            }
+
+            row.style.display =
+              matchesSearch && matchesEngineer && matchesDate ? "" : "none";
+          });
+
+          hideLoader();
+        }, 50);
+      }
+
+      function clearFilters() {
+        document.getElementById("fromDate").value = "";
+        document.getElementById("toDate").value = "";
+        document.getElementById("searchInput").value = "";
+        document.getElementById("engineerFilter").value = "ALL";
+        applyAllFilters();
+      }
+
+      // ---------- Export ----------
+      function exportToExcel() {
+        const table = document.getElementById("statusTable");
+        const clone = table.cloneNode(true);
+        const rows = Array.from(clone.querySelectorAll("tbody tr"));
+
+        const headerCells = Array.from(clone.querySelectorAll("thead th"));
+        let jioColIndex = -1;
+        let airtelColIndex = -1;
+        headerCells.forEach((th, i) => {
+          const txt = th.innerText.trim().toLowerCase();
+          if (txt.includes("jio sim")) jioColIndex = i;
+          if (txt.includes("airtel")) airtelColIndex = i;
+        });
+
+        rows.forEach((row) => {
+          if (row.style.display === "none") {
+            row.remove();
+            return;
+          }
+          const cells = Array.from(row.querySelectorAll("td"));
+          if (jioColIndex > -1 && cells[jioColIndex]) {
+            const raw = cells[jioColIndex].innerText || "";
+            if (raw && !raw.startsWith("`"))
+              cells[jioColIndex].innerText = "`" + raw;
+          }
+          if (airtelColIndex > -1 && cells[airtelColIndex]) {
+            const raw = cells[airtelColIndex].innerText || "";
+            if (raw && !raw.startsWith("`"))
+              cells[airtelColIndex].innerText = "`" + raw;
+          }
+          cells.forEach((td) => (td.innerHTML = td.innerText));
+        });
+
+        const today = new Date().toLocaleDateString("en-CA");
+        const fromDate = document.getElementById("fromDate").value;
+        const toDate = document.getElementById("toDate").value;
+
+        let filename = "BPCL_Report";
+        if (fromDate && toDate) filename += `_${fromDate}_to_${toDate}`;
+        else if (fromDate) filename += `_from_${fromDate}`;
+        else if (toDate) filename += `_upto_${toDate}`;
+        else filename += `_${today}`;
+
+        const ws = XLSX.utils.table_to_sheet(clone);
+
+        try {
+          if (ws && ws["!ref"]) {
+            const range = XLSX.utils.decode_range(ws["!ref"]);
+            for (let R = range.s.r; R <= range.e.r; ++R) {
+              for (let C = range.s.c; C <= range.e.c; ++C) {
+                const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+                const cell = ws[cellAddress];
+                if (cell) {
+                  cell.s = cell.s || {};
+                  cell.s.font = Object.assign({}, cell.s.font, {
+                    name: "Calibri",
+                    sz: 11,
+                  });
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.warn("Excel styling not applied:", e);
+        }
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "BPCL Status");
+        XLSX.writeFile(wb, `${filename}.xlsx`);
+      }
+
+      // ---------- Edit / Save ----------
+      function handleEditClick(encoded) {
+        try {
+          const json = decodeURIComponent(escape(atob(encoded)));
+          const record = JSON.parse(json);
+          openEditModal(record);
+        } catch (err) {
+          alert("Error opening editor");
+        }
+      }
+
+      function openEditModal(record) {
+        const form = document.getElementById("editForm");
+        form.innerHTML = "";
+
+        // Hidden id
+        form.innerHTML += `<input type="hidden" name="_id" value="${record.bpclStatusId}" />`;
+
+        // Merge planId fields if present, and ensure ATG fields exist
+        const merged = Object.assign({}, record);
+        if (record.planId && typeof record.planId === "object") {
+          ["relconAtgProvided", "relconAtgCount", "relconAtgDetails"].forEach(
+            (k) => {
+              if (merged[k] === undefined && record.planId[k] !== undefined)
+                merged[k] = record.planId[k];
+            }
+          );
+        }
+        if (merged.relconAtgProvided === undefined)
+          merged.relconAtgProvided = "";
+        if (merged.relconAtgCount === undefined) merged.relconAtgCount = "";
+        if (merged.relconAtgDetails === undefined) merged.relconAtgDetails = [];
+
+        const skipKeys = [
+          "__v",
+          "createdAt",
+          "updatedAt",
+          "_id",
+          "bpclStatusId",
+        ];
+        const preferredOrder = [
+          "planId",
+          "engineer",
+          "region",
+          "roCode",
+          "roName",
+          "date",
+          "class1DeviceCount",
+          "class1Devices",
+          "class1WithoutSimCount",
+          "class1WithoutSimDevices",
+          "class2DeviceCount",
+          "class2Devices",
+          "relconAtgProvided",
+          "relconAtgCount",
+          "relconAtgDetails",
+          "jioSimNumber",
+          "airtelSimNumber",
+          "status",
+          "isVerified",
+          "createdBy",
+        ];
+        const keysSet = new Set(Object.keys(merged));
+        const finalKeys = [];
+        preferredOrder.forEach((k) => {
+          if (keysSet.has(k)) {
+            finalKeys.push(k);
+            keysSet.delete(k);
+          }
+        });
+        Array.from(keysSet).forEach((k) => finalKeys.push(k));
+
+        finalKeys.forEach((key) => {
+          if (skipKeys.includes(key)) return;
+          if (key === "planId" && typeof merged[key] === "object") return;
+
+          let value = merged[key];
+          let safeValue = Array.isArray(value) ? value.join(", ") : value || "";
+
+          if (key === "relconAtgProvided") {
+            form.innerHTML += `
+              <div>
+                <label class="block text-gray-700 font-medium mb-1">${key}</label>
+                <select name="${key}" class="w-full border px-2 py-1 rounded">
+                  <option value="">-- Select --</option>
+                  <option value="YES" ${
+                    safeValue === "YES" ? "selected" : ""
+                  }>YES</option>
+                  <option value="NO" ${
+                    safeValue === "NO" ? "selected" : ""
+                  }>NO</option>
+                </select>
+              </div>`;
+            return;
+          }
+
+          form.innerHTML += `
+            <div>
+              <label class="block text-gray-700 font-medium mb-1">${key}</label>
+              <input type="text" name="${key}" value="${String(
+            safeValue
+          ).replace(/"/g, "&quot;")}" class="w-full border px-2 py-1 rounded" />
+            </div>`;
+        });
+
+        // show planId if available
+        if (
+          record.planId &&
+          (typeof record.planId === "string" || record.planId._id)
+        ) {
+          const pid =
+            typeof record.planId === "string"
+              ? record.planId
+              : record.planId._id;
+          form.innerHTML += `<div class="md:col-span-2">
+            <label class="block text-gray-700 font-medium mb-1">planId (objectId)</label>
+            <input type="text" name="planId" value="${pid}" class="w-full border px-2 py-1 rounded" />
+          </div>`;
+        }
+
+        document.getElementById("editModal").classList.remove("hidden");
+        document.getElementById("editModal").classList.add("flex");
+      }
+
+      // ADD missing closeModal helper (fixes the error)
+      function closeModal() {
+        const modal = document.getElementById("editModal");
+        if (modal) {
+          modal.classList.add("hidden");
+          modal.classList.remove("flex");
+        }
+      }
+
+      async function saveEdit() {
+        const form = document.getElementById("editForm");
+        const formData = new FormData(form);
+        const updated = {};
+        const arrayFields = [
+          "class1Devices",
+          "class1WithoutSimDevices",
+          "class2Devices",
+          "relconAtgDetails",
+        ];
+
+        formData.forEach((val, key) => {
+          if (key === "_id") return;
+          if (arrayFields.includes(key)) {
+            updated[key] = val
+              ? val
+                  .split(",")
+                  .map((s) => s.trim())
+                  .filter(Boolean)
+              : [];
+          } else if (key === "relconAtgCount") {
+            const n = Number(val);
+            updated[key] = isNaN(n) ? val : n;
+          } else if (key === "isVerified") {
+            updated.isVerified = val === "true" || val === true || val === "on";
+          } else {
+            updated[key] = val;
+          }
+        });
+
+        const id = formData.get("_id");
+        try {
+          const res = await fetch(
+            `${baseUrl}/bpclStatus/updateBPCLStatus/${id}`,
+            {
+              method: "PUT",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              },
+              body: JSON.stringify(updated),
+            }
+          );
+
+          if (res.ok) {
+            closeModal();
+            await fetchData();
+            showToast("✅ Record updated successfully");
+          } else {
+            const errText = await res.text().catch(() => "Server error");
+            console.error("❌ Update failed:", errText);
+            alert("❌ Failed to update record: " + errText);
+          }
+        } catch (err) {
+          console.error(err);
+          alert("❌ Update failed");
+        }
+      }
+
+      // ---------- Delete ----------
+      function deleteRecord(id) {
+        deleteTargetId = id;
+        document.getElementById("deleteModal").classList.remove("hidden");
+      }
+      function cancelDelete() {
+        deleteTargetId = null;
+        document.getElementById("deleteModal").classList.add("hidden");
+      }
+      async function confirmDelete() {
+        if (!deleteTargetId) return;
+        try {
+          const res = await fetch(
+            `${baseUrl}/bpclStatus/deleteBPCLStatus/${deleteTargetId}`,
+            {
+              method: "DELETE",
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              },
+            }
+          );
+          document.getElementById("deleteModal").classList.add("hidden");
+          if (res.ok) {
+            showToast("Record deleted successfully ✅");
+            fetchData();
+          } else {
+            const errText = await res.text().catch(() => "Server error");
+            alert("Failed to delete record: " + errText);
+          }
+        } catch (err) {
+          console.error(err);
+          alert("Failed to delete record");
+        } finally {
+          deleteTargetId = null;
+        }
+      }
+
+      // ---------- Verify ----------
+      async function verifyRecord(id) {
+        const confirmed = confirm(
+          "Are you sure you want to mark this record as VERIFIED?"
+        );
+        if (!confirmed) return;
+        try {
+          const res = await fetch(
+            `${baseUrl}/bpclStatus/verifyBPCLStatus/${id}`,
+            {
+              method: "PUT",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              },
+              body: JSON.stringify({}),
+            }
+          );
+          if (res.ok) {
+            showToast("Record marked as Verified ✅");
+            fetchData();
+          } else {
+            const errText = await res.text().catch(() => "Server error");
+            alert("Verification failed: " + errText);
+          }
+        } catch (err) {
+          console.error(err);
+          alert("Verification failed");
+        }
+      }
+
+      // ---------- Initialization & Event wiring ----------
+      document.addEventListener("DOMContentLoaded", () => {
+        // wire filter controls
+        const from = document.getElementById("fromDate");
+        const to = document.getElementById("toDate");
+        const eng = document.getElementById("engineerFilter");
+        const search = document.getElementById("searchInput");
+        const clearBtn = document.getElementById("clearFiltersBtn");
+        const exportBtn = document.getElementById("exportBtn");
+
+        if (from) from.addEventListener("change", applyAllFilters);
+        if (to) to.addEventListener("change", applyAllFilters);
+        if (eng) eng.addEventListener("change", applyAllFilters);
+        if (search) search.addEventListener("input", applyAllFilters);
+        if (clearBtn) clearBtn.addEventListener("click", clearFilters);
+        if (exportBtn) exportBtn.addEventListener("click", exportToExcel);
+
+        // Modal buttons
+        document
+          .getElementById("modalCancelBtn")
+          .addEventListener("click", (e) => {
+            e.preventDefault();
+            closeModal();
+          });
+        document
+          .getElementById("modalSaveBtn")
+          .addEventListener("click", (e) => {
+            e.preventDefault();
+            saveEdit();
+          });
+
+        document
+          .getElementById("deleteCancelBtn")
+          .addEventListener("click", (e) => {
+            e.preventDefault();
+            cancelDelete();
+          });
+        document
+          .getElementById("deleteConfirmBtn")
+          .addEventListener("click", (e) => {
+            e.preventDefault();
+            confirmDelete();
+          });
+
+        // Expose handlers to global scope (for inline onclick generated in table)
+        window.handleEditClick = handleEditClick;
+        window.deleteRecord = deleteRecord;
+        window.verifyRecord = verifyRecord;
+        window.applyAllFilters = applyAllFilters;
+        window.clearFilters = clearFilters;
+        window.exportToExcel = exportToExcel;
+        window.closeModal = closeModal;
+        window.saveEdit = saveEdit;
+
+        // initial fetch
+        fetchData();
+      });
+    </script>
+  
+  </div>
+</div>
+</body>
+</html>

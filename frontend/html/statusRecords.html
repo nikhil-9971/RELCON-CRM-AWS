@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HPCL Status Records — RELCON CRM</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <script src="https://cdn.sheetjs.com/xlsx-0.18.5/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* ══════════════════════════════════════════
+       RELCON CRM — Salesforce Lightning Design System
+       Status Records View | Version 4.0
+    ══════════════════════════════════════════ */
+    :root {
+      --sf-blue:       #0176d3;
+      --sf-blue-dk:    #014486;
+      --sf-blue-lt:    #e8f4fd;
+      --sf-blue-hover: #0b5faa;
+      --sf-navy:       #032d60;
+
+      --sf-green:      #2e844a;
+      --sf-green-lt:   #eaf5ea;
+      --sf-red:        #ba0517;
+      --sf-red-lt:     #fef1ee;
+      --sf-orange:     #dd5a0c;
+      --sf-orange-lt:  #fff3e0;
+      --sf-yellow:     #ffd200;
+      --sf-amber:      #b8860b;
+      --sf-amber-lt:   #fff8e6;
+
+      --bg:        #f3f2f2;
+      --surface:   #ffffff;
+      --surface2:  #f9f9f9;
+      --border:    #dddbda;
+      --border-lt: #f3f2f2;
+
+      --txt:   #080707;
+      --txt2:  #3e3e3c;
+      --txt3:  #706e6b;
+      --txt4:  #aeaeac;
+
+      --topbar-h: 52px;
+      --fs-xs:    10px;
+      --fs-sm:    11px;
+      --fs-base:  13px;
+      --fs-md:    14px;
+      --fs-lg:    16px;
+      --fs-xl:    20px;
+
+      --r-sm: 4px; --r: 6px; --r-lg: 8px;
+      --sh-sm: 0 2px 4px rgba(0,0,0,0.09);
+      --sh:    0 4px 8px rgba(0,0,0,0.1);
+      --sh-md: 0 8px 24px rgba(0,0,0,0.12);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html { font-size: var(--fs-base); -webkit-font-smoothing: antialiased; }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      font-size: var(--fs-base); color: var(--txt);
+      background: var(--bg); margin: 0; padding: 0;
+      min-height: 100vh;
+    }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-thumb { background: #c8c6c4; border-radius: 3px; }
+
+    /* ── HEADER ── */
+    
+    
+    
+    
+    
+
+    /* ── TABBAR ── */
+    
+    
+    
+    
+
+    /* ── BODY ── */
+    .sf-body { padding: 16px 20px; max-width: 100%; margin: 0 auto; }
+
+    /* ── BREADCRUMB ── */
+    .sf-breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--txt3); margin-bottom: 10px; }
+    .sf-breadcrumb a { color: var(--sf-blue); text-decoration: none; }
+    .sf-breadcrumb a:hover { text-decoration: underline; }
+
+    /* ── PAGE HEADER ── */
+    .sf-page-header { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 14px 20px; margin-bottom: 12px; display: flex; align-items: center; gap: 14px; box-shadow: var(--sh-sm); flex-wrap: wrap; }
+    .sf-page-icon { width: 44px; height: 44px; border-radius: 10px; background: linear-gradient(135deg, #3ba755 0%, #2e844a 100%); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; box-shadow: 0 2px 8px rgba(46,132,74,0.4); flex-shrink: 0; }
+    .sf-page-title { font-size: 18px; font-weight: 700; color: var(--txt); letter-spacing: -0.3px; }
+    .sf-page-meta { font-size: 12px; color: var(--txt3); margin-top: 2px; }
+    .sf-page-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+    /* ── RECORD COUNT BADGES ── */
+    .sf-stat { display: flex; align-items: center; gap: 6px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r); padding: 6px 12px; }
+    .sf-stat-num { font-size: 18px; font-weight: 700; color: var(--sf-blue); }
+    .sf-stat-label { font-size: 10px; font-weight: 600; color: var(--txt3); text-transform: uppercase; letter-spacing: 0.4px; }
+
+    /* ── TOOLBAR CARD ── */
+    .sf-toolbar {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-lg); box-shadow: var(--sh-sm);
+      padding: 14px 20px; margin-bottom: 10px;
+      display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap;
+    }
+    .sf-filter-group { display: flex; flex-direction: column; gap: 4px; }
+    .sf-filter-label { font-size: 10px; font-weight: 600; color: var(--txt3); text-transform: uppercase; letter-spacing: 0.5px; }
+    .sf-input, .sf-select {
+      font-family: 'Inter', sans-serif; font-size: 12px; color: var(--txt);
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-sm); padding: 5px 9px; height: 32px;
+      outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .sf-input:focus, .sf-select:focus { border-color: var(--sf-blue); box-shadow: 0 0 0 3px rgba(1,118,211,0.12); }
+    .sf-input::placeholder { color: var(--txt4); }
+    .sf-search-input { width: 260px; padding-left: 30px; }
+    .sf-search-wrap { position: relative; }
+    .sf-search-wrap i { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: var(--txt4); font-size: 12px; pointer-events: none; }
+    .sf-toolbar-spacer { flex: 1; }
+
+    /* ── BUTTONS ── */
+    .sf-btn { font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 500; padding: 0 14px; height: 32px; border-radius: var(--r-sm); cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s; white-space: nowrap; }
+    .sf-btn-primary { background: var(--sf-blue); color: #fff; box-shadow: 0 1px 3px rgba(1,118,211,0.3); }
+    .sf-btn-primary:hover { background: var(--sf-blue-hover); box-shadow: 0 3px 8px rgba(1,118,211,0.35); transform: translateY(-1px); }
+    .sf-btn-neutral { background: var(--surface); color: var(--txt); border: 1px solid var(--border); }
+    .sf-btn-neutral:hover { background: var(--bg); }
+    .sf-btn-success { background: var(--sf-green); color: #fff; }
+    .sf-btn-success:hover { background: #1d5e31; transform: translateY(-1px); }
+    .sf-btn-warn { background: var(--sf-orange); color: #fff; }
+    .sf-btn-warn:hover { background: #b84d09; }
+    .sf-btn-danger { background: var(--sf-red); color: #fff; }
+    .sf-btn-danger:hover { background: #920210; }
+    .sf-btn-icon { width: 32px; padding: 0; justify-content: center; }
+
+    /* Export dropdown */
+    .sf-dropdown { position: relative; }
+    .sf-dropdown-menu {
+      position: absolute; right: 0; top: calc(100% + 4px);
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-lg); box-shadow: var(--sh-md);
+      min-width: 180px; z-index: 100; overflow: hidden;
+      display: none;
+    }
+    .sf-dropdown-menu.open { display: block; }
+    .sf-dropdown-item { padding: 9px 14px; font-size: 12px; color: var(--txt2); cursor: pointer; display: flex; align-items: center; gap: 8px; transition: background 0.1s; }
+    .sf-dropdown-item:hover { background: var(--sf-blue-lt); color: var(--sf-blue); }
+    .sf-dropdown-divider { height: 1px; background: var(--border); margin: 2px 0; }
+
+    /* ── TABLE CARD ── */
+    .sf-table-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--sh-sm); overflow: hidden; }
+    .sf-table-header { padding: 10px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; background: var(--surface2); }
+    .sf-table-title { font-size: 12px; font-weight: 700; color: var(--txt); display: flex; align-items: center; gap: 6px; text-transform: uppercase; letter-spacing: 0.4px; }
+    .sf-record-count { background: var(--sf-blue-lt); color: var(--sf-blue); font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+
+    .sf-table-wrap { overflow-x: auto; overflow-y: auto; max-height: calc(100vh - 320px); }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; min-width: 1200px; }
+    thead th {
+      background: #1a2e4a !important;
+      color: #e8f4fd !important;
+      font-size: 10px !important; font-weight: 600 !important;
+      text-transform: uppercase !important; letter-spacing: 0.6px !important;
+      padding: 9px 12px !important; text-align: left !important;
+      white-space: nowrap !important; border: none !important;
+      border-right: 1px solid #253d5b !important;
+      position: sticky; top: 0; z-index: 10;
+    }
+    thead th:last-child { border-right: none !important; }
+    tbody tr { border-bottom: 1px solid var(--border-lt); transition: background 0.1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #f0f8ff; }
+    tbody td { padding: 7px 12px !important; font-size: 11px !important; color: var(--txt2) !important; vertical-align: middle !important; border: none !important; border-bottom: 1px solid var(--border-lt) !important; white-space: nowrap; }
+    tbody td:first-child { font-weight: 600; color: var(--sf-blue) !important; }
+
+    /* ── BADGES ── */
+    .sf-badge { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 600; white-space: nowrap; letter-spacing: 0.2px; }
+    .sf-badge-green  { background: var(--sf-green-lt); color: var(--sf-green); }
+    .sf-badge-red    { background: var(--sf-red-lt); color: var(--sf-red); }
+    .sf-badge-orange { background: var(--sf-orange-lt); color: var(--sf-orange); }
+    .sf-badge-blue   { background: var(--sf-blue-lt); color: var(--sf-blue); }
+    .sf-badge-amber  { background: var(--sf-amber-lt); color: var(--sf-amber); border: 1px solid #f6c23e; }
+    .sf-badge-gray   { background: var(--surface2); color: var(--txt3); border: 1px solid var(--border); }
+
+    /* Action Required pulse */
+    @keyframes sf-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(221,90,12,0.5); } 50% { box-shadow: 0 0 0 5px rgba(221,90,12,0); } }
+    .sf-badge-warn-pulse { animation: sf-pulse 2s infinite; }
+
+    /* ── PAGINATION ── */
+    .sf-pagination { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-top: 1px solid var(--border); background: var(--surface2); flex-wrap: wrap; gap: 8px; }
+    .sf-pagination-info { font-size: 11px; color: var(--txt3); }
+    .sf-pagination-controls { display: flex; align-items: center; gap: 4px; }
+    .sf-page-btn { width: 30px; height: 30px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); color: var(--txt2); font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.12s; font-family: 'Inter', sans-serif; }
+    .sf-page-btn:hover { background: var(--sf-blue-lt); border-color: var(--sf-blue); color: var(--sf-blue); }
+    .sf-page-btn.active { background: var(--sf-blue); border-color: var(--sf-blue); color: #fff; font-weight: 700; }
+    .sf-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── MODAL ── */
+    .sf-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 500; display: flex; align-items: center; justify-content: center; }
+    .sf-modal-overlay.hidden { display: none; }
+    .sf-modal { background: var(--surface); border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.25); width: 90%; max-width: 840px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; }
+    .sf-modal-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: var(--surface2); flex-shrink: 0; }
+    .sf-modal-title { font-size: 15px; font-weight: 700; color: var(--txt); display: flex; align-items: center; gap: 8px; }
+    .sf-modal-body { padding: 20px; overflow-y: auto; flex: 1; }
+    .sf-modal-footer { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; background: var(--surface2); flex-shrink: 0; }
+    .sf-modal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+    .sf-modal-field { display: flex; flex-direction: column; gap: 4px; }
+    .sf-modal-label { font-size: 10px; font-weight: 600; color: var(--txt3); text-transform: uppercase; letter-spacing: 0.5px; }
+    .sf-modal-input { font-family: 'Inter', sans-serif; font-size: 12px; color: var(--txt); background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 5px 9px; height: 32px; outline: none; width: 100%; }
+    .sf-modal-input:focus { border-color: var(--sf-blue); box-shadow: 0 0 0 3px rgba(1,118,211,0.12); }
+    .sf-modal-input[readonly] { background: var(--surface2); color: var(--txt3); }
+
+    /* Delete confirm modal */
+    .sf-confirm-modal { background: var(--surface); border-radius: 12px; box-shadow: var(--sh-md); width: 380px; overflow: hidden; }
+    .sf-confirm-header { padding: 16px 20px; background: var(--sf-red-lt); border-bottom: 1px solid #f8d0ca; }
+    .sf-confirm-title { font-size: 15px; font-weight: 700; color: var(--sf-red); display: flex; align-items: center; gap: 8px; }
+    .sf-confirm-body { padding: 16px 20px; font-size: 13px; color: var(--txt2); }
+    .sf-confirm-footer { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+
+    /* ── LOADER ── */
+    .sf-loader { position: fixed; inset: 0; background: rgba(243,242,242,0.7); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 400; }
+    .sf-loader.hidden { display: none; }
+    .sf-spinner-lg { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--sf-blue); border-radius: 50%; animation: sf-spin 0.7s linear infinite; }
+    .sf-loader-text { font-size: 12px; color: var(--txt3); margin-top: 10px; font-weight: 500; }
+    @keyframes sf-spin { to { transform: rotate(360deg); } }
+
+    /* ── TOAST ── */
+    .sf-toast { position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 280px; max-width: 360px; background: var(--surface); border-radius: var(--r-lg); box-shadow: var(--sh-md); border: 1px solid var(--border); display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; transform: translateX(120%); transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1); }
+    .sf-toast.show { transform: translateX(0); }
+    .sf-toast-icon { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+    .sf-toast.success .sf-toast-icon { background: var(--sf-green-lt); color: var(--sf-green); }
+    .sf-toast.error .sf-toast-icon   { background: var(--sf-red-lt); color: var(--sf-red); }
+    .sf-toast-title { font-size: 12px; font-weight: 600; color: var(--txt); }
+    .sf-toast-msg   { font-size: 11px; color: var(--txt3); margin-top: 1px; }
+  
+    /* ── PAGE STRIP (dataView style — iframe safe) ── */
+    .dv-strip {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+      box-shadow: 0 1px 3px rgba(15,23,42,0.07);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .dv-strip-icon {
+      width: 28px; height: 28px;
+      background: #e8f4fd;
+      border-radius: 5px;
+      display: flex; align-items: center; justify-content: center;
+      color: #0176d3; font-size: 13px;
+    }
+    .dv-strip-title {
+      font-size: 14px; font-weight: 700;
+      color: var(--txt); letter-spacing: -0.2px;
+    }
+    .dv-strip-sep { width: 1px; height: 18px; background: var(--border); }
+    .dv-strip-meta {
+      font-size: 10px; font-weight: 500; color: var(--txt4);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 2px 9px; border-radius: 9999px;
+    }
+    .dv-strip-spacer { flex: 1; }
+
+  </style>
+</head>
+<body>
+
+  <!-- ══ PAGE STRIP ══ -->
+  <div class="dv-strip">
+    <div class="dv-strip-icon"><i class="fa-solid fa-file-chart-column"></i></div>
+    <span class="dv-strip-title">HPCL Status Records</span>
+    <div class="dv-strip-sep"></div>
+    <span class="dv-strip-meta" id="dateBadge"></span>
+    <div class="dv-strip-spacer"></div>
+  </div>
+
+  <!-- ══ BODY ══ -->
+  <main class="sf-body">
+
+    <!-- Breadcrumb -->
+    <div class="sf-breadcrumb">
+      <a href="#">Home</a> <span>/</span>
+      <a href="#">Records</a> <span>/</span>
+      <span>HPCL Status Records</span>
+    </div>
+
+    <!-- Page Header -->
+    <div class="sf-page-header">
+      <div class="sf-page-icon"><i class="fa-solid fa-file-chart-column"></i></div>
+      <div>
+        <div class="sf-page-title">HPCL Status Records</div>
+        <div class="sf-page-meta">Field visit status records with verification workflow</div>
+      </div>
+      <div class="sf-page-actions">
+        <div class="sf-stat">
+          <div>
+            <div class="sf-stat-num" id="totalCount">—</div>
+            <div class="sf-stat-label">Total Records</div>
+          </div>
+        </div>
+        <img src="./assets/HPCL.png" alt="HPCL" style="height:40px;opacity:0.85;" onerror="this.style.display='none'" />
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="sf-toolbar">
+      <!-- Search -->
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">Search Records</label>
+        <div class="sf-search-wrap">
+          <i class="fa-solid fa-search"></i>
+          <input type="text" id="searchInput" oninput="applySearch()" placeholder="Search anything..." class="sf-input sf-search-input" />
+        </div>
+      </div>
+
+      <!-- Date From -->
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">From Date</label>
+        <input type="date" id="fromDate" class="sf-input" onchange="applyDateRangeFilter()" />
+      </div>
+
+      <!-- Date To -->
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">To Date</label>
+        <input type="date" id="toDate" class="sf-input" onchange="applyDateRangeFilter()" />
+      </div>
+
+      <button onclick="clearDateRangeFilter()" class="sf-btn sf-btn-neutral" style="align-self:flex-end;">
+        <i class="fa-solid fa-rotate-left"></i> Clear
+      </button>
+
+      <div class="sf-toolbar-spacer"></div>
+
+      <!-- Export Dropdown -->
+      <div class="sf-dropdown" style="align-self:flex-end;" id="exportDropdown">
+        <button class="sf-btn sf-btn-primary" onclick="toggleExportMenu()">
+          <i class="fa-solid fa-arrow-up-from-bracket"></i> Export
+          <i class="fa-solid fa-chevron-down" style="font-size:10px;"></i>
+        </button>
+        <div class="sf-dropdown-menu" id="exportMenu">
+          <div class="sf-dropdown-item" onclick="exportToCSV()">
+            <i class="fa-solid fa-table" style="color:var(--sf-green);"></i>
+            Export All Records
+          </div>
+          <div class="sf-dropdown-divider"></div>
+          <div class="sf-dropdown-item" onclick="exportSelectedFields()">
+            <i class="fa-solid fa-filter" style="color:var(--sf-orange);"></i>
+            Export (Jay Format)
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table Card -->
+    <div class="sf-table-card">
+      <div class="sf-table-header">
+        <div class="sf-table-title">
+          <i class="fa-solid fa-table-cells-large" style="color:var(--sf-blue);"></i>
+          Status Records
+        </div>
+        <span class="sf-record-count" id="recordCountBadge">Loading...</span>
+        <div style="flex:1;"></div>
+        <span style="font-size:10px;color:var(--txt4);">Showing 50 per page</span>
+      </div>
+
+      <div class="sf-table-wrap">
+        <table id="statusTable">
+          <thead><tr id="tableHeader"></tr></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="sf-pagination">
+        <div class="sf-pagination-info" id="paginationInfo">—</div>
+        <div class="sf-pagination-controls" id="pagination"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ══ EDIT MODAL ══ -->
+  <div id="editModal" class="sf-modal-overlay hidden">
+    <div class="sf-modal">
+      <div class="sf-modal-header">
+        <div class="sf-modal-title"><i class="fa-solid fa-pen-to-square" style="color:var(--sf-blue);"></i> Edit Status Record</div>
+        <button onclick="closeModal()" class="sf-btn sf-btn-neutral sf-btn-icon"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="sf-modal-body">
+        <div class="sf-modal-grid" id="editForm"></div>
+      </div>
+      <div class="sf-modal-footer">
+        <button onclick="closeModal()" class="sf-btn sf-btn-neutral"><i class="fa-solid fa-xmark"></i> Cancel</button>
+        <button onclick="saveEdit()" class="sf-btn sf-btn-success"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ DELETE CONFIRM MODAL ══ -->
+  <div id="deleteModal" class="sf-modal-overlay hidden">
+    <div class="sf-confirm-modal">
+      <div class="sf-confirm-header">
+        <div class="sf-confirm-title"><i class="fa-solid fa-triangle-exclamation"></i> Confirm Delete</div>
+      </div>
+      <div class="sf-confirm-body">Are you sure you want to permanently delete this status record? This action cannot be undone.</div>
+      <div class="sf-confirm-footer">
+        <button onclick="cancelDelete()" class="sf-btn sf-btn-neutral"><i class="fa-solid fa-xmark"></i> Cancel</button>
+        <button onclick="confirmDelete()" class="sf-btn sf-btn-danger"><i class="fa-solid fa-trash"></i> Delete Record</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ LOADER ══ -->
+  <div id="loader" class="sf-loader hidden">
+    <div class="sf-spinner-lg"></div>
+    <div class="sf-loader-text">Loading records...</div>
+  </div>
+
+  <!-- ══ TOAST ══ -->
+  <div id="sf-toast" class="sf-toast">
+    <div class="sf-toast-icon" id="sf-toast-icon"><i class="fa-solid fa-check"></i></div>
+    <div>
+      <div class="sf-toast-title" id="sf-toast-title">Success</div>
+      <div class="sf-toast-msg" id="sf-toast-msg"></div>
+    </div>
+  </div>
+
+  <script>
+    const baseUrl = "https://relcon-backend-jwt-backup.onrender.com";
+    let filteredData = [], allStatusData = [];
+    let currentPage = 1;
+    const rowsPerPage = 50;
+    const token = localStorage.getItem("token");
+
+    document.getElementById('dateBadge').textContent =
+      new Date().toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+
+    function showLoader() { document.getElementById("loader").classList.remove("hidden"); }
+    function hideLoader() { document.getElementById("loader").classList.add("hidden"); }
+
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('sf-toast');
+      document.getElementById('sf-toast-icon').innerHTML = type === 'success' ? '<i class="fa-solid fa-check"></i>' : '<i class="fa-solid fa-xmark"></i>';
+      document.getElementById('sf-toast-title').textContent = type === 'success' ? 'Success' : 'Error';
+      document.getElementById('sf-toast-msg').textContent = message;
+      toast.className = 'sf-toast ' + type;
+      setTimeout(() => toast.classList.add('show'), 10);
+      setTimeout(() => toast.classList.remove('show'), 3800);
+    }
+
+    async function fetchStatusRecords() {
+      showLoader();
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 sec timeout
+
+        const res = await fetch(`${baseUrl}/getMergedStatusRecords`, {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        if (!res.ok) throw new Error(`Server error: ${res.status}`);
+
+        const data = await res.json();
+        allStatusData = data;
+
+        const user = JSON.parse(localStorage.getItem("user")) || {};
+        filteredData = (user.role === "admin" && user.username === "anurag.mishra")
+          ? data
+          : data.filter(r => r.isVerified === true || r.isVerified === "true");
+
+        renderTable(filteredData);
+      } catch (err) {
+        if (err.name === "AbortError") {
+          showToast("Request timeout ho gayi. Server start ho raha hai, 30 sec baad retry karein.", "error");
+        } else {
+          showToast("Records load nahi hue: " + err.message, "error");
+        }
+        console.error("fetchStatusRecords failed:", err);
+        document.getElementById("recordCountBadge").textContent = "Error";
+      } finally {
+        hideLoader();
+      }
+    }
+
+    function applySearch() {
+      showLoader();
+      setTimeout(() => {
+        const query = document.getElementById("searchInput").value.toLowerCase();
+        const src = filteredData.length > 0 ? filteredData : allStatusData;
+        const result = src.filter(s => Object.values(s).some(v => String(v).toLowerCase().includes(query)));
+        currentPage = 1;
+        renderTable(result);
+        hideLoader();
+      }, 80);
+    }
+
+    function applyDateRangeFilter() {
+      showLoader();
+      setTimeout(() => {
+        const from = document.getElementById("fromDate").value;
+        const to   = document.getElementById("toDate").value;
+        const fromDate = from ? new Date(from) : null;
+        const toDate   = to   ? new Date(to)   : null;
+        const user = JSON.parse(localStorage.getItem("user")) || {};
+        filteredData = allStatusData.filter(row => {
+          const rd = new Date(row.date);
+          const inRange = (!fromDate || rd >= fromDate) && (!toDate || rd <= toDate);
+          if (user.role === "admin" && user.username === "anurag.mishra") return inRange;
+          return inRange && (row.isVerified === true || row.isVerified === "true");
+        });
+        currentPage = 1;
+        renderTable(filteredData);
+        hideLoader();
+      }, 80);
+    }
+
+    function clearDateRangeFilter() {
+      document.getElementById("fromDate").value = "";
+      document.getElementById("toDate").value   = "";
+      const user = JSON.parse(localStorage.getItem("user")) || {};
+      filteredData = (user.role === "admin" && user.username === "anurag.mishra")
+        ? allStatusData
+        : allStatusData.filter(r => r.isVerified === true || r.isVerified === "true");
+      currentPage = 1;
+      renderTable(filteredData);
+    }
+
+    function renderTable(data) {
+      showLoader();
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          const start = (currentPage - 1) * rowsPerPage;
+          _renderTableNow(data.slice(start, start + rowsPerPage));
+          renderPagination(data.length);
+          document.getElementById("totalCount").textContent = data.length.toLocaleString();
+          document.getElementById("recordCountBadge").textContent = `${data.length} records`;
+          hideLoader();
+        }, 0);
+      });
+    }
+
+    function renderPagination(totalRows) {
+      const pag = document.getElementById("pagination");
+      const info = document.getElementById("paginationInfo");
+      pag.innerHTML = "";
+      const totalPages = Math.max(1, Math.ceil(totalRows / rowsPerPage));
+      const from = totalRows === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1;
+      const to   = Math.min(totalRows, currentPage * rowsPerPage);
+      info.textContent = `Showing ${from}–${to} of ${totalRows} records`;
+
+      const prev = document.createElement("button");
+      prev.innerHTML = '<i class="fa-solid fa-chevron-left"></i>';
+      prev.className = "sf-page-btn"; prev.disabled = currentPage === 1;
+      prev.onclick = () => { if (currentPage > 1) { currentPage--; renderTable(filteredData); } };
+      pag.appendChild(prev);
+
+      const maxBtns = 7;
+      let sp = Math.max(1, currentPage - Math.floor(maxBtns / 2));
+      let ep = Math.min(totalPages, sp + maxBtns - 1);
+      if (ep - sp < maxBtns - 1) sp = Math.max(1, ep - maxBtns + 1);
+      for (let i = sp; i <= ep; i++) {
+        const btn = document.createElement("button");
+        btn.textContent = i; btn.className = "sf-page-btn" + (i === currentPage ? " active" : "");
+        btn.onclick = (() => { const p = i; return () => { currentPage = p; renderTable(filteredData); }; })();
+        pag.appendChild(btn);
+      }
+
+      const next = document.createElement("button");
+      next.innerHTML = '<i class="fa-solid fa-chevron-right"></i>';
+      next.className = "sf-page-btn"; next.disabled = currentPage === totalPages;
+      next.onclick = () => { if (currentPage < totalPages) { currentPage++; renderTable(filteredData); } };
+      pag.appendChild(next);
+    }
+
+    document.addEventListener("keydown", e => {
+      const tp = Math.ceil(filteredData.length / rowsPerPage);
+      if (e.key === "ArrowRight" && currentPage < tp) { currentPage++; renderTable(filteredData); }
+      if (e.key === "ArrowLeft"  && currentPage > 1)  { currentPage--; renderTable(filteredData); }
+    });
+
+    function _renderTableNow(data) {
+      const user = JSON.parse(localStorage.getItem("user")) || {};
+      const username = user.username, role = user.role;
+
+      const columns = [
+        { key:"engineer",label:"Engineer Name" },{ key:"region",label:"Region" },
+        { key:"phase",label:"Phase" },{ key:"roCode",label:"RO Code" },
+        { key:"roName",label:"RO Name" },{ key:"date",label:"Date" },
+        { key:"amcQtr",label:"AMC Qtr" },{ key:"purpose",label:"Purpose of Visit" },
+        { key:"probeMake",label:"Probe Make" },{ key:"probeSize",label:"Product & Probe Size" },
+        { key:"lowProductLock",label:"Low Product Lock" },{ key:"highWaterSet",label:"Highwater Lock" },
+        { key:"duSerialNumber",label:"DU Serial No." },{ key:"dgStatus",label:"DG Status" },
+        { key:"connectivityType",label:"Connectivity" },{ key:"sim1Provider",label:"SIM1 Provider" },
+        { key:"sim1Number",label:"SIM1 Number" },{ key:"sim2Provider",label:"SIM2 Provider" },
+        { key:"sim2Number",label:"SIM2 Number" },{ key:"iemiNumber",label:"IEMI Number" },
+        { key:"bosVersion",label:"BOS Ver." },{ key:"fccVersion",label:"FCC Ver." },
+        { key:"wirelessSlave",label:"Wireless Slave" },{ key:"sftpConfig",label:"SFTP Config" },
+        { key:"adminPassword",label:"Admin Pwd" },{ key:"workCompletion",label:"Work Done" },
+        { key:"spareUsed",label:"Spare Used" },{ key:"activeSpare",label:"Spare Name" },
+        { key:"faultySpare",label:"Faulty Spare" },{ key:"spareRequirment",label:"Spare Req." },
+        { key:"spareRequirmentname",label:"Spare Req. Name" },{ key:"earthingStatus",label:"Earthing" },
+        { key:"voltageReading",label:"Voltage" },{ key:"duOffline",label:"DU Offline" },
+        { key:"duDependency",label:"DU Dependency" },{ key:"duRemark",label:"DU Remark" },
+        { key:"tankOffline",label:"Tank Offline" },{ key:"tankDependency",label:"Tank Dep." },
+        { key:"tankRemark",label:"Tank Remark" },{ key:"bosIP",label:"BOS IP" },
+        { key:"fccIP",label:"FCC IP" },{ key:"locationField",label:"Location" },
+        { key:"actions",label:"Actions" },
+      ];
+
+      document.getElementById("tableHeader").innerHTML =
+        columns.map(c => `<th>${c.label}</th>`).join("");
+
+      document.getElementById("tableBody").innerHTML = data.map(record => {
+        const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(record))));
+        const isVerified = record.isVerified === true || record.isVerified === "true";
+
+        const cells = columns.map(col => {
+          if (col.key === "actions") {
+            let html = "";
+            if (role === "admin" && username === "anurag.mishra" && !isVerified) {
+              html = `
+                <button class="sf-btn sf-btn-neutral" style="height:26px;padding:0 10px;font-size:11px;" onclick='handleEditClick("${encoded}")'>
+                  <i class="fa-solid fa-pen"></i> Edit
+                </button>
+                <button class="sf-btn sf-btn-danger" style="height:26px;padding:0 10px;font-size:11px;margin-left:4px;" onclick='deleteStatus("${record._id}")'>
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+                <button class="sf-btn sf-btn-success" style="height:26px;padding:0 10px;font-size:11px;margin-left:4px;" onclick='verifyRecord("${record._id}")'>
+                  <i class="fa-solid fa-check"></i> Verify
+                </button>`;
+            } else if (role === "admin" && username === "nikhil.trivedi" && isVerified) {
+              html = `
+                <button class="sf-btn sf-btn-neutral" style="height:26px;padding:0 10px;font-size:11px;" onclick='handleEditClick("${encoded}")'>
+                  <i class="fa-solid fa-pen"></i> Edit
+                </button>
+                <button class="sf-btn sf-btn-danger" style="height:26px;padding:0 10px;font-size:11px;margin-left:4px;" onclick='deleteStatus("${record._id}")'>
+                  <i class="fa-solid fa-trash"></i>
+                </button>`;
+            } else if (role === "admin" && username === "anurag.mishra" && isVerified) {
+              html = `<span class="sf-badge sf-badge-green"><i class="fa-solid fa-lock"></i> Verified</span>`;
+            }
+            return `<td style="text-align:center;">${html}</td>`;
+          }
+
+          let cell = record[col.key] || "";
+
+          if (col.key === "roCode") {
+            if (isVerified) {
+              cell += ` <span class="sf-badge sf-badge-green"><i class="fa-solid fa-check"></i> Verified</span>`;
+              if (record.taskGenerated) cell += ` <span class="sf-badge sf-badge-blue" title="Task auto-generated"><i class="fa-solid fa-thumbtack"></i></span>`;
+            } else {
+              const hasDuIssue = record.duOffline && record.duOffline !== "ALL OK";
+              const hasTankIssue = record.tankOffline && record.tankOffline !== "ALL OK";
+              const hasEarthingIssue = record.earthingStatus && record.earthingStatus !== "OK";
+              if (hasDuIssue || hasTankIssue || hasEarthingIssue) {
+                cell += ` <span class="sf-badge sf-badge-amber sf-badge-warn-pulse" title="Issues in DU/Tank/Earthing"><i class="fa-solid fa-triangle-exclamation"></i> Action Required</span>`;
+              }
+            }
+          }
+
+          if (col.key === "workCompletion") {
+            if (cell === "YES" || cell === "COMPLETE") cell = `<span class="sf-badge sf-badge-green"><i class="fa-solid fa-check"></i> ${cell}</span>`;
+            else if (cell === "NO" || cell === "PENDING") cell = `<span class="sf-badge sf-badge-red"><i class="fa-solid fa-xmark"></i> ${cell}</span>`;
+          }
+          if (col.key === "earthingStatus") {
+            if (cell === "OK") cell = `<span class="sf-badge sf-badge-green">OK</span>`;
+            else if (cell) cell = `<span class="sf-badge sf-badge-red">${cell}</span>`;
+          }
+
+          return `<td>${cell}</td>`;
+        }).join("");
+
+        return `<tr>${cells}</tr>`;
+      }).join("");
+    }
+
+    function handleEditClick(encoded) {
+      try { openEditModal(JSON.parse(decodeURIComponent(escape(atob(encoded))))); }
+      catch { showToast("Unable to open editor.", "error"); }
+    }
+
+    function openEditModal(record) {
+      const form = document.getElementById("editForm");
+      form.innerHTML = "";
+      const user = JSON.parse(localStorage.getItem("user")) || {};
+      const allowSys = user.role === "admin" && user.username === "nikhil.trivedi";
+
+      Object.entries(record).forEach(([key, value]) => {
+        if (key === "_id") { form.innerHTML += `<input type="hidden" name="${key}" value="${value}" />`; return; }
+        if (key === "actions") return;
+        if ((key === "isVerified" || key === "taskGenerated") && !allowSys) return;
+        const ro = key === "planId" ? "readonly" : "";
+        form.innerHTML += `
+          <div class="sf-modal-field">
+            <label class="sf-modal-label">${key}</label>
+            <input type="text" name="${key}" value="${value || ""}" ${ro} class="sf-modal-input${ro ? ' readonly' : ''}" />
+          </div>`;
+      });
+
+      document.getElementById("editModal").classList.remove("hidden");
+    }
+
+    function closeModal() { document.getElementById("editModal").classList.add("hidden"); }
+
+    async function saveEdit() {
+      const inputs = document.querySelectorAll('#editForm input');
+      const updated = {};
+      inputs.forEach(inp => {
+        if (inp.name === "isVerified") updated[inp.name] = inp.value === "true";
+        else if (inp.name === "taskGenerated") updated[inp.name] = inp.value === "true";
+        else updated[inp.name] = inp.value;
+      });
+      if (!("isVerified" in updated)) {
+        const r = allStatusData.find(x => x._id === updated._id);
+        updated.isVerified = typeof r?.isVerified === "boolean" ? r.isVerified : false;
+      }
+      const res = await fetch(`${baseUrl}/updateStatus/${updated._id}`, {
+        method: "PUT", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(updated),
+      });
+      if (res.ok) { await fetchStatusRecords(); closeModal(); showToast("Record updated successfully."); }
+      else showToast("Error updating record.", "error");
+    }
+
+    let deleteTargetId = null;
+    function deleteStatus(id) { deleteTargetId = id; document.getElementById("deleteModal").classList.remove("hidden"); }
+    function cancelDelete() { deleteTargetId = null; document.getElementById("deleteModal").classList.add("hidden"); }
+    async function confirmDelete() {
+      if (!deleteTargetId) return;
+      const res = await fetch(`${baseUrl}/deleteStatus/${deleteTargetId}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+      document.getElementById("deleteModal").classList.add("hidden");
+      if (res.ok) { showToast("Record deleted successfully."); await fetchStatusRecords(); }
+      else showToast("Delete failed. Please retry.", "error");
+      deleteTargetId = null;
+    }
+
+    async function verifyRecord(id) {
+      if (!confirm("Mark this record as VERIFIED?")) return;
+      const res = await fetch(`${baseUrl}/verifyStatus/${id}`, { method: "PUT", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ isVerified: true }) });
+      if (res.ok) {
+        const txt = await res.text();
+        showToast(txt.includes("task generated") ? "Record verified & task created." : "Record marked as Verified.");
+        const idx = allStatusData.findIndex(r => r._id === id);
+        if (idx !== -1) { allStatusData[idx].isVerified = true; allStatusData[idx].taskGenerated = true; }
+        const user = JSON.parse(localStorage.getItem("user")) || {};
+        filteredData = (user.role === "admin" && user.username === "anurag.mishra")
+          ? allStatusData
+          : allStatusData.filter(r => r.isVerified === true || r.isVerified === "true");
+        renderTable(filteredData);
+      } else showToast("Verification failed.", "error");
+    }
+
+    /* ── Export Functions ── */
+    const customHeaderMap = {
+      engineer:"Engineer Name", region:"Region", phase:"Phase", roCode:"RO Code", roName:"RO Name",
+      date:"Date", amcQtr:"AMC Qtr", purpose:"Purpose of Visit", probeMake:"Probe Make",
+      probeSize:"Product & Probe Size", lowProductLock:"Low Product Lock", highWaterSet:"Highwater Lock Set",
+      duSerialNumber:"DU Serial Number Updated", dgStatus:"DG Status", connectivityType:"Connectivity Type",
+      sim1Provider:"SIM1 Provider", sim1Number:"SIM1 Number", sim2Provider:"SIM2 Provider",
+      sim2Number:"SIM2 Number", iemiNumber:"IEMI Number", bosVersion:"BOS Version",
+      fccVersion:"FCC Version", wirelessSlave:"Wireless Slave Version", sftpConfig:"SFTP Config",
+      adminPassword:"Admin Password Updated", workCompletion:"Work Completion", spareUsed:"Any Spare Used",
+      activeSpare:"Used Spare Name & Code", faultySpare:"Faulty Spare Name & Code",
+      spareRequirment:"Any Spare Requirement", spareRequirmentname:"Name of Spare Required",
+      earthingStatus:"Earthing Status", voltageReading:"Voltage Reading", duOffline:"DU Offline",
+      duDependency:"DU Dependency", duRemark:"DU Remark", tankOffline:"No of Tank Offline",
+      tankDependency:"Tank Dependency", tankRemark:"Tank Remark", bosIP:"BOS IP",
+      fccIP:"FCC IP", locationField:"Site Location"
+    };
+
+    function exportToCSV() {
+      const finalData = filteredData.map(rec => {
+        const row = {};
+        for (const key in customHeaderMap) {
+          let v = rec[key] || "";
+          if (["iemiNumber","sim1Number","sim2Number"].includes(key) && rec.connectivityType === "RELCON SIM") v = "`" + v;
+          row[customHeaderMap[key]] = v;
+        }
+        return row;
+      });
+      const ws = XLSX.utils.json_to_sheet(finalData);
+      const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "StatusRecords");
+      XLSX.writeFile(wb, `Status_Records_${new Date().toLocaleDateString('en-CA')}_${Math.floor(1000 + Math.random() * 9000)}.csv`);
+      toggleExportMenu();
+    }
+
+    const jayFields = { roCode:"Site Ro Code", roName:"Site Name", phase:"Phase", region:"Region", engineer:"Engineer Name", dgStatus:"DG Status", voltageReading:"Earthing Status", probeMake:"Probe Make", probeSize:"Product & Probe Size", date:"Date of Visit", connectivityType:"SIM CARD Type", iemiNumber:"IEMI Number", sim1Provider:"Company1", sim1Number:"SIM 1 Number", sim2Provider:"Company2", sim2Number:"SIM 2 Number", locationField:"Site Location" };
+
+    function exportSelectedFields() {
+      const data = filteredData.map(rec => {
+        const r = {};
+        Object.keys(jayFields).forEach(k => {
+          let v = rec[k] || "";
+          if (["sim1Number","sim2Number","iemiNumber"].includes(k) && rec.connectivityType === "RELCON SIM") v = "`" + v;
+          r[jayFields[k]] = v;
+        });
+        return r;
+      });
+      const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "SelectedFields");
+      XLSX.writeFile(wb, `Daily_Status_ECZ_NIKHIL_${new Date().toLocaleDateString('en-CA')}_${Math.floor(1000 + Math.random() * 9000)}.csv`);
+      toggleExportMenu();
+    }
+
+    function toggleExportMenu() {
+      document.getElementById("exportMenu").classList.toggle("open");
+      setTimeout(() => document.addEventListener("click", closeExportMenu), 10);
+    }
+    function closeExportMenu(e) {
+      const menu = document.getElementById("exportMenu");
+      if (!e.target.closest("#exportDropdown")) { menu.classList.remove("open"); document.removeEventListener("click", closeExportMenu); }
+    }
+
+    fetchStatusRecords();
+  </script>
+</body>
+</html>

@@ -1,0 +1,1565 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Visit Records — RELCON CRM</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<style>
+/* ══════════════════════════════════════════════════
+   RELCON CRM — dataView.html
+   Synced with dashboard.html design tokens
+   iframe-safe: no topbar/sidebar (provided by parent)
+══════════════════════════════════════════════════ */
+
+:root {
+  --brand:        #2563EB;
+  --brand-dk:     #1D4ED8;
+  --brand-lt:     #EFF6FF;
+  --brand-glow:   rgba(37,99,235,0.12);
+  --success:      #059669;
+  --success-lt:   #ECFDF5;
+  --warn:         #D97706;
+  --warn-lt:      #FFFBEB;
+  --danger:       #DC2626;
+  --danger-lt:    #FEF2F2;
+  --purple:       #7C3AED;
+  --purple-lt:    #F5F3FF;
+  --pink:         #DB2777;
+  --pink-lt:      #FDF2F8;
+  --orange:       #EA580C;
+
+  --page-bg:      #F1F5F9;
+  --surface:      #FFFFFF;
+  --surface2:     #F8FAFC;
+  --border:       #E2E8F0;
+  --border-lt:    #F1F5F9;
+
+  --txt:          #0F172A;
+  --txt2:         #1E293B;
+  --txt3:         #64748B;
+  --txt4:         #94A3B8;
+  --txt5:         #CBD5E1;
+
+  --r-xs: 3px; --r-sm: 5px; --r: 8px; --r-lg: 10px; --r-full: 9999px;
+  --sh-xs: 0 1px 2px rgba(15,23,42,0.05);
+  --sh-sm: 0 1px 4px rgba(15,23,42,0.08);
+  --sh:    0 4px 12px rgba(15,23,42,0.10);
+  --sh-md: 0 8px 24px rgba(15,23,42,0.12);
+  --sh-lg: 0 16px 40px rgba(15,23,42,0.14);
+
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --fs-xs:  10px;
+  --fs-sm:  11px;
+  --fs-base:12.5px;
+  --fs-md:  13.5px;
+  --fs-lg:  15px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: var(--fs-base); -webkit-font-smoothing: antialiased; }
+body {
+  font-family: var(--font);
+  font-size: var(--fs-base);
+  color: var(--txt);
+  background: var(--page-bg);
+  min-height: 100vh;
+}
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--txt4); }
+
+/* ── PAGE WRAPPER ── */
+.dv-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--page-bg);
+}
+
+/* ── TOP STRIP (mimics dashboard topbar feel inside iframe) ── */
+.dv-strip {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  box-shadow: var(--sh-xs);
+}
+.dv-strip-icon {
+  width: 28px; height: 28px;
+  background: var(--brand-lt);
+  border-radius: var(--r-sm);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--brand); font-size: 12px;
+}
+.dv-strip-title {
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--txt);
+  letter-spacing: -0.2px;
+}
+.dv-strip-sep { width: 1px; height: 18px; background: var(--border); }
+.dv-strip-meta {
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--txt4);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  padding: 2px 9px;
+  border-radius: var(--r-full);
+}
+.dv-strip-spacer { flex: 1; }
+.dv-user-pill {
+  display: flex; align-items: center; gap: 7px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  padding: 3px 11px 3px 5px;
+  font-size: var(--fs-xs);
+  color: var(--txt3);
+}
+.dv-user-pill .av {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--brand), var(--purple));
+  color: #fff; font-size: 9px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.dv-user-name { font-weight: 600; color: var(--txt2); }
+
+/* ── FILTER TOOLBAR ── */
+.dv-toolbar {
+  background: var(--surface);
+  border-bottom: 2px solid var(--border-lt);
+  padding: 10px 20px;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+.dv-filter-group {
+  display: flex; flex-direction: column; gap: 3px;
+}
+.dv-filter-label {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--txt4);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+.dv-input, .dv-select {
+  font-family: var(--font);
+  font-size: var(--fs-sm);
+  color: var(--txt);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 5px 9px;
+  height: 30px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.dv-input:focus, .dv-select:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-glow);
+}
+.dv-input::placeholder { color: var(--txt5); font-size: var(--fs-xs); }
+.dv-select { -webkit-appearance: none; appearance: none; cursor: pointer; padding-right: 22px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%2394A3B8' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 8px center; }
+.dv-search-wrap { position: relative; }
+.dv-search-wrap i { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); color: var(--txt4); font-size: 11px; pointer-events: none; }
+.dv-search-input { padding-left: 26px; width: 220px; }
+
+/* ── BUTTONS ── */
+.dv-btn {
+  font-family: var(--font);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  height: 30px;
+  padding: 0 13px;
+  border: none;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 5px;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.dv-btn-primary   { background: var(--brand); color: #fff; box-shadow: 0 1px 3px rgba(37,99,235,0.25); }
+.dv-btn-primary:hover   { background: var(--brand-dk); box-shadow: 0 3px 8px rgba(37,99,235,0.3); transform: translateY(-1px); }
+.dv-btn-success   { background: var(--success); color: #fff; }
+.dv-btn-success:hover   { background: #047857; transform: translateY(-1px); }
+.dv-btn-warn      { background: var(--warn); color: #fff; }
+.dv-btn-warn:hover      { background: #b45309; transform: translateY(-1px); }
+.dv-btn-danger    { background: var(--danger); color: #fff; }
+.dv-btn-danger:hover    { background: #b91c1c; }
+.dv-btn-neutral   { background: var(--surface); color: var(--txt); border: 1px solid var(--border); }
+.dv-btn-neutral:hover   { background: var(--surface2); }
+.dv-btn-ghost     { background: transparent; color: var(--txt3); border: 1px solid var(--border); }
+.dv-btn-ghost:hover     { background: var(--surface2); color: var(--txt); }
+.dv-btn:disabled  { opacity: 0.45; cursor: not-allowed; transform: none !important; }
+.dv-btn-sm { height: 26px; padding: 0 10px; font-size: var(--fs-xs); }
+
+/* Export dropdown */
+.dv-dropdown { position: relative; }
+.dv-dropdown-menu {
+  position: absolute; top: calc(100% + 4px); left: 0;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-lg); box-shadow: var(--sh-md);
+  min-width: 190px; z-index: 100; overflow: hidden;
+  display: none;
+}
+.dv-dropdown-menu.open { display: block; }
+.dv-dropdown-item {
+  padding: 8px 14px; font-size: var(--fs-sm);
+  color: var(--txt2); cursor: pointer;
+  display: flex; align-items: center; gap: 8px;
+  transition: background 0.1s;
+}
+.dv-dropdown-item:hover { background: var(--brand-lt); color: var(--brand); }
+.dv-dropdown-divider { height: 1px; background: var(--border); }
+
+/* Toolbar spacer */
+.dv-toolbar-spacer { flex: 1; }
+
+/* ── SUMMARY STAT CHIPS ── */
+.dv-stat-row {
+  padding: 8px 20px;
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.dv-stat-chip {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-full); padding: 3px 12px;
+  font-size: var(--fs-xs); font-weight: 500; color: var(--txt3);
+}
+.dv-stat-chip strong { font-weight: 700; color: var(--brand); }
+.dv-stat-chip.success strong { color: var(--success); }
+.dv-stat-chip.warn strong    { color: var(--warn); }
+.dv-stat-chip.danger strong  { color: var(--danger); }
+
+/* ── TABLE AREA ── */
+.dv-table-wrap-outer {
+  flex: 1;
+  overflow: hidden;
+  padding: 12px 20px 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.dv-table-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-sm);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.dv-table-card-header {
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface);
+  flex-shrink: 0;
+}
+.dv-table-card-title {
+  font-size: var(--fs-sm); font-weight: 700; color: var(--txt);
+  display: flex; align-items: center; gap: 6px;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.dv-count-badge {
+  background: var(--brand-lt); color: var(--brand);
+  font-size: var(--fs-xs); font-weight: 700;
+  padding: 2px 8px; border-radius: var(--r-full);
+}
+.dv-table-scroll { overflow-x: auto; overflow-y: auto; flex: 1; }
+
+/* ── TABLE ── */
+table.dv-table {
+  width: 100%; border-collapse: collapse;
+  font-family: var(--font);
+  font-size: var(--fs-xs);
+  min-width: 1600px;
+}
+table.dv-table thead th {
+  background: #0F172A;
+  color: #E2E8F0;
+  font-size: 9.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 8px 11px;
+  text-align: left;
+  white-space: nowrap;
+  border: none;
+  border-right: 1px solid #1E293B;
+  position: sticky; top: 0; z-index: 10;
+}
+table.dv-table thead th:last-child { border-right: none; }
+table.dv-table thead th.sortable { cursor: pointer; user-select: none; }
+table.dv-table thead th.sortable:hover { background: #1E293B; }
+.sort-icon { margin-left: 4px; opacity: 0.4; font-size: 9px; }
+table.dv-table tbody tr { border-bottom: 1px solid var(--border-lt); transition: background 0.1s; }
+table.dv-table tbody tr:last-child { border-bottom: none; }
+table.dv-table tbody tr:hover { background: #F0F8FF; }
+table.dv-table tbody tr.alt { background: var(--surface2); }
+table.dv-table tbody tr.alt:hover { background: #F0F8FF; }
+table.dv-table tbody td {
+  padding: 6px 11px;
+  font-size: var(--fs-xs);
+  color: var(--txt2);
+  vertical-align: middle;
+  border: none;
+  border-bottom: 1px solid var(--border-lt);
+  white-space: nowrap;
+}
+table.dv-table tbody td:first-child { font-weight: 500; color: var(--brand); }
+
+/* ── ACTION BUTTONS (table inline) ── */
+.btn-tbl {
+  font-family: var(--font); font-size: 10px; font-weight: 500;
+  padding: 3px 9px; border-radius: 4px; cursor: pointer;
+  border: none; display: inline-flex; align-items: center; gap: 4px;
+  transition: all 0.12s; white-space: nowrap;
+}
+.btn-tbl-blue   { background: #EFF6FF; color: #1D4ED8; }
+.btn-tbl-blue:hover { background: #DBEAFE; }
+.btn-tbl-red    { background: #FEF2F2; color: #DC2626; }
+.btn-tbl-red:hover  { background: #FEE2E2; }
+.btn-tbl-green  { background: #ECFDF5; color: #059669; }
+.btn-tbl-green:hover { background: #D1FAE5; }
+.btn-tbl-purple { background: var(--purple-lt); color: var(--purple); }
+.btn-tbl-purple:hover { background: #EDE9FE; }
+.btn-tbl-pink   { background: var(--pink-lt); color: var(--pink); }
+.btn-tbl-pink:hover   { background: #FCE7F3; }
+.btn-tbl-orange { background: #FFF7ED; color: var(--orange); }
+.btn-tbl-orange:hover { background: #FFEDD5; }
+.btn-tbl-disabled { background: var(--surface2); color: var(--txt4); cursor: not-allowed; }
+
+/* Status chips in completion column */
+.dv-completion {
+  color: var(--brand); font-size: 10px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 3px;
+  font-weight: 500;
+}
+.dv-completion:hover { text-decoration: underline; }
+.dv-cell-dash { color: var(--txt4); font-size: 10px; }
+
+/* ── PAGINATION ── */
+.dv-pagination {
+  padding: 8px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--surface2);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
+  flex-wrap: wrap; gap: 6px;
+}
+.dv-page-info { font-size: var(--fs-xs); color: var(--txt3); }
+.dv-page-controls { display: flex; align-items: center; gap: 3px; }
+.dv-page-btn {
+  width: 28px; height: 28px;
+  border: 1px solid var(--border); border-radius: var(--r-sm);
+  background: var(--surface); color: var(--txt2);
+  font-size: 11px; cursor: pointer; font-family: var(--font);
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.12s;
+}
+.dv-page-btn:hover { background: var(--brand-lt); border-color: var(--brand); color: var(--brand); }
+.dv-page-btn.active { background: var(--brand); border-color: var(--brand); color: #fff; font-weight: 700; }
+.dv-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── MODALS ── */
+.dv-modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(2px);
+  z-index: 500;
+  display: flex; align-items: center; justify-content: center;
+}
+.dv-modal-overlay.hidden { display: none; }
+.dv-modal {
+  background: var(--surface);
+  border-radius: 12px;
+  box-shadow: var(--sh-lg);
+  width: 90%; max-width: 560px;
+  max-height: 88vh;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.dv-modal-lg { max-width: 760px; }
+.dv-modal-xl { max-width: 920px; }
+.dv-modal-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--surface2);
+  flex-shrink: 0;
+}
+.dv-modal-header-title {
+  font-size: var(--fs-md); font-weight: 700; color: var(--txt);
+  display: flex; align-items: center; gap: 8px;
+}
+.dv-modal-header-icon {
+  width: 28px; height: 28px; border-radius: var(--r-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px;
+}
+.dv-modal-body { padding: 18px; overflow-y: auto; flex: 1; }
+.dv-modal-footer {
+  padding: 12px 18px;
+  border-top: 1px solid var(--border);
+  background: var(--surface2);
+  display: flex; justify-content: flex-end; gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Modal form grid */
+.dv-form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.dv-form-grid-3 { grid-template-columns: repeat(3, 1fr); }
+.dv-form-full { grid-column: 1 / -1; }
+.dv-field { display: flex; flex-direction: column; gap: 4px; }
+.dv-label {
+  font-size: var(--fs-xs); font-weight: 700; color: var(--txt3);
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.dv-label .req { color: var(--danger); margin-left: 1px; }
+.dv-modal-input, .dv-modal-select, .dv-modal-textarea {
+  font-family: var(--font); font-size: var(--fs-sm); color: var(--txt);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-sm); padding: 5px 9px;
+  outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+  width: 100%;
+}
+.dv-modal-input { height: 32px; }
+.dv-modal-select { height: 32px; -webkit-appearance: none; cursor: pointer; padding-right: 22px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%2394A3B8' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 8px center; }
+.dv-modal-textarea { min-height: 72px; resize: vertical; line-height: 1.5; }
+.dv-modal-input:focus, .dv-modal-select:focus, .dv-modal-textarea:focus {
+  border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-glow);
+}
+.dv-modal-input[readonly] { background: var(--surface2); color: var(--txt3); cursor: not-allowed; }
+
+/* Modal section header */
+.dv-section-hd {
+  font-size: 9.5px; font-weight: 800; color: var(--txt3);
+  text-transform: uppercase; letter-spacing: 0.9px;
+  padding: 10px 0 6px;
+  display: flex; align-items: center; gap: 6px;
+  border-bottom: 1px solid var(--border-lt);
+  margin-bottom: 10px;
+}
+.dv-section-hd::before {
+  content: ''; width: 3px; height: 12px;
+  background: var(--brand); border-radius: 2px;
+}
+
+/* HPCL Status modal brand bar */
+.dv-brand-bar {
+  display: flex; align-items: center; justify-content: center;
+  padding: 10px 0 6px; gap: 12px;
+}
+.dv-brand-bar img { height: 32px; opacity: 0.85; }
+
+/* ── TOAST ── */
+#dv-toast-container {
+  position: fixed; top: 64px; right: 16px;
+  z-index: 9999;
+  display: flex; flex-direction: column; gap: 8px;
+  pointer-events: none;
+}
+.dv-toast {
+  min-width: 260px; max-width: 340px;
+  background: var(--surface);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border);
+  box-shadow: var(--sh-md);
+  padding: 10px 14px;
+  display: flex; align-items: flex-start; gap: 9px;
+  transform: translateX(120%);
+  transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  pointer-events: auto;
+}
+.dv-toast.show { transform: translateX(0); }
+.dv-toast-icon { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0; }
+.dv-toast.success .dv-toast-icon { background: var(--success-lt); color: var(--success); }
+.dv-toast.error .dv-toast-icon   { background: var(--danger-lt); color: var(--danger); }
+.dv-toast.info .dv-toast-icon    { background: var(--brand-lt); color: var(--brand); }
+.dv-toast-title { font-size: var(--fs-sm); font-weight: 600; color: var(--txt); }
+.dv-toast-msg   { font-size: var(--fs-xs); color: var(--txt3); margin-top: 1px; }
+
+/* ── LOADING OVERLAY ── */
+.dv-loading {
+  position: fixed; inset: 0;
+  background: rgba(248,250,252,0.85);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  z-index: 900;
+}
+.dv-loading.hidden { display: none; }
+.dv-spinner {
+  width: 36px; height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--brand);
+  border-radius: 50%;
+  animation: dv-spin 0.75s linear infinite;
+}
+.dv-loading-text { font-size: var(--fs-sm); color: var(--txt3); margin-top: 10px; font-weight: 500; }
+@keyframes dv-spin { to { transform: rotate(360deg); } }
+
+/* Close button */
+.dv-close-btn {
+  width: 28px; height: 28px; border-radius: var(--r-sm);
+  background: transparent; border: 1px solid var(--border);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  color: var(--txt3); font-size: 12px;
+  transition: all 0.12s;
+}
+.dv-close-btn:hover { background: var(--danger-lt); border-color: var(--danger); color: var(--danger); }
+
+/* Responsive */
+@media (max-width: 640px) {
+  .dv-toolbar { padding: 8px 12px; }
+  .dv-table-wrap-outer { padding: 8px 12px 0; }
+  .dv-form-grid { grid-template-columns: 1fr; }
+}
+</style>
+  <script src="config.js"></script>
+</head>
+<body>
+
+<div class="dv-page">
+
+  <!-- ── TOP STRIP ── -->
+  <div class="dv-strip">
+    <div class="dv-strip-icon"><i class="fa-solid fa-file-lines"></i></div>
+    <span class="dv-strip-title">Visit Records</span>
+    <div class="dv-strip-sep"></div>
+    <span class="dv-strip-meta" id="dateChip"></span>
+    <div class="dv-strip-spacer"></div>
+    <div class="dv-user-pill">
+      <div class="av" id="userAvatar">?</div>
+      <span class="dv-user-name" id="userLabel">Loading…</span>
+    </div>
+  </div>
+
+  <!-- ── FILTER TOOLBAR ── -->
+  <div class="dv-toolbar">
+
+    <!-- Engineer Filter (admin only) -->
+    <div class="dv-filter-group" id="engineerFilterWrapper">
+      <span class="dv-filter-label">Engineer</span>
+      <select id="engineerFilter" class="dv-select" style="min-width:160px;">
+        <option value="">All Engineers</option>
+      </select>
+    </div>
+
+    <!-- From Date -->
+    <div class="dv-filter-group">
+      <span class="dv-filter-label">From Date</span>
+      <input type="date" id="fromDate" class="dv-input" onchange="checkFilterValidity()"/>
+    </div>
+
+    <!-- To Date -->
+    <div class="dv-filter-group">
+      <span class="dv-filter-label">To Date</span>
+      <input type="date" id="toDate" class="dv-input" onchange="checkFilterValidity()"/>
+    </div>
+
+    <button id="applyBtn" onclick="applyFilter(this)" class="dv-btn dv-btn-primary" disabled style="align-self:flex-end;">
+      <i class="fa-solid fa-magnifying-glass"></i> <span id="applyTxt">Apply</span>
+    </button>
+
+    <button onclick="clearFilter()" class="dv-btn dv-btn-warn" style="align-self:flex-end;">
+      <i class="fa-solid fa-rotate-left"></i> Clear
+    </button>
+
+    <div class="dv-toolbar-spacer"></div>
+
+    <!-- Search -->
+    <div class="dv-filter-group" style="align-self:flex-end;">
+      <div class="dv-search-wrap">
+        <i class="fa-solid fa-search"></i>
+        <input type="text" id="searchInput" oninput="debouncedSearch()" placeholder="Search records…" class="dv-input dv-search-input"/>
+      </div>
+    </div>
+
+    <!-- Export Dropdown -->
+    <div class="dv-dropdown" id="exportDropdown" style="align-self:flex-end;">
+      <button onclick="toggleExportMenu()" class="dv-btn dv-btn-success">
+        <i class="fa-solid fa-file-excel"></i> Export <i class="fa-solid fa-chevron-down" style="font-size:9px;"></i>
+      </button>
+      <div class="dv-dropdown-menu" id="exportMenu">
+        <div class="dv-dropdown-item" onclick="exportStyledExcel()">
+          <i class="fa-solid fa-table" style="color:var(--success);"></i> Daily Plan Report
+        </div>
+        <div class="dv-dropdown-divider"></div>
+        <div class="dv-dropdown-item" onclick="exportEarthingStatusExcel()">
+          <i class="fa-solid fa-bolt" style="color:var(--warn);"></i> Earthing Status Report
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── STAT CHIPS ── -->
+  <div class="dv-stat-row">
+    <div class="dv-stat-chip"><i class="fa-solid fa-list" style="font-size:9px;color:var(--brand);"></i> Total: <strong id="statTotal">—</strong></div>
+    <div class="dv-stat-chip success"><i class="fa-solid fa-check" style="font-size:9px;color:var(--success);"></i> Resolved: <strong id="statResolved">—</strong></div>
+    <div class="dv-stat-chip warn"><i class="fa-solid fa-clock" style="font-size:9px;color:var(--warn);"></i> Pending: <strong id="statPending">—</strong></div>
+    <div class="dv-stat-chip danger"><i class="fa-solid fa-circle-xmark" style="font-size:9px;color:var(--danger);"></i> Unresolved: <strong id="statUnresolved">—</strong></div>
+  </div>
+
+  <!-- ── TABLE AREA ── -->
+  <div class="dv-table-wrap-outer">
+    <div class="dv-table-card">
+
+      <div class="dv-table-card-header">
+        <div class="dv-table-card-title">
+          <i class="fa-solid fa-table-cells" style="color:var(--brand);"></i>
+          Visit Plans
+        </div>
+        <span class="dv-count-badge" id="countBadge">0 records</span>
+        <div style="flex:1;"></div>
+        <span style="font-size:10px;color:var(--txt4);">50 per page</span>
+      </div>
+
+      <div class="dv-table-scroll">
+        <table class="dv-table" id="dataTable">
+          <thead>
+            <tr>
+              <th>Zone</th>
+              <th>Region</th>
+              <th class="sortable" data-key="engineer" onclick="sortTable(this)">Engineer <span class="sort-icon">↕</span></th>
+              <th>Phase</th>
+              <th>RO Code</th>
+              <th>RO Name</th>
+              <th>Emp Code</th>
+              <th>Incident ID</th>
+              <th>Purpose</th>
+              <th class="sortable" data-key="date" onclick="sortTable(this)">Date <span class="sort-icon">↕</span></th>
+              <th>Issue Type</th>
+              <th>AMC Qtr</th>
+              <th>Completion Status</th>
+              <th style="text-align:center;">Update Status</th>
+              <th id="atgHeader" style="text-align:center;">ATG Status</th>
+              <th>In-Time</th>
+              <th>Out-Time</th>
+              <th>Support From</th>
+              <th>Incident Status</th>
+              <th>Unresolved Reason</th>
+              <th>Late Arrival Reason</th>
+              <th>Late Departure Reason</th>
+              <th>Separate Earthing</th>
+              <th>Earthing Checked By</th>
+              <th>Earthing Remark</th>
+              <th>Cable (Mtr)</th>
+              <th id="actionHeader" style="text-align:center;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="dv-pagination">
+        <div class="dv-page-info" id="pageInfo">—</div>
+        <div class="dv-page-controls" id="pagination"></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /dv-page -->
+
+<!-- ══ EDIT MODAL ══ -->
+<div id="editModal" class="dv-modal-overlay hidden">
+  <div class="dv-modal dv-modal-lg">
+    <div class="dv-modal-header">
+      <div class="dv-modal-header-title">
+        <div class="dv-modal-header-icon" style="background:var(--brand-lt);color:var(--brand);"><i class="fa-solid fa-pen-to-square"></i></div>
+        Edit Visit Record
+      </div>
+      <button class="dv-close-btn" onclick="closeEditModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="dv-modal-body">
+      <input type="hidden" id="editPlanId"/>
+      <div class="dv-form-grid">
+        <div class="dv-field"><label class="dv-label">Zone</label><input id="editzone" class="dv-modal-input" placeholder="Zone"/></div>
+        <div class="dv-field"><label class="dv-label">Region</label><input id="editRegion" class="dv-modal-input" placeholder="Region"/></div>
+        <div class="dv-field"><label class="dv-label">Engineer</label><input id="editEngineer" class="dv-modal-input" placeholder="Engineer"/></div>
+        <div class="dv-field"><label class="dv-label">Phase</label><input id="editPhase" class="dv-modal-input" placeholder="Phase"/></div>
+        <div class="dv-field"><label class="dv-label">RO Code</label><input id="editRoCode" class="dv-modal-input" placeholder="RO Code"/></div>
+        <div class="dv-field"><label class="dv-label">RO Name</label><input id="editRoName" class="dv-modal-input" placeholder="RO Name"/></div>
+        <div class="dv-field"><label class="dv-label">Employee ID</label><input id="editempId" class="dv-modal-input" placeholder="Employee ID"/></div>
+        <div class="dv-field"><label class="dv-label">Incident ID</label><input id="editincidentId" class="dv-modal-input" placeholder="Incident ID"/></div>
+        <div class="dv-field"><label class="dv-label">Purpose</label><input id="editPurpose" class="dv-modal-input" placeholder="Purpose"/></div>
+        <div class="dv-field"><label class="dv-label">Date</label><input id="editDate" class="dv-modal-input" placeholder="Date"/></div>
+        <div class="dv-field"><label class="dv-label">Issue Type</label><input id="editIssueType" class="dv-modal-input" placeholder="Issue Type"/></div>
+        <div class="dv-field"><label class="dv-label">AMC Qtr</label><input id="editAmcQtr" class="dv-modal-input" placeholder="AMC Qtr"/></div>
+        <div class="dv-field"><label class="dv-label">Arrival Time</label><input type="time" id="editArrivalTime" class="dv-modal-input"/></div>
+        <div class="dv-field"><label class="dv-label">Leave Time</label><input type="time" id="editLeaveTime" class="dv-modal-input"/></div>
+        <div class="dv-field"><label class="dv-label">Support Taken From</label><input id="editSupportTakenFrom" class="dv-modal-input" placeholder="Support person"/></div>
+        <div class="dv-field"><label class="dv-label">Incident Status</label><input id="editIncidentStatus" class="dv-modal-input" placeholder="Open / Resolved"/></div>
+        <div class="dv-field dv-form-full"><label class="dv-label">Unresolved Reason</label><textarea id="editWhatDone" class="dv-modal-textarea" placeholder="Reason of unresolved..."></textarea></div>
+        <div class="dv-field"><label class="dv-label">Late Arrival Reason (after 12 PM)</label><textarea id="editReason12PM" class="dv-modal-textarea" placeholder="Reason..."></textarea></div>
+        <div class="dv-field"><label class="dv-label">Late Departure Reason (after 6 PM)</label><textarea id="editReason06PM" class="dv-modal-textarea" placeholder="Reason..."></textarea></div>
+        <div class="dv-field"><label class="dv-label">Separate Earthing (Yes/No)</label><textarea id="editearthingStatus" class="dv-modal-textarea"></textarea></div>
+        <div class="dv-field"><label class="dv-label">Earthing Photo Checked By</label><textarea id="editearthingCheckedby" class="dv-modal-textarea"></textarea></div>
+        <div class="dv-field"><label class="dv-label">Earthing Remark</label><textarea id="editdetailEarthingremark" class="dv-modal-textarea"></textarea></div>
+        <div class="dv-field"><label class="dv-label">Cable Required (Mtr)</label><textarea id="editcablerequirment" class="dv-modal-textarea"></textarea></div>
+      </div>
+    </div>
+    <div class="dv-modal-footer">
+      <button onclick="closeEditModal()" class="dv-btn dv-btn-neutral"><i class="fa-solid fa-xmark"></i> Cancel</button>
+      <button onclick="saveEdit()" class="dv-btn dv-btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ STATUS MODAL (HPCL) ══ -->
+<div id="statusModal" class="dv-modal-overlay hidden">
+  <div class="dv-modal dv-modal-xl">
+    <div class="dv-modal-header">
+      <div class="dv-modal-header-title">
+        <div class="dv-modal-header-icon" style="background:#e0f2fe;color:#0284c7;"><i class="fa-solid fa-circle-plus"></i></div>
+        Add HPCL Visit Status
+      </div>
+      <button class="dv-close-btn" onclick="closeStatusModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="dv-modal-body">
+      <div class="dv-brand-bar">
+        <img src="./assets/HPCL.png" alt="HPCL" onerror="this.style.display='none'"/>
+      </div>
+      <input type="hidden" id="statusPlanId"/>
+      <form id="statusForm">
+
+        <div class="dv-section-hd">Probe & Equipment</div>
+        <div class="dv-form-grid">
+          <div class="dv-field"><label class="dv-label">Probe Make <span class="req">*</span></label>
+            <select id="probeMake" class="dv-modal-select"><option value="">Select</option><option>SI</option><option>SBEM</option><option>Alisonic</option></select></div>
+          <div class="dv-field dv-form-full"><label class="dv-label">Product & Probe Size <span class="req">*</span></label>
+            <textarea id="probeSize" class="dv-modal-textarea" placeholder="T1-MS-16KL-Serial No, T2-HSD-35KL-Serial No…"></textarea></div>
+          <div class="dv-field"><label class="dv-label">Low Product Lock <span class="req">*</span></label>
+            <select id="lowProductLock" class="dv-modal-select"><option value="">Select</option><option>350mm/STP</option><option>150mm/Non STP</option><option>350mm&amp;150mm /Non STP</option></select></div>
+          <div class="dv-field"><label class="dv-label">High Water Set at 50mm <span class="req">*</span></label>
+            <select id="highWaterSet" class="dv-modal-select"><option value="">Select</option><option>Yes</option><option>No</option></select></div>
+          <div class="dv-field"><label class="dv-label">All DU Serial No. Updated <span class="req">*</span></label>
+            <select id="duSerialNumber" class="dv-modal-select"><option value="">Select</option><option>Yes</option><option>No</option></select></div>
+          <div class="dv-field"><label class="dv-label">DG Status <span class="req">*</span></label>
+            <select id="dgStatus" class="dv-modal-select"><option value="">Select</option><option>Standard DG</option><option>Non Standard DG</option><option>No DG Available</option></select></div>
+        </div>
+
+        <div class="dv-section-hd">Connectivity</div>
+        <div class="dv-form-grid">
+          <div class="dv-field"><label class="dv-label">Connectivity Type <span class="req">*</span></label>
+            <select id="connectivityType" class="dv-modal-select"><option value="">Select</option><option>VSAT</option><option>Broadband</option><option>RELCON SIM</option><option>SDWAN</option></select></div>
+          <div class="dv-field"><label class="dv-label">SIM-1 Provider <span class="req">*</span></label>
+            <select id="sim1Provider" class="dv-modal-select"><option value="">Select</option><option>JIO</option><option>AIRTEL</option><option>VI</option><option>NA</option></select></div>
+          <div class="dv-field"><label class="dv-label">SIM 1 Number <span class="req">*</span></label>
+            <input id="sim1Number" class="dv-modal-input" type="text"/></div>
+          <div class="dv-field"><label class="dv-label">SIM-2 Provider <span class="req">*</span></label>
+            <select id="sim2Provider" class="dv-modal-select"><option value="">Select</option><option>JIO</option><option>AIRTEL</option><option>VI</option><option>NA</option></select></div>
+          <div class="dv-field"><label class="dv-label">SIM 2 Number <span class="req">*</span></label>
+            <input id="sim2Number" class="dv-modal-input" type="text"/></div>
+          <div class="dv-field"><label class="dv-label">IEMI Number <span class="req">*</span></label>
+            <input id="iemiNumber" class="dv-modal-input" type="text"/></div>
+        </div>
+
+        <div class="dv-section-hd">Software Versions</div>
+        <div class="dv-form-grid dv-form-grid-3">
+          <div class="dv-field"><label class="dv-label">BOS Version <span class="req">*</span></label>
+            <select id="bosVersion" class="dv-modal-select"><option value="">Select</option><option>1.0.30(01-Nov-2023)</option><option>1.0.5(08-Jul-2024)</option></select></div>
+          <div class="dv-field"><label class="dv-label">FCC Version <span class="req">*</span></label>
+            <select id="fccVersion" class="dv-modal-select"><option value="">Select</option><option>1.0.30(01-Nov-2023)</option><option>1.0.5(08-Jul-2024)</option></select></div>
+          <div class="dv-field"><label class="dv-label">SFTP Config <span class="req">*</span></label>
+            <select id="sftpConfig" class="dv-modal-select"><option value="">Select</option><option>Yes</option><option>No</option></select></div>
+          <div class="dv-field dv-form-full"><label class="dv-label">Wireless Slave Version <span class="req">*</span></label>
+            <textarea id="wirelessSlave" class="dv-modal-textarea" placeholder="1-02.00.60, 2-03.00.70"></textarea></div>
+          <div class="dv-field"><label class="dv-label">Admin Password Updated <span class="req">*</span></label>
+            <select id="adminPassword" class="dv-modal-select"><option value="">Select</option><option>Yes</option><option>No</option></select></div>
+          <div class="dv-field"><label class="dv-label">Work Completion <span class="req">*</span></label>
+            <select id="workCompletion" class="dv-modal-select"><option value="">Select</option><option>Partial</option><option>All</option></select></div>
+        </div>
+
+        <div class="dv-section-hd">Spare Management</div>
+        <div class="dv-form-grid">
+          <div class="dv-field"><label class="dv-label">Spare Used <span class="req">*</span></label>
+            <select id="spareUsed" class="dv-modal-select"><option value="">Select</option><option>Yes</option><option>No</option></select></div>
+          <div class="dv-field"><label class="dv-label">Any Spare Requirement <span class="req">*</span></label>
+            <select id="spareRequirment" class="dv-modal-select"><option value="">Select</option><option>Yes</option><option>No</option></select></div>
+          <div class="dv-field"><label class="dv-label">Used Spare Name & Code <span class="req">*</span></label>
+            <textarea id="activeSpare" class="dv-modal-textarea" placeholder="1- DIV1 (HOD12506241)"></textarea></div>
+          <div class="dv-field"><label class="dv-label">Faulty Spare Name & Code <span class="req">*</span></label>
+            <textarea id="faultySpare" class="dv-modal-textarea" placeholder="1- DIV1 (J0D12506240)"></textarea></div>
+          <div class="dv-field dv-form-full"><label class="dv-label">Required Spare Name <span class="req">*</span></label>
+            <textarea id="spareRequirmentname" class="dv-modal-textarea" placeholder="12V SMPS, BOS CARD, FCC CARD…"></textarea></div>
+        </div>
+
+        <div class="dv-section-hd">Earthing & Power</div>
+        <div class="dv-form-grid">
+          <div class="dv-field"><label class="dv-label">Earthing Status <span class="req">*</span></label>
+            <select id="earthingStatus" class="dv-modal-select"><option value="">Select</option><option>OK</option><option>NOT OK</option></select></div>
+          <div class="dv-field dv-form-full"><label class="dv-label">Voltage Measurement Reading <span class="req">*</span></label>
+            <textarea id="voltageReading" class="dv-modal-textarea" placeholder="PN=234V, PE=233V, NE=1V…"></textarea></div>
+        </div>
+
+        <div class="dv-section-hd">DU Status</div>
+        <div class="dv-form-grid">
+          <div class="dv-field"><label class="dv-label">No. of DU Offline <span class="req">*</span></label>
+            <select id="duOffline" class="dv-modal-select"><option value="">Select</option><option>ALL OK</option><option>1</option><option>2</option><option>3</option><option>4</option><option>ALL DU ISSUE</option></select></div>
+          <div class="dv-field"><label class="dv-label">DU Offline Dependency <span class="req">*</span></label>
+            <select id="duDependency" class="dv-modal-select"><option value="">Select</option><option>HPCL</option><option>RELCON</option><option>BOTH</option><option>NO</option></select></div>
+          <div class="dv-field dv-form-full"><label class="dv-label">Reason for DU Offline <span class="req">*</span></label>
+            <textarea id="duRemark" class="dv-modal-textarea" placeholder="DU-01 POS Card Issue…"></textarea></div>
+        </div>
+
+        <div class="dv-section-hd">Tank Status</div>
+        <div class="dv-form-grid">
+          <div class="dv-field"><label class="dv-label">No. of Tank Offline <span class="req">*</span></label>
+            <select id="tankOffline" class="dv-modal-select"><option value="">Select</option><option>ALL OK</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>ALL Tank Offline</option></select></div>
+          <div class="dv-field"><label class="dv-label">Tank Offline Dependency <span class="req">*</span></label>
+            <select id="tankDependency" class="dv-modal-select"><option value="">Select</option><option>HPCL</option><option>RELCON</option><option>BOTH</option><option>NO</option></select></div>
+          <div class="dv-field dv-form-full"><label class="dv-label">Reason for Tank Offline <span class="req">*</span></label>
+            <textarea id="tankRemark" class="dv-modal-textarea" placeholder="TANK-1: TANK CABLE FAULTY…"></textarea></div>
+        </div>
+
+        <div class="dv-section-hd">Network IPs & Location</div>
+        <div class="dv-form-grid">
+          <div class="dv-field"><label class="dv-label">BOS IP <span class="req">*</span></label><textarea id="bosIP" class="dv-modal-textarea" placeholder="10.121.21.46"></textarea></div>
+          <div class="dv-field"><label class="dv-label">FCC IP <span class="req">*</span></label><textarea id="fccIP" class="dv-modal-textarea" placeholder="10.121.21.47"></textarea></div>
+          <div class="dv-field dv-form-full"><label class="dv-label" style="color:var(--danger);">Site Location (Lat, Lng) <span class="req">*</span></label>
+            <input type="text" id="locationField" class="dv-modal-input" readonly placeholder="Fetching location…"/></div>
+        </div>
+
+      </form>
+    </div>
+    <div class="dv-modal-footer" style="position:sticky;bottom:0;z-index:10;">
+      <button onclick="closeStatusModal()" class="dv-btn dv-btn-neutral"><i class="fa-solid fa-xmark"></i> Cancel</button>
+      <button onclick="saveStatus()" class="dv-btn dv-btn-success"><i class="fa-solid fa-floppy-disk"></i> Save Status</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ COMPLETION MODAL ══ -->
+<div id="completionModal" class="dv-modal-overlay hidden">
+  <div class="dv-modal">
+    <div class="dv-modal-header">
+      <div class="dv-modal-header-title">
+        <div class="dv-modal-header-icon" style="background:var(--success-lt);color:var(--success);"><i class="fa-solid fa-clipboard-check"></i></div>
+        Completion Status
+      </div>
+      <button class="dv-close-btn" onclick="closeCompletionModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="dv-modal-body">
+      <input type="hidden" id="completionPlanId"/>
+      <div class="dv-field">
+        <label class="dv-label">Enter Completion Notes</label>
+        <textarea id="completionInput" rows="4" class="dv-modal-textarea" placeholder="Describe completion status…"></textarea>
+      </div>
+    </div>
+    <div class="dv-modal-footer">
+      <button onclick="closeCompletionModal()" class="dv-btn dv-btn-neutral"><i class="fa-solid fa-xmark"></i> Cancel</button>
+      <button onclick="saveCompletionStatus()" class="dv-btn dv-btn-success"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ATG STATUS MODAL ══ -->
+<div id="atgModal" class="dv-modal-overlay hidden">
+  <div class="dv-modal dv-modal-lg">
+    <div class="dv-modal-header">
+      <div class="dv-modal-header-title">
+        <div class="dv-modal-header-icon" style="background:var(--purple-lt);color:var(--purple);"><i class="fa-solid fa-tower-broadcast"></i></div>
+        Update ATG Status
+      </div>
+      <button class="dv-close-btn" onclick="closeATGModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="dv-modal-body">
+      <input type="hidden" id="atgPlanId"/>
+      <form id="atgForm" class="dv-form-grid">
+        <div class="dv-field"><label class="dv-label">Zone</label>
+          <select id="zone" class="dv-modal-select"><option value="">Select</option><option>ECZ</option><option>NCZ</option></select></div>
+        <div class="dv-field"><label class="dv-label">ATG Related Issue</label>
+          <input type="text" id="atgIssuetype" class="dv-modal-input"/></div>
+        <div class="dv-field"><label class="dv-label">Time to Reach Engineer</label>
+          <input type="time" id="startTime" class="dv-modal-input" step="60"/></div>
+        <div class="dv-field"><label class="dv-label">Status Before Visit</label>
+          <input type="text" id="bfrStatus" class="dv-modal-input"/></div>
+        <div class="dv-field dv-form-full"><label class="dv-label">Action Taken on Site</label>
+          <textarea id="actionSite" rows="3" class="dv-modal-textarea"></textarea></div>
+        <div class="dv-field"><label class="dv-label">Support Taken (With Whom)</label>
+          <select id="supportPerson" class="dv-modal-select"><option value="">Select</option><option>YES/VIREN</option><option>YES/BALDEV</option><option>YES/SAGAR</option><option>YES/DHAVAL</option></select></div>
+        <div class="dv-field"><label class="dv-label">Earthing Status</label>
+          <select id="earthingStatus1" class="dv-modal-select"><option value="">Select</option><option>OK</option><option>NOT OK</option></select></div>
+        <div class="dv-field"><label class="dv-label">Resolved Status</label>
+          <select id="resolvedStatus" class="dv-modal-select"><option value="">Select</option><option>YES</option><option>NO</option></select></div>
+        <div class="dv-field"><label class="dv-label">Resolved at What Time</label>
+          <input type="time" id="endTime" class="dv-modal-input" step="60"/></div>
+        <div class="dv-field dv-form-full"><label class="dv-label">Next Action (if any)</label>
+          <textarea id="nextAction" rows="2" class="dv-modal-textarea"></textarea></div>
+        <div class="dv-field dv-form-full"><label class="dv-label">Remarks</label>
+          <textarea id="remark" rows="2" class="dv-modal-textarea" placeholder="Additional notes…"></textarea></div>
+      </form>
+    </div>
+    <div class="dv-modal-footer">
+      <button onclick="closeATGModal()" class="dv-btn dv-btn-neutral"><i class="fa-solid fa-xmark"></i> Cancel</button>
+      <button onclick="submitATGStatus()" class="dv-btn dv-btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save ATG Status</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ JIO BP MODAL ══ -->
+<div id="jioBPModal" class="dv-modal-overlay hidden">
+  <div class="dv-modal dv-modal-lg">
+    <div class="dv-modal-header">
+      <div class="dv-modal-header-title">
+        <div class="dv-modal-header-icon" style="background:#fef9c3;color:#a16207;"><i class="fa-solid fa-gas-pump"></i></div>
+        Add Jio BP Visit Status
+      </div>
+      <button class="dv-close-btn" onclick="closeJioBPModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="dv-modal-body">
+      <div class="dv-brand-bar"><img src="./assets/JioBP.png" alt="JioBP" onerror="this.style.display='none'"/></div>
+      <input type="hidden" id="jioBPPlanId"/>
+      <form id="jioBPForm" class="dv-form-grid">
+        <div class="dv-field"><label class="dv-label">HPSM ID</label><input type="text" id="hpsdId" class="dv-modal-input" style="text-transform:uppercase;"/></div>
+        <div class="dv-field dv-form-full"><label class="dv-label">Diagnosis</label><textarea id="diagnosis" class="dv-modal-textarea" placeholder="What is the issue and which material is faulty"></textarea></div>
+        <div class="dv-field dv-form-full"><label class="dv-label">Solution</label><textarea id="solution" class="dv-modal-textarea" placeholder="Issue resolved or not, material changed"></textarea></div>
+        <div class="dv-field"><label class="dv-label">Active Material Used</label>
+          <select id="activeMaterialUsed" class="dv-modal-select"><option value="">Select</option><option>Yes</option><option>No</option></select></div>
+        <div class="dv-field"><label class="dv-label">Used Material Name & Code</label><input type="text" id="usedMaterialDetails" class="dv-modal-input" placeholder="1-CARD READER (H0Q72506220)"/></div>
+        <div class="dv-field dv-form-full"><label class="dv-label">Faulty Material Name & Code</label><input type="text" id="faultyMaterialDetails" class="dv-modal-input" placeholder="1-CARD READER (J2Q72506220)"/></div>
+        <div class="dv-field"><label class="dv-label">Observation (Hours)</label><input type="text" id="observationHours" class="dv-modal-input"/></div>
+        <div class="dv-field"><label class="dv-label">Spare Requirement</label>
+          <select id="spareRequired" class="dv-modal-select"><option value="">Select</option><option>Yes</option><option>No</option></select></div>
+        <div class="dv-field dv-form-full"><label class="dv-label">Material Requirement Name</label><input type="text" id="materialRequirement" class="dv-modal-input" placeholder="Share material name required"/></div>
+        <div class="dv-field dv-form-full"><label class="dv-label">Support Taken From</label><input type="text" id="relconsupport" class="dv-modal-input" placeholder="YES/SHIV"/></div>
+        <div class="dv-field dv-form-full"><label class="dv-label">Inform to RBML Person</label><input type="text" id="rbmlperson" class="dv-modal-input" placeholder="YES/Vishnu"/></div>
+        <div class="dv-field dv-form-full"><label class="dv-label">Status</label>
+          <select id="jioStatus" class="dv-modal-select"><option value="">Select</option><option>Resolved</option><option>Unresolved</option></select></div>
+      </form>
+    </div>
+    <div class="dv-modal-footer">
+      <button onclick="closeJioBPModal()" class="dv-btn dv-btn-neutral"><i class="fa-solid fa-xmark"></i> Cancel</button>
+      <button onclick="saveJioBPStatus()" class="dv-btn dv-btn-success"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ BPCL MODAL ══ -->
+<div id="bpclModal" class="dv-modal-overlay hidden">
+  <div class="dv-modal dv-modal-lg">
+    <div class="dv-modal-header">
+      <div class="dv-modal-header-title">
+        <div class="dv-modal-header-icon" style="background:#fef3c7;color:#d97706;"><i class="fa-solid fa-oil-well"></i></div>
+        Add BPCL Visit Status
+      </div>
+      <button class="dv-close-btn" onclick="closeBPCLModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="dv-modal-body">
+      <div class="dv-brand-bar"><img src="./assets/BPCL.png" alt="BPCL" onerror="this.style.display='none'"/></div>
+      <input type="hidden" id="bpclPlanId"/>
+      <form id="bpclForm" class="dv-form-grid">
+        <div class="dv-field"><label class="dv-label">Class-1 WITH SIM Device Count</label>
+          <input type="number" id="class1Count" min="0" class="dv-modal-input" onchange="renderClass1Devices()"/></div>
+        <div class="dv-field dv-form-full"><label class="dv-label">Class-1 (With SIM) Device Details</label>
+          <div id="class1DevicesContainer" class="space-y-1"></div></div>
+        <div class="dv-field"><label class="dv-label">Class-1 WITHOUT SIM Device Count</label>
+          <input type="number" id="class1Countwithoutsim" min="0" class="dv-modal-input" onchange="renderClass1WithoutSimDevices()"/></div>
+        <div class="dv-field dv-form-full"><label class="dv-label">Class-1 (Without SIM) Device Details</label>
+          <div id="class1DevicesContainerwithoutsim"></div></div>
+        <div class="dv-field"><label class="dv-label">Class-2 Device Installed Count</label>
+          <input type="number" id="class2Count" min="0" class="dv-modal-input" onchange="renderClass2Devices()"/></div>
+        <div class="dv-field dv-form-full"><label class="dv-label">Class-2 Device Details</label>
+          <div id="class2DevicesContainer"></div></div>
+        <div class="dv-field"><label class="dv-label">RELCON ATG Provided?</label>
+          <select id="relconAtgProvided" class="dv-modal-select" onchange="handleRelconATGChange()"><option value="">Select</option><option value="YES">Yes</option><option value="NO">No</option></select></div>
+        <div class="dv-field hidden" id="relconAtgCountDiv"><label class="dv-label">No. of ATG Provided by RELCON</label>
+          <input type="number" min="0" id="relconAtgCount" class="dv-modal-input" onchange="renderRelconATGFields()"/></div>
+        <div class="dv-field dv-form-full hidden" id="relconAtgContainer"><label class="dv-label">RELCON ATG Details</label></div>
+        <div class="dv-field"><label class="dv-label">JIO SIM Number</label>
+          <input type="text" id="bpclJioSim" class="dv-modal-input" placeholder="JIO SIM Number"/></div>
+        <div class="dv-field"><label class="dv-label">Airtel SIM Number</label>
+          <input type="text" id="bpclAirtelSim" class="dv-modal-input" placeholder="Airtel SIM Number"/></div>
+      </form>
+    </div>
+    <div class="dv-modal-footer">
+      <button onclick="closeBPCLModal()" class="dv-btn dv-btn-neutral"><i class="fa-solid fa-xmark"></i> Cancel</button>
+      <button onclick="saveBPCLStatus()" class="dv-btn dv-btn-success"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TOAST CONTAINER ══ -->
+<div id="dv-toast-container"></div>
+
+<!-- ══ LOADING OVERLAY ══ -->
+<div id="loadingOverlay" class="dv-loading hidden">
+  <div class="dv-spinner"></div>
+  <div class="dv-loading-text">Loading data…</div>
+</div>
+
+<script>
+/* ─────────────────────────────────────────────────
+   RELCON CRM — dataView.js  (inline)
+   All original logic preserved, UI classes updated
+───────────────────────────────────────────────── */
+const baseUrl = window.BACKEND_URL || "https://relcon-crm.onrender.com";
+
+let fullData = [], filteredData = [], loggedInUser = null;
+let currentPage = 1;
+const rowsPerPage = 50;
+let currentSort = { key: null, direction: null };
+
+// Init date chip
+document.getElementById('dateChip').textContent =
+  new Date().toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+
+/* ── UTILITIES ── */
+function debounce(fn, delay = 300) {
+  let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), delay); };
+}
+
+function showToast(message, type = 'success') {
+  const container = document.getElementById('dv-toast-container');
+  const el = document.createElement('div');
+  el.className = `dv-toast ${type}`;
+  const icons = { success:'fa-check', error:'fa-xmark', info:'fa-info' };
+  const titles = { success:'Success', error:'Error', info:'Info' };
+  el.innerHTML = `
+    <div class="dv-toast-icon"><i class="fa-solid ${icons[type]||'fa-info'}"></i></div>
+    <div><div class="dv-toast-title">${titles[type]||'Notice'}</div><div class="dv-toast-msg">${message}</div></div>`;
+  container.appendChild(el);
+  setTimeout(() => el.classList.add('show'), 10);
+  setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 350); }, 3500);
+}
+
+function showLoader() { document.getElementById('loadingOverlay').classList.remove('hidden'); }
+function hideLoader() { document.getElementById('loadingOverlay').classList.add('hidden'); }
+
+/* ── USER SESSION ── */
+async function fetchUserSession() {
+  const token = localStorage.getItem('token');
+  const res = await fetch(`${baseUrl}/user`, { headers: { Authorization: `Bearer ${token}` } });
+  if (res.status !== 200) { alert('Please log in first.'); window.location.href = 'login.html'; return; }
+  const user = await res.json();
+  loggedInUser = user;
+  const name = user.engineerName || user.username || 'User';
+  document.getElementById('userLabel').textContent = `${name} (${user.role})`;
+  document.getElementById('userAvatar').textContent = name.charAt(0).toUpperCase();
+  if (user.role === 'engineer') {
+    document.getElementById('engineerFilterWrapper').style.display = 'none';
+    ['actionHeader','atgHeader'].forEach(id => { const el = document.getElementById(id); if(el) el.style.display='none'; });
+  }
+}
+
+/* ── DATA FETCH ── */
+async function fetchAndStoreData() {
+  const token = localStorage.getItem('token');
+  const res = await fetch(`${baseUrl}/getDailyPlans`, { headers: { Authorization: `Bearer ${token}` } });
+  const data = await res.json();
+  fullData = data;
+  if (loggedInUser.role === 'admin') populateEngineerFilter(data);
+}
+
+function populateEngineerFilter(data) {
+  const sel = document.getElementById('engineerFilter');
+  const names = [...new Set(data.map(p => p.engineer))].sort();
+  names.forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; sel.appendChild(o); });
+}
+
+/* ── FILTER / SEARCH ── */
+function applyFilter(btnEl = null) {
+  const fromDate = document.getElementById('fromDate').value;
+  const toDate   = document.getElementById('toDate').value;
+  if (fromDate && toDate && new Date(fromDate) > new Date(toDate)) { showToast('From Date cannot be after To Date.', 'error'); return; }
+  if (btnEl) { btnEl.disabled = true; document.getElementById('applyTxt').textContent = 'Loading…'; }
+  showLoader();
+  setTimeout(() => {
+    const engineer = document.getElementById('engineerFilter')?.value || '';
+    filteredData = fullData;
+    if (loggedInUser.role === 'engineer') filteredData = filteredData.filter(p => p.engineer === loggedInUser.engineerName);
+    if (engineer && loggedInUser.role === 'admin') filteredData = filteredData.filter(p => p.engineer === engineer);
+    if (fromDate) filteredData = filteredData.filter(p => new Date(p.date) >= new Date(fromDate));
+    if (toDate)   filteredData = filteredData.filter(p => new Date(p.date) <= new Date(toDate));
+    applySearch();
+    if (btnEl) { btnEl.disabled = false; document.getElementById('applyTxt').textContent = 'Apply'; }
+    hideLoader();
+  }, 400);
+}
+
+function applySearch() {
+  const query = document.getElementById('searchInput').value.toLowerCase().trim();
+  const src = filteredData.length ? filteredData : fullData;
+  const result = query ? src.filter(p => Object.values(p).some(v => v && String(v).toLowerCase().includes(query))) : filteredData;
+  currentPage = 1;
+  updateStats(result);
+  populateTable(result);
+}
+const debouncedSearch = debounce(applySearch, 300);
+
+function clearFilter() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('fromDate').value = '';
+  document.getElementById('toDate').value = '';
+  if(document.getElementById('engineerFilter')) document.getElementById('engineerFilter').value = '';
+  document.getElementById('applyBtn').disabled = true;
+  document.getElementById('tableBody').innerHTML = '';
+  filteredData = [];
+  updateStats([]);
+}
+
+function checkFilterValidity() {
+  const f = document.getElementById('fromDate').value;
+  const t = document.getElementById('toDate').value;
+  document.getElementById('applyBtn').disabled = !(f && t);
+}
+
+function updateStats(data) {
+  const total = data.length;
+  const resolved   = data.filter(d => (d.incidentStatus||'').toLowerCase().includes('resolve')).length;
+  const unresolved = data.filter(d => (d.incidentStatus||'').toLowerCase().includes('unresolve')).length;
+  const pending    = total - resolved - unresolved;
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statResolved').textContent = resolved;
+  document.getElementById('statPending').textContent = pending < 0 ? 0 : pending;
+  document.getElementById('statUnresolved').textContent = unresolved;
+  document.getElementById('countBadge').textContent = `${total} records`;
+}
+
+/* ── TABLE RENDER ── */
+function populateTable(data) {
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = '';
+  const start = (currentPage - 1) * rowsPerPage;
+  const pageData = data.slice(start, start + rowsPerPage);
+
+  pageData.forEach((plan, idx) => {
+    const tr = document.createElement('tr');
+    if (idx % 2 !== 0) tr.classList.add('alt');
+
+    let statusBtn = '';
+    if (plan.statusSaved || plan.jioBPStatusSaved || plan.bpclStatusSaved) {
+      statusBtn = `<button onclick="downloadPDF('${plan._id}')" class="btn-tbl btn-tbl-pink"><i class="fa-solid fa-circle-down"></i> PDF</button>`;
+    } else if (plan.phase?.includes('HPCL/')) {
+      statusBtn = `<button onclick="openStatusModal('${plan._id}')" class="btn-tbl btn-tbl-blue"><i class="fa-solid fa-plus"></i> HPCL</button>`;
+    } else if (plan.phase?.includes('RBML')) {
+      statusBtn = `<button onclick="openJioBPModal('${plan._id}')" class="btn-tbl btn-tbl-orange"><i class="fa-solid fa-plus"></i> JioBP</button>`;
+    } else if (plan.phase?.includes('BPCL/')) {
+      statusBtn = `<button onclick="openBPCLModal('${plan._id}')" class="btn-tbl btn-tbl-orange"><i class="fa-solid fa-plus"></i> BPCL</button>`;
+    } else {
+      statusBtn = `<span class="dv-cell-dash">—</span>`;
+    }
+
+    let atgBtn = '';
+    if (loggedInUser.role === 'admin' && (plan.issueType === 'ATG Visit' || plan.issueType === 'ATG & PM Visit')) {
+      atgBtn = `<span class="dv-cell-dash">Loading…</span>`;
+      checkATGStatus(plan._id).then(exists => {
+        const cell = tr.querySelector('.atg-cell');
+        if (cell) cell.innerHTML = `<button onclick="handleATGButtonClick('${plan._id}', ${exists})" class="btn-tbl ${exists ? 'btn-tbl-green btn-tbl-disabled' : 'btn-tbl-purple'}" ${exists ? 'disabled' : ''}>
+          ${exists ? '<i class="fa-solid fa-check"></i> Added' : '<i class="fa-solid fa-plus"></i> ATG Status'}</button>`;
+      });
+    }
+
+    const v = (val) => val || `<span class="dv-cell-dash">—</span>`;
+    const completionCell = loggedInUser.role === 'admin'
+      ? `<span class="dv-completion" onclick="openCompletionModal('${plan._id}', \`${plan.completionStatus||''}\`)">
+          <i class="fa-solid fa-${plan.completionStatus ? 'pen-to-square' : 'plus'}"></i> ${plan.completionStatus || 'Add'}</span>`
+      : v(plan.completionStatus);
+
+    const actionCell = loggedInUser.role === 'admin'
+      ? `<td style="text-align:center;white-space:nowrap;">
+          <button onclick='openEditModal(${JSON.stringify(plan)})' class="btn-tbl btn-tbl-blue"><i class="fa-solid fa-pen"></i> Edit</button>
+          <button onclick='confirmDelete("${plan._id}")' class="btn-tbl btn-tbl-red" style="margin-left:4px;"><i class="fa-solid fa-trash"></i></button>
+         </td>` : '';
+
+    const atgCell = loggedInUser.role === 'admin'
+      ? `<td style="text-align:center;" class="atg-cell">${atgBtn}</td>` : '';
+
+    tr.innerHTML = `
+      <td>${v(plan.zone)}</td>
+      <td>${v(plan.region)}</td>
+      <td style="font-weight:600;color:var(--txt);">${v(plan.engineer)}</td>
+      <td>${v(plan.phase)}</td>
+      <td style="font-weight:600;color:var(--brand);">${v(plan.roCode)}</td>
+      <td>${v(plan.roName)}</td>
+      <td>${v(plan.empId)}</td>
+      <td>${v(plan.incidentId)}</td>
+      <td>${v(plan.purpose)}</td>
+      <td>${v(plan.date)}</td>
+      <td>${v(plan.issueType)}</td>
+      <td>${v(plan.amcQtr)}</td>
+      <td>${completionCell}</td>
+      <td style="text-align:center;">${statusBtn}</td>
+      ${atgCell}
+      <td>${v(plan.arrivalTime)}</td>
+      <td>${v(plan.leaveTime)}</td>
+      <td>${v(plan.supportTakenFrom)}</td>
+      <td>${v(plan.incidentStatus)}</td>
+      <td>${v(plan.whatDone)}</td>
+      <td>${v(plan.reasonAfter12PM)}</td>
+      <td>${v(plan.reasonAfter6PM)}</td>
+      <td>${v(plan.separateearthingStatus)}</td>
+      <td>${v(plan.earthingCheckedby)}</td>
+      <td>${v(plan.detailEarthingremark)}</td>
+      <td>${v(plan.cableRequirmentremark)}</td>
+      ${actionCell}`;
+
+    tbody.appendChild(tr);
+  });
+
+  renderPagination(data.length, data);
+  const info = document.getElementById('pageInfo');
+  const from = data.length === 0 ? 0 : start + 1;
+  const to   = Math.min(data.length, start + rowsPerPage);
+  info.textContent = `Showing ${from}–${to} of ${data.length} records`;
+}
+
+function renderPagination(total, data) {
+  const pag = document.getElementById('pagination');
+  pag.innerHTML = '';
+  const pages = Math.max(1, Math.ceil(total / rowsPerPage));
+
+  const prev = document.createElement('button');
+  prev.className = 'dv-page-btn'; prev.innerHTML = '<i class="fa-solid fa-chevron-left"></i>';
+  prev.disabled = currentPage === 1;
+  prev.onclick = () => { if(currentPage>1){currentPage--;populateTable(data);} };
+  pag.appendChild(prev);
+
+  let sp = Math.max(1, currentPage - 3), ep = Math.min(pages, sp + 6);
+  if (ep - sp < 6) sp = Math.max(1, ep - 6);
+  for (let i = sp; i <= ep; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'dv-page-btn' + (i === currentPage ? ' active' : '');
+    btn.textContent = i;
+    btn.onclick = (() => { const p=i; return () => { currentPage=p; populateTable(data); }; })();
+    pag.appendChild(btn);
+  }
+
+  const next = document.createElement('button');
+  next.className = 'dv-page-btn'; next.innerHTML = '<i class="fa-solid fa-chevron-right"></i>';
+  next.disabled = currentPage === pages;
+  next.onclick = () => { if(currentPage<pages){currentPage++;populateTable(data);} };
+  pag.appendChild(next);
+}
+
+/* ── SORT ── */
+function sortTable(th) {
+  const key = th.getAttribute('data-key');
+  if (!key) return;
+  currentSort.direction = (currentSort.key===key && currentSort.direction==='asc') ? 'desc'
+    : (currentSort.key===key && currentSort.direction==='desc') ? null : 'asc';
+  currentSort.key = key;
+  let data = [...filteredData];
+  if (currentSort.direction) {
+    data.sort((a,b) => {
+      const av = (a[key]||'').toString().toLowerCase(), bv = (b[key]||'').toString().toLowerCase();
+      return av < bv ? (currentSort.direction==='asc'?-1:1) : av > bv ? (currentSort.direction==='asc'?1:-1) : 0;
+    });
+  }
+  currentPage = 1;
+  populateTable(data);
+}
+
+/* ── EDIT MODAL ── */
+function openEditModal(plan) {
+  const fields = {editPlanId:'_id',editzone:'zone',editRegion:'region',editEngineer:'engineer',editPhase:'phase',
+    editRoCode:'roCode',editRoName:'roName',editempId:'empId',editincidentId:'incidentId',editPurpose:'purpose',
+    editDate:'date',editIssueType:'issueType',editAmcQtr:'amcQtr',editArrivalTime:'arrivalTime',
+    editLeaveTime:'leaveTime',editSupportTakenFrom:'supportTakenFrom',editIncidentStatus:'incidentStatus',
+    editWhatDone:'whatDone',editReason12PM:'reasonAfter12PM',editReason06PM:'reasonAfter6PM',
+    editearthingStatus:'separateearthingStatus',editearthingCheckedby:'earthingCheckedby',
+    editdetailEarthingremark:'detailEarthingremark',editcablerequirment:'cableRequirmentremark'};
+  Object.entries(fields).forEach(([id, key]) => { const el=document.getElementById(id); if(el) el.value=plan[key]||''; });
+  document.getElementById('editModal').classList.remove('hidden');
+}
+function closeEditModal() { document.getElementById('editModal').classList.add('hidden'); }
+
+async function saveEdit() {
+  const token = localStorage.getItem('token');
+  const id = document.getElementById('editPlanId').value;
+  const updated = {
+    zone:document.getElementById('editzone').value, region:document.getElementById('editRegion').value,
+    engineer:document.getElementById('editEngineer').value, phase:document.getElementById('editPhase').value,
+    roCode:document.getElementById('editRoCode').value, roName:document.getElementById('editRoName').value,
+    empId:document.getElementById('editempId').value, incidentId:document.getElementById('editincidentId').value,
+    purpose:document.getElementById('editPurpose').value, date:document.getElementById('editDate').value,
+    issueType:document.getElementById('editIssueType').value, amcQtr:document.getElementById('editAmcQtr').value,
+    arrivalTime:document.getElementById('editArrivalTime').value, leaveTime:document.getElementById('editLeaveTime').value,
+    supportTakenFrom:document.getElementById('editSupportTakenFrom').value,
+    incidentStatus:document.getElementById('editIncidentStatus').value,
+    whatDone:document.getElementById('editWhatDone').value,
+    reasonAfter12PM:document.getElementById('editReason12PM').value,
+    reasonAfter6PM:document.getElementById('editReason06PM').value,
+    separateearthingStatus:document.getElementById('editearthingStatus').value,
+    earthingCheckedby:document.getElementById('editearthingCheckedby').value,
+    detailEarthingremark:document.getElementById('editdetailEarthingremark').value,
+    cableRequirmentremark:document.getElementById('editcablerequirment').value,
+  };
+  const res = await fetch(`${baseUrl}/updateDailyPlan/${id}`, {
+    method:'PUT', headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
+    body:JSON.stringify(updated), credentials:'include'
+  });
+  if (res.ok) { showToast('Record updated successfully.'); closeEditModal(); await fetchAndStoreData(); applyFilter(document.getElementById('applyBtn')); }
+  else showToast('Update failed.', 'error');
+}
+
+/* ── DELETE ── */
+async function confirmDelete(planId) {
+  if (!confirm('Are you sure you want to delete this record?')) return;
+  try {
+    const res = await fetch(`${baseUrl}/deleteDailyPlan/${planId}`, { method:'DELETE', credentials:'include' });
+    if (res.ok) { showToast('Record deleted successfully.'); await fetchAndStoreData(); applyFilter(document.getElementById('applyBtn')); }
+    else showToast('Failed to delete.', 'error');
+  } catch { showToast('Network error during delete.', 'error'); }
+}
+
+/* ── ATG ── */
+async function checkATGStatus(planId) {
+  try {
+    const res = await fetch(`${baseUrl}/checkATGStatus/${planId}`, { headers:{ Authorization:`Bearer ${localStorage.getItem('token')}` } });
+    return (await res.json()).exists;
+  } catch { return false; }
+}
+let allowATGModalOpen = false;
+function openATGModal(planId) {
+  if (!allowATGModalOpen) return; allowATGModalOpen = false;
+  document.getElementById('atgPlanId').value = planId;
+  document.getElementById('atgForm').reset();
+  document.getElementById('atgModal').classList.remove('hidden');
+}
+function closeATGModal() { document.getElementById('atgModal').classList.add('hidden'); }
+async function submitATGStatus() {
+  const planId = document.getElementById('atgPlanId').value;
+  const payload = { planId, zone:document.getElementById('zone').value, atgIssuetype:document.getElementById('atgIssuetype').value, startTime:document.getElementById('startTime').value, bfrStatus:document.getElementById('bfrStatus').value, actionSite:document.getElementById('actionSite').value, supportPerson:document.getElementById('supportPerson').value, earthingStatus1:document.getElementById('earthingStatus1').value, resolvedStatus:document.getElementById('resolvedStatus').value, endTime:document.getElementById('endTime').value, nextAction:document.getElementById('nextAction').value, remark:document.getElementById('remark').value };
+  const res = await fetch(`${baseUrl}/saveATGStatus`, { method:'POST', headers:{'Content-Type':'application/json',Authorization:`Bearer ${localStorage.getItem('token')}`}, body:JSON.stringify(payload) });
+  if (res.ok) { showToast('ATG status saved.'); closeATGModal(); await fetchAndStoreData?.(); applyFilter?.(document.getElementById('applyBtn')); }
+  else showToast('Failed to save ATG status.', 'error');
+}
+function handleATGButtonClick(planId, exists) { if(exists) return; allowATGModalOpen=true; openATGModal(planId); }
+
+/* ── STATUS MODAL (HPCL) ── */
+async function openStatusModal(planId) {
+  document.getElementById('statusPlanId').value = planId;
+  document.getElementById('statusModal').classList.remove('hidden');
+  document.getElementById('statusForm').reset();
+  const currentPlan = fullData.find(p => p._id === planId);
+  const roCode = currentPlan?.roCode;
+  if (roCode) {
+    try {
+      const r = await fetch(`${baseUrl}/getLatestVerifiedHPCLByRoCode/${roCode}`, { headers:{Authorization:`Bearer ${localStorage.getItem('token')}`} });
+      if (r.ok) { const d = await r.json(); if(d.probeMake) document.getElementById('probeMake').value=d.probeMake; if(d.probeSize) document.getElementById('probeSize').value=d.probeSize; showToast('Probe details auto-filled from verified record.', 'info'); }
+    } catch {}
+  }
+  function applyAutoFieldLogic() {
+    const duOff = document.getElementById('duOffline').value, tankOff = document.getElementById('tankOffline').value;
+    const spareUsed = document.getElementById('spareUsed').value, spareReq = document.getElementById('spareRequirment').value;
+    if (duOff==='ALL OK') { document.getElementById('duDependency').value='NO'; document.getElementById('duRemark').value='ALL DU IN ONLINE MODE'; document.getElementById('duDependency').disabled=true; document.getElementById('duRemark').readOnly=true; }
+    else { document.getElementById('duDependency').disabled=false; document.getElementById('duRemark').readOnly=false; }
+    if (tankOff==='ALL OK') { document.getElementById('tankDependency').value='NO'; document.getElementById('tankRemark').value='ALL TANK IN ONLINE MODE'; document.getElementById('tankDependency').disabled=true; document.getElementById('tankRemark').readOnly=true; }
+    else { document.getElementById('tankDependency').disabled=false; document.getElementById('tankRemark').readOnly=false; }
+    if (spareUsed==='No') { document.getElementById('activeSpare').value='NO ACTIVE MATERIAL USED'; document.getElementById('faultySpare').value='NO FAULTY MATERIAL CREATED'; document.getElementById('activeSpare').readOnly=true; }
+    else { document.getElementById('activeSpare').readOnly=false; document.getElementById('faultySpare').readOnly=false; }
+    if (spareReq==='No') { document.getElementById('spareRequirmentname').value='NO SPARE REQUIRE'; document.getElementById('spareRequirmentname').readOnly=true; }
+    else { document.getElementById('spareRequirmentname').readOnly=false; }
+  }
+  ['duOffline','tankOffline','spareUsed','spareRequirment'].forEach(id => document.getElementById(id).addEventListener('change', applyAutoFieldLogic));
+  document.getElementById('connectivityType').addEventListener('change', async function() {
+    const sel = this.value; const ids = ['sim1Provider','sim1Number','sim2Provider','sim2Number','iemiNumber'];
+    if (sel==='RELCON SIM') {
+      ids.forEach(id => document.getElementById(id).disabled=false);
+      if (roCode) {
+        try { const r = await fetch(`${baseUrl}/getSimDetails/${roCode}`, {headers:{Authorization:`Bearer ${localStorage.getItem('token')}`}}); const d = await r.json(); document.getElementById('sim1Number').value=d.sim1Number||''; document.getElementById('sim1Provider').value=d.sim1Provider||''; document.getElementById('sim2Number').value=d.sim2Number||''; document.getElementById('sim2Provider').value=d.sim2Provider||''; document.getElementById('iemiNumber').value=d.iemiNumber||''; } catch {}
+      }
+    } else { ['NA','NA','NA','NA','NA'].forEach((v,i) => { document.getElementById(ids[i]).value=v; document.getElementById(ids[i]).disabled=true; }); }
+  });
+  document.querySelectorAll('#statusModal textarea').forEach(el => el.addEventListener('input', function() { this.value=this.value.toUpperCase(); }));
+  const lf = document.getElementById('locationField');
+  if (navigator.geolocation) navigator.geolocation.getCurrentPosition(p => { lf.value=`${p.coords.latitude.toFixed(6)}, ${p.coords.longitude.toFixed(6)}`; }, () => { lf.value='Unable to fetch location'; });
+  else lf.value = 'Geolocation not supported';
+}
+function closeStatusModal() { document.getElementById('statusModal').classList.add('hidden'); }
+
+async function saveStatus() {
+  const required = ['probeMake','probeSize','lowProductLock','highWaterSet','duSerialNumber','dgStatus','connectivityType','sim1Provider','sim1Number','sim2Provider','sim2Number','iemiNumber','bosVersion','fccVersion','wirelessSlave','sftpConfig','adminPassword','workCompletion','spareUsed','activeSpare','faultySpare','spareRequirment','spareRequirmentname','earthingStatus','voltageReading','duOffline','duDependency','duRemark','tankOffline','tankDependency','tankRemark','bosIP','fccIP','locationField'];
+  const loc = document.getElementById('locationField').value;
+  if (!loc || loc.includes('Fetching') || loc.includes('Unable') || loc.includes('not supported')) { showToast('Location not available. Please allow location access.', 'error'); return; }
+  for (const id of required) { const el=document.getElementById(id); if(!el||!el.value.trim()) { showToast(`Please fill in: ${id.replace(/([A-Z])/g,' $1')}`, 'error'); el?.focus(); return; } }
+  const statusData = {};
+  required.forEach(id => { statusData[id] = document.getElementById(id).value; });
+  statusData.planId = document.getElementById('statusPlanId').value;
+  const res = await fetch(`${baseUrl}/saveStatus`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(statusData), credentials:'include' });
+  if (res.ok) { showToast('Status saved successfully.'); closeStatusModal(); await fetchAndStoreData(); applyFilter(document.getElementById('applyBtn')); }
+  else showToast('Error saving status.', 'error');
+}
+
+/* ── COMPLETION ── */
+function openCompletionModal(planId, txt) { document.getElementById('completionPlanId').value=planId; document.getElementById('completionInput').value=txt||''; document.getElementById('completionModal').classList.remove('hidden'); }
+function closeCompletionModal() { document.getElementById('completionModal').classList.add('hidden'); }
+async function saveCompletionStatus() {
+  const id=document.getElementById('completionPlanId').value, text=document.getElementById('completionInput').value;
+  const res=await fetch(`${baseUrl}/updateCompletion/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body:JSON.stringify({completionStatus:text}) });
+  if (res.ok) { showToast('Completion status saved.'); closeCompletionModal(); await fetchAndStoreData(); applyFilter(document.getElementById('applyBtn')); }
+  else showToast('Error saving.', 'error');
+}
+
+/* ── JIO BP ── */
+function applyJioBPLogic() {
+  const active=document.getElementById('activeMaterialUsed').value, spare=document.getElementById('spareRequired').value;
+  const used=document.getElementById('usedMaterialDetails'), faulty=document.getElementById('faultyMaterialDetails'), matReq=document.getElementById('materialRequirement');
+  if (active==='No') { used.value='NO MATERIAL USED'; faulty.value='NO MATERIAL FAULTY CREATED'; used.readOnly=true; faulty.readOnly=true; }
+  else { used.readOnly=false; faulty.readOnly=false; }
+  if (spare==='No') { matReq.value='NO MATERIAL REQUIRED'; matReq.readOnly=true; } else { matReq.readOnly=false; }
+}
+function openJioBPModal(planId) { document.getElementById('jioBPPlanId').value=planId; document.getElementById('jioBPModal').classList.remove('hidden'); document.getElementById('jioBPForm').reset(); document.getElementById('activeMaterialUsed').addEventListener('change',applyJioBPLogic); document.getElementById('spareRequired').addEventListener('change',applyJioBPLogic); }
+function closeJioBPModal() { document.getElementById('jioBPModal').classList.add('hidden'); }
+async function saveJioBPStatus() {
+  const required=['hpsdId','diagnosis','solution','activeMaterialUsed','spareRequired','relconsupport','rbmlperson','jioStatus'];
+  for (const id of required) { const el=document.getElementById(id); if(!el.value.trim()) { showToast(`Please fill in: ${id}`, 'error'); el.focus(); return; } }
+  const data = { planId:document.getElementById('jioBPPlanId').value, hpsdId:document.getElementById('hpsdId').value.toUpperCase(), diagnosis:document.getElementById('diagnosis').value.toUpperCase(), solution:document.getElementById('solution').value.toUpperCase(), activeMaterialUsed:document.getElementById('activeMaterialUsed').value, usedMaterialDetails:document.getElementById('usedMaterialDetails').value.toUpperCase(), faultyMaterialDetails:document.getElementById('faultyMaterialDetails').value.toUpperCase(), spareRequired:document.getElementById('spareRequired').value, observationHours:document.getElementById('observationHours').value.toUpperCase(), materialRequirement:document.getElementById('materialRequirement').value.toUpperCase(), relconsupport:document.getElementById('relconsupport').value.toUpperCase(), rbmlperson:document.getElementById('rbmlperson').value.toUpperCase(), status:document.getElementById('jioStatus').value };
+  const res=await fetch(`${baseUrl}/jioBP/saveJioBPStatus`, { method:'POST', headers:{'Content-Type':'application/json',Authorization:`Bearer ${localStorage.getItem('token')}`}, credentials:'include', body:JSON.stringify(data) });
+  if (res.ok) { showToast('Jio BP status saved.'); closeJioBPModal(); await fetchAndStoreData(); applyFilter(document.getElementById('applyBtn')); }
+  else showToast('Error saving Jio BP status.', 'error');
+}
+
+/* ── BPCL ── */
+function renderClass1Devices() { const c=Number(document.getElementById('class1Count').value), con=document.getElementById('class1DevicesContainer'); con.innerHTML=''; for(let i=0;i<c;i++) { const inp=document.createElement('input'); inp.type='text'; inp.className='class1Device dv-modal-input'; inp.style.marginBottom='6px'; inp.placeholder=`Class-1 With SIM Device ${i+1}`; con.appendChild(inp); } }
+function renderClass1WithoutSimDevices() { const c=Number(document.getElementById('class1Countwithoutsim').value), con=document.getElementById('class1DevicesContainerwithoutsim'); con.innerHTML=''; for(let i=0;i<c;i++) { const inp=document.createElement('input'); inp.type='text'; inp.className='class1WithoutSimDevice dv-modal-input'; inp.style.marginBottom='6px'; inp.placeholder=`Class-1 Without SIM Device ${i+1}`; con.appendChild(inp); } }
+function renderClass2Devices() { const c=Number(document.getElementById('class2Count').value), con=document.getElementById('class2DevicesContainer'); con.innerHTML=''; for(let i=0;i<c;i++) { const inp=document.createElement('input'); inp.type='text'; inp.className='class2Device dv-modal-input'; inp.style.marginBottom='6px'; inp.placeholder=`Class-2 Device ${i+1}`; con.appendChild(inp); } }
+function handleRelconATGChange() { const v=document.getElementById('relconAtgProvided').value; const cd=document.getElementById('relconAtgCountDiv'), rc=document.getElementById('relconAtgContainer'); if(v==='YES') { cd.classList.remove('hidden'); rc.classList.remove('hidden'); } else { cd.classList.add('hidden'); rc.classList.add('hidden'); document.getElementById('relconAtgCount').value=''; rc.innerHTML=''; } }
+function renderRelconATGFields() { const c=parseInt(document.getElementById('relconAtgCount').value||0), con=document.getElementById('relconAtgContainer'); con.innerHTML='<label class="dv-label">RELCON ATG Details</label>'; for(let i=1;i<=c;i++) { const inp=document.createElement('input'); inp.type='text'; inp.placeholder=`ATG ${i} - SBEM-EBMS-24523`; inp.className='dv-modal-input'; inp.style.marginBottom='6px'; inp.id=`relconAtg_${i}`; con.appendChild(inp); } }
+function closeBPCLModal() { document.getElementById('bpclModal').classList.add('hidden'); }
+
+async function openBPCLModal(planId) {
+  document.getElementById('bpclPlanId').value=planId;
+  document.getElementById('bpclForm').reset();
+  ['class1DevicesContainer','class1DevicesContainerwithoutsim','class2DevicesContainer'].forEach(id => document.getElementById(id).innerHTML='');
+  ['relconAtgCountDiv','relconAtgContainer'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  document.getElementById('relconAtgContainer').innerHTML='';
+  const currentPlan=fullData.find(p=>p._id===planId), roCode=currentPlan?.roCode;
+  try {
+    const r=await fetch(`${baseUrl}/bpclStatus/getBPCLStatusByPlan/${planId}`, {headers:{Authorization:`Bearer ${localStorage.getItem('token')}`}});
+    if (r.status===200) populateBPCLFields(await r.json());
+    else if (roCode) { const rv=await fetch(`${baseUrl}/bpclStatus/getLatestVerifiedByRoCode/${roCode}`, {headers:{Authorization:`Bearer ${localStorage.getItem('token')}`}}); if(rv.ok) { populateBPCLFields(await rv.json()); showToast('Auto-filled from last verified record.', 'info'); } }
+  } catch {}
+  document.getElementById('bpclModal').classList.remove('hidden');
+}
+function populateBPCLFields(data) {
+  document.getElementById('class1Count').value=data.class1DeviceCount||0;
+  document.getElementById('class1Countwithoutsim').value=data.class1WithoutSimCount||0;
+  document.getElementById('class2Count').value=data.class2DeviceCount||0;
+  renderClass1Devices(); renderClass1WithoutSimDevices(); renderClass2Devices();
+  data.class1Devices?.forEach((v,i) => { const els=document.querySelectorAll('.class1Device'); if(els[i]) els[i].value=v; });
+  data.class1WithoutSimDevices?.forEach((v,i) => { const els=document.querySelectorAll('.class1WithoutSimDevice'); if(els[i]) els[i].value=v; });
+  data.class2Devices?.forEach((v,i) => { const els=document.querySelectorAll('.class2Device'); if(els[i]) els[i].value=v; });
+  if (data.relconAtgProvided==='YES') { document.getElementById('relconAtgProvided').value='YES'; document.getElementById('relconAtgCountDiv').classList.remove('hidden'); document.getElementById('relconAtgContainer').classList.remove('hidden'); document.getElementById('relconAtgCount').value=data.relconAtgCount||0; renderRelconATGFields(); data.relconAtgDetails?.forEach((v,i) => { const el=document.getElementById(`relconAtg_${i+1}`); if(el) el.value=v; }); } else { document.getElementById('relconAtgProvided').value='NO'; }
+  document.getElementById('bpclJioSim').value=data.jioSimNumber||'';
+  document.getElementById('bpclAirtelSim').value=data.airtelSimNumber||'';
+}
+async function saveBPCLStatus() {
+  const relconAtgProvided=document.getElementById('relconAtgProvided')?.value||'NO';
+  const relconAtgCount=relconAtgProvided==='YES'?Number(document.getElementById('relconAtgCount')?.value||0):0;
+  let relconAtgDetails=[];
+  if (relconAtgProvided==='YES' && relconAtgCount>0) { for(let i=1;i<=relconAtgCount;i++) { const v=document.getElementById(`relconAtg_${i}`)?.value; if(v) relconAtgDetails.push(v); } }
+  const payload = { planId:document.getElementById('bpclPlanId').value, class1DeviceCount:Number(document.getElementById('class1Count').value), class1Devices:[...document.querySelectorAll('.class1Device')].map(i=>i.value), class1WithoutSimCount:Number(document.getElementById('class1Countwithoutsim').value), class1WithoutSimDevices:[...document.querySelectorAll('.class1WithoutSimDevice')].map(i=>i.value), class2DeviceCount:Number(document.getElementById('class2Count').value), class2Devices:[...document.querySelectorAll('.class2Device')].map(i=>i.value), relconAtgProvided, relconAtgCount, relconAtgDetails, jioSimNumber:document.getElementById('bpclJioSim').value, airtelSimNumber:document.getElementById('bpclAirtelSim').value };
+  const res=await fetch(`${baseUrl}/bpclStatus/saveBPCLStatus`, { method:'POST', headers:{'Content-Type':'application/json',Authorization:`Bearer ${localStorage.getItem('token')}`}, body:JSON.stringify(payload), credentials:'include' });
+  if (res.ok) { showToast('BPCL Status saved.'); closeBPCLModal(); await fetchAndStoreData(); applyFilter(document.getElementById('applyBtn')); }
+  else showToast('Failed to save BPCL Status.', 'error');
+}
+
+/* ── EXPORT ── */
+function toggleExportMenu() { document.getElementById('exportMenu').classList.toggle('open'); setTimeout(() => document.addEventListener('click', closeExportMenuHandler), 10); }
+function closeExportMenuHandler(e) { if(!e.target.closest('#exportDropdown')) { document.getElementById('exportMenu').classList.remove('open'); document.removeEventListener('click', closeExportMenuHandler); } }
+
+function exportStyledExcel() {
+  const wb=XLSX.utils.book_new(), date=new Date().toLocaleDateString('en-CA');
+  const titleRow=[["Coordinator Name: Nikhil Trivedi","","","","","","","","","Date: "+date]];
+  const headerRow=[["Customer","Phase","Zone","Region","RO Code","RO Name","Employee Id","Engineer Name","Incident Id","Issue Report/Visit Schedule For","Issue Type","AMC_QTR_DETAIL","Date of Visit","Arrival Time","Leave Time","Completion Status","Support Taken from","Final Status","Reason Of UnResolved","Reason - Reach at site at 2.30 Hours","Reason - Engg. At site after 6 PM",""]];
+  const tableRows=filteredData.map(d => { const [cust,ph]=(d.phase||'').split('/')||['','']; return [cust.trim(),ph?.trim()||'',(d.zone||'').trim(),(d.region||'').trim(),(d.roCode||'').trim(),(d.roName||'').trim(),(d.empId||'').trim(),(d.engineer||'').trim(),(d.incidentId||'').trim(),(d.purpose||'').trim(),(d.issueType||'').trim(),(d.amcQtr||'').trim(),(d.date||'').trim(),(d.arrivalTime||'').trim(),(d.leaveTime||'').trim(),(d.completionStatus||'').trim(),(d.supportTakenFrom||'').trim(),(d.incidentStatus||'').trim(),(d.whatDone||'').trim(),(d.reasonAfter12PM||'').trim(),(d.reasonAfter6PM||'').trim()]; });
+  const ws=XLSX.utils.aoa_to_sheet([...titleRow,...headerRow,...tableRows]);
+  ws['!cols']=Array(10).fill({wch:25});
+  const name=(loggedInUser.engineerName||loggedInUser.username||'User').replace(/\s+/g,'_');
+  XLSX.utils.book_append_sheet(wb,ws,'Visit Records');
+  XLSX.writeFile(wb,`${name}_VisitRecords_${date}_${Math.floor(1000+Math.random()*9000)}.xlsx`);
+  document.getElementById('exportMenu').classList.remove('open');
+}
+
+function exportEarthingStatusExcel() {
+  const wb=XLSX.utils.book_new(), date=new Date().toLocaleDateString('en-CA');
+  const fromDate=document.getElementById('fromDate').value||'';
+  const header=[["Customer","Phase","Engineer","Region","Site Code","Site Name","Separate earthing cable for Barrier (Yes/No)","Separate earthing for barrier photo checked by","Detail earthing status remark","Date of Visit","Barrier to Earthpit Cable required in Mtr.","Duplicacy"]];
+  const validData=filteredData.filter(d=>d&&d.roName&&!['NO PLAN','IN LEAVE','HPCL OFFICE'].includes((d.roName||'').trim().toUpperCase()));
+  const roCnt={}; validData.forEach(d => { const c=(d.roCode||'').trim(); if(c) roCnt[c]=(roCnt[c]||0)+1; });
+  const rows=validData.map(d => { const [cust='',ph='']=(d.phase||'').split('/'); const rc=(d.roCode||'').trim(); return [cust.trim(),ph.trim(),(d.engineer||'').trim(),(d.region||'').trim(),rc,(d.roName||'').trim(),(d.separateearthingStatus||'').trim(),(d.earthingCheckedby||'').trim(),(d.detailEarthingremark||'').trim(),(d.date||'').trim(),(d.cableRequirmentremark||'').trim(),rc&&roCnt[rc]>1?'Duplicate':'']; });
+  const ws=XLSX.utils.aoa_to_sheet([...header,...rows]);
+  const name=(loggedInUser.engineerName||loggedInUser.username||'User').replace(/\s+/g,'_');
+  XLSX.utils.book_append_sheet(wb,ws,'Earthing Status');
+  XLSX.writeFile(wb,`Earthing Status Report_${name}_${fromDate}_${Math.floor(1000+Math.random()*9000)}.xlsx`);
+  document.getElementById('exportMenu').classList.remove('open');
+}
+
+/* ── PDF ── */
+function cleanText(t) { return (t===null||t===undefined)?'':String(t).replace(/[\u0000-\u001F\u007F-\u009F]/g,''); }
+
+async function downloadPDF(planId) {
+  try {
+    const {jsPDF}=window.jspdf; const doc=new jsPDF({orientation:'landscape'});
+    const pw=doc.internal.pageSize.getWidth(), token=localStorage.getItem('token');
+    const rPlan=await fetch(`${baseUrl}/getPlanById/${planId}`, {headers:{Authorization:`Bearer ${token}`}});
+    if (!rPlan.ok) { showToast('Failed to fetch visit plan.','error'); return; }
+    const plan=await rPlan.json();
+    let type='HPCL', logo='./assets/HPCL.png';
+    if (plan.phase?.toUpperCase().includes('RBML')) { type='JIOBP'; logo='./assets/JioBP.png'; }
+    else if (plan.phase?.toUpperCase().includes('BPCL')) { type='BPCL'; logo='./assets/BPCL.png'; }
+    const loadLogo=async(url) => { const r=await fetch(url); const b=await r.blob(); return new Promise(res=>{const rd=new FileReader(); rd.onloadend=()=>res(rd.result); rd.readAsDataURL(b);}); };
+    const lg=await loadLogo(logo);
+    doc.addImage(lg,'PNG',pw/2-15,10,30,20);
+    doc.setFont('helvetica','bold'); doc.setFontSize(14);
+    doc.text(`${type==='JIOBP'?'Jio BP':type} Visit Report`,pw/2,35,{align:'center'});
+    doc.line(15,43,pw-15,43);
+    const rows=[ ['Engineer',cleanText(plan.engineer)],['Zone',cleanText(plan.zone)],['Region',cleanText(plan.region)],['Phase',cleanText(plan.phase)],['RO Code',cleanText(plan.roCode)],['RO Name',cleanText(plan.roName)],['Date',cleanText(plan.date)],['AMC Qtr',cleanText(plan.amcQtr)],['Purpose',cleanText(plan.purpose)] ];
+    const statusUrl=type==='JIOBP'?`/jioBP/getJioBPStatusByPlan/${planId}`:type==='BPCL'?`/bpclStatus/getBPCLStatusByPlan/${planId}`:`/getStatusByPlan/${planId}`;
+    const rSt=await fetch(baseUrl+statusUrl, {headers:{Authorization:`Bearer ${token}`}});
+    if (!rSt.ok) { showToast('Failed to fetch status.','error'); return; }
+    const st=await rSt.json();
+    if (type==='HPCL') { rows.push(['Probe Make',cleanText(st.probeMake)],['Product & Probe Size',cleanText(st.probeSize)],['Work Completion',cleanText(st.workCompletion)],['Earthing Status',cleanText(st.earthingStatus)],['DU Offline',cleanText(st.duOffline)],['Tank Offline',cleanText(st.tankOffline)],['BOS IP',cleanText(st.bosIP)],['FCC IP',cleanText(st.fccIP)],['Location',cleanText(st.locationField)]); }
+    if (type==='JIOBP') { rows.push(['HPSM ID',cleanText(st.hpsdId)],['Diagnosis',cleanText(st.diagnosis)],['Solution',cleanText(st.solution)],['Status',cleanText(st.status)]); }
+    if (type==='BPCL') { rows.push(['JIO SIM',cleanText(st.jioSimNumber)],['Airtel SIM',cleanText(st.airtelSimNumber)]); }
+    doc.autoTable({ startY:48, head:[['Field','Value']], body:rows, styles:{fontSize:9,cellPadding:3}, columnStyles:{0:{fontStyle:'bold',cellWidth:60},1:{cellWidth:200}}, headStyles:{fillColor:[22,163,74],textColor:255}, theme:'grid' });
+    const now=new Date(), name=loggedInUser?.engineerName||'Unknown';
+    const pc=doc.internal.getNumberOfPages();
+    for(let i=1;i<=pc;i++) { doc.setPage(i); doc.setFontSize(8); doc.text(`Page ${i} of ${pc}`,pw-15,200,{align:'right'}); doc.text(`Generated by ${name} on ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`,15,200); }
+    doc.save(`${type}_Report_${plan.roCode}_${plan.roName}_${plan.date}.pdf`);
+  } catch(err) { console.error(err); showToast('Error generating PDF.', 'error'); }
+}
+
+/* ── INIT ── */
+window.onload = async () => {
+  try {
+    const today = new Date().toLocaleDateString('en-CA');
+    document.getElementById('fromDate').value = today;
+    document.getElementById('toDate').value   = today;
+    await fetchUserSession();
+    await fetchAndStoreData();
+    checkFilterValidity();
+    document.getElementById('applyBtn').click();
+  } catch(err) { console.error(err); showToast('Failed to load data.', 'error'); }
+};
+</script>
+</body>
+</html>

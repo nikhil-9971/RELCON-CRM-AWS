@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>RELCON — DB Explorer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <style>
+    /* ══════════════════════════════════════════════════
+       RELCON CRM — Salesforce Lightning Design System
+       DB Explorer | Matched with statusRecords.html
+    ══════════════════════════════════════════════════ */
+    :root {
+      --sf-blue:        #0176d3;
+      --sf-blue-dk:     #014486;
+      --sf-blue-lt:     #e8f4fd;
+      --sf-blue-hover:  #0b5faa;
+      --sf-navy:        #1a2e4a;
+
+      --sf-green:       #2e844a;
+      --sf-green-lt:    #eaf5ea;
+      --sf-red:         #ba0517;
+      --sf-red-lt:      #fef1ee;
+      --sf-orange:      #dd5a0c;
+      --sf-orange-lt:   #fff3e0;
+      --sf-amber:       #b8860b;
+      --sf-amber-lt:    #fff8e6;
+      --sf-purple:      #6b3fa0;
+      --sf-purple-lt:   #f5f0ff;
+
+      --bg:         #f3f2f2;
+      --surface:    #ffffff;
+      --surface2:   #f9f9f9;
+      --border:     #dddbda;
+      --border-lt:  #f3f2f2;
+
+      --txt:    #080707;
+      --txt2:   #3e3e3c;
+      --txt3:   #706e6b;
+      --txt4:   #aeaeac;
+
+      --r-sm: 4px; --r: 6px; --r-lg: 8px;
+      --sh-sm: 0 2px 4px rgba(0,0,0,0.09);
+      --sh:    0 4px 8px rgba(0,0,0,0.10);
+      --sh-md: 0 8px 24px rgba(0,0,0,0.12);
+
+      --fs-xs:   10px;
+      --fs-sm:   11px;
+      --fs-base: 13px;
+      --fs-md:   14px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: var(--fs-base); -webkit-font-smoothing: antialiased; }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      font-size: var(--fs-base); color: var(--txt);
+      background: var(--bg);
+      height: 100vh; overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-thumb { background: #c8c6c4; border-radius: 3px; }
+
+    /* ══ TOP BAR ══ */
+    .sf-topbar {
+      height: 52px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center;
+      padding: 0 20px; gap: 12px;
+      flex-shrink: 0;
+      box-shadow: 0 1px 3px rgba(15,23,42,0.07);
+      position: sticky; top: 0; z-index: 100;
+      flex-wrap: wrap;
+    }
+    .sf-topbar-brand {
+      display: flex; align-items: center; gap: 8px;
+      font-size: var(--fs-md); font-weight: 700;
+      color: var(--txt); letter-spacing: -0.2px;
+      white-space: nowrap;
+    }
+    .sf-topbar-brand .icon {
+      width: 28px; height: 28px;
+      background: var(--sf-blue-lt);
+      border-radius: var(--r);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--sf-blue); font-size: 13px;
+    }
+    .sf-topbar-brand span { color: var(--txt3); font-weight: 400; font-size: 12px; }
+    .sf-topbar-sep { width: 1px; height: 20px; background: var(--border); }
+    .sf-topbar-spacer { flex: 1; }
+
+    /* URL input row */
+    .sf-url-group {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 0 10px;
+      height: 32px; flex: 1; min-width: 200px; max-width: 420px;
+    }
+    .sf-url-group i { color: var(--txt4); font-size: 11px; }
+    .sf-url-group input {
+      flex: 1; background: transparent; border: none; outline: none;
+      font-family: 'Inter', sans-serif; font-size: 11px; color: var(--sf-blue);
+    }
+    .sf-url-group input::placeholder { color: var(--txt4); }
+    .conn-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--sf-red); flex-shrink: 0;
+      transition: background 0.3s;
+    }
+    .conn-dot.on { background: var(--sf-green); box-shadow: 0 0 6px rgba(46,132,74,0.5); }
+    .conn-status { font-size: 11px; color: var(--txt3); white-space: nowrap; }
+    .conn-status.ok  { color: var(--sf-green); font-weight: 600; }
+    .conn-status.err { color: var(--sf-red); font-weight: 600; }
+
+    /* ══ BUTTONS ══ */
+    .sf-btn {
+      font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 500;
+      padding: 0 14px; height: 32px; border-radius: var(--r-sm);
+      cursor: pointer; border: none;
+      display: inline-flex; align-items: center; gap: 6px;
+      transition: all 0.15s; white-space: nowrap;
+    }
+    .sf-btn-primary  { background: var(--sf-blue); color: #fff; box-shadow: 0 1px 3px rgba(1,118,211,0.3); }
+    .sf-btn-primary:hover  { background: var(--sf-blue-hover); transform: translateY(-1px); }
+    .sf-btn-neutral  { background: var(--surface); color: var(--txt); border: 1px solid var(--border); }
+    .sf-btn-neutral:hover  { background: var(--bg); }
+    .sf-btn-success  { background: var(--sf-green); color: #fff; }
+    .sf-btn-success:hover  { background: #1d5e31; transform: translateY(-1px); }
+    .sf-btn-danger   { background: var(--sf-red); color: #fff; }
+    .sf-btn-danger:hover   { background: #920210; }
+    .sf-btn-sm { height: 26px; padding: 0 10px; font-size: 11px; }
+
+    /* Icon action buttons in table */
+    .sf-action-btn { font-size: 11px; font-weight: 500; height: 24px; padding: 0 8px; border-radius: var(--r-sm); cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 4px; transition: all 0.12s; font-family: 'Inter', sans-serif; }
+    .sf-ab-view   { background: var(--sf-blue-lt);   color: var(--sf-blue);   border: 1px solid #c5dff5; }
+    .sf-ab-view:hover   { background: #cce8f7; }
+    .sf-ab-edit   { background: var(--sf-amber-lt);  color: var(--sf-amber);  border: 1px solid #f6c23e; }
+    .sf-ab-edit:hover   { background: #fff0b3; }
+    .sf-ab-delete { background: var(--sf-red-lt);    color: var(--sf-red);    border: 1px solid #f5c6c3; }
+    .sf-ab-delete:hover { background: #fbd5d0; }
+
+    /* ══ LAYOUT ══ */
+    .sf-main { display: flex; flex: 1; overflow: hidden; }
+
+    /* ══ SIDEBAR ══ */
+    .sf-sidebar {
+      width: 230px; min-width: 230px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      flex-shrink: 0; overflow: hidden;
+    }
+    .sf-sb-header {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .sf-sb-header-title {
+      font-size: var(--fs-xs); font-weight: 700;
+      color: var(--txt3); text-transform: uppercase; letter-spacing: 0.8px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .sf-sb-count {
+      background: var(--sf-blue-lt); color: var(--sf-blue);
+      font-size: 10px; font-weight: 700;
+      padding: 1px 7px; border-radius: 20px;
+    }
+    .sf-sb-list { flex: 1; overflow-y: auto; padding: 4px 0; }
+    .sf-coll-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 16px; cursor: pointer;
+      transition: background 0.12s;
+      border-left: 3px solid transparent;
+      font-size: 12px; color: var(--txt2);
+      white-space: nowrap; overflow: hidden;
+    }
+    .sf-coll-item:hover { background: var(--sf-blue-lt); }
+    .sf-coll-item.active {
+      background: var(--sf-blue-lt);
+      border-left-color: var(--sf-blue);
+      color: var(--sf-blue); font-weight: 600;
+    }
+    .sf-coll-icon { font-size: 13px; flex-shrink: 0; }
+    .sf-coll-label { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+    .sf-coll-badge {
+      margin-left: auto; background: var(--surface2);
+      color: var(--txt4); font-size: 9px; font-weight: 600;
+      padding: 1px 6px; border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+    .sf-coll-item.active .sf-coll-badge {
+      background: var(--sf-blue-lt); color: var(--sf-blue); border-color: #c5dff5;
+    }
+    .sf-sb-footer {
+      padding: 10px 16px;
+      border-top: 1px solid var(--border);
+      background: var(--surface2);
+      font-size: 11px;
+    }
+    .sf-sb-footer-row {
+      display: flex; justify-content: space-between;
+      margin-bottom: 4px; color: var(--txt3);
+    }
+    .sf-sb-footer-row .val { color: var(--sf-blue); font-weight: 600; }
+
+    /* ══ CONTENT AREA ══ */
+    .sf-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    /* Toolbar inside content */
+    .sf-content-toolbar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 16px;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      flex-shrink: 0; flex-wrap: wrap;
+    }
+    .sf-content-title {
+      font-size: var(--fs-md); font-weight: 700;
+      color: var(--txt); letter-spacing: -0.2px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .sf-content-title .icon-badge {
+      width: 28px; height: 28px;
+      background: var(--sf-blue-lt); border-radius: var(--r);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--sf-blue); font-size: 13px;
+    }
+    .sf-record-count {
+      background: var(--sf-blue-lt); color: var(--sf-blue);
+      font-size: 10px; font-weight: 700;
+      padding: 2px 8px; border-radius: 20px;
+    }
+    .sf-toolbar-spacer { flex: 1; }
+    .sf-search-wrap { position: relative; }
+    .sf-search-wrap i { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: var(--txt4); font-size: 11px; pointer-events: none; }
+    .sf-search-input {
+      font-family: 'Inter', sans-serif; font-size: 12px;
+      color: var(--txt); background: var(--surface);
+      border: 1px solid var(--border); border-radius: var(--r-sm);
+      padding: 5px 9px 5px 28px; height: 32px; outline: none;
+      width: 220px;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .sf-search-input:focus { border-color: var(--sf-blue); box-shadow: 0 0 0 3px rgba(1,118,211,0.12); }
+    .sf-search-input::placeholder { color: var(--txt4); }
+    .sf-select {
+      font-family: 'Inter', sans-serif; font-size: 12px;
+      color: var(--txt); background: var(--surface);
+      border: 1px solid var(--border); border-radius: var(--r-sm);
+      padding: 5px 28px 5px 9px; height: 32px; outline: none;
+      -webkit-appearance: none; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath fill='%23aeaeac' d='M0 0l5 7 5-7z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 9px center;
+      transition: border-color 0.15s;
+    }
+    .sf-select:focus { border-color: var(--sf-blue); box-shadow: 0 0 0 3px rgba(1,118,211,0.12); }
+
+    /* ══ TABLE ══ */
+    .sf-table-wrap { flex: 1; overflow: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; min-width: 800px; }
+    thead th {
+      background: var(--sf-navy) !important;
+      color: #e8f4fd !important;
+      font-size: 10px !important; font-weight: 600 !important;
+      text-transform: uppercase !important; letter-spacing: 0.6px !important;
+      padding: 9px 12px !important; text-align: left !important;
+      white-space: nowrap !important; border: none !important;
+      border-right: 1px solid #253d5b !important;
+      position: sticky; top: 0; z-index: 10;
+      cursor: pointer; user-select: none;
+    }
+    thead th:last-child { border-right: none !important; }
+    thead th:hover { background: #253d5b !important; }
+    tbody tr { border-bottom: 1px solid var(--border-lt); transition: background 0.1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #f0f8ff; }
+    tbody td {
+      padding: 7px 12px !important; font-size: 11px !important;
+      color: var(--txt2) !important; vertical-align: middle !important;
+      border: none !important; border-bottom: 1px solid var(--border-lt) !important;
+      white-space: nowrap; max-width: 200px; overflow: hidden; text-overflow: ellipsis;
+    }
+    /* Value type colors */
+    .sf-vid  { color: var(--txt4) !important; font-size: 9px !important; }
+    .sf-vt   { color: var(--sf-green) !important; font-weight: 600; }
+    .sf-vf   { color: var(--sf-red) !important; font-weight: 600; }
+    .sf-vd   { color: var(--sf-orange) !important; }
+    .sf-vn   { color: var(--sf-blue) !important; }
+    .sf-vnl  { color: var(--txt4) !important; font-style: italic; font-size: 10px !important; }
+    .sf-vo   { color: var(--sf-purple) !important; }
+
+    /* ══ PAGINATION ══ */
+    .sf-pagination {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 16px; border-top: 1px solid var(--border);
+      background: var(--surface2); flex-wrap: wrap; gap: 8px;
+      flex-shrink: 0;
+    }
+    .sf-pagination-info { font-size: 11px; color: var(--txt3); }
+    .sf-pagination-controls { display: flex; align-items: center; gap: 4px; }
+    .sf-page-btn {
+      width: 30px; height: 30px; border: 1px solid var(--border);
+      border-radius: var(--r-sm); background: var(--surface);
+      color: var(--txt2); font-size: 12px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.12s; font-family: 'Inter', sans-serif;
+    }
+    .sf-page-btn:hover { background: var(--sf-blue-lt); border-color: var(--sf-blue); color: var(--sf-blue); }
+    .sf-page-btn.active { background: var(--sf-blue); border-color: var(--sf-blue); color: #fff; font-weight: 700; }
+    .sf-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ══════════════════════════════════════
+       MOBILE RESPONSIVE — DB Explorer
+    ══════════════════════════════════════ */
+
+    /* Tablet */
+    @media(max-width:1024px){
+      .sf-sidebar{width:190px;min-width:190px;}
+      .sf-content-toolbar{flex-wrap:wrap;gap:8px;padding:8px 12px;}
+    }
+
+    /* Mobile */
+    @media(max-width:768px){
+      body{overflow:auto;}
+      .sf-page{flex-direction:column;height:auto;min-height:100vh;overflow:auto;}
+      .sf-strip{padding:0 12px;height:46px;gap:8px;}
+      .sf-strip .sf-strip-title{font-size:13px;}
+
+      /* Sidebar becomes horizontal scrollable tabs on top */
+      .sf-main{flex-direction:column;overflow:visible;height:auto;}
+      .sf-sidebar{
+        width:100%!important;min-width:100%!important;
+        border-right:none;border-bottom:1px solid var(--border);
+        flex-direction:row;flex-shrink:0;height:auto;
+        overflow:hidden;
+      }
+      .sf-sb-header{display:none;}
+      .sf-sb-list{
+        display:flex;flex-direction:row;
+        overflow-x:auto;overflow-y:hidden;
+        padding:6px 8px;gap:6px;
+        -webkit-overflow-scrolling:touch;
+        scrollbar-width:none;
+        min-height:44px;
+      }
+      .sf-sb-list::-webkit-scrollbar{display:none;}
+      .sf-coll-item{
+        flex-direction:row;flex-shrink:0;
+        padding:5px 12px;border-radius:20px;
+        border:1px solid var(--border);
+        background:var(--surface2);
+        min-width:auto;white-space:nowrap;
+        border-left:none!important;
+      }
+      .sf-coll-item.active{
+        background:var(--sf-blue)!important;
+        border-color:var(--sf-blue)!important;
+      }
+      .sf-coll-item.active .sf-coll-label{color:#fff!important;}
+      .sf-coll-item.active .sf-coll-badge{background:rgba(255,255,255,.25)!important;color:#fff!important;}
+      .sf-coll-icon{display:none;}
+      .sf-coll-label{font-size:11px;font-weight:600;}
+      .sf-coll-badge{font-size:9px;padding:1px 5px;}
+
+      /* Content area */
+      .sf-content{overflow:visible;height:auto;}
+      .sf-content-toolbar{
+        flex-direction:column;align-items:stretch;
+        padding:8px 10px;gap:8px;
+      }
+      .sf-content-toolbar .sf-select,
+      .sf-content-toolbar .sf-input{width:100%;height:34px;}
+      .sf-content-toolbar .sf-search-wrap{width:100%;}
+      .sf-content-toolbar .sf-search-input{width:100%!important;}
+
+      /* Table */
+      .sf-table-wrap{max-height:55vh;}
+      table{min-width:700px;}
+      thead th{padding:7px 8px!important;font-size:9px!important;}
+      tbody td{padding:6px 8px!important;font-size:10px!important;}
+
+      /* Pagination */
+      .sf-pagination{flex-wrap:wrap;justify-content:center;gap:6px;padding:8px;}
+      .sf-page-btn{width:28px;height:28px;font-size:11px;}
+
+      /* Modal bottom sheet */
+      .sf-overlay{align-items:flex-end;}
+      .sf-modal{
+        width:100%!important;max-width:100%!important;
+        border-radius:16px 16px 0 0!important;
+        max-height:88vh;
+      }
+      .sf-modal-grid{grid-template-columns:1fr!important;}
+      .sf-modal-body{padding:12px 14px;}
+      .sf-modal-header,.sf-modal-footer{padding:12px 14px;}
+
+      /* JSON viewer */
+      .json-viewer{font-size:10px!important;padding:10px!important;}
+    }
+
+    /* Small phones */
+    @media(max-width:480px){
+      .sf-coll-item{padding:4px 10px;}
+      .sf-coll-label{font-size:10px;}
+      .sf-content-toolbar .sf-btn{font-size:10px;padding:0 8px;}
+    }
+
+    /* ══ MODAL ══ */
+    .sf-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+      z-index: 500; display: none;
+      align-items: center; justify-content: center;
+    }
+    .sf-overlay.open { display: flex; }
+    .sf-modal {
+      background: var(--surface); border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+      width: 90%; max-width: 680px; max-height: 88vh;
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .sf-modal-header {
+      padding: 16px 20px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--surface2); flex-shrink: 0;
+    }
+    .sf-modal-title { font-size: 15px; font-weight: 700; color: var(--txt); display: flex; align-items: center; gap: 8px; }
+    .sf-modal-close { background: none; border: none; cursor: pointer; color: var(--txt3); font-size: 16px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: var(--r-sm); }
+    .sf-modal-close:hover { background: var(--sf-red-lt); color: var(--sf-red); }
+    .sf-modal-body { flex: 1; overflow-y: auto; padding: 20px; }
+    .sf-modal-footer {
+      padding: 12px 20px; border-top: 1px solid var(--border);
+      display: flex; justify-content: flex-end; gap: 8px;
+      background: var(--surface2); flex-shrink: 0;
+    }
+    /* Edit form grid */
+    .sf-modal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+    .sf-modal-field { display: flex; flex-direction: column; gap: 4px; }
+    .sf-modal-label { font-size: 10px; font-weight: 600; color: var(--txt3); text-transform: uppercase; letter-spacing: 0.5px; }
+    .sf-modal-input {
+      font-family: 'Inter', sans-serif; font-size: 12px; color: var(--txt);
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-sm); padding: 5px 9px; height: 32px;
+      outline: none; width: 100%;
+    }
+    .sf-modal-input:focus { border-color: var(--sf-blue); box-shadow: 0 0 0 3px rgba(1,118,211,0.12); }
+    .sf-modal-input.readonly { background: var(--surface2); color: var(--txt3); }
+    /* JSON viewer */
+    .sf-json-viewer {
+      background: #f8fafc; border: 1px solid var(--border);
+      border-radius: var(--r-lg); padding: 16px;
+      font-family: 'SFMono-Regular', 'Consolas', monospace;
+      font-size: 12px; line-height: 1.8;
+      overflow: auto; max-height: 420px;
+      color: var(--txt2);
+    }
+    .jk  { color: #0176d3; } .js  { color: #2e844a; }
+    .jn  { color: #0176d3; } .jbt { color: #2e844a; }
+    .jbf { color: #ba0517; } .jnu { color: #aeaeac; }
+    .jd  { color: #dd5a0c; }
+
+    /* ══ EMPTY STATE ══ */
+    .sf-empty {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      flex: 1; gap: 12px; padding: 40px;
+    }
+    .sf-empty-icon { font-size: 40px; opacity: 0.3; }
+    .sf-empty-title { font-size: 16px; font-weight: 600; color: var(--txt3); }
+    .sf-empty-desc { font-size: 12px; color: var(--txt4); text-align: center; line-height: 1.7; max-width: 360px; }
+
+    /* ══ LOADER (inline spinner) ══ */
+    .sf-spinner {
+      width: 18px; height: 18px;
+      border: 2px solid var(--border);
+      border-top-color: var(--sf-blue);
+      border-radius: 50%;
+      animation: sf-spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes sf-spin { to { transform: rotate(360deg); } }
+    .sf-lr { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 40px; color: var(--txt3); font-size: 12px; }
+
+    /* ══ TOAST ══ */
+    .sf-tbox { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 8px; z-index: 999; }
+    .sf-tk {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-lg); padding: 10px 14px;
+      font-size: 12px; display: flex; align-items: center; gap: 8px;
+      box-shadow: var(--sh-md); min-width: 220px;
+      animation: sfTkIn 0.25s ease;
+    }
+    .sf-tk-icon { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0; }
+    .sf-tk.s .sf-tk-icon { background: var(--sf-green-lt); color: var(--sf-green); }
+    .sf-tk.e .sf-tk-icon { background: var(--sf-red-lt);   color: var(--sf-red); }
+    .sf-tk.i .sf-tk-icon { background: var(--sf-blue-lt);  color: var(--sf-blue); }
+    .sf-tk-text { font-size: 12px; color: var(--txt); }
+    @keyframes sfTkIn { from { transform: translateX(60px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+    /* Divider for sidebar */
+    .sf-sb-divider { height: 1px; background: var(--border); margin: 4px 0; }
+  </style>
+  <script src="config.js"></script>
+</head>
+<body>
+
+<!-- ══ TOP BAR ══ -->
+<div class="sf-topbar">
+  <div class="sf-topbar-brand">
+    <div class="icon"><i class="fa-solid fa-database"></i></div>
+    RELCON <span>&nbsp;// DB Explorer</span>
+  </div>
+  <div class="sf-topbar-sep"></div>
+
+  <!-- URL input -->
+  <div class="sf-url-group">
+    <i class="fa-solid fa-link"></i>
+    <input id="urlIn" value="" placeholder="Backend URL…"/>
+  </div>
+
+  <div class="conn-dot" id="dot"></div>
+  <span class="conn-status" id="stxt">Not connected</span>
+
+  <button class="sf-btn sf-btn-primary" onclick="doConnect()">
+    <i class="fa-solid fa-bolt"></i> Connect
+  </button>
+  <button class="sf-btn sf-btn-neutral" onclick="doDisconnect()">
+    <i class="fa-solid fa-xmark"></i> Disconnect
+  </button>
+</div>
+
+<!-- ══ MAIN LAYOUT ══ -->
+<div class="sf-main">
+
+  <!-- ── SIDEBAR ── -->
+  <div class="sf-sidebar">
+    <div class="sf-sb-header">
+      <div class="sf-sb-header-title">
+        <i class="fa-solid fa-layer-group" style="color:var(--sf-blue);"></i>
+        Collections
+      </div>
+      <span class="sf-sb-count" id="cc"></span>
+    </div>
+    <div class="sf-sb-list" id="sbList">
+      <div class="sf-empty" style="padding:20px;gap:8px;">
+        <div class="sf-empty-icon">🗄️</div>
+        <div style="font-size:11px;color:var(--txt4);text-align:center;">Click Connect to start</div>
+      </div>
+    </div>
+    <div class="sf-sb-footer" id="sbFoot" style="display:none;">
+      <div class="sf-sb-footer-row"><span>Database</span><span class="val">relconDB</span></div>
+      <div class="sf-sb-footer-row"><span>Host</span><span class="val" id="sfHost">—</span></div>
+      <div class="sf-sb-footer-row"><span>Total Docs</span><span class="val" id="sfDocs">0</span></div>
+    </div>
+  </div>
+
+  <!-- ── CONTENT ── -->
+  <div class="sf-content" id="content">
+    <div class="sf-empty">
+      <div class="sf-empty-icon"><i class="fa-solid fa-plug" style="font-size:36px;color:var(--txt4);opacity:0.4;"></i></div>
+      <div class="sf-empty-title">Not Connected</div>
+      <div class="sf-empty-desc">Your backend URL is pre-filled.<br/>JWT token will be auto-loaded from your login session.<br/><br/>Click <strong style="color:var(--sf-blue);">Connect</strong> to start exploring.</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══ MODAL OVERLAY ══ -->
+<div class="sf-overlay" id="overlay">
+  <div class="sf-modal">
+    <div class="sf-modal-header">
+      <div class="sf-modal-title" id="mt"><i class="fa-solid fa-file-lines" style="color:var(--sf-blue);"></i> Record</div>
+      <button class="sf-modal-close" onclick="closeM()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="sf-modal-body" id="mb"></div>
+    <div class="sf-modal-footer" id="mf"></div>
+  </div>
+</div>
+
+<!-- ══ TOASTS ══ -->
+<div class="sf-tbox" id="tbox"></div>
+
+<script>
+const COLLS = [
+  {id:'users',       icon:'fa-user',         label:'Users',               get:'/getUsers',                   del:'/deleteUser',                put:'/updateUser'},
+  {id:'dailyplans',  icon:'fa-calendar-days', label:'Daily Plans',         get:'/getDailyPlans',               del:'/deleteDailyPlan',           put:'/updateDailyPlan'},
+  {id:'status',      icon:'fa-chart-bar',     label:'Status Records',      get:'/getStatusRecords',            del:'/deleteStatus',              put:'/updateStatus'},
+  {id:'atg',         icon:'fa-wrench',        label:'ATG Status',          get:'/getMergedATGStatus',          del:'/deleteATGStatus',           put:'/updateATGStatus'},
+  {id:'tasks',       icon:'fa-circle-check',  label:'Tasks',               get:'/getTasks',                   del:'/deleteTask',                put:'/updateTask'},
+  {id:'incidents',   icon:'fa-triangle-exclamation', label:'Incidents',   get:'/getIncidents',                del:'/deleteIncident',            put:'/updateIncident'},
+  {id:'jiobp',       icon:'fa-gas-pump',      label:'JioBP Status',        get:'/jioBP/getAllJioBPStatus',    del:'/jioBP/deleteJioBPStatus',   put:'/jioBP/updateJioBPStatus'},
+  {id:'bpcl',        icon:'fa-industry',      label:'BPCL Status',         get:'/bpclStatus/getAllBPCLStatus', del:'/bpclStatus/deleteBPCLStatus',put:'/bpclStatus/updateBPCLStatus'},
+  {id:'romaster',    icon:'fa-map',           label:'RO Master',           get:'/romaster/all',               del:'/romaster/delete',           put:'/romaster/update'},
+  {id:'material',    icon:'fa-boxes-stacked', label:'Material Requirement',get:'/materialRequirement/',         del:'/materialRequirement',       put:'/materialRequirement'},
+  {id:'chats',       icon:'fa-comments',      label:'Chats',               get:'/chat/getAll',                del:'/chat/delete',               put:null},
+  {id:'loginlogs',   icon:'fa-key',           label:'Login Logs',          get:'/audit/loginLogs',            del:null,                         put:null},
+  {id:'audittrails', icon:'fa-clipboard-list',label:'Audit Trails',        get:'/audit/auditTrails',          del:null,                         put:null},
+  {id:'emaillogs',   icon:'fa-envelope',      label:'Email Logs',          get:'/audit/emailLogs',            del:null,                         put:null},
+];
+
+const S = {
+  url: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+       ? 'http://localhost:3001' 
+       : (window.BACKEND_URL || 'https://relcon-crm.onrender.com'),
+  token: '', connected: false, active: null,
+  data: [], filtered: [], page: 1, perPage: 25,
+  sk: null, sd: 1, counts: {}, editRec: null
+};
+
+function tok() { return localStorage.getItem('token') || ''; }
+
+async function callApi(path, opts = {}) {
+  const t = S.token || tok();
+  const h = { 'Content-Type': 'application/json' };
+  if (t) h['Authorization'] = 'Bearer ' + t;
+  return fetch(S.url + path, { ...opts, headers: { ...h, ...(opts.headers || {}) } });
+}
+
+async function doConnect() {
+  S.url = document.getElementById('urlIn').value.trim().replace(/\/$/, '');
+  S.token = tok();
+  setSt('Connecting…', '');
+  toast('Connecting to backend…', 'i');
+  let alive = false;
+  for (const ep of ['/', '/getDailyPlans', '/audit/loginLogs', '/romaster/getAll', '/getStatusRecords' ]) {
+    try { const r = await callApi(ep); if (r.status < 500) { alive = true; break; } } catch(e) {}
+  }
+  if (!alive) { setSt('Backend unreachable', 'err'); toast('Cannot reach backend. Is it running?', 'e'); return; }
+  S.connected = true;
+  document.getElementById('dot').classList.add('on');
+  setSt('Connected', 'ok');
+  document.getElementById('sbFoot').style.display = 'block';
+  try { document.getElementById('sfHost').textContent = new URL(S.url).hostname; } catch(e) {}
+  document.getElementById('cc').textContent = COLLS.length;
+  renderSB();
+  toast('Connected! Loading collections…', 's');
+  loadColl(COLLS[0]);
+}
+
+function doDisconnect() {
+  S.connected = false; S.active = null; S.data = []; S.filtered = [];
+  document.getElementById('dot').classList.remove('on');
+  setSt('Disconnected', '');
+  document.getElementById('sbFoot').style.display = 'none';
+  renderSB();
+  document.getElementById('content').innerHTML = `
+    <div class="sf-empty">
+      <div class="sf-empty-icon"><i class="fa-solid fa-plug" style="font-size:32px;color:var(--txt4);opacity:0.4;"></i></div>
+      <div class="sf-empty-title">Disconnected</div>
+    </div>`;
+}
+
+function setSt(m, c) {
+  const el = document.getElementById('stxt');
+  el.textContent = m; el.className = 'conn-status' + (c ? ' ' + c : '');
+}
+
+function renderSB() {
+  if (!S.connected) {
+    document.getElementById('sbList').innerHTML = `
+      <div class="sf-empty" style="padding:20px;gap:8px;">
+        <div class="sf-empty-icon">🗄️</div>
+        <div style="font-size:11px;color:var(--txt4);text-align:center;">Connect first</div>
+      </div>`;
+    return;
+  }
+  document.getElementById('sbList').innerHTML = COLLS.map(c => `
+    <div class="sf-coll-item ${S.active?.id === c.id ? 'active' : ''}" onclick='loadColl(${JSON.stringify(c)})'>
+      <i class="fa-solid ${c.icon} sf-coll-icon" style="font-size:12px;"></i>
+      <span class="sf-coll-label">${c.label}</span>
+      <span class="sf-coll-badge" id="cnt-${c.id}">${S.counts[c.id] !== undefined ? S.counts[c.id] : '…'}</span>
+    </div>`).join('');
+}
+
+async function loadColl(coll) {
+  S.active = coll; S.page = 1; S.sk = null; S.data = []; S.filtered = [];
+  renderSB();
+  document.getElementById('content').innerHTML = `
+    <div class="sf-content-toolbar">
+      <div class="sf-content-title">
+        <div class="icon-badge"><i class="fa-solid ${coll.icon}"></i></div>
+        ${coll.label}
+      </div>
+      <div class="sf-spinner" style="margin-left:8px;"></div>
+    </div>
+    <div class="sf-lr"><div class="sf-spinner"></div> Loading ${esc(coll.label)}…</div>`;
+
+  try {
+    const res = await callApi(coll.get);
+    if (res.status === 401 || res.status === 403) throw new Error('Unauthorized — Please login again and reload.');
+    if (res.status === 404) throw new Error(`Endpoint "${coll.get}" not found on backend.`);
+    if (!res.ok) throw new Error(`Server error ${res.status}: ${res.statusText}`);
+
+    const json = await res.json();
+    if (Array.isArray(json)) S.data = json;
+    else if (json.data && Array.isArray(json.data)) S.data = json.data;
+    else if (json.records && Array.isArray(json.records)) S.data = json.records;
+    else if (json.result && Array.isArray(json.result)) S.data = json.result;
+    else S.data = [json];
+
+    S.filtered = [...S.data];
+    S.counts[coll.id] = S.data.length;
+    const tot = Object.values(S.counts).reduce((a, b) => a + (b || 0), 0);
+    document.getElementById('sfDocs').textContent = tot;
+    renderSB();
+    renderTbl();
+  } catch(e) {
+    document.getElementById('content').innerHTML = `
+      <div class="sf-content-toolbar">
+        <div class="sf-content-title">
+          <div class="icon-badge"><i class="fa-solid ${coll.icon}"></i></div>
+          ${esc(coll.label)}
+        </div>
+      </div>
+      <div class="sf-empty">
+        <div style="font-size:32px;">⚠️</div>
+        <div class="sf-empty-title" style="color:var(--sf-red);">Load Failed</div>
+        <div class="sf-empty-desc" style="color:var(--sf-red);">${esc(e.message)}</div>
+        <button class="sf-btn sf-btn-neutral" onclick="loadColl(S.active)" style="margin-top:8px;">
+          <i class="fa-solid fa-rotate-right"></i> Retry
+        </button>
+      </div>`;
+    toast(e.message, 'e');
+  }
+}
+
+function getCols() {
+  const keys = new Set();
+  S.filtered.slice(0, 80).forEach(r => Object.keys(r).forEach(k => keys.add(k)));
+  const all = Array.from(keys);
+  const first = ['_id','engineer','roCode','roName','date','region','phase','status','username','role','engineerName','from','to','text','type','subject','action','modifiedBy'];
+  return [...first.filter(k => all.includes(k)), ...all.filter(k => !first.includes(k))].slice(0, 13);
+}
+
+function renderTbl() {
+  const c = S.active, cols = getCols();
+  const s = (S.page - 1) * S.perPage, pd = S.filtered.slice(s, s + S.perPage);
+  const tot = S.filtered.length;
+  const start = Math.min(s + 1, tot), end = Math.min(s + S.perPage, tot);
+
+  document.getElementById('content').innerHTML = `
+    <div class="sf-content-toolbar">
+      <div class="sf-content-title">
+        <div class="icon-badge"><i class="fa-solid ${c.icon}"></i></div>
+        ${esc(c.label)}
+      </div>
+      <span class="sf-record-count">${S.filtered.length} records</span>
+      <div class="sf-toolbar-spacer"></div>
+      <div class="sf-search-wrap">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input id="fi" class="sf-search-input" placeholder="Search records…" oninput="doFilter(this.value)"/>
+      </div>
+      <select class="sf-select" onchange="S.perPage=+this.value;S.page=1;renderTbl()">
+        <option>25</option><option>50</option><option>100</option>
+      </select>
+      <button class="sf-btn sf-btn-neutral" onclick="loadColl(S.active)" title="Refresh">
+        <i class="fa-solid fa-rotate-right"></i>
+      </button>
+      <button class="sf-btn sf-btn-primary" onclick="expCSV()">
+        <i class="fa-solid fa-arrow-down-to-bracket"></i> CSV
+      </button>
+    </div>
+    <div class="sf-table-wrap">
+      <table>
+        <thead><tr>
+          ${cols.map(k => `<th onclick="doSort('${k}')">${esc(k)}${S.sk === k ? (S.sd === 1 ? ' <i class="fa-solid fa-arrow-up" style="font-size:8px;"></i>' : ' <i class="fa-solid fa-arrow-down" style="font-size:8px;"></i>') : ''}</th>`).join('')}
+          <th>Actions</th>
+        </tr></thead>
+        <tbody>
+          ${pd.length
+            ? pd.map(r => rowH(r, cols)).join('')
+            : `<tr><td colspan="${cols.length + 1}" style="padding:28px;text-align:center;color:var(--txt3);">No records found.</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+    <div class="sf-pagination">
+      <div class="sf-pagination-info">Showing ${start}–${end} of ${tot} records</div>
+      ${pagerH()}
+    </div>`;
+}
+
+function rowH(row, cols) {
+  const enc = btoa(unescape(encodeURIComponent(JSON.stringify(row)))), id = row._id;
+  return `<tr>
+    ${cols.map(k => `<td class="${cc(k, row[k])}" title="${esc(String(row[k] ?? ''))}">${cv(k, row[k])}</td>`).join('')}
+    <td style="white-space:nowrap;">
+      <div style="display:flex;gap:4px;align-items:center;">
+        <button class="sf-action-btn sf-ab-view" onclick="viewR('${enc}')"><i class="fa-solid fa-eye"></i></button>
+        ${S.active.put ? `<button class="sf-action-btn sf-ab-edit" onclick="editR('${enc}')"><i class="fa-solid fa-pen"></i></button>` : ''}
+        ${S.active.del && id ? `<button class="sf-action-btn sf-ab-delete" onclick="delR('${id}')"><i class="fa-solid fa-trash"></i></button>` : ''}
+      </div>
+    </td>
+  </tr>`;
+}
+
+function cc(k, v) {
+  if (k === '_id') return 'sf-vid';
+  if (v === null || v === undefined) return 'sf-vnl';
+  if (typeof v === 'boolean') return v ? 'sf-vt' : 'sf-vf';
+  if (typeof v === 'number') return 'sf-vn';
+  if (typeof v === 'object') return 'sf-vo';
+  if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(v)) return 'sf-vd';
+  return '';
+}
+
+function cv(k, v) {
+  if (v === null || v === undefined) return '<span class="sf-vnl">—</span>';
+  if (typeof v === 'boolean') return `<span class="${v ? 'sf-vt' : 'sf-vf'}">${v}</span>`;
+  if (typeof v === 'object') return `<span class="sf-vo">{…}</span>`;
+  if (k === '_id') return `<span class="sf-vid">${esc(String(v).slice(-8))}</span>`;
+  if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(v))
+    return `<span class="sf-vd">${esc(new Date(v).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }))}</span>`;
+  const s = String(v);
+  return esc(s.length > 45 ? s.slice(0, 45) + '…' : s);
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function doFilter(q) {
+  q = q.toLowerCase().trim();
+  S.filtered = q ? S.data.filter(r => JSON.stringify(r).toLowerCase().includes(q)) : [...S.data];
+  S.page = 1; renderTbl();
+  const fi = document.getElementById('fi'); if (fi) { fi.value = q; fi.focus(); }
+}
+
+function doSort(k) {
+  if (S.sk === k) S.sd *= -1; else { S.sk = k; S.sd = 1; }
+  S.filtered.sort((a, b) => String(a[k] ?? '').localeCompare(String(b[k] ?? '')) * S.sd);
+  S.page = 1; renderTbl();
+}
+
+function pagerH() {
+  const tot = S.filtered.length, pg = Math.max(1, Math.ceil(tot / S.perPage));
+  let b = `<div class="sf-pagination-controls">`;
+  b += `<button class="sf-page-btn" onclick="goPg(${S.page - 1})" ${S.page === 1 ? 'disabled' : ''}>
+          <i class="fa-solid fa-chevron-left" style="font-size:10px;"></i></button>`;
+  let startPage = Math.max(1, S.page - 3), endPage = Math.min(pg, startPage + 6);
+  if (endPage - startPage < 6) startPage = Math.max(1, endPage - 6);
+  for (let i = startPage; i <= endPage; i++) {
+    if (pg > 7 && Math.abs(i - S.page) > 3 && i !== 1 && i !== pg) {
+      if (i === 2 || i === pg - 1) b += `<button class="sf-page-btn" disabled>…</button>`;
+      continue;
+    }
+    b += `<button class="sf-page-btn ${i === S.page ? 'active' : ''}" onclick="goPg(${i})">${i}</button>`;
+  }
+  b += `<button class="sf-page-btn" onclick="goPg(${S.page + 1})" ${S.page >= pg ? 'disabled' : ''}>
+          <i class="fa-solid fa-chevron-right" style="font-size:10px;"></i></button>`;
+  b += `</div>`;
+  return b;
+}
+function goPg(p) { const pg = Math.ceil(S.filtered.length / S.perPage); if (p < 1 || p > pg) return; S.page = p; renderTbl(); }
+
+function viewR(enc) {
+  const r = dec(enc);
+  document.getElementById('mt').innerHTML = `<i class="fa-solid fa-file-lines" style="color:var(--sf-blue);"></i> Document`;
+  document.getElementById('mb').innerHTML = `<pre class="sf-json-viewer">${hl(JSON.stringify(r, null, 2))}</pre>`;
+  document.getElementById('mf').innerHTML = `
+    ${S.active.put ? `<button class="sf-btn sf-btn-neutral" onclick="closeM();editR('${enc}')"><i class="fa-solid fa-pen"></i> Edit</button>` : ''}
+    <button class="sf-btn sf-btn-neutral" onclick="closeM()"><i class="fa-solid fa-xmark"></i> Close</button>`;
+  openM();
+}
+
+function editR(enc) {
+  const r = dec(enc); S.editRec = r;
+  document.getElementById('mt').innerHTML = `<i class="fa-solid fa-pen-to-square" style="color:var(--sf-blue);"></i> Edit Record`;
+  const ro = ['_id', '__v', 'createdAt', 'updatedAt'];
+  document.getElementById('mb').innerHTML = `<div class="sf-modal-grid">` +
+    Object.entries(r).map(([k, v]) => {
+      const val = typeof v === 'object' ? JSON.stringify(v) : (v ?? '');
+      const isRo = ro.includes(k);
+      return `<div class="sf-modal-field">
+        <label class="sf-modal-label">${esc(k)}</label>
+        <input name="${k}" value="${esc(String(val))}" ${isRo ? 'readonly' : ''} class="sf-modal-input${isRo ? ' readonly' : ''}"/>
+      </div>`;
+    }).join('') + `</div>`;
+  document.getElementById('mf').innerHTML = `
+    <button class="sf-btn sf-btn-neutral" onclick="closeM()"><i class="fa-solid fa-xmark"></i> Cancel</button>
+    <button class="sf-btn sf-btn-success" onclick="saveE()"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>`;
+  openM();
+}
+
+async function saveE() {
+  const ins = document.getElementById('mb').querySelectorAll('input[name]'), u = {};
+  ins.forEach(i => { if (!['_id','__v','createdAt','updatedAt'].includes(i.name)) u[i.name] = i.value; });
+  try {
+    const r = await callApi(`${S.active.put}/${S.editRec._id}`, { method: 'PUT', body: JSON.stringify(u) });
+    if (r.ok) { toast('Record updated successfully', 's'); closeM(); loadColl(S.active); }
+    else throw new Error(await r.text());
+  } catch(e) { toast(e.message, 'e'); }
+}
+
+async function delR(id) {
+  if (!confirm('Delete this record? This action cannot be undone.')) return;
+  try {
+    const r = await callApi(`${S.active.del}/${id}`, { method: 'DELETE' });
+    if (r.ok) { toast('Record deleted successfully', 's'); loadColl(S.active); }
+    else throw new Error(await r.text());
+  } catch(e) { toast(e.message, 'e'); }
+}
+
+function dec(enc) { return JSON.parse(decodeURIComponent(escape(atob(enc)))); }
+
+function expCSV() {
+  const cols = getCols();
+  const rows = S.filtered.map(r => cols.map(c => `"${String(r[c] ?? '').replace(/"/g, '""')}"`).join(','));
+  const blob = new Blob(['\ufeff' + [cols.join(','), ...rows].join('\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `${S.active.id}_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+  toast('CSV downloaded', 's');
+}
+
+function hl(json) {
+  return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, m => {
+    if (/^".*":$/.test(m)) return `<span class="jk">${m}</span>`;
+    if (/^\d|^-/.test(m)) return `<span class="jn">${m}</span>`;
+    if (m === 'true')  return `<span class="jbt">true</span>`;
+    if (m === 'false') return `<span class="jbf">false</span>`;
+    if (m === 'null')  return `<span class="jnu">null</span>`;
+    if (/\d{4}-\d{2}-\d{2}T/.test(m)) return `<span class="jd">${m}</span>`;
+    return `<span class="js">${m}</span>`;
+  });
+}
+
+function openM()  { document.getElementById('overlay').classList.add('open'); }
+function closeM() { document.getElementById('overlay').classList.remove('open'); }
+document.getElementById('overlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeM(); });
+
+function toast(msg, type = 'i') {
+  const iconMap = { s: 'fa-check', e: 'fa-xmark', i: 'fa-circle-info' };
+  const t = document.createElement('div');
+  t.className = `sf-tk ${type}`;
+  t.innerHTML = `<div class="sf-tk-icon"><i class="fa-solid ${iconMap[type] || 'fa-circle-info'}"></i></div><span class="sf-tk-text">${esc(msg)}</span>`;
+  document.getElementById('tbox').appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+window.addEventListener('load', () => {
+  const urlIn = document.getElementById('urlIn');
+  if (urlIn) urlIn.value = S.url;
+  
+  const t = tok();
+  if (t) { toast('JWT auto-loaded from session', 'i'); doConnect(); }
+  else toast('No JWT found — please login first', 'e');
+});
+</script>
+<script src="errorLogger.js"></script>
+</body>
+</html>

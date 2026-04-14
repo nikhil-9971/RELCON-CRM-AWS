@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Active vs Faulty — RELCON CRM</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <script src="https://cdn.sheetjs.com/xlsx-0.18.5/package/dist/xlsx.full.min.js"></script>
+  <style>
+    /* ══════════════════════════════════════════════════
+       RELCON CRM — Salesforce Lightning Design
+       Active vs Faulty Report v2.0
+    ══════════════════════════════════════════════════ */
+    :root {
+      --sf-blue:#0176d3; --sf-blue-dk:#014486; --sf-blue-lt:#e8f4fd; --sf-blue-hover:#0b5faa;
+      --sf-navy:#1a2e4a;
+      --sf-green:#2e844a;  --sf-green-lt:#eaf5ea;
+      --sf-red:#ba0517;    --sf-red-lt:#fef1ee;
+      --sf-orange:#dd5a0c; --sf-orange-lt:#fff3e0;
+      --sf-yellow:#b8860b; --sf-yellow-lt:#fff8e6;
+      --sf-purple:#6b3fa0; --sf-purple-lt:#f5f0ff;
+      --sf-teal:#0e7490;   --sf-teal-lt:#ecfeff;
+      --bg:#f3f2f2; --surface:#fff; --surface2:#f9f9f9;
+      --border:#dddbda; --border-lt:#f3f2f2;
+      --txt:#080707; --txt2:#3e3e3c; --txt3:#706e6b; --txt4:#aeaeac;
+      --r-sm:4px; --r:6px; --r-lg:8px;
+      --sh-sm:0 2px 4px rgba(0,0,0,.09); --sh-md:0 8px 24px rgba(0,0,0,.12);
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html{font-size:13px;-webkit-font-smoothing:antialiased;}
+    body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;}
+    ::-webkit-scrollbar{width:5px;height:5px;}
+    ::-webkit-scrollbar-thumb{background:#c8c6c4;border-radius:3px;}
+
+    /* ── PAGE STRIP ── */
+    .dv-strip{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:52px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:200;box-shadow:0 1px 3px rgba(15,23,42,.07);}
+    .dv-strip-icon{width:28px;height:28px;background:var(--sf-teal-lt);border-radius:5px;display:flex;align-items:center;justify-content:center;color:var(--sf-teal);font-size:13px;}
+    .dv-strip-title{font-size:14px;font-weight:700;color:var(--txt);letter-spacing:-.2px;}
+    .dv-strip-sep{width:1px;height:18px;background:var(--border);}
+    .dv-strip-meta{font-size:10px;font-weight:500;color:var(--txt4);background:var(--surface2);border:1px solid var(--border);padding:2px 9px;border-radius:9999px;}
+    .dv-strip-spacer{flex:1;}
+
+    /* ── SOURCE TABS (HPCL / JIO / BOTH) ── */
+    .src-tabs{display:flex;gap:6px;align-items:center;}
+    .src-tab{font-family:'Inter',sans-serif;font-size:12px;font-weight:500;padding:4px 14px;height:28px;border-radius:999px;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--txt3);display:inline-flex;align-items:center;gap:5px;transition:all .15s;white-space:nowrap;}
+    .src-tab:hover{background:var(--sf-blue-lt);color:var(--sf-blue);border-color:var(--sf-blue);}
+    .src-tab.active{background:var(--sf-navy);color:#e8f4fd;border-color:var(--sf-navy);font-weight:600;}
+    .src-tab.hpcl.active{background:var(--sf-teal);border-color:var(--sf-teal);}
+    .src-tab.jio.active{background:var(--sf-purple);border-color:var(--sf-purple);}
+
+    /* ── BODY ── */
+    .sf-body{padding:16px 20px;}
+    .sf-bc{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--txt3);margin-bottom:10px;}
+    .sf-bc a{color:var(--sf-blue);text-decoration:none;}
+    .sf-bc a:hover{text-decoration:underline;}
+
+    /* ── KPI CARDS ── */
+    .kpi-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:12px;margin-bottom:14px;}
+    .kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:13px 15px;box-shadow:var(--sh-sm);display:flex;flex-direction:column;gap:4px;border-left:3px solid transparent;cursor:pointer;transition:box-shadow .15s,transform .15s;}
+    .kpi-card:hover{box-shadow:var(--sh-md);transform:translateY(-1px);}
+    .kpi-card.active-kpi{outline:2px solid var(--sf-blue);outline-offset:1px;}
+    .kpi-card.blue{border-left-color:var(--sf-blue);} .kpi-card.teal{border-left-color:var(--sf-teal);} .kpi-card.purple{border-left-color:var(--sf-purple);} .kpi-card.green{border-left-color:var(--sf-green);} .kpi-card.red{border-left-color:var(--sf-red);} .kpi-card.orange{border-left-color:var(--sf-orange);}
+    .kpi-num{font-size:22px;font-weight:700;line-height:1;}
+    .kpi-num.blue{color:var(--sf-blue);} .kpi-num.teal{color:var(--sf-teal);} .kpi-num.purple{color:var(--sf-purple);} .kpi-num.green{color:var(--sf-green);} .kpi-num.red{color:var(--sf-red);} .kpi-num.orange{color:var(--sf-orange);}
+    .kpi-label{font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;}
+    .kpi-sub{font-size:9px;color:var(--txt4);}
+
+    /* ── PAGE HEADER ── */
+    .sf-page-header{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 20px;margin-bottom:12px;display:flex;align-items:center;gap:14px;box-shadow:var(--sh-sm);flex-wrap:wrap;}
+    .sf-page-icon{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#2dd4bf,#0e7490);display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;box-shadow:0 2px 8px rgba(14,116,144,.35);flex-shrink:0;}
+    .sf-page-title{font-size:18px;font-weight:700;color:var(--txt);letter-spacing:-.3px;}
+    .sf-page-meta{font-size:12px;color:var(--txt3);margin-top:2px;}
+    .sf-page-actions{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+
+    /* ── TOOLBAR ── */
+    .sf-toolbar{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);padding:12px 20px;margin-bottom:10px;display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;}
+    .sf-filter-group{display:flex;flex-direction:column;gap:4px;}
+    .sf-filter-label{font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;}
+    .sf-input,.sf-select{font-family:'Inter',sans-serif;font-size:12px;color:var(--txt);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:5px 9px;height:32px;outline:none;transition:border-color .15s,box-shadow .15s;}
+    .sf-input:focus,.sf-select:focus{border-color:var(--sf-blue);box-shadow:0 0 0 3px rgba(1,118,211,.12);}
+    .sf-input::placeholder{color:var(--txt4);}
+    .sf-search-wrap{position:relative;}
+    .sf-search-wrap i{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--txt4);font-size:11px;pointer-events:none;}
+    .sf-search-input{padding-left:28px;width:230px;}
+    .sf-select{-webkit-appearance:none;appearance:none;padding-right:26px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath fill='%23aeaeac' d='M0 0l5 7 5-7z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;cursor:pointer;}
+    .sf-toolbar-spacer{flex:1;}
+
+    /* ── BUTTONS ── */
+    .sf-btn{font-family:'Inter',sans-serif;font-size:12px;font-weight:500;padding:0 14px;height:32px;border-radius:var(--r-sm);cursor:pointer;border:none;display:inline-flex;align-items:center;gap:6px;transition:all .15s;white-space:nowrap;}
+    .sf-btn-primary{background:var(--sf-blue);color:#fff;box-shadow:0 1px 3px rgba(1,118,211,.3);}
+    .sf-btn-primary:hover{background:var(--sf-blue-hover);transform:translateY(-1px);}
+    .sf-btn-neutral{background:var(--surface);color:var(--txt);border:1px solid var(--border);}
+    .sf-btn-neutral:hover{background:var(--bg);}
+    .sf-btn-success{background:var(--sf-green);color:#fff;}
+    .sf-btn-success:hover{background:#1d5e31;transform:translateY(-1px);}
+    .sf-btn-danger{background:var(--sf-red);color:#fff;}
+    .sf-btn-danger:hover{background:#920210;}
+    .sf-btn-teal{background:var(--sf-teal);color:#fff;}
+    .sf-btn-teal:hover{background:#0a5a70;transform:translateY(-1px);}
+
+    /* EXPORT DROPDOWN */
+    .sf-dropdown{position:relative;}
+    .sf-dropdown-menu{position:absolute;right:0;top:calc(100% + 4px);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-md);min-width:210px;z-index:300;overflow:hidden;display:none;}
+    .sf-dropdown-menu.open{display:block;}
+    .sf-dropdown-item{padding:9px 14px;font-size:12px;color:var(--txt2);cursor:pointer;display:flex;align-items:center;gap:8px;}
+    .sf-dropdown-item:hover{background:var(--sf-blue-lt);color:var(--sf-blue);}
+    .sf-dropdown-divider{height:1px;background:var(--border);}
+
+    /* ── TABLE CARD ── */
+    .sf-table-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);overflow:hidden;}
+    .sf-table-header{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--surface2);flex-wrap:wrap;}
+    .sf-table-title{font-size:12px;font-weight:700;color:var(--txt);text-transform:uppercase;letter-spacing:.4px;display:flex;align-items:center;gap:6px;}
+    .sf-record-count{background:var(--sf-blue-lt);color:var(--sf-blue);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;}
+
+    .sf-table-wrap{overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 400px);}
+    table{width:100%;border-collapse:collapse;font-size:11px;min-width:1200px;}
+    thead th{background:var(--sf-navy)!important;color:#e8f4fd!important;font-size:10px!important;font-weight:600!important;text-transform:uppercase!important;letter-spacing:.6px!important;padding:9px 12px!important;text-align:left!important;white-space:nowrap!important;border:none!important;border-right:1px solid #253d5b!important;position:sticky;top:0;z-index:10;cursor:pointer;}
+    thead th:last-child{border-right:none!important;}
+    thead th:hover{background:#253d5b!important;}
+    tbody tr{border-bottom:1px solid var(--border-lt);transition:background .1s;}
+    tbody tr:hover{background:#f0f8ff;}
+    tbody td{padding:7px 12px!important;font-size:11px!important;color:var(--txt2)!important;vertical-align:middle!important;border:none!important;border-bottom:1px solid var(--border-lt)!important;white-space:nowrap;}
+    tbody td:first-child{font-weight:600;}
+
+    /* BADGES */
+    .sf-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;white-space:nowrap;}
+    .badge-hpcl{background:var(--sf-teal-lt);color:var(--sf-teal);}
+    .badge-jio{background:var(--sf-purple-lt);color:var(--sf-purple);}
+    .badge-yes{background:var(--sf-green-lt);color:var(--sf-green);}
+    .badge-no{background:var(--sf-red-lt);color:var(--sf-red);}
+    .badge-po{background:var(--sf-yellow-lt);color:var(--sf-yellow);}
+    .badge-verified{background:var(--sf-green-lt);color:var(--sf-green);}
+    .badge-unverified{background:var(--surface2);color:var(--txt4);border:1px solid var(--border);}
+    .badge-active-yes{background:var(--sf-green-lt);color:var(--sf-green);font-weight:700;}
+    .badge-active-no{background:var(--sf-red-lt);color:var(--sf-red);}
+    .used-text{color:var(--sf-green);font-weight:500;white-space:normal;max-width:170px;font-size:10px;}
+    .faulty-text{color:var(--sf-red);font-weight:500;white-space:normal;max-width:170px;font-size:10px;}
+
+    /* OMS inline select */
+    .oms-select{font-family:'Inter',sans-serif;font-size:11px;color:var(--txt);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);height:26px;padding:2px 20px 2px 7px;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='6' viewBox='0 0 8 6'%3E%3Cpath fill='%23aeaeac' d='M0 0l4 6 4-6z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 5px center;outline:none;cursor:pointer;}
+    .oms-select:focus{border-color:var(--sf-blue);box-shadow:0 0 0 2px rgba(1,118,211,.1);}
+
+    /* Action buttons */
+    .sf-ab{display:flex;gap:3px;align-items:center;}
+    .sf-action-btn{font-size:10px;font-weight:500;height:24px;padding:0 7px;border-radius:var(--r-sm);cursor:pointer;border:none;display:inline-flex;align-items:center;gap:3px;transition:all .12s;font-family:'Inter',sans-serif;}
+    .sf-ab-view{background:var(--sf-blue-lt);color:var(--sf-blue);border:1px solid #c5dff5;}
+    .sf-ab-view:hover{background:#cce8f7;}
+    .sf-ab-edit{background:var(--sf-yellow-lt);color:var(--sf-yellow);border:1px solid #f6c23e;}
+    .sf-ab-edit:hover{background:#fff0b3;}
+
+    /* PAGINATION */
+    .sf-pagination{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--border);background:var(--surface2);flex-wrap:wrap;gap:8px;}
+    .sf-pagination-info{font-size:11px;color:var(--txt3);}
+    .sf-pag-controls{display:flex;align-items:center;gap:4px;}
+    .sf-page-btn{width:30px;height:30px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--txt2);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;font-family:'Inter',sans-serif;}
+    .sf-page-btn:hover{background:var(--sf-blue-lt);border-color:var(--sf-blue);color:var(--sf-blue);}
+    .sf-page-btn.active{background:var(--sf-blue);border-color:var(--sf-blue);color:#fff;font-weight:700;}
+    .sf-page-btn:disabled{opacity:.4;cursor:not-allowed;}
+
+    /* MODALS */
+    .sf-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;display:none;align-items:center;justify-content:center;}
+    .sf-overlay.open{display:flex;}
+    .sf-modal{background:var(--surface);border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.25);width:90%;max-width:680px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;}
+    .sf-modal-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface2);flex-shrink:0;}
+    .sf-modal-title{font-size:15px;font-weight:700;color:var(--txt);display:flex;align-items:center;gap:8px;}
+    .sf-modal-close{background:none;border:none;cursor:pointer;color:var(--txt3);font-size:16px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:var(--r-sm);}
+    .sf-modal-close:hover{background:var(--sf-red-lt);color:var(--sf-red);}
+    .sf-modal-body{flex:1;overflow-y:auto;padding:20px;}
+    .sf-modal-footer{padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;background:var(--surface2);flex-shrink:0;}
+    .sf-modal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;}
+    .sf-modal-field{display:flex;flex-direction:column;gap:4px;}
+    .sf-modal-field.full{grid-column:1/-1;}
+    .sf-modal-label{font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;}
+    .sf-modal-input,.sf-modal-select,.sf-modal-textarea{font-family:'Inter',sans-serif;font-size:12px;color:var(--txt);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:6px 10px;height:34px;outline:none;width:100%;transition:border-color .15s,box-shadow .15s;}
+    .sf-modal-input:focus,.sf-modal-select:focus,.sf-modal-textarea:focus{border-color:var(--sf-blue);box-shadow:0 0 0 3px rgba(1,118,211,.12);}
+    .sf-modal-input.ro{background:var(--surface2);color:var(--txt3);}
+    .sf-modal-textarea{height:auto;min-height:68px;resize:vertical;}
+    .sf-modal-select{-webkit-appearance:none;appearance:none;padding-right:28px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath fill='%23aeaeac' d='M0 0l5 7 5-7z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center;}
+    .sf-modal-section{font-size:11px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:12px;}
+
+    /* Detail sections */
+    .det-section{margin-bottom:16px;}
+    .det-section-title{font-size:11px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:10px;}
+    .det-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;}
+    .det-field{display:flex;flex-direction:column;gap:2px;}
+    .det-label{font-size:10px;font-weight:600;color:var(--txt4);text-transform:uppercase;letter-spacing:.4px;}
+    .det-value{font-size:12px;color:var(--txt);font-weight:500;}
+    .det-box{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;font-size:12px;color:var(--txt2);line-height:1.6;white-space:pre-wrap;}
+
+    /* LOADER */
+    .sf-loader{position:fixed;inset:0;background:rgba(243,242,242,.75);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:400;}
+    .sf-loader.hidden{display:none;}
+    .sf-spinner-lg{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--sf-blue);border-radius:50%;animation:sf-spin .7s linear infinite;}
+    .sf-loader-text{font-size:12px;color:var(--txt3);margin-top:10px;font-weight:500;}
+    @keyframes sf-spin{to{transform:rotate(360deg);}}
+
+    /* TOAST */
+    .sf-toast{position:fixed;top:20px;right:20px;z-index:9999;min-width:280px;max-width:360px;background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--sh-md);border:1px solid var(--border);display:flex;align-items:flex-start;gap:10px;padding:12px 14px;transform:translateX(120%);transition:transform .35s cubic-bezier(.34,1.56,.64,1);}
+    .sf-toast.show{transform:translateX(0);}
+    .sf-toast-icon{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
+    .sf-toast.success .sf-toast-icon{background:var(--sf-green-lt);color:var(--sf-green);}
+    .sf-toast.error   .sf-toast-icon{background:var(--sf-red-lt);color:var(--sf-red);}
+    .sf-toast.warn    .sf-toast-icon{background:var(--sf-yellow-lt);color:var(--sf-yellow);}
+    .sf-toast.info    .sf-toast-icon{background:var(--sf-blue-lt);color:var(--sf-blue);}
+    .sf-toast-title{font-size:12px;font-weight:600;color:var(--txt);}
+    .sf-toast-msg{font-size:11px;color:var(--txt3);margin-top:1px;}
+    .hidden{display:none!important;}
+  
+/* ════════════════════════════════════════════════
+   RELCON CRM — Mobile Responsive CSS (All Pages)
+   Breakpoints: 1024px (tablet), 768px (mobile), 480px (small)
+════════════════════════════════════════════════ */
+
+/* ── TABLET (≤1024px) ── */
+@media(max-width:1024px){
+  .sf-body{padding:12px 14px;}
+  .kpi-row{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;}
+  .sf-toolbar{gap:8px;padding:10px 14px;}
+  .sf-page-header{padding:12px 16px;}
+  .charts-grid{grid-template-columns:1fr;}
+  .sf-modal{max-width:92%;}
+  .sf-modal-grid{grid-template-columns:1fr 1fr;}
+}
+
+/* ── MOBILE (≤768px) ── */
+@media(max-width:768px){
+  /* Page strip */
+  .dv-strip{padding:0 12px;gap:8px;height:48px;}
+  .dv-strip-sep{display:none;}
+  .dv-strip-meta{display:none;}
+  .dv-last-updated{display:none;}
+  .dv-strip-title{font-size:13px;}
+
+  /* Body */
+  .sf-body{padding:10px 12px;}
+
+  /* Breadcrumb */
+  .sf-bc{display:none;}
+
+  /* KPI row — 2 columns on mobile */
+  .kpi-row{grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:10px;}
+  .kpi-card{padding:12px;}
+  .kpi-num,.kpi-value{font-size:20px!important;}
+  .kpi-label,.kpi-sub{font-size:9px!important;}
+  .kpi-icon{width:32px;height:32px;font-size:13px;}
+
+  /* Page header */
+  .sf-page-header{padding:10px 14px;gap:10px;}
+  .sf-page-icon{width:36px;height:36px;font-size:15px;}
+  .sf-page-title{font-size:15px;}
+  .sf-page-meta{font-size:10px;}
+  .sf-page-actions{margin-left:0;width:100%;justify-content:flex-end;}
+
+  /* Toolbar — stack vertically */
+  .sf-toolbar{
+    flex-direction:column;align-items:stretch;
+    padding:10px 12px;gap:8px;
+  }
+  .sf-filter-group{width:100%;}
+  .sf-filter-group .sf-input,
+  .sf-filter-group .sf-select{width:100%;height:36px;}
+  .sf-search-input{width:100%!important;}
+  .sf-toolbar-spacer{display:none;}
+  .sf-dropdown{width:100%;}
+  .sf-dropdown .sf-btn{width:100%;justify-content:center;}
+
+  /* Tab row */
+  .tab-row{overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap;padding-bottom:2px;}
+  .tab-row::-webkit-scrollbar{height:3px;}
+
+  /* Source tabs */
+  .src-tabs{overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap;}
+  .src-tab{font-size:11px;padding:3px 10px;height:26px;}
+
+  /* Table */
+  .sf-table-wrap{max-height:50vh;}
+  table{font-size:11px;}
+  thead th{padding:7px 8px!important;font-size:9px!important;}
+  tbody td{padding:6px 8px!important;font-size:11px!important;}
+
+  /* Table header — hide less important cols hint via overflow scroll */
+  .sf-table-card,.sf-table-wrap{-webkit-overflow-scrolling:touch;}
+
+  /* Section cards */
+  .sf-section-header{padding:10px 14px;flex-wrap:wrap;gap:6px;}
+  .sf-section-body{padding:12px 14px;}
+  .sf-section-title{font-size:12px;}
+
+  /* Buttons */
+  .sf-btn{font-size:11px;padding:0 10px;height:30px;}
+  .sf-btn-primary,.sf-btn-success,.sf-btn-neutral{height:34px;}
+
+  /* Charts */
+  .charts-grid{grid-template-columns:1fr;}
+  .chart-wrap{padding:10px 12px;}
+  .customer-cards{
+    grid-template-columns:repeat(3,1fr);
+    padding:0 12px 12px;gap:8px;
+  }
+  .customer-card{padding:8px 10px;gap:7px;}
+  .cust-dot{width:26px;height:26px;font-size:10px;}
+  .cust-count{font-size:14px;}
+
+  /* Modals */
+  .sf-overlay{align-items:flex-end;padding-bottom:0;}
+  .sf-modal{
+    width:100%!important;max-width:100%!important;
+    border-radius:16px 16px 0 0;
+    max-height:90vh;
+  }
+  .sf-modal-grid{grid-template-columns:1fr!important;}
+  .sf-modal-header{padding:14px 16px;}
+  .sf-modal-body{padding:14px 16px;}
+  .sf-modal-footer{padding:10px 16px;}
+
+  /* Pagination */
+  .sf-pagination{flex-direction:column;align-items:center;gap:6px;padding:8px 12px;}
+  .sf-pagination-info{font-size:10px;}
+  .sf-pag-controls{flex-wrap:wrap;justify-content:center;}
+  .sf-page-btn{width:28px;height:28px;font-size:11px;}
+
+  /* Toast */
+  .sf-toast{right:10px;left:10px;min-width:unset;top:auto;bottom:16px;max-width:100%;}
+
+  /* Date inputs in toolbar */
+  input[type="date"].sf-input{width:100%;}
+
+  /* AMC date controls */
+  .sf-section-header > div > div{flex-wrap:wrap;gap:6px!important;}
+  .sf-date-input{width:100%;height:34px;}
+
+  /* Rows per page */
+  #rowsSel{width:70px!important;}
+}
+
+/* ── SMALL PHONES (≤480px) ── */
+@media(max-width:480px){
+  .kpi-row{grid-template-columns:repeat(2,1fr);gap:6px;}
+  .kpi-card{padding:10px;}
+  .kpi-num,.kpi-value{font-size:18px!important;}
+  .dv-strip{height:44px;}
+  .dv-strip-title{font-size:12px;}
+  .dv-strip-icon{width:24px;height:24px;font-size:11px;}
+  .sf-body{padding:8px 10px;}
+  .sf-page-title{font-size:13px;}
+  .sf-page-icon{width:32px;height:32px;font-size:13px;}
+  .customer-cards{grid-template-columns:repeat(2,1fr);}
+
+  /* Table font smaller */
+  thead th{font-size:8px!important;padding:6px 6px!important;}
+  tbody td{font-size:10px!important;padding:5px 6px!important;}
+}
+
+/* ══ ACTIVE VS FAULTY SPECIFIC MOBILE ══ */
+@media(max-width:768px){
+  /* Source tabs - hide from strip, show as separate row below */
+  .dv-strip .src-tabs{display:none;}
+  .src-tabs-mobile{
+    display:flex;gap:6px;padding:8px 12px;
+    background:var(--surface);border-bottom:1px solid var(--border);
+    overflow-x:auto;-webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  .src-tabs-mobile::-webkit-scrollbar{display:none;}
+  .src-tabs-mobile .src-tab{flex-shrink:0;font-size:11px;height:26px;padding:3px 12px;}
+}
+@media(min-width:769px){
+  .src-tabs-mobile{display:none!important;}
+}
+</style>
+  <script src="config.js"></script>
+</head>
+<body>
+
+<!-- PAGE STRIP -->
+<div class="dv-strip">
+  <div class="dv-strip-icon"><i class="fa-solid fa-scale-balanced"></i></div>
+  <span class="dv-strip-title">Active vs Faulty</span>
+  <div class="dv-strip-sep"></div>
+  <span class="dv-strip-meta" id="dateBadge"></span>
+  <div class="dv-strip-sep"></div>
+  <!-- Source tabs in strip -->
+  <div class="src-tabs">
+    <button class="src-tab both active" data-source="both" onclick="setSource('both',this)">
+      <i class="fa-solid fa-layer-group" style="font-size:10px;"></i> Both
+    </button>
+    <button class="src-tab hpcl" data-source="hpcl" onclick="setSource('hpcl',this)">
+      <i class="fa-solid fa-oil-can" style="font-size:10px;"></i> HPCL
+    </button>
+    <button class="src-tab jio" data-source="jio" onclick="setSource('jio',this)">
+      <i class="fa-solid fa-signal" style="font-size:10px;"></i> Jio BP
+    </button>
+  </div>
+  <div class="dv-strip-spacer"></div>
+  <span style="font-size:10px;color:var(--txt4);">Sync: </span>
+  <span id="lastSync" style="font-size:10px;color:var(--txt3);font-weight:500;">—</span>
+</div>
+
+<!-- Mobile Source Tabs (shown only on mobile, hidden on desktop) -->
+<div class="src-tabs-mobile">
+  <button class="src-tab both active" data-source="both" onclick="setSource('both',this)">
+    <i class="fa-solid fa-layer-group" style="font-size:10px;"></i> Both
+  </button>
+  <button class="src-tab hpcl" data-source="hpcl" onclick="setSource('hpcl',this)">
+    <i class="fa-solid fa-oil-can" style="font-size:10px;"></i> HPCL
+  </button>
+  <button class="src-tab jio" data-source="jio" onclick="setSource('jio',this)">
+    <i class="fa-solid fa-signal" style="font-size:10px;"></i> Jio BP
+  </button>
+</div>
+
+<main class="sf-body">
+
+  <!-- Breadcrumb -->
+  <div class="sf-bc">
+    <a href="#">Home</a><span>/</span>
+    <a href="#">Reports</a><span>/</span>
+    <span>Active vs Faulty</span>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="kpi-row">
+    <div class="kpi-card blue"   onclick="kpiFilter('')"        id="kpiAll">
+      <div class="kpi-num blue"   id="kpiTotal">—</div>
+      <div class="kpi-label"><i class="fa-solid fa-layer-group" style="font-size:9px;"></i> Total Records</div>
+    </div>
+    <div class="kpi-card teal"   onclick="kpiFilter('hpcl')"   id="kpiHpcl">
+      <div class="kpi-num teal"   id="kpiHpclNum">—</div>
+      <div class="kpi-label"><i class="fa-solid fa-oil-can" style="font-size:9px;"></i> HPCL</div>
+    </div>
+    <div class="kpi-card purple" onclick="kpiFilter('jio')"    id="kpiJio">
+      <div class="kpi-num purple" id="kpiJioNum">—</div>
+      <div class="kpi-label"><i class="fa-solid fa-signal" style="font-size:9px;"></i> Jio BP</div>
+    </div>
+    <div class="kpi-card green"  onclick="kpiFilter('oms-yes')" id="kpiOmsYes">
+      <div class="kpi-num green"  id="kpiOmsYesNum">—</div>
+      <div class="kpi-label"><i class="fa-solid fa-circle-check" style="font-size:9px;"></i> OMS Added</div>
+    </div>
+    <div class="kpi-card red"    onclick="kpiFilter('oms-no')"  id="kpiOmsNo">
+      <div class="kpi-num red"    id="kpiOmsNoNum">—</div>
+      <div class="kpi-label"><i class="fa-solid fa-circle-xmark" style="font-size:9px;"></i> OMS Pending</div>
+    </div>
+    <div class="kpi-card orange" onclick="kpiFilter('oms-po')"  id="kpiOmsPo">
+      <div class="kpi-num orange" id="kpiOmsPoNum">—</div>
+      <div class="kpi-label"><i class="fa-solid fa-file-invoice" style="font-size:9px;"></i> PO Basis</div>
+    </div>
+  </div>
+
+  <!-- Page Header -->
+  <div class="sf-page-header">
+    <div class="sf-page-icon"><i class="fa-solid fa-scale-balanced"></i></div>
+    <div>
+      <div class="sf-page-title">Active vs Faulty — Combined Report</div>
+      <div class="sf-page-meta">HPCL &amp; Jio BP sites where Active Material Used = Yes &amp; Verified</div>
+    </div>
+    <div class="sf-page-actions">
+      <button class="sf-btn sf-btn-neutral" onclick="reloadData()">
+        <i class="fa-solid fa-rotate-right"></i> Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="sf-toolbar">
+    <div class="sf-filter-group">
+      <label class="sf-filter-label">Search</label>
+      <div class="sf-search-wrap">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="globalSearch" class="sf-input sf-search-input" placeholder="RO Code, Engineer, Material…"/>
+      </div>
+    </div>
+    <div class="sf-filter-group">
+      <label class="sf-filter-label">Engineer</label>
+      <select id="engineerFilter" class="sf-input sf-select" style="width:160px;">
+        <option value="ALL">All Engineers</option>
+      </select>
+    </div>
+    <div class="sf-filter-group">
+      <label class="sf-filter-label">OMS Status</label>
+      <select id="omsFilter" class="sf-input sf-select" style="width:130px;">
+        <option value="ALL">All</option>
+        <option value="Yes">Yes</option>
+        <option value="No">No</option>
+        <option value="PO Basis">PO Basis</option>
+      </select>
+    </div>
+    <div class="sf-filter-group">
+      <label class="sf-filter-label">From Date</label>
+      <input type="date" id="fromDate" class="sf-input"/>
+    </div>
+    <div class="sf-filter-group">
+      <label class="sf-filter-label">To Date</label>
+      <input type="date" id="toDate" class="sf-input"/>
+    </div>
+    <button class="sf-btn sf-btn-neutral" id="clearFilters" style="align-self:flex-end;">
+      <i class="fa-solid fa-rotate-left"></i> Clear
+    </button>
+    <div class="sf-toolbar-spacer"></div>
+    <div class="sf-filter-group" style="align-self:flex-end;">
+      <label class="sf-filter-label">Per Page</label>
+      <select id="rowsSel" class="sf-input sf-select" style="width:75px;" onchange="rowsPerPage=+this.value;currentPage=1;renderPage(combinedFiltered)">
+        <option value="25">25</option>
+        <option value="50" selected>50</option>
+        <option value="100">100</option>
+      </select>
+    </div>
+    <div class="sf-dropdown" id="exportDrop" style="align-self:flex-end;">
+      <button class="sf-btn sf-btn-primary" onclick="toggleExportMenu()">
+        <i class="fa-solid fa-arrow-up-from-bracket"></i> Export
+        <i class="fa-solid fa-chevron-down" style="font-size:10px;"></i>
+      </button>
+      <div class="sf-dropdown-menu" id="exportMenu">
+        <div class="sf-dropdown-item" onclick="exportAll()"><i class="fa-solid fa-file-excel" style="color:var(--sf-green);"></i> All Filtered (Excel)</div>
+        <div class="sf-dropdown-divider"></div>
+        <div class="sf-dropdown-item" onclick="exportCurrentPage()"><i class="fa-solid fa-table" style="color:var(--sf-blue);"></i> Current Page (CSV)</div>
+        <div class="sf-dropdown-divider"></div>
+        <div class="sf-dropdown-item" onclick="exportOmsPending()"><i class="fa-solid fa-clock" style="color:var(--sf-red);"></i> OMS Pending Only (CSV)</div>
+        <div class="sf-dropdown-divider"></div>
+        <div class="sf-dropdown-item" onclick="window.print()"><i class="fa-solid fa-print" style="color:var(--txt3);"></i> Print</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table Card -->
+  <div class="sf-table-card">
+    <div class="sf-table-header">
+      <div class="sf-table-title"><i class="fa-solid fa-table-cells-large" style="color:var(--sf-blue);"></i> Combined View</div>
+      <span class="sf-record-count" id="combinedCount">Loading…</span>
+      <div style="flex:1;"></div>
+      <span style="font-size:10px;color:var(--txt4);" id="perPageInfo"></span>
+    </div>
+    <div class="sf-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th onclick="sortBy('source')">Source <span id="sort-source"></span></th>
+            <th onclick="sortBy('engineer')">Engineer <span id="sort-engineer"></span></th>
+            <th onclick="sortBy('roCode')">RO Code <span id="sort-roCode"></span></th>
+            <th onclick="sortBy('roName')">RO Name <span id="sort-roName"></span></th>
+            <th onclick="sortBy('active')">Active Material <span id="sort-active"></span></th>
+            <th>Used Material Details</th>
+            <th>Faulty Material Details</th>
+            <th onclick="sortBy('isVerified')">Verified <span id="sort-isVerified"></span></th>
+            <th onclick="sortBy('date')">Visit Date <span id="sort-date"></span></th>
+            <th onclick="sortBy('oms03')">OMS (Faulty Code) <span id="sort-oms03"></span></th>
+            <th style="text-align:center;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="combinedBody">
+          <tr><td colspan="11" style="text-align:center;padding:28px;color:var(--txt3);">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="sf-pagination">
+      <div class="sf-pagination-info" id="pageInfo">—</div>
+      <div class="sf-pag-controls" id="paginator"></div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ══ EDIT MODAL ══ -->
+<div class="sf-overlay" id="editOverlay">
+  <div class="sf-modal">
+    <div class="sf-modal-header">
+      <div class="sf-modal-title"><i class="fa-solid fa-pen-to-square" style="color:var(--sf-teal);"></i> Edit Record</div>
+      <button class="sf-modal-close" onclick="closeEditModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="sf-modal-body">
+      <input type="hidden" id="edit_id"/>
+      <input type="hidden" id="edit_source"/>
+      <div class="sf-modal-section">Site Information (Read-only)</div>
+      <div class="sf-modal-grid">
+        <div class="sf-modal-field full">
+          <label class="sf-modal-label">Engineer</label>
+          <input id="edit_engineer" class="sf-modal-input ro" readonly/>
+        </div>
+        <div class="sf-modal-field">
+          <label class="sf-modal-label">RO Code</label>
+          <input id="edit_roCode" class="sf-modal-input ro" readonly/>
+        </div>
+        <div class="sf-modal-field">
+          <label class="sf-modal-label">RO Name</label>
+          <input id="edit_roName" class="sf-modal-input ro" readonly/>
+        </div>
+        <div class="sf-modal-field">
+          <label class="sf-modal-label">Visit Date</label>
+          <input id="edit_date" class="sf-modal-input ro" readonly/>
+        </div>
+        <div class="sf-modal-field">
+          <label class="sf-modal-label">Source</label>
+          <input id="edit_srcDisplay" class="sf-modal-input ro" readonly/>
+        </div>
+      </div>
+      <div class="sf-modal-section" style="margin-top:16px;">Editable Fields</div>
+      <div class="sf-modal-grid">
+        <div class="sf-modal-field">
+          <label class="sf-modal-label">Active Material Used</label>
+          <select id="edit_active" class="sf-modal-select">
+            <option value="Yes">Yes</option>
+            <option value="No">No</option>
+          </select>
+        </div>
+        <div class="sf-modal-field">
+          <label class="sf-modal-label">OMS Faulty Code</label>
+          <select id="edit_oms" class="sf-modal-select">
+            <option value="No">No</option>
+            <option value="Yes">Yes</option>
+            <option value="PO Basis">PO Basis</option>
+          </select>
+        </div>
+        <div class="sf-modal-field full">
+          <label class="sf-modal-label">Used Material Details</label>
+          <textarea id="edit_usedDetails" class="sf-modal-textarea" placeholder="Used material details…"></textarea>
+        </div>
+        <div class="sf-modal-field full">
+          <label class="sf-modal-label">Faulty Material Details</label>
+          <textarea id="edit_faulty" class="sf-modal-textarea" placeholder="Faulty material details…"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="sf-modal-footer">
+      <button class="sf-btn sf-btn-neutral" onclick="closeEditModal()"><i class="fa-solid fa-xmark"></i> Cancel</button>
+      <button class="sf-btn sf-btn-success" onclick="saveEditModal()"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ DETAIL VIEW MODAL ══ -->
+<div class="sf-overlay" id="detailOverlay">
+  <div class="sf-modal" style="max-width:700px;">
+    <div class="sf-modal-header">
+      <div class="sf-modal-title"><i class="fa-solid fa-file-lines" style="color:var(--sf-teal);"></i> Record Details</div>
+      <button class="sf-modal-close" onclick="document.getElementById('detailOverlay').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="sf-modal-body" id="detailBody"></div>
+    <div class="sf-modal-footer" id="detailFooter">
+      <button class="sf-btn sf-btn-neutral" onclick="document.getElementById('detailOverlay').classList.remove('open')"><i class="fa-solid fa-xmark"></i> Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- LOADER -->
+<div id="loader" class="sf-loader hidden">
+  <div class="sf-spinner-lg"></div>
+  <div class="sf-loader-text">Loading data…</div>
+</div>
+
+<!-- TOAST -->
+<div id="sf-toast" class="sf-toast">
+  <div class="sf-toast-icon" id="sf-toast-icon"><i class="fa-solid fa-check"></i></div>
+  <div><div class="sf-toast-title" id="sf-toast-title">Success</div><div class="sf-toast-msg" id="sf-toast-msg"></div></div>
+</div>
+
+<script>
+const baseUrl = window.BACKEND_URL || "https://relcon-crm.onrender.com";
+const token   = localStorage.getItem("token");
+if(!token){window.location.href="login.html";}
+let hpclData = [], jioData = [], combinedFiltered = [], combinedDisplayed = [];
+let currentPage = 1, rowsPerPage = 50;
+let sortKey = "", sortDir = 1;
+let activeSource = "both", activeKPI = "";
+let currentUser = {};
+
+/* ── Init ── */
+document.getElementById('dateBadge').textContent =
+  new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+
+function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function fmtDate(d){if(!d)return '—';const dt=new Date(d);return isNaN(dt)?String(d):dt.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}
+function today(){return new Date().toISOString().slice(0,10);}
+function getUserFromToken(tkn){try{if(!tkn)return{};const p=JSON.parse(atob(tkn.split('.')[1]));return{username:(p.username||p.name||'').toString(),role:(p.role||'').toString().toLowerCase()};}catch{return{};}}
+
+function showLoader(msg='Loading…'){document.querySelector('.sf-loader-text').textContent=msg;document.getElementById('loader').classList.remove('hidden');}
+function hideLoader(){document.getElementById('loader').classList.add('hidden');}
+function showToast(title,type='success',msg=''){
+  const icons={success:'fa-check',error:'fa-xmark',warn:'fa-exclamation',info:'fa-circle-info'};
+  const t=document.getElementById('sf-toast');
+  document.getElementById('sf-toast-icon').innerHTML=`<i class="fa-solid ${icons[type]||'fa-check'}"></i>`;
+  document.getElementById('sf-toast-title').textContent=title;
+  document.getElementById('sf-toast-msg').textContent=msg;
+  t.className='sf-toast '+type;
+  setTimeout(()=>t.classList.add('show'),10);
+  setTimeout(()=>t.classList.remove('show'),3800);
+}
+
+/* ── Fetch ── */
+async function fetchWithTimeout(url, options={}, timeoutMs=30000){
+  const controller=new AbortController();
+  const tid=setTimeout(()=>controller.abort(),timeoutMs);
+  try{
+    const res=await fetch(url,{...options,signal:controller.signal});
+    clearTimeout(tid);
+    return res;
+  }catch(e){
+    clearTimeout(tid);
+    if(e.name==='AbortError') throw new Error('Request timeout — server shayad start ho raha hai, thodi der baad retry karein.');
+    throw e;
+  }
+}
+
+async function fetchHPCL(){
+  const res=await fetchWithTimeout(`${baseUrl}/getMergedStatusRecords`,{headers:{Authorization:`Bearer ${token}`}});
+  if(!res.ok){
+    const txt=await res.text().catch(()=>'');
+    throw new Error(`HPCL fetch failed: ${res.status} ${res.statusText}. ${txt.slice(0,100)}`);
+  }
+  const data=await res.json();
+  hpclData=(data||[]).map(d=>({id:d._id||'',source:'HPCL',engineer:d.engineer||'',roCode:d.roCode||'',roName:d.roName||'',date:d.date||'',active:(d.spareUsed||'').toString(),usedDetails:d.activeSpare||'',faulty:d.faultySpare||'',isVerified:!!d.isVerified,oms03:d.oms03||'No',raw:d}));
+}
+async function fetchJIO(){
+  const res=await fetchWithTimeout(`${baseUrl}/jioBP/getAllJioBPStatus`,{headers:{Authorization:`Bearer ${token}`}});
+  if(!res.ok){
+    const txt=await res.text().catch(()=>'');
+    throw new Error(`JIO fetch failed: ${res.status} ${res.statusText}. ${txt.slice(0,100)}`);
+  }
+  const data=await res.json();
+  jioData=(data||[]).map(d=>({id:d._id||'',source:'JIO',engineer:d.engineer||(d.planId&&d.planId.engineer)||'',roCode:d.roCode||(d.planId&&d.planId.roCode)||'',roName:d.roName||(d.planId&&d.planId.roName)||'',date:d.date||(d.planId&&d.planId.date)||'',active:(d.activeMaterialUsed||'').toString(),usedDetails:d.usedMaterialDetails||'',faulty:d.faultyMaterialDetails||'',isVerified:!!d.isVerified,oms03:d.oms03||'No',raw:d}));
+}
+
+async function reloadData(){
+  showLoader('Syncing data…');
+  try{
+    await Promise.all([fetchHPCL(),fetchJIO()]);
+    populateEngineerSelect();
+    applyFiltersAndRender();
+    document.getElementById('lastSync').textContent=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    showToast('Data synced','success',`HPCL: ${hpclData.length} | Jio: ${jioData.length} records`);
+  }catch(e){
+    showToast('Sync failed','error',e.message);
+    console.error('reloadData failed:',e);
+  }finally{
+    hideLoader();
+  }
+}
+
+function populateEngineerSelect(){
+  const sel=document.getElementById('engineerFilter');
+  const uniq=[...new Set([...hpclData.map(d=>d.engineer),...jioData.map(d=>d.engineer)].filter(Boolean))].sort();
+  if(currentUser.role==='engineer'&&currentUser.username){
+    sel.innerHTML=`<option value="${esc(currentUser.username)}">${esc(currentUser.username)}</option>`;
+    sel.value=currentUser.username; sel.disabled=true; return;
+  }
+  sel.disabled=false;
+  sel.innerHTML='<option value="ALL">All Engineers</option>'+uniq.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
+}
+
+/* ── Source tab ── */
+function setSource(src,el){
+  activeSource=src;
+  // Sync ALL src-tab buttons (both desktop strip and mobile row)
+  document.querySelectorAll('.src-tab').forEach(t=>{
+    t.classList.remove('active');
+    if(t.dataset.source===src) t.classList.add('active');
+  });
+  applyFiltersAndRender();
+}
+
+/* ── KPI filter ── */
+function kpiFilter(type){
+  activeKPI=type;
+  document.querySelectorAll('.kpi-card').forEach(c=>c.classList.remove('active-kpi'));
+  const map={'':'kpiAll','hpcl':'kpiHpcl','jio':'kpiJio','oms-yes':'kpiOmsYes','oms-no':'kpiOmsNo','oms-po':'kpiOmsPo'};
+  if(map[type]) document.getElementById(map[type])?.classList.add('active-kpi');
+  applyFiltersAndRender();
+}
+
+/* ── Build rows ── */
+function buildRows(){
+  const from=document.getElementById('fromDate').value||null;
+  const to=document.getElementById('toDate').value||null;
+  const f=from?new Date(from):null, t=to?new Date(to):null;
+  let eng=document.getElementById('engineerFilter').value||'ALL';
+  if(currentUser.role==='engineer'&&currentUser.username) eng=currentUser.username;
+  const q=(document.getElementById('globalSearch').value||'').toLowerCase().trim();
+  const omsVal=document.getElementById('omsFilter').value||'ALL';
+
+  const addRow=(r,rows)=>{
+    if(!r.isVerified) return;
+    if((r.active||'').toLowerCase()!=='yes') return;
+    if(eng!=='ALL'&&r.engineer!==eng) return;
+    if(omsVal!=='ALL'&&(r.oms03||'No')!==omsVal) return;
+    if(f||t){const d=r.date?new Date(r.date):null;if(d&&f&&d<f)return;if(d&&t&&d>t)return;}
+    if(q){const hay=`${r.source} ${r.engineer} ${r.roCode} ${r.roName} ${r.active} ${r.usedDetails} ${r.faulty}`.toLowerCase();if(!hay.includes(q))return;}
+    // KPI filter
+    if(activeKPI==='hpcl'&&r.source!=='HPCL') return;
+    if(activeKPI==='jio'&&r.source!=='JIO') return;
+    if(activeKPI==='oms-yes'&&(r.oms03||'No')!=='Yes') return;
+    if(activeKPI==='oms-no'&&(r.oms03||'No')!=='No') return;
+    if(activeKPI==='oms-po'&&(r.oms03||'No')!=='PO Basis') return;
+    rows.push({id:r.id,source:r.source,engineer:r.engineer,roCode:r.roCode,roName:r.roName,active:r.active,usedDetails:r.usedDetails,faulty:r.faulty,isVerified:r.isVerified,date:r.date,oms03:r.oms03||'No'});
+  };
+  const rows=[];
+  if(activeSource==='both'||activeSource==='hpcl') hpclData.forEach(r=>addRow(r,rows));
+  if(activeSource==='both'||activeSource==='jio')  jioData.forEach(r=>addRow(r,rows));
+  if(sortKey) rows.sort((a,b)=>String(a[sortKey]||'').localeCompare(String(b[sortKey]||''))*sortDir);
+  return rows;
+}
+
+function updateKPIs(rows){
+  document.getElementById('kpiTotal').textContent   = rows.length;
+  document.getElementById('kpiHpclNum').textContent = rows.filter(r=>r.source==='HPCL').length;
+  document.getElementById('kpiJioNum').textContent  = rows.filter(r=>r.source==='JIO').length;
+  document.getElementById('kpiOmsYesNum').textContent= rows.filter(r=>(r.oms03||'No')==='Yes').length;
+  document.getElementById('kpiOmsNoNum').textContent = rows.filter(r=>(r.oms03||'No')==='No').length;
+  document.getElementById('kpiOmsPoNum').textContent = rows.filter(r=>(r.oms03||'No')==='PO Basis').length;
+}
+
+function applyFiltersAndRender(){
+  combinedFiltered=buildRows();
+  updateKPIs(combinedFiltered);
+  currentPage=1; renderPage(combinedFiltered);
+}
+
+/* ── Sort ── */
+function sortBy(key){
+  if(sortKey===key)sortDir*=-1;else{sortKey=key;sortDir=1;}
+  document.querySelectorAll('[id^="sort-"]').forEach(el=>el.innerHTML='');
+  const el=document.getElementById('sort-'+key);
+  if(el) el.innerHTML=sortDir===1?` <i class="fa-solid fa-arrow-up" style="font-size:8px;"></i>`:` <i class="fa-solid fa-arrow-down" style="font-size:8px;"></i>`;
+  applyFiltersAndRender();
+}
+
+/* ── Render Page ── */
+function renderPage(rows){
+  combinedFiltered=rows||[];
+  const total=combinedFiltered.length;
+  const tp=Math.max(1,Math.ceil(total/rowsPerPage));
+  if(currentPage>tp) currentPage=tp;
+  const start=(currentPage-1)*rowsPerPage;
+  const page=combinedFiltered.slice(start,start+rowsPerPage);
+  combinedDisplayed=page;
+  const isAdmin=currentUser.role==='admin';
+
+  document.getElementById('combinedCount').textContent=`${total} records`;
+  document.getElementById('pageInfo').textContent=`Showing ${total===0?0:start+1}–${Math.min(total,currentPage*rowsPerPage)} of ${total}`;
+  document.getElementById('perPageInfo').textContent=`${rowsPerPage} per page`;
+
+  const tbody=document.getElementById('combinedBody');
+  if(!page.length){tbody.innerHTML=`<tr><td colspan="11" style="text-align:center;padding:28px;color:var(--txt3);">No records found.</td></tr>`;renderPaginator(total,tp);return;}
+
+  const srcBadge=s=>s==='HPCL'?`<span class="sf-badge badge-hpcl"><i class="fa-solid fa-oil-can" style="font-size:8px;"></i> HPCL</span>`:`<span class="sf-badge badge-jio"><i class="fa-solid fa-signal" style="font-size:8px;"></i> JIO</span>`;
+  const omsBadge=(v,id,src)=>{
+    if(!isAdmin) return v==='Yes'?`<span class="sf-badge badge-yes">Yes</span>`:v==='PO Basis'?`<span class="sf-badge badge-po">PO Basis</span>`:`<span class="sf-badge badge-no">No</span>`;
+    return `<select class="oms-select" data-id="${id}" data-source="${src}"><option value="No"${v==='No'?' selected':''}>No</option><option value="Yes"${v==='Yes'?' selected':''}>Yes</option><option value="PO Basis"${v==='PO Basis'?' selected':''}>PO Basis</option></select>`;
+  };
+  const activeBadge=v=>(v||'').toLowerCase()==='yes'?`<span class="sf-badge badge-active-yes"><i class="fa-solid fa-circle-check" style="font-size:8px;"></i> Yes</span>`:`<span class="sf-badge badge-active-no"><i class="fa-solid fa-circle-xmark" style="font-size:8px;"></i> No</span>`;
+
+  tbody.innerHTML=page.map((r,i)=>{
+    const idx=start+i;
+    return `<tr>
+      <td>${srcBadge(r.source)}</td>
+      <td style="font-weight:600;">${esc(r.engineer||'—')}</td>
+      <td style="color:var(--sf-blue)!important;font-weight:700;">${esc(r.roCode||'—')}</td>
+      <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;" title="${esc(r.roName||'')}">${esc((r.roName||'').slice(0,25))}${(r.roName||'').length>25?'…':''}</td>
+      <td>${activeBadge(r.active)}</td>
+      <td><div class="used-text" style="max-width:170px;white-space:normal;" title="${esc(r.usedDetails||'')}">${esc((r.usedDetails||'—').slice(0,60))}${(r.usedDetails||'').length>60?'…':''}</div></td>
+      <td><div class="faulty-text" style="max-width:170px;white-space:normal;" title="${esc(r.faulty||'')}">${esc((r.faulty||'—').slice(0,60))}${(r.faulty||'').length>60?'…':''}</div></td>
+      <td>${r.isVerified?`<span class="sf-badge badge-verified"><i class="fa-solid fa-check" style="font-size:8px;"></i> Verified</span>`:`<span class="sf-badge badge-unverified">—</span>`}</td>
+      <td style="color:var(--txt3);">${fmtDate(r.date)}</td>
+      <td>${omsBadge(r.oms03,r.id,r.source)}</td>
+      <td>
+        <div class="sf-ab">
+          <button class="sf-action-btn sf-ab-view" onclick="viewDetail(${idx})" title="View Details"><i class="fa-solid fa-eye"></i></button>
+          ${isAdmin?`<button class="sf-action-btn sf-ab-edit edit-btn" data-id="${r.id}" data-source="${r.source}" title="Edit"><i class="fa-solid fa-pen"></i></button>`:''}
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  renderPaginator(total,tp);
+}
+
+/* ── Pagination ── */
+function renderPaginator(total,tp){
+  const c=document.getElementById('paginator'); c.innerHTML='';
+  const prev=document.createElement('button');
+  prev.innerHTML='<i class="fa-solid fa-chevron-left" style="font-size:10px;"></i>';
+  prev.className='sf-page-btn'; prev.disabled=currentPage===1;
+  prev.onclick=()=>{if(currentPage>1){currentPage--;renderPage(combinedFiltered);}};
+  c.appendChild(prev);
+  let s=Math.max(1,currentPage-3),e=Math.min(tp,s+6);
+  if(e-s<6)s=Math.max(1,e-6);
+  for(let i=s;i<=e;i++){
+    const b=document.createElement('button');b.textContent=i;b.className='sf-page-btn'+(i===currentPage?' active':'');
+    b.onclick=(p=>()=>{currentPage=p;renderPage(combinedFiltered);})(i);c.appendChild(b);
+  }
+  const next=document.createElement('button');
+  next.innerHTML='<i class="fa-solid fa-chevron-right" style="font-size:10px;"></i>';
+  next.className='sf-page-btn'; next.disabled=currentPage===tp;
+  next.onclick=()=>{if(currentPage<tp){currentPage++;renderPage(combinedFiltered);}};
+  c.appendChild(next);
+}
+
+/* ── OMS inline change ── */
+document.addEventListener('change', async e=>{
+  const sel=e.target;
+  if(!sel.classList.contains('oms-select')) return;
+  const val=sel.value, id=sel.dataset.id, src=sel.dataset.source;
+  if(!id){showToast('Missing ID','error'); return;}
+  [hpclData,jioData].forEach(arr=>{const it=arr.find(x=>String(x.id)===String(id));if(it)it.oms03=val;});
+  combinedFiltered.forEach(r=>{if(String(r.id)===String(id))r.oms03=val;});
+  showToast('Saving OMS…','info');
+  try{
+    const url=src==='HPCL'?`${baseUrl}/updateStatus/${encodeURIComponent(id)}`:`${baseUrl}/jioBP/updateJioBPStatus/${encodeURIComponent(id)}`;
+    const res=await fetch(url,{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({oms03:val})});
+    if(res.ok) showToast('OMS updated','success','Faulty code saved.');
+    else{showToast('OMS save failed','error');await reloadData();}
+  }catch(e){showToast('Save error','error',e.message);await reloadData();}
+});
+
+/* ── Edit button click (delegated) ── */
+document.addEventListener('click', e=>{
+  const btn=e.target.closest('.edit-btn');
+  if(btn){openEditModalById(btn.dataset.id,btn.dataset.source);}
+});
+
+/* ── Detail View ── */
+function viewDetail(idx){
+  const r=combinedFiltered[(currentPage-1)*rowsPerPage+idx]||combinedFiltered[idx];
+  if(!r) return;
+  const srcBadge=r.source==='HPCL'?`<span class="sf-badge badge-hpcl">HPCL</span>`:`<span class="sf-badge badge-jio">JIO</span>`;
+  const omsBadge=(r.oms03||'No')==='Yes'?`<span class="sf-badge badge-yes">Yes</span>`:(r.oms03||'No')==='PO Basis'?`<span class="sf-badge badge-po">PO Basis</span>`:`<span class="sf-badge badge-no">No</span>`;
+  document.getElementById('detailBody').innerHTML=`
+    <div class="det-section">
+      <div class="det-section-title">Site Info</div>
+      <div class="det-grid">
+        <div class="det-field"><div class="det-label">Source</div><div class="det-value">${srcBadge}</div></div>
+        <div class="det-field"><div class="det-label">Engineer</div><div class="det-value">${esc(r.engineer||'—')}</div></div>
+        <div class="det-field"><div class="det-label">RO Code</div><div class="det-value" style="color:var(--sf-blue);">${esc(r.roCode||'—')}</div></div>
+        <div class="det-field"><div class="det-label">RO Name</div><div class="det-value">${esc(r.roName||'—')}</div></div>
+        <div class="det-field"><div class="det-label">Visit Date</div><div class="det-value">${fmtDate(r.date)}</div></div>
+        <div class="det-field"><div class="det-label">Active Material</div><div class="det-value">${(r.active||'').toLowerCase()==='yes'?`<span class="sf-badge badge-active-yes">Yes</span>`:`<span class="sf-badge badge-active-no">No</span>`}</div></div>
+        <div class="det-field"><div class="det-label">Verified</div><div class="det-value">${r.isVerified?`<span class="sf-badge badge-verified">Verified</span>`:`<span class="sf-badge badge-unverified">No</span>`}</div></div>
+        <div class="det-field"><div class="det-label">OMS Faulty Code</div><div class="det-value">${omsBadge}</div></div>
+      </div>
+    </div>
+    <div class="det-section">
+      <div class="det-section-title">Material Details</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <div class="det-label" style="margin-bottom:6px;">Used Material Details</div>
+          <div class="det-box" style="color:var(--sf-green);">${esc(r.usedDetails||'—')}</div>
+        </div>
+        <div>
+          <div class="det-label" style="margin-bottom:6px;">Faulty Material Details</div>
+          <div class="det-box" style="color:var(--sf-red);">${esc(r.faulty||'—')}</div>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('detailFooter').innerHTML=`
+    <button class="sf-btn sf-btn-neutral" onclick="document.getElementById('detailOverlay').classList.remove('open')"><i class="fa-solid fa-xmark"></i> Close</button>
+    ${currentUser.role==='admin'?`<button class="sf-btn sf-btn-warn" onclick="document.getElementById('detailOverlay').classList.remove('open');openEditModalById('${r.id}','${r.source}')"><i class="fa-solid fa-pen"></i> Edit</button>`:''}`;
+  document.getElementById('detailOverlay').classList.add('open');
+}
+
+/* ── Edit Modal ── */
+function openEditModalById(id,source){
+  const arr=source==='HPCL'?hpclData:jioData;
+  const it=arr.find(x=>String(x.id)===String(id));
+  if(!it){showToast('Record not found','error');return;}
+  document.getElementById('edit_id').value=it.id||'';
+  document.getElementById('edit_source').value=it.source||'';
+  document.getElementById('edit_engineer').value=it.engineer||'';
+  document.getElementById('edit_roCode').value=it.roCode||'';
+  document.getElementById('edit_roName').value=it.roName||'';
+  document.getElementById('edit_date').value=fmtDate(it.date);
+  document.getElementById('edit_srcDisplay').value=it.source||'';
+  document.getElementById('edit_active').value=it.active||'Yes';
+  document.getElementById('edit_oms').value=it.oms03||'No';
+  document.getElementById('edit_usedDetails').value=it.usedDetails||'';
+  document.getElementById('edit_faulty').value=it.faulty||'';
+  document.getElementById('editOverlay').classList.add('open');
+}
+function closeEditModal(){document.getElementById('editOverlay').classList.remove('open');}
+
+async function saveEditModal(){
+  const id=document.getElementById('edit_id').value;
+  const src=document.getElementById('edit_source').value;
+  if(!id||!src){showToast('Missing id/source','error');return;}
+  const newActive=document.getElementById('edit_active').value;
+  const newOms=document.getElementById('edit_oms').value;
+  const newUsed=document.getElementById('edit_usedDetails').value||'';
+  const newFaulty=document.getElementById('edit_faulty').value||'';
+  // optimistic update
+  [hpclData,jioData].forEach(arr=>{
+    const it=arr.find(x=>String(x.id)===String(id));
+    if(it){it.active=newActive;it.oms03=newOms;it.usedDetails=newUsed;it.faulty=newFaulty;}
+  });
+  combinedFiltered.forEach(r=>{if(String(r.id)===String(id)){r.active=newActive;r.oms03=newOms;r.usedDetails=newUsed;r.faulty=newFaulty;}});
+  renderPage(combinedFiltered);
+  closeEditModal();
+  showToast('Saving…','info');
+  showLoader('Saving changes…');
+  try{
+    let url,body;
+    if(src==='HPCL'){url=`${baseUrl}/updateStatus/${encodeURIComponent(id)}`;body={spareUsed:newActive,activeSpare:newUsed,faultySpare:newFaulty,oms03:newOms};}
+    else{url=`${baseUrl}/jioBP/updateJioBPStatus/${encodeURIComponent(id)}`;body={activeMaterialUsed:newActive,usedMaterialDetails:newUsed,faultyMaterialDetails:newFaulty,oms03:newOms};}
+    const res=await fetch(url,{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify(body)});
+    if(res.ok) showToast('Record saved','success');
+    else{showToast('Save failed','error');await reloadData();}
+  }catch(e){showToast('Save error','error',e.message);await reloadData();}
+  hideLoader();
+}
+
+/* ── Export ── */
+function toggleExportMenu(){document.getElementById('exportMenu').classList.toggle('open');setTimeout(()=>document.addEventListener('click',closeExpMenu),10);}
+function closeExpMenu(e){const m=document.getElementById('exportMenu');if(!e.target.closest('#exportDrop')){m.classList.remove('open');document.removeEventListener('click',closeExpMenu);}}
+
+function _buildExportRows(rows){return rows.map(r=>({Source:r.source,Engineer:r.engineer,RO_Code:r.roCode,RO_Name:r.roName,Active_Material:r.active,Used_Details:r.usedDetails,Faulty_Details:r.faulty,Verified:r.isVerified?'Yes':'No',Visit_Date:fmtDate(r.date),OMS_Faulty_Code:r.oms03||'No'}));}
+function _csvStr(rows){
+  if(!rows.length) return '';
+  const h=Object.keys(rows[0]);
+  return [h.join(','),...rows.map(r=>h.map(k=>{const v=String(r[k]??'');return v.includes(',')||v.includes('"')?'"'+v.replaceAll('"','""')+'"':v;}).join(','))].join('\n');
+}
+function _dlCSV(csv,name){const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);a.download=name;a.click();}
+
+function exportAll(){
+  if(!combinedFiltered.length){showToast('No data','warn');toggleExportMenu();return;}
+  const ws=XLSX.utils.json_to_sheet(_buildExportRows(combinedFiltered));
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'ActiveVsFaulty');
+  XLSX.writeFile(wb,`ActiveVsFaulty_${today()}.xlsx`);
+  showToast('Excel exported','success');toggleExportMenu();
+}
+function exportCurrentPage(){
+  if(!combinedDisplayed.length){showToast('No data','warn');toggleExportMenu();return;}
+  _dlCSV(_csvStr(_buildExportRows(combinedDisplayed)),`ActiveVsFaulty_Page${currentPage}_${today()}.csv`);
+  showToast('Page exported','success');toggleExportMenu();
+}
+function exportOmsPending(){
+  const pend=combinedFiltered.filter(r=>(r.oms03||'No')==='No');
+  if(!pend.length){showToast('No OMS pending records','warn');toggleExportMenu();return;}
+  _dlCSV(_csvStr(_buildExportRows(pend)),`OMS_Pending_${today()}.csv`);
+  showToast(`${pend.length} OMS pending exported`,'success');toggleExportMenu();
+}
+
+/* ── Wire inputs ── */
+['globalSearch','engineerFilter','omsFilter','fromDate','toDate'].forEach(id=>{
+  const el=document.getElementById(id);
+  el.addEventListener(id==='globalSearch'?'input':'change',()=>applyFiltersAndRender());
+});
+document.getElementById('clearFilters').addEventListener('click',()=>{
+  ['globalSearch','fromDate','toDate'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('engineerFilter').value='ALL';
+  document.getElementById('omsFilter').value='ALL';
+  activeKPI=''; document.querySelectorAll('.kpi-card').forEach(c=>c.classList.remove('active-kpi'));
+  if(currentUser.role==='engineer'&&currentUser.username){document.getElementById('engineerFilter').value=currentUser.username;}
+  applyFiltersAndRender();
+});
+
+/* ── Init ── */
+(async()=>{
+  currentUser=getUserFromToken(token);
+  showLoader('Loading data…');
+  try{
+    await Promise.all([fetchHPCL(),fetchJIO()]);
+    populateEngineerSelect();
+    applyFiltersAndRender();
+    document.getElementById('lastSync').textContent=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    showToast('Data loaded','success',`HPCL: ${hpclData.length} | Jio: ${jioData.length}`);
+  }catch(e){
+    showToast('Load failed','error',e.message);
+    console.error('Init load failed:',e);
+    const tbody=document.getElementById('tableBody');
+    if(tbody) tbody.innerHTML=`<tr><td colspan="11" style="text-align:center;padding:28px;color:#e74c3c;">
+      <i class="fa-solid fa-triangle-exclamation"></i> Could not load data: ${e.message}
+      <br><a href="#" onclick="reloadData()" style="color:var(--sf-blue);margin-top:8px;display:inline-block;">Retry</a>
+    </td></tr>`;
+  }
+  hideLoader();
+})();
+</script>
+<script src="errorLogger.js"></script>
+</body>
+</html>

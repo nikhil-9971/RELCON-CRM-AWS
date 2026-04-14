@@ -1,0 +1,46 @@
+version: "3.9"
+
+# ══════════════════════════════════════════════════════════
+#  RELCON SYSTEMS – Full Stack Deployment (EC2)
+#  Frontend (nginx) + Backend (Node.js) + MongoDB Atlas
+# ══════════════════════════════════════════════════════════
+
+services:
+
+  # ── Backend (Node.js) ─────────────────────────────────────
+  backend:
+    image: ${DOCKER_USERNAME}/relcon-backend:latest
+    container_name: relcon_backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      MONGO_URI: ${MONGO_URI}
+      SESSION_SECRET: ${SESSION_SECRET}
+    ports:
+      - "3001:3000"
+    networks:
+      - relcon_net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # ── Frontend (nginx) ──────────────────────────────────────
+  frontend:
+    image: ${DOCKER_USERNAME}/relcon-frontend:latest
+    container_name: relcon_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    environment:
+      - TZ=Asia/Kolkata
+    networks:
+      - relcon_net
+
+networks:
+  relcon_net:
+    driver: bridge

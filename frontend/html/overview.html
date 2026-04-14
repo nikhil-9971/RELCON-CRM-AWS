@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Dashboard Overview — RELCON CRM</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.18.5/package/dist/xlsx.full.min.js"></script>
+<style>
+/* ════════════════════════════════════════════════════
+   RELCON CRM — Salesforce Lightning Design System
+   Dashboard Overview v3.0
+════════════════════════════════════════════════════ */
+:root {
+  --sf-blue:#0176d3; --sf-blue-dk:#014486; --sf-blue-lt:#e8f4fd; --sf-blue-hover:#0b5faa;
+  --sf-navy:#1a2e4a;
+  --sf-green:#2e844a;  --sf-green-lt:#eaf5ea;
+  --sf-red:#ba0517;    --sf-red-lt:#fef1ee;
+  --sf-orange:#dd5a0c; --sf-orange-lt:#fff3e0;
+  --sf-yellow:#b8860b; --sf-yellow-lt:#fff8e6;
+  --sf-purple:#6b3fa0; --sf-purple-lt:#f5f0ff;
+  --sf-teal:#0e7490;   --sf-teal-lt:#ecfeff;
+  --bg:#f3f2f2; --surface:#fff; --surface2:#f9f9f9;
+  --border:#dddbda; --border-lt:#f3f2f2;
+  --txt:#080707; --txt2:#3e3e3c; --txt3:#706e6b; --txt4:#aeaeac;
+  --r-sm:4px; --r:6px; --r-lg:8px; --r-xl:12px;
+  --sh-sm:0 2px 4px rgba(0,0,0,.09); --sh-md:0 8px 24px rgba(0,0,0,.12);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{font-size:13px;-webkit-font-smoothing:antialiased;}
+body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-thumb{background:#c8c6c4;border-radius:3px;}
+
+/* PAGE STRIP */
+.dv-strip{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:52px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;box-shadow:0 1px 3px rgba(15,23,42,.07);}
+.dv-strip-icon{width:28px;height:28px;background:var(--sf-blue-lt);border-radius:5px;display:flex;align-items:center;justify-content:center;color:var(--sf-blue);font-size:13px;}
+.dv-strip-title{font-size:14px;font-weight:700;color:var(--txt);letter-spacing:-.2px;}
+.dv-strip-sep{width:1px;height:18px;background:var(--border);}
+.dv-strip-meta{font-size:10px;font-weight:500;color:var(--txt4);background:var(--surface2);border:1px solid var(--border);padding:2px 9px;border-radius:9999px;}
+.dv-strip-spacer{flex:1;}
+.dv-last-updated{font-size:10px;color:var(--txt4);}
+.dv-last-updated span{color:var(--txt3);font-weight:500;}
+
+/* BODY */
+.sf-body{padding:16px 20px;}
+
+/* ═══════════════════════
+   KPI CARDS — Row 1
+═══════════════════════ */
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:12px;margin-bottom:16px;}
+.kpi-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-lg);padding:16px;box-shadow:var(--sh-sm);
+  display:flex;align-items:flex-start;gap:12px;
+  border-left:3px solid transparent;
+  transition:box-shadow .15s,transform .15s;
+  position:relative;overflow:hidden;
+}
+.kpi-card:hover{box-shadow:var(--sh-md);transform:translateY(-1px);}
+.kpi-card::before{content:'';position:absolute;top:0;right:0;width:60px;height:60px;border-radius:50%;opacity:.04;transform:translate(20px,-20px);}
+.kpi-card.blue{border-left-color:var(--sf-blue);}  .kpi-card.blue::before{background:var(--sf-blue);}
+.kpi-card.red{border-left-color:var(--sf-red);}    .kpi-card.red::before{background:var(--sf-red);}
+.kpi-card.orange{border-left-color:var(--sf-orange);}  .kpi-card.orange::before{background:var(--sf-orange);}
+.kpi-card.green{border-left-color:var(--sf-green);}    .kpi-card.green::before{background:var(--sf-green);}
+.kpi-card.yellow{border-left-color:var(--sf-yellow);}  .kpi-card.yellow::before{background:var(--sf-yellow);}
+.kpi-card.teal{border-left-color:var(--sf-teal);}      .kpi-card.teal::before{background:var(--sf-teal);}
+.kpi-card.purple{border-left-color:var(--sf-purple);}  .kpi-card.purple::before{background:var(--sf-purple);}
+.kpi-icon{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+.kpi-icon.blue{background:var(--sf-blue-lt);color:var(--sf-blue);}
+.kpi-icon.red{background:var(--sf-red-lt);color:var(--sf-red);}
+.kpi-icon.orange{background:var(--sf-orange-lt);color:var(--sf-orange);}
+.kpi-icon.green{background:var(--sf-green-lt);color:var(--sf-green);}
+.kpi-icon.yellow{background:var(--sf-yellow-lt);color:var(--sf-yellow);}
+.kpi-icon.teal{background:var(--sf-teal-lt);color:var(--sf-teal);}
+.kpi-icon.purple{background:var(--sf-purple-lt);color:var(--sf-purple);}
+.kpi-body{flex:1;min-width:0;}
+.kpi-label{font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.kpi-value-row{display:flex;align-items:center;gap:6px;margin-top:2px;}
+.kpi-value{font-size:26px;font-weight:700;line-height:1;}
+.kpi-value.blue{color:var(--sf-blue);}
+.kpi-value.red{color:var(--sf-red);}
+.kpi-value.orange{color:var(--sf-orange);}
+.kpi-value.green{color:var(--sf-green);}
+.kpi-value.yellow{color:var(--sf-yellow);}
+.kpi-value.teal{color:var(--sf-teal);}
+.kpi-value.purple{color:var(--sf-purple);}
+.kpi-breakdown{font-size:10px;color:var(--txt4);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.kpi-export{background:none;border:none;cursor:pointer;padding:2px 4px;border-radius:4px;opacity:0;transition:opacity .15s;color:var(--sf-blue);font-size:11px;}
+.kpi-card:hover .kpi-export{opacity:1;}
+.kpi-export:hover{background:var(--sf-blue-lt);}
+
+/* ═══════════════════════
+   SECTION CARDS
+═══════════════════════ */
+.sf-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);overflow:hidden;margin-bottom:14px;}
+.sf-section-header{padding:12px 18px;border-bottom:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.sf-section-title{font-size:13px;font-weight:700;color:var(--txt);display:flex;align-items:center;gap:7px;}
+.sf-section-title i{font-size:12px;}
+.sf-section-body{padding:16px 18px;}
+.sf-section-body.no-pad{padding:0;}
+
+/* Chart area */
+.chart-wrap{padding:16px 18px;}
+.charts-grid{display:grid;grid-template-columns:1fr 2fr;gap:14px;margin-bottom:14px;}
+@media(max-width:900px){.charts-grid{grid-template-columns:1fr;}}
+
+/* Customer mini-cards */
+.customer-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;padding:0 18px 16px;}
+.customer-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-lg);padding:12px 14px;display:flex;align-items:center;gap:10px;transition:box-shadow .12s;}
+.customer-card:hover{box-shadow:var(--sh-sm);}
+.cust-dot{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;flex-shrink:0;}
+.cust-label{font-size:10px;color:var(--txt3);font-weight:600;text-transform:uppercase;letter-spacing:.4px;}
+.cust-count{font-size:18px;font-weight:700;color:var(--txt);}
+
+/* ═══════════════════════
+   TABLES — SF style
+═══════════════════════ */
+.sf-table-wrap{overflow-x:auto;overflow-y:auto;max-height:340px;}
+table{width:100%;border-collapse:collapse;font-size:11px;min-width:400px;}
+thead th{background:var(--sf-navy)!important;color:#e8f4fd!important;font-size:10px!important;font-weight:600!important;text-transform:uppercase!important;letter-spacing:.6px!important;padding:9px 12px!important;text-align:left!important;white-space:nowrap!important;border:none!important;border-right:1px solid #253d5b!important;position:sticky;top:0;z-index:5;}
+thead th:last-child{border-right:none!important;}
+tbody tr{border-bottom:1px solid var(--border-lt);transition:background .1s;}
+tbody tr:hover{background:#f0f8ff;}
+tbody td{padding:7px 12px!important;font-size:11px!important;color:var(--txt2)!important;vertical-align:middle!important;border:none!important;border-bottom:1px solid var(--border-lt)!important;white-space:nowrap;}
+tbody td:first-child{font-weight:600;color:var(--txt)!important;}
+tbody tr.sf-total-row{background:var(--surface2);font-weight:700;}
+tbody tr.sf-total-row td{color:var(--txt)!important;font-weight:700!important;}
+
+/* BADGES */
+.sf-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;white-space:nowrap;}
+.badge-green{background:var(--sf-green-lt);color:var(--sf-green);}
+.badge-yellow{background:var(--sf-yellow-lt);color:var(--sf-yellow);}
+.badge-red{background:var(--sf-red-lt);color:var(--sf-red);}
+
+/* BUTTONS */
+.sf-btn{font-family:'Inter',sans-serif;font-size:12px;font-weight:500;padding:0 14px;height:30px;border-radius:var(--r-sm);cursor:pointer;border:none;display:inline-flex;align-items:center;gap:6px;transition:all .15s;white-space:nowrap;}
+.sf-btn-primary{background:var(--sf-blue);color:#fff;}
+.sf-btn-primary:hover{background:var(--sf-blue-hover);transform:translateY(-1px);}
+.sf-btn-success{background:var(--sf-green);color:#fff;}
+.sf-btn-success:hover{background:#1d5e31;transform:translateY(-1px);}
+.sf-btn-neutral{background:var(--surface);color:var(--txt);border:1px solid var(--border);}
+.sf-btn-neutral:hover{background:var(--bg);}
+.sf-btn-sm{height:26px;font-size:11px;padding:0 10px;}
+
+/* DATE INPUTS */
+.sf-date-input{font-family:'Inter',sans-serif;font-size:12px;color:var(--txt);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:4px 9px;height:30px;outline:none;transition:border-color .15s;}
+.sf-date-input:focus{border-color:var(--sf-blue);box-shadow:0 0 0 2px rgba(1,118,211,.12);}
+.sf-field-label{font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:3px;}
+
+/* AMC progress bar */
+.amc-bar{width:80px;height:6px;background:var(--border);border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:6px;}
+.amc-bar-fill{height:100%;border-radius:3px;transition:width .3s;}
+.amc-bar-fill.green{background:var(--sf-green);}
+.amc-bar-fill.yellow{background:var(--sf-yellow);}
+.amc-bar-fill.red{background:var(--sf-red);}
+
+/* LOADER */
+.sf-loader-inline{display:flex;align-items:center;justify-content:center;padding:28px;gap:10px;color:var(--txt3);font-size:12px;}
+.sf-spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--sf-blue);border-radius:50%;animation:sf-spin .7s linear infinite;flex-shrink:0;}
+@keyframes sf-spin{to{transform:rotate(360deg);}}
+
+/* SECTION DIVIDER */
+.sf-divider{height:1px;background:var(--border);margin:0 0 14px;}
+
+/* ════════════════════════════════════════════════
+   RELCON CRM — Mobile Responsive CSS (All Pages)
+   Breakpoints: 1024px (tablet), 768px (mobile), 480px (small)
+════════════════════════════════════════════════ */
+
+/* ── TABLET (≤1024px) ── */
+@media(max-width:1024px){
+  .sf-body{padding:12px 14px;}
+  .kpi-row{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;}
+  .sf-toolbar{gap:8px;padding:10px 14px;}
+  .sf-page-header{padding:12px 16px;}
+  .charts-grid{grid-template-columns:1fr;}
+  .sf-modal{max-width:92%;}
+  .sf-modal-grid{grid-template-columns:1fr 1fr;}
+}
+
+/* ── MOBILE (≤768px) ── */
+@media(max-width:768px){
+  /* Page strip */
+  .dv-strip{padding:0 12px;gap:8px;height:48px;}
+  .dv-strip-sep{display:none;}
+  .dv-strip-meta{display:none;}
+  .dv-last-updated{display:none;}
+  .dv-strip-title{font-size:13px;}
+
+  /* Body */
+  .sf-body{padding:10px 12px;}
+
+  /* Breadcrumb */
+  .sf-bc{display:none;}
+
+  /* KPI row — 2 columns on mobile */
+  .kpi-row{grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:10px;}
+  .kpi-card{padding:12px;}
+  .kpi-num,.kpi-value{font-size:20px!important;}
+  .kpi-label,.kpi-sub{font-size:9px!important;}
+  .kpi-icon{width:32px;height:32px;font-size:13px;}
+
+  /* Page header */
+  .sf-page-header{padding:10px 14px;gap:10px;}
+  .sf-page-icon{width:36px;height:36px;font-size:15px;}
+  .sf-page-title{font-size:15px;}
+  .sf-page-meta{font-size:10px;}
+  .sf-page-actions{margin-left:0;width:100%;justify-content:flex-end;}
+
+  /* Toolbar — stack vertically */
+  .sf-toolbar{
+    flex-direction:column;align-items:stretch;
+    padding:10px 12px;gap:8px;
+  }
+  .sf-filter-group{width:100%;}
+  .sf-filter-group .sf-input,
+  .sf-filter-group .sf-select{width:100%;height:36px;}
+  .sf-search-input{width:100%!important;}
+  .sf-toolbar-spacer{display:none;}
+  .sf-dropdown{width:100%;}
+  .sf-dropdown .sf-btn{width:100%;justify-content:center;}
+
+  /* Tab row */
+  .tab-row{overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap;padding-bottom:2px;}
+  .tab-row::-webkit-scrollbar{height:3px;}
+
+  /* Source tabs */
+  .src-tabs{overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap;}
+  .src-tab{font-size:11px;padding:3px 10px;height:26px;}
+
+  /* Table */
+  .sf-table-wrap{max-height:50vh;}
+  table{font-size:11px;}
+  thead th{padding:7px 8px!important;font-size:9px!important;}
+  tbody td{padding:6px 8px!important;font-size:11px!important;}
+
+  /* Table header — hide less important cols hint via overflow scroll */
+  .sf-table-card,.sf-table-wrap{-webkit-overflow-scrolling:touch;}
+
+  /* Section cards */
+  .sf-section-header{padding:10px 14px;flex-wrap:wrap;gap:6px;}
+  .sf-section-body{padding:12px 14px;}
+  .sf-section-title{font-size:12px;}
+
+  /* Buttons */
+  .sf-btn{font-size:11px;padding:0 10px;height:30px;}
+  .sf-btn-primary,.sf-btn-success,.sf-btn-neutral{height:34px;}
+
+  /* Charts */
+  .charts-grid{grid-template-columns:1fr;}
+  .chart-wrap{padding:10px 12px;}
+  .customer-cards{
+    grid-template-columns:repeat(3,1fr);
+    padding:0 12px 12px;gap:8px;
+  }
+  .customer-card{padding:8px 10px;gap:7px;}
+  .cust-dot{width:26px;height:26px;font-size:10px;}
+  .cust-count{font-size:14px;}
+
+  /* Modals */
+  .sf-overlay{align-items:flex-end;padding-bottom:0;}
+  .sf-modal{
+    width:100%!important;max-width:100%!important;
+    border-radius:16px 16px 0 0;
+    max-height:90vh;
+  }
+  .sf-modal-grid{grid-template-columns:1fr!important;}
+  .sf-modal-header{padding:14px 16px;}
+  .sf-modal-body{padding:14px 16px;}
+  .sf-modal-footer{padding:10px 16px;}
+
+  /* Pagination */
+  .sf-pagination{flex-direction:column;align-items:center;gap:6px;padding:8px 12px;}
+  .sf-pagination-info{font-size:10px;}
+  .sf-pag-controls{flex-wrap:wrap;justify-content:center;}
+  .sf-page-btn{width:28px;height:28px;font-size:11px;}
+
+  /* Toast */
+  .sf-toast{right:10px;left:10px;min-width:unset;top:auto;bottom:16px;max-width:100%;}
+
+  /* Date inputs in toolbar */
+  input[type="date"].sf-input{width:100%;}
+
+  /* AMC date controls */
+  .sf-section-header > div > div{flex-wrap:wrap;gap:6px!important;}
+  .sf-date-input{width:100%;height:34px;}
+
+  /* Rows per page */
+  #rowsSel{width:70px!important;}
+}
+
+/* ── SMALL PHONES (≤480px) ── */
+@media(max-width:480px){
+  .kpi-row{grid-template-columns:repeat(2,1fr);gap:6px;}
+  .kpi-card{padding:10px;}
+  .kpi-num,.kpi-value{font-size:18px!important;}
+  .dv-strip{height:44px;}
+  .dv-strip-title{font-size:12px;}
+  .dv-strip-icon{width:24px;height:24px;font-size:11px;}
+  .sf-body{padding:8px 10px;}
+  .sf-page-title{font-size:13px;}
+  .sf-page-icon{width:32px;height:32px;font-size:13px;}
+  .customer-cards{grid-template-columns:repeat(2,1fr);}
+
+  /* Table font smaller */
+  thead th{font-size:8px!important;padding:6px 6px!important;}
+  tbody td{font-size:10px!important;padding:5px 6px!important;}
+}
+</style>
+  <script src="config.js"></script>
+</head>
+<body>
+
+<!-- PAGE STRIP -->
+<div class="dv-strip">
+  <div class="dv-strip-icon"><i class="fa-solid fa-chart-line"></i></div>
+  <span class="dv-strip-title">Dashboard Overview</span>
+  <div class="dv-strip-sep"></div>
+  <span class="dv-strip-meta" id="todayBadge"></span>
+  <div class="dv-strip-spacer"></div>
+  <div class="dv-last-updated">Last updated: <span id="lastUpdated">—</span></div>
+</div>
+
+<main class="sf-body">
+
+  <!-- ═══════ KPI CARDS ═══════ -->
+  <div class="kpi-row">
+
+    <!-- Plans Today -->
+    <div class="kpi-card blue">
+      <div class="kpi-icon blue"><i class="fa-solid fa-calendar-check"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-label">Plans Today</div>
+        <div class="kpi-value-row">
+          <div class="kpi-value blue" id="kpiPlansToday">—</div>
+          <button id="exportPlansToday" class="kpi-export" title="Export CSV"><i class="fa-solid fa-download"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hold Engineers -->
+    <div class="kpi-card yellow" id="holdEngineersCard">
+      <div class="kpi-icon yellow"><i class="fa-solid fa-user-slash"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-label">Hold Engineers</div>
+        <div class="kpi-value-row">
+          <div class="kpi-value yellow" id="kpiHold">—</div>
+          <button id="exportHold" class="kpi-export" title="Export CSV"><i class="fa-solid fa-download"></i></button>
+        </div>
+        <div class="kpi-breakdown" id="kpiHoldBreakdown">—</div>
+      </div>
+    </div>
+
+    <!-- Unverified Status -->
+    <div class="kpi-card orange">
+      <div class="kpi-icon orange"><i class="fa-solid fa-triangle-exclamation"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-label">Unverified Status</div>
+        <div class="kpi-value-row">
+          <div class="kpi-value orange" id="kpiUnverified">—</div>
+          <button id="exportUnverified" class="kpi-export" title="Export CSV"><i class="fa-solid fa-download"></i></button>
+          <button id="copyUnverifiedMail" class="kpi-export" title="Copy Mail Content"><i class="fa-solid fa-copy"></i></button>
+        </div>
+        <div class="kpi-breakdown" id="kpiUnverifiedBreakdown">—</div>
+      </div>
+    </div>
+
+    <!-- Open Incidents -->
+    <div class="kpi-card red">
+      <div class="kpi-icon red"><i class="fa-solid fa-bell"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-label">Open Incidents</div>
+        <div class="kpi-value-row">
+          <div class="kpi-value red" id="kpiOpenIncidents">—</div>
+          <button id="exportOpenInc" class="kpi-export" title="Export CSV"><i class="fa-solid fa-download"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status Pending -->
+    <div class="kpi-card teal">
+      <div class="kpi-icon teal"><i class="fa-solid fa-hourglass-half"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-label">Status Pending (HPCL + RBML)</div>
+        <div class="kpi-value-row">
+          <div class="kpi-value teal" id="kpiPendingToday">—</div>
+          <button id="exportPending" class="kpi-export" title="Export CSV"><i class="fa-solid fa-download"></i></button>
+        </div>
+        <div class="kpi-breakdown" id="kpiPendingBreakdown">—</div>
+      </div>
+    </div>
+
+    <!-- Active Users -->
+    <div class="kpi-card green">
+      <div class="kpi-icon green"><i class="fa-solid fa-user-check"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-label">Active Users Today</div>
+        <div class="kpi-value-row">
+          <div class="kpi-value green" id="kpiActiveUsers">—</div>
+          <button id="exportActiveUsers" class="kpi-export" title="Export CSV"><i class="fa-solid fa-download"></i></button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════ CHARTS ROW ═══════ -->
+  <div class="charts-grid">
+    <!-- Verification Split -->
+    <div class="sf-section">
+      <div class="sf-section-header">
+        <div class="sf-section-title"><i class="fa-solid fa-chart-pie" style="color:var(--sf-blue);"></i> Verification Split</div>
+      </div>
+      <div class="chart-wrap"><canvas id="chartVerify" height="200"></canvas></div>
+    </div>
+    <!-- Plans by Region -->
+    <div class="sf-section">
+      <div class="sf-section-header">
+        <div class="sf-section-title"><i class="fa-solid fa-chart-bar" style="color:var(--sf-blue);"></i> Plans by Region (Today)</div>
+      </div>
+      <div class="chart-wrap"><canvas id="chartPlansRegion" height="85"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ═══════ CUSTOMER VISITS ═══════ -->
+  <div class="sf-section" style="margin-bottom:14px;">
+    <div class="sf-section-header">
+      <div class="sf-section-title"><i class="fa-solid fa-chart-bar" style="color:var(--sf-teal);"></i> Customer-wise Visits (Today)</div>
+    </div>
+    <div class="chart-wrap" style="padding-bottom:4px;"><canvas id="chartCustomer" height="70"></canvas></div>
+    <div id="customerCards" class="customer-cards"></div>
+  </div>
+
+  <!-- ═══════ AMC VISIT STATUS ═══════ -->
+  <div class="sf-section" id="amcVisitStatusCard">
+    <div class="sf-section-header">
+      <div>
+        <div class="sf-section-title"><i class="fa-solid fa-calendar-check" style="color:var(--sf-purple);"></i> AMC Visit Status</div>
+        <div style="display:flex;align-items:flex-end;gap:10px;margin-top:8px;flex-wrap:wrap;">
+          <div>
+            <label class="sf-field-label">Start Date</label>
+            <input type="date" id="amcStartDate" class="sf-date-input" value="2026-01-01"/>
+          </div>
+          <div>
+            <label class="sf-field-label">End Date</label>
+            <input type="date" id="amcEndDate" class="sf-date-input" value="2026-03-31"/>
+          </div>
+          <button onclick="loadAMCVisitStatus()" class="sf-btn sf-btn-primary sf-btn-sm">
+            <i class="fa-solid fa-magnifying-glass"></i> Load Data
+          </button>
+        </div>
+      </div>
+      <button onclick="exportAMCVisitStatusCSV()" class="sf-btn sf-btn-success sf-btn-sm">
+        <i class="fa-solid fa-download"></i> Export CSV
+      </button>
+    </div>
+    <div class="sf-section-body no-pad">
+      <div class="sf-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Engineer Name</th>
+              <th>Total AMC Assigned</th>
+              <th>Total AMC Completed</th>
+              <th>Pending AMC</th>
+              <th>Completion %</th>
+            </tr>
+          </thead>
+          <tbody id="amcVisitStatusBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ RELCON CONNECTIVITY ═══════ -->
+  <div class="sf-section" id="relconConnectivityCard">
+    <div class="sf-section-header">
+      <div>
+        <div class="sf-section-title"><i class="fa-solid fa-wifi" style="color:var(--sf-green);"></i> RELCON Connectivity Provided (All Time)</div>
+        <div id="relconOverallCount" style="font-size:11px;color:var(--txt3);margin-top:3px;">
+          Total RELCON Connectivity Sites: <span style="font-weight:700;color:var(--sf-blue);">0</span>
+        </div>
+      </div>
+      <button onclick="exportRelconConnectivityCSV()" class="sf-btn sf-btn-success sf-btn-sm">
+        <i class="fa-solid fa-download"></i> Export CSV
+      </button>
+    </div>
+    <div class="sf-section-body no-pad">
+      <div class="sf-table-wrap">
+        <table>
+          <thead><tr id="relconConnectivityHeader"><th>Region</th></tr></thead>
+          <tbody id="relconConnectivityBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ PCB INSTALLATION ═══════ -->
+  <div class="sf-section" id="pcbInstallationCard">
+    <div class="sf-section-header">
+      <div class="sf-section-title"><i class="fa-solid fa-microchip" style="color:var(--sf-orange);"></i> Power Protection PCB Installation Status (All Time)</div>
+      <div style="display:flex;gap:8px;">
+        <button id="savePcbProvidedBtn" onclick="savePcbProvidedCounts()" class="sf-btn sf-btn-primary sf-btn-sm hidden">
+          <i class="fa-solid fa-floppy-disk"></i> Save
+        </button>
+        <button onclick="exportPcbInstallationExcel()" class="sf-btn sf-btn-success sf-btn-sm">
+          <i class="fa-solid fa-file-excel"></i> Export Excel
+        </button>
+      </div>
+    </div>
+    <div class="sf-section-body no-pad">
+      <div class="sf-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Engineer Name</th>
+              <th>Total PCB Provided (A)</th>
+              <th>Today PCB Installation</th>
+              <th>Total PCB Install (B)</th>
+              <th>PCB Installation Pending</th>
+            </tr>
+          </thead>
+          <tbody id="pcbInstallationBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ ENGINEER MONTHLY VISITS ═══════ -->
+  <div class="sf-section">
+    <div class="sf-section-header">
+      <div class="sf-section-title"><i class="fa-solid fa-table-cells" style="color:var(--sf-green);"></i> Engineer Monthly Visits by Customer</div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <div>
+          <label class="sf-field-label">Select Month</label>
+          <select id="monthSelect" class="sf-date-input" style="width:160px;padding-right:24px;-webkit-appearance:none;appearance:none;background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2210%22 height=%227%22 viewBox=%220 0 10 7%22%3E%3Cpath fill=%22%23aeaeac%22 d=%22M0 0l5 7 5-7z%22/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:right 8px center;"></select>
+        </div>
+        <button id="exportEngMonth" onclick="exportEngineerMonthlyCSV()" class="sf-btn sf-btn-success sf-btn-sm" style="align-self:flex-end;">
+          <i class="fa-solid fa-file-excel"></i> Export Excel
+        </button>
+      </div>
+    </div>
+    <div class="sf-section-body no-pad">
+      <div class="sf-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Engineer</th>
+              <th>HPCL</th><th>RBML</th><th>BPCL</th>
+              <th>NAYARA</th><th>NPL</th><th>OTHER</th>
+              <th>IN LEAVE</th><th>Total</th>
+            </tr>
+          </thead>
+          <tbody id="engMonthBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+const baseUrl = window.BACKEND_URL || "https://relcon-crm.onrender.com";
+
+function byId(id){ return document.getElementById(id); }
+function getToken(){ return localStorage.getItem("token"); }
+
+// Date badge
+document.getElementById('todayBadge').textContent =
+  new Date().toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+
+async function loadOverview() {
+  try {
+    const token = getToken();
+    const headers = { Authorization: `Bearer ${token}` };
+
+    const [userRes,plansRes,statusRes,jioRes,incidentRes,loginLogsRes] = await Promise.all([
+      fetch(`${baseUrl}/user`, { headers }),
+      fetch(`${baseUrl}/getDailyPlans`, { headers }),
+      fetch(`${baseUrl}/getMergedStatusRecords`, { headers }),
+      fetch(`${baseUrl}/jioBP/getAllJioBPStatus`, { headers }),
+      fetch(`${baseUrl}/getAllIncidents`, { headers }),
+      fetch(`${baseUrl}/audit/loginLogs`, { headers }),
+    ]);
+
+    const currentUser = await userRes.json();
+    const plans = await plansRes.json();
+    const hpcl = await statusRes.json();
+    const jio = await jioRes.json();
+    const incJson = await incidentRes.json();
+    const loginLogs = await loginLogsRes.json();
+
+    const today = new Date().toLocaleDateString("en-CA");
+    const plansToday = (Array.isArray(plans) ? plans : []).filter((p) => {
+      const isToday = String(p.date || "").slice(0, 10) === today;
+      const purpose = String(p.purpose || "").trim().toUpperCase();
+      const isNoPlanOrLeave = purpose === "NO PLAN" || purpose === "IN LEAVE";
+      return isToday && !isNoPlanOrLeave;
+    });
+    const holdToday = (Array.isArray(plans) ? plans : []).filter((p) => {
+      const isToday = String(p.date || "").slice(0, 10) === today;
+      const purpose = String(p.purpose || "").trim().toUpperCase();
+      return isToday && (purpose === "NO PLAN" || purpose === "IN LEAVE");
+    });
+    const noPlanCount = holdToday.filter((p) => String(p.purpose || "").trim().toUpperCase() === "NO PLAN").length;
+    const inLeaveCount = holdToday.filter((p) => String(p.purpose || "").trim().toUpperCase() === "IN LEAVE").length;
+    const unverifiedHpcl = (Array.isArray(hpcl) ? hpcl : []).filter((r) => String(r.isVerified).toLowerCase() !== "true");
+    const unverifiedJio = (Array.isArray(jio) ? jio : []).filter((r) => String(r.isVerified).toLowerCase() !== "true");
+    const openIncidents = (incJson?.incidents || []).filter((i) => (i.status || "").toLowerCase() !== "close");
+    const activeUsernames = new Set((Array.isArray(loginLogs) ? loginLogs : []).filter((l) => (l.loginTime && new Date(l.loginTime)).toDateString() === new Date().toDateString()).map((l) => l.engineerName || l.username));
+
+    document.getElementById("kpiPlansToday").textContent = plansToday.length;
+    document.getElementById("kpiUnverified").textContent = unverifiedHpcl.length + unverifiedJio.length;
+    document.getElementById("kpiUnverifiedBreakdown").textContent = `HPCL: ${unverifiedHpcl.length} • RBML: ${unverifiedJio.length}`;
+    document.getElementById("kpiOpenIncidents").textContent = openIncidents.length;
+
+    await loadAMCVisitStatus();
+
+    const key = (rc, d) => `${String(rc || "").trim().toUpperCase()}-${String(d || "").slice(0, 10)}`;
+    const todayDateObj = new Date();
+    const endDateIso = todayDateObj.toISOString().slice(0, 10);
+    const startDateObj = new Date(todayDateObj);
+    startDateObj.setDate(startDateObj.getDate() - 6);
+    const startDateIso = startDateObj.toISOString().slice(0, 10);
+
+    const plansLast7 = (Array.isArray(plans) ? plans : []).filter((p) => {
+      const pd = String(p.date || "").slice(0, 10);
+      if (!pd) return false;
+      if (pd < startDateIso || pd > endDateIso) return false;
+      const purpose = String(p.purpose || "").trim().toUpperCase();
+      if (purpose === "NO PLAN" || purpose === "IN LEAVE") return false;
+      return true;
+    });
+    const plansLast7Hpcl = (plansLast7 || []).filter((p) => String(p.phase || "").toUpperCase().startsWith("HPCL"));
+    const plansLast7Rbml = (plansLast7 || []).filter((p) => String(p.phase || "").toUpperCase().includes("RBML"));
+
+    const hpclStatusLast7Set = new Set((Array.isArray(hpcl) ? hpcl : []).filter((r) => { const statusDate = String(r.date || r.uploadDate || "").slice(0, 10); return statusDate >= startDateIso && statusDate <= endDateIso; }).filter((r) => String(r.phase || "").toUpperCase().startsWith("HPCL")).map((r) => key(r.roCode, r.date || r.uploadDate)));
+    const rbmlStatusLast7Set = new Set((Array.isArray(jio) ? jio : []).filter((r) => { const statusDate = String(r.date || r.uploadDate || r.planId?.date || "").slice(0, 10); return statusDate >= startDateIso && statusDate <= endDateIso; }).map((r) => { const ro = (r.roCode || r.siteCode || r.ro || r.planId?.roCode || "").trim().toUpperCase(); const dt = String(r.date || r.uploadDate || r.planId?.date || "").slice(0, 10); return key(ro, dt); }));
+
+    const pendingLast7Hpcl = plansLast7Hpcl.filter((p) => !hpclStatusLast7Set.has(key(p.roCode, p.date))).length;
+    const pendingLast7Rbml = plansLast7Rbml.filter((p) => !rbmlStatusLast7Set.has(key(p.roCode, p.date))).length;
+    const pendingLast7Total = pendingLast7Hpcl + pendingLast7Rbml;
+
+    document.getElementById("kpiPendingToday").textContent = pendingLast7Total;
+    document.getElementById("kpiPendingBreakdown").textContent = `HPCL: ${pendingLast7Hpcl} • RBML: ${pendingLast7Rbml} (Last 7 days)`;
+
+    const pendingRows = [
+      ...plansLast7Hpcl.filter((p) => !hpclStatusLast7Set.has(`${String(p.roCode || "").trim().toUpperCase()}-${String(p.date || "").slice(0, 10)}`)).map((p) => ({ customer: "HPCL", date: String(p.date || "").slice(0, 10), roCode: p.roCode || "", roName: p.roName || "", region: p.region || "", engineer: p.engineer || "" })),
+      ...plansLast7Rbml.filter((p) => !rbmlStatusLast7Set.has(`${String(p.roCode || "").trim().toUpperCase()}-${String(p.date || "").slice(0, 10)}`)).map((p) => ({ customer: "RBML", date: String(p.date || "").slice(0, 10), roCode: p.roCode || "", roName: p.roName || "", region: p.region || "", engineer: p.engineer || "" })),
+    ];
+
+    document.getElementById("kpiActiveUsers").textContent = activeUsernames.size;
+    document.getElementById("kpiHold").textContent = holdToday.length;
+    document.getElementById("kpiHoldBreakdown").textContent = `NO PLAN: ${noPlanCount} • IN LEAVE: ${inLeaveCount}`;
+    document.getElementById("lastUpdated").textContent = new Date().toLocaleString('en-IN');
+
+    const exportCSV = (rows, headers, filename) => {
+      try {
+        const csvHeader = headers.join(",") + "\n";
+        const csvRows = rows.map((r) => headers.map((h) => JSON.stringify(r[h] ?? "")).join(",")).join("\n");
+        const blob = new Blob([csvHeader + csvRows], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (e) { console.error("CSV export failed", e); }
+    };
+
+    const plansTodayRows = plansToday.map((p) => ({ date: String(p.date || "").slice(0, 10), engineer: p.engineer || "", roCode: p.roCode || "", roName: p.roName || "", region: p.region || "", phase: p.phase || "", purpose: p.purpose || "" }));
+    const unverifiedRows = [...(unverifiedHpcl || []).map((r) => ({ source: "HPCL", date: String(r.date || r.uploadDate || "").slice(0, 10), engineer: r.engineer || "", roCode: r.roCode || "", roName: r.roName || "", region: r.region || "", phase: r.phase || "", status: String(r.isVerified) })), ...(unverifiedJio || []).map((r) => ({ source: "RBML/JIO", date: String(r.date || "").slice(0, 10), engineer: r.engineer || "", roCode: r.roCode || "", roName: r.roName || "", region: r.region || "", phase: r.phase || "", status: String(r.isVerified) }))];
+    const openIncRows = (incJson?.incidents || []).filter((i) => (i.status || "").toLowerCase() !== "close").map((i) => ({ incidentId: i.incidentId || "", roCode: i.roCode || "", siteName: i.siteName || "", region: i.region || "", status: i.status || "" }));
+
+    const todayLogins = (Array.isArray(loginLogs) ? loginLogs : []).filter((l) => (l.loginTime && new Date(l.loginTime)).toDateString() === new Date().toDateString());
+    const userLoginMap = new Map();
+    todayLogins.forEach((l) => { const user = l.engineerName || l.username; const time = new Date(l.loginTime).toLocaleString(); if (!userLoginMap.has(user)) userLoginMap.set(user, []); userLoginMap.get(user).push(time); });
+    const activeUserRows = Array.from(userLoginMap.entries()).map(([user, times]) => ({ user, totalLogins: times.length, loginTimes: times.join(" | ") }));
+    const holdRows = holdToday.map((p) => ({ date: String(p.date || "").slice(0, 10), engineer: p.engineer || "", roCode: p.roCode || "", roName: p.roName || "", purpose: p.purpose || "" }));
+
+    byId("exportPlansToday")?.addEventListener("click", () => exportCSV(plansTodayRows, ["date","engineer","roCode","roName","region","phase","purpose"], "plans_today.csv"));
+    byId("exportUnverified")?.addEventListener("click", () => exportCSV(unverifiedRows, ["source","date","engineer","roCode","roName","region","phase","status"], "unverified_status.csv"));
+    byId("exportOpenInc")?.addEventListener("click", () => exportCSV(openIncRows, ["incidentId","roCode","siteName","region","status"], "open_incidents.csv"));
+    byId("exportActiveUsers")?.addEventListener("click", () => exportCSV(activeUserRows, ["user","totalLogins","loginTimes"], "active_users_today.csv"));
+    byId("exportHold")?.addEventListener("click", () => exportCSV(holdRows, ["date","engineer","roCode","roName","purpose"], "hold_engineers_today.csv"));
+    byId("exportPending")?.addEventListener("click", () => exportCSV(pendingRows, ["customer","date","roCode","roName","region","engineer"], `status_pending_last7_${startDateIso}_to_${endDateIso}.csv`));
+
+    const holdCard = document.getElementById("holdEngineersCard");
+    if (holdCard) holdCard.style.display = String(currentUser.role || "").toLowerCase() === "admin" ? "" : "none";
+
+    const isAdmin = String(currentUser.role || "").toLowerCase() === "admin";
+    const exportIds = ["exportPlansToday","exportUnverified","exportOpenInc","exportActiveUsers","exportHold","exportPending"];
+    if (!isAdmin) exportIds.forEach((id) => { const el = document.getElementById(id); if (el) el.style.display = "none"; });
+
+    const userRole = String(currentUser.role || "").toLowerCase();
+    const uname = String(currentUser.engineerName || currentUser.username || "").trim().toLowerCase();
+    const mineHpcl = (Array.isArray(hpcl) ? hpcl : []).filter((r) => String(r.engineer || "").trim().toLowerCase() === uname);
+    const mineJio = (Array.isArray(jio) ? jio : []).filter((r) => String(r.engineer || "").trim().toLowerCase() === uname);
+    const myTotal = mineHpcl.length + mineJio.length;
+    const myUnverified = mineHpcl.filter((r) => String(r.isVerified).toLowerCase() !== "true").length + mineJio.filter((r) => String(r.isVerified).toLowerCase() !== "true").length;
+    const allUnverified = unverifiedHpcl.length + unverifiedJio.length;
+    const allTotal = (Array.isArray(hpcl) ? hpcl.length : 0) + (Array.isArray(jio) ? jio.length : 0);
+    const chartUnverified = userRole === "admin" ? allUnverified : myUnverified;
+    const chartVerified = userRole === "admin" ? allTotal - allUnverified : myTotal - myUnverified;
+
+    renderVerifyChart(chartUnverified, chartVerified);
+    renderPlansRegionChart(plansToday);
+    renderCustomerChart(plansToday);
+
+    const customerCounts = new Map();
+    (plansToday || []).forEach((p) => { const cust = customerFromPlan(p); customerCounts.set(cust, (customerCounts.get(cust) || 0) + 1); });
+    renderCustomerCards(customerCounts);
+
+    window.__allPlans = Array.isArray(plans) ? plans : [];
+    window.__statusRecords = Array.isArray(hpcl) ? hpcl : [];
+    window.__currentUser = currentUser || {};
+    buildMonthDropdown(window.__allPlans);
+    const sel = document.getElementById("monthSelect");
+    renderEngineerMonthly(window.__allPlans, sel.value);
+    sel.addEventListener("change", () => renderEngineerMonthly(window.__allPlans, sel.value));
+    renderRelconConnectivity(window.__statusRecords);
+    renderPcbInstallation(window.__statusRecords);
+
+    // Store for mail copy
+    window.__unverifiedHpcl = unverifiedHpcl;
+    window.__unverifiedJio = unverifiedJio;
+  } catch (e) { console.error("overview load error", e); }
+
+  document.getElementById("copyUnverifiedMail")?.addEventListener("click", () => {
+    try {
+      const unverifiedHpcl = window.__unverifiedHpcl || [];
+      const unverifiedJio = window.__unverifiedJio || [];
+      const engineerMap = new Map();
+      [...unverifiedHpcl, ...unverifiedJio].forEach((r) => { const eng = String(r.engineer || "").trim() || "-"; engineerMap.set(eng, (engineerMap.get(eng) || 0) + 1); });
+      let mailHtml = `<p>Dear Anurag,</p><p>Please find below the <b>Unverified Status Report</b> of HPCL & RBML Customer.</p><table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse; font-family:Poppins, Arial; font-size:12px; width:100%;"><thead style="background:#f1f5f9;"><tr><th style="text-align:left;">Engineer Name</th><th style="text-align:center;">Unverified Count</th></tr></thead><tbody>`;
+      engineerMap.forEach((count, eng) => { mailHtml += `<tr><td>${eng}</td><td style="text-align:center;">${count}</td></tr>`; });
+      mailHtml += `</tbody></table><p><b>Note:</b> Kindly verify the pending status within <b>01 day</b> to avoid escalation.</p><p>Regards,<br/>Nikhil Trivedi</p>`;
+      const blobHtml = new Blob([mailHtml], { type: "text/html" });
+      const blobText = new Blob([mailHtml.replace(/<[^>]+>/g, "")], { type: "text/plain" });
+      navigator.clipboard.write([new ClipboardItem({ "text/html": blobHtml, "text/plain": blobText })]).then(() => alert("✅ Mail content copied with engineer rows!"));
+    } catch (e) { console.error("copy mail error", e); }
+  });
+}
+
+function renderVerifyChart(unverified, verified) {
+  const ctx = document.getElementById("chartVerify"); if (!ctx) return;
+  new Chart(ctx, { type: "doughnut", data: { labels: ["Unverified", "Verified"], datasets: [{ data: [unverified, verified], backgroundColor: ["#dd5a0c", "#2e844a"], borderWidth: 2, borderColor: "#fff" }] }, options: { responsive: true, plugins: { legend: { position: "bottom", labels: { font: { family: "Inter", size: 11 }, padding: 12 } } } } });
+}
+
+function renderPlansRegionChart(plans) {
+  const ctx = document.getElementById("chartPlansRegion"); if (!ctx) return;
+  const counts = new Map();
+  (plans || []).forEach((p) => { const r = (p.region || "").toUpperCase(); counts.set(r, (counts.get(r) || 0) + 1); });
+  const labels = Array.from(counts.keys());
+  const data = labels.map((l) => counts.get(l));
+  new Chart(ctx, { type: "bar", data: { labels, datasets: [{ label: "Plans", data, backgroundColor: "#0176d3", borderRadius: 4, borderSkipped: false }] }, options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0, font: { family: "Inter", size: 10 } }, grid: { color: "#f3f2f2" } }, x: { ticks: { font: { family: "Inter", size: 10 } }, grid: { display: false } } } } });
+}
+
+function customerFromPlan(p) {
+  const ph = String(p.phase || "").toUpperCase();
+  if (ph.startsWith("HPCL")) return "HPCL";
+  if (ph.includes("RBML")) return "RBML";
+  if (ph.includes("BPCL")) return "BPCL";
+  if (ph.includes("NPL")) return "NPL";
+  if (ph.includes("NAYARA")) return "NAYARA";
+  return "OTHER";
+}
+
+function renderCustomerChart(plans) {
+  const ctx = document.getElementById("chartCustomer"); if (!ctx) return;
+  const counts = new Map();
+  const colorMap = new Map([["HPCL","#2e844a"],["RBML","#b8860b"],["NAYARA","#0176d3"],["BPCL","#60a5fa"],["NPL","#0e7490"],["OTHER","#aeaeac"]]);
+  (plans || []).forEach((p) => { const cust = customerFromPlan(p); counts.set(cust, (counts.get(cust) || 0) + 1); });
+  const labels = Array.from(counts.keys());
+  const data = labels.map((l) => counts.get(l));
+  const colors = labels.map((l) => colorMap.get(l) || "#aeaeac");
+  new Chart(ctx, { type: "bar", data: { labels, datasets: [{ label: "Visits", data, backgroundColor: colors, borderRadius: 4, borderSkipped: false }] }, options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0, font: { family: "Inter", size: 10 } }, grid: { color: "#f3f2f2" } }, x: { ticks: { font: { family: "Inter", size: 10 } }, grid: { display: false } } } } });
+}
+
+function renderCustomerCards(counts) {
+  const container = document.getElementById("customerCards"); if (!container) return;
+  const colorMap = { HPCL:"#2e844a", RBML:"#b8860b", BPCL:"#0176d3", NAYARA:"#1347ad", NPL:"#0e7490", "JIO BP":"#6b3fa0", OTHER:"#706e6b" };
+  const items = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+  container.innerHTML = items.map(([label, count]) => `
+    <div class="customer-card">
+      <div class="cust-dot" style="background:${colorMap[label]||"#706e6b"}">${label.split(" ")[0][0]}</div>
+      <div><div class="cust-label">${label}</div><div class="cust-count">${count}</div></div>
+    </div>`).join("");
+}
+
+function ymKey(d) { try { return new Date(d).toLocaleDateString("en-CA").slice(0, 7); } catch { return ""; } }
+
+function buildMonthDropdown(plans) {
+  const sel = document.getElementById("monthSelect"); if (!sel) return;
+  const keys = new Set((plans || []).map((p) => ymKey(p.date)).filter(Boolean));
+  if (keys.size === 0) keys.add(new Date().toLocaleDateString("en-CA").slice(0, 7));
+  const sorted = Array.from(keys).sort().reverse();
+  sel.innerHTML = sorted.map((k) => { const dt = new Date(`${k}-01T00:00:00`); const label = dt.toLocaleString("en-US", { month: "long", year: "numeric" }); return `<option value="${k}">${label}</option>`; }).join("");
+}
+
+function renderEngineerMonthly(plans, ym) {
+  const body = document.getElementById("engMonthBody"); if (!body) return;
+  const data = (plans || []).filter((p) => { if (ymKey(p.date) !== ym) return false; const purposeUpper = normalizeText(p.issueType || p.purpose); if (purposeUpper === "NO PLAN") return false; return true; });
+  const map = new Map();
+  const customers = ["HPCL","RBML","BPCL","NAYARA","NPL","OTHER","IN LEAVE"];
+  data.forEach((p) => { const eng = String(p.engineer || "").trim() || "-"; const purposeUpper = String(p.issueType || p.purpose || "").trim().toUpperCase(); const cust = purposeUpper === "IN LEAVE" ? "IN LEAVE" : customerFromPlan(p); if (!map.has(eng)) map.set(eng, new Map(customers.map((c) => [c, 0]))); const row = map.get(eng); row.set(cust, (row.get(cust) || 0) + 1); });
+  const rows = Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  body.innerHTML = rows.map(([eng, row]) => { const cells = customers.map((c) => `<td>${row.get(c) || 0}</td>`).join(""); const total = customers.filter((c) => c !== "IN LEAVE").reduce((s, c) => s + (row.get(c) || 0), 0); return `<tr class="border-b"><td>${eng}</td>${cells}<td><strong>${total}</strong></td></tr>`; }).join("");
+  const totals = new Map(customers.map((c) => [c, 0]));
+  rows.forEach(([_, row]) => { customers.forEach((c) => totals.set(c, totals.get(c) + (row.get(c) || 0))); });
+  const grandTotal = customers.filter((c) => c !== "IN LEAVE").reduce((s, c) => s + (totals.get(c) || 0), 0);
+  const totalCells = customers.map((c) => `<td><strong>${totals.get(c) || 0}</strong></td>`).join("");
+  body.innerHTML += `<tr class="sf-total-row"><td>Total</td>${totalCells}<td><strong>${grandTotal}</strong></td></tr>`;
+}
+
+function normalizeText(s) { return String(s || "").trim().toUpperCase(); }
+function isPowerProtectionInstall(purpose) { const t = normalizeText(purpose); return t.includes("POWER PROTECTION PCB") && (t.includes("INSTALL") || t.includes("INSTAL")); }
+function isGsmModuleInstall(purpose) { const t = normalizeText(purpose); return (t.includes("GSM MODULE") && (t.includes("INSTALL") || t.includes("INSTAL"))) || t.includes("GSM MODULE INSTALLATION"); }
+function deviceProvidedStorageKey(ym) { return `device_provided_${ym}`; }
+
+function renderRelconConnectivity(statusRecords) {
+  const tbody = document.getElementById("relconConnectivityBody");
+  const header = document.getElementById("relconConnectivityHeader");
+  if (!tbody || !header) return;
+  const currentUser = window.__currentUser || {};
+  const userRole = currentUser.role || "";
+  const currentEngineer = currentUser.engineerName || currentUser.username || "";
+  let relcon = (statusRecords || []).filter((r) => String(r.connectivityType || r.ConnectivityType || "").trim().toUpperCase().includes("RELCON"));
+  if (userRole === "engineer" && currentEngineer) relcon = relcon.filter((r) => String(r.engineer || r.Engineer || r.engineerName || "").trim().toLowerCase() === currentEngineer.toLowerCase());
+  const regionPhaseMap = new Map();
+  const allPhases = new Set();
+  relcon.forEach((r) => { const region = String(r.region || r.Region || "").trim() || "-"; const phase = String(r.phase || r.Phase || "").trim() || "-"; const ro = String(r.roCode || r.ROCode || r.rocode || "").trim(); if (!regionPhaseMap.has(region)) regionPhaseMap.set(region, new Map()); if (!regionPhaseMap.get(region).has(phase)) regionPhaseMap.get(region).set(phase, new Set()); if (ro) { regionPhaseMap.get(region).get(phase).add(ro); allPhases.add(phase); } });
+  const sortedPhases = Array.from(allPhases).sort();
+  const sortedRegions = Array.from(regionPhaseMap.keys()).sort();
+  header.innerHTML = `<th>Region</th>` + sortedPhases.map((phase) => `<th>${phase}</th>`).join("") + `<th>Total</th>`;
+  let totalRow = new Array(sortedPhases.length + 1).fill(0);
+  tbody.innerHTML = sortedRegions.map((region) => { const phaseCounts = sortedPhases.map((phase) => { const count = regionPhaseMap.get(region).get(phase)?.size || 0; totalRow[sortedPhases.indexOf(phase) + 1] += count; return count; }); const regionTotal = phaseCounts.reduce((sum, count) => sum + count, 0); totalRow[0] += regionTotal; return `<tr><td>${region}</td>${phaseCounts.map((count) => `<td>${count}</td>`).join("")}<td><strong>${regionTotal}</strong></td></tr>`; }).join("");
+  if (sortedRegions.length > 0) {
+    tbody.innerHTML += `<tr class="sf-total-row"><td>Total</td>${totalRow.slice(1, -1).map((count) => `<td>${count}</td>`).join("")}<td>${totalRow[totalRow.length - 1]}</td></tr>`;
+    const uniqueSites = new Set();
+    relcon.forEach((r) => { const roCode = String(r.roCode || r.ROCode || r.rocode || "").trim(); if (roCode) uniqueSites.add(roCode); });
+    const overallCountElement = document.getElementById("relconOverallCount");
+    if (overallCountElement) overallCountElement.innerHTML = `Total RELCON Connectivity Sites: <span style="font-weight:700;color:var(--sf-blue);">${uniqueSites.size}</span>`;
+  } else {
+    tbody.innerHTML = `<tr><td colspan="${sortedPhases.length + 2}" style="text-align:center;padding:20px;color:var(--txt3);">No data</td></tr>`;
+  }
+}
+
+function pcbProvidedStorageKey() { return `pcb_provided_alltime`; }
+
+function renderPcbInstallation(statusRecords) {
+  const tbody = document.getElementById("pcbInstallationBody");
+  const saveBtn = document.getElementById("savePcbProvidedBtn");
+  if (!tbody) return;
+  const currentUser = window.__currentUser || {};
+  const userRole = currentUser.role || "";
+  const currentEngineer = currentUser.engineerName || currentUser.username || "";
+  const isAdmin = userRole === "admin";
+  const providedMap = JSON.parse(localStorage.getItem(pcbProvidedStorageKey()) || "{}");
+  const today = new Date().toISOString().slice(0, 10);
+  const isPcbInstall = (purpose) => { const t = String(purpose || "").trim().toUpperCase(); return t.includes("POWER PROTECTION PCB") && (t.includes("INSTALL") || t.includes("INSTAL")); };
+  let filteredRecords = statusRecords || [];
+  if (userRole === "engineer" && currentEngineer) filteredRecords = filteredRecords.filter((r) => String(r.engineer || r.Engineer || r.engineerName || "").trim().toLowerCase() === currentEngineer.toLowerCase());
+  const map = new Map();
+  filteredRecords.forEach((r) => { const eng = String(r.engineer || r.Engineer || "").trim() || "-"; if (!map.has(eng)) map.set(eng, { provided: Number(providedMap[eng] || 0) || 0, installed: 0, todayInstalled: 0 }); if (isPcbInstall(r.purpose || r.PurposeOfVisit || r.PURPOSEOFVISIT)) { map.get(eng).installed += 1; const recordDate = String(r.date || r.Date || r.DATE || "").slice(0, 10); if (recordDate === today) map.get(eng).todayInstalled += 1; } });
+  const rows = Array.from(map.entries()).map(([eng, rec]) => ({ eng, provided: rec.provided, todayInstalled: rec.todayInstalled, installed: rec.installed, pending: Math.max(0, rec.provided - rec.installed) })).filter((r) => r.eng.toUpperCase() !== "NAVAL KISHOR PANDEY").sort((a, b) => a.eng.localeCompare(b.eng));
+  const totalProvided = rows.reduce((sum, r) => sum + r.provided, 0);
+  const totalInstalled = rows.reduce((sum, r) => sum + r.installed, 0);
+  const totalPending = rows.reduce((sum, r) => sum + r.pending, 0);
+  const totalTodayInstalled = rows.reduce((sum, r) => sum + r.todayInstalled, 0);
+  tbody.innerHTML = rows.map((r) => { const providedCell = isAdmin ? `<input type="number" min="0" value="${r.provided}" data-eng="${r.eng}" style="width:80px;border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:11px;outline:none;" />` : `<span>${r.provided}</span>`; return `<tr><td>${r.eng}</td><td>${providedCell}</td><td>${r.todayInstalled}</td><td>${r.installed}</td><td style="color:${r.pending>0?'var(--sf-red)':'var(--sf-green)'};font-weight:600;">${r.pending}</td></tr>`; }).join("");
+  if (rows.length > 0) tbody.innerHTML += `<tr class="sf-total-row"><td>Total</td><td>${totalProvided}</td><td>${totalTodayInstalled}</td><td>${totalInstalled}</td><td style="color:var(--sf-red);">${totalPending}</td></tr>`;
+  else tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--txt3);">No data</td></tr>`;
+  if (saveBtn) saveBtn.classList.toggle("hidden", !isAdmin);
+}
+
+function savePcbProvidedCounts() {
+  try {
+    const inputs = document.querySelectorAll("#pcbInstallationBody input[data-eng]");
+    const payload = {};
+    inputs.forEach((inp) => { const eng = inp.getAttribute("data-eng"); payload[eng] = Number(inp.value || 0) || 0; });
+    localStorage.setItem(pcbProvidedStorageKey(), JSON.stringify(payload));
+    renderPcbInstallation(window.__statusRecords);
+  } catch (e) { console.error("save pcb provided error", e); }
+}
+
+function exportRelconConnectivityCSV() {
+  try {
+    const statusRecords = window.__statusRecords || [];
+    const currentUser = window.__currentUser || {};
+    const userRole = currentUser.role || "";
+    const currentEngineer = currentUser.engineerName || currentUser.username || "";
+    let relcon = statusRecords.filter((r) => String(r.connectivityType || r.ConnectivityType || "").trim().toUpperCase().includes("RELCON"));
+    if (userRole === "engineer" && currentEngineer) relcon = relcon.filter((r) => String(r.engineer || r.Engineer || r.engineerName || "").trim().toLowerCase() === currentEngineer.toLowerCase());
+    const uniqueSites = new Map();
+    relcon.forEach((r) => { const roCode = String(r.roCode || r.ROCode || r.rocode || "").trim(); if (roCode && !uniqueSites.has(roCode)) uniqueSites.set(roCode, r); });
+    const csvRows = [["EngineerName","Region","RO Code","RO Name","Phase","Connectivity Type","SIM1 Provider","SIM1 Number","SIM2 Provider","SIM2 Number","IEMI Number"]];
+    uniqueSites.forEach((r) => { csvRows.push([String(r.engineer||r.Engineer||"").trim(),String(r.region||r.Region||"").trim(),String(r.roCode||r.ROCode||r.rocode||"").trim(),String(r.roName||r.ROName||"").trim(),String(r.phase||r.Phase||"").trim(),String(r.connectivityType||r.ConnectivityType||"").trim(),String(r.sim1Provider||r.SIM1Provider||"").trim(),"`"+String(r.sim1Number||r.SIM1Number||"").trim(),String(r.sim2Provider||r.SIM2Provider||"").trim(),"`"+String(r.sim2Number||r.SIM2Number||"").trim(),"`"+String(r.iemiNumber||r.IEMINumber||r.imeiNumber||"").trim()]); });
+    csvRows.push([]); csvRows.push(["Total RELCON Connectivity", uniqueSites.size]);
+    const blob = new Blob([csvRows.map((row) => row.join(",")).join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = "relcon_connectivity_data.csv";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  } catch (e) { console.error("export relcon csv error", e); }
+}
+
+function exportPcbInstallationExcel() {
+  try {
+    let statusRecords = window.__statusRecords || [];
+    const currentUser = window.__currentUser || {};
+    const userRole = currentUser.role || "";
+    const currentEngineer = currentUser.engineerName || currentUser.username || "";
+    let pcbRecords = statusRecords.filter((r) => { const purpose = String(r.purpose || r.PurposeOfVisit || r.PURPOSEOFVISIT || "").trim().toUpperCase(); return purpose.includes("POWER PROTECTION PCB") && (purpose.includes("INSTALL") || purpose.includes("INSTAL")); });
+    if (userRole === "engineer" && currentEngineer) pcbRecords = pcbRecords.filter((r) => String(r.engineer || r.Engineer || r.engineerName || "").trim().toLowerCase() === currentEngineer.toLowerCase());
+    const detailRows = pcbRecords.map((r) => ({ EngineerName: String(r.engineer || r.Engineer || "").trim(), Region: String(r.region || r.Region || "").trim(), ROCode: String(r.roCode || r.ROCode || r.rocode || "").trim(), ROName: String(r.roName || r.ROName || "").trim(), Phase: String(r.phase || "").trim(), Date: String(r.date || r.Date || "").trim(), PurposeOfVisit: String(r.purpose || r.PurposeOfVisit || r.PURPOSEOFVISIT || "").trim() }));
+    const summaryMap = {};
+    detailRows.forEach((r) => { const eng = r.EngineerName || "Unknown"; if (!summaryMap[eng]) summaryMap[eng] = { Provided: 0, Today: 0, Total: 0, Pending: 0 }; summaryMap[eng].Total += 1; const today = new Date().toISOString().split("T")[0]; if (r.Date && r.Date.startsWith(today)) summaryMap[eng].Today += 1; });
+    const summaryRows = [["Engineer Name","Total PCB Provided (A)","Today PCB Installation","Total PCB Install (B)","Total PCB Installation Pending"]];
+    Object.entries(summaryMap).forEach(([eng, val]) => summaryRows.push([eng, val.Provided, val.Today, val.Total, (val.Provided || 0) - val.Total]));
+    const totalProvided = Object.values(summaryMap).reduce((sum, v) => sum + (v.Provided || 0), 0);
+    const totalToday = Object.values(summaryMap).reduce((sum, v) => sum + v.Today, 0);
+    const totalInstall = Object.values(summaryMap).reduce((sum, v) => sum + v.Total, 0);
+    const totalPending = Object.values(summaryMap).reduce((sum, v) => sum + ((v.Provided || 0) - v.Total), 0);
+    summaryRows.push(["Total", totalProvided, totalToday, totalInstall, totalPending]);
+    const ws1 = XLSX.utils.aoa_to_sheet(summaryRows);
+    const ws2 = XLSX.utils.json_to_sheet(detailRows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws1, "Summary");
+    XLSX.utils.book_append_sheet(wb, ws2, "Details");
+    XLSX.writeFile(wb, "pcb_installation_report.xlsx");
+  } catch (e) { console.error("export pcb excel error", e); }
+}
+
+function exportEngineerMonthlyCSV() {
+  try {
+    const plans = window.__allPlans || [];
+    const sel = document.getElementById("monthSelect");
+    const ym = sel ? sel.value : new Date().toLocaleDateString("en-CA").slice(0, 7);
+    const data = (plans || []).filter((p) => { if (ymKey(p.date) !== ym) return false; const purposeUpper = String(p.issueType || p.purpose || "").trim().toUpperCase(); if (purposeUpper === "NO PLAN") return false; return true; });
+    const customers = ["HPCL","RBML","BPCL","NPL","OTHER","IN LEAVE"];
+    const map = new Map();
+    data.forEach((p) => { const eng = String(p.engineer || "").trim() || "-"; const purposeUpper = String(p.issueType || p.purpose || "").trim().toUpperCase(); const cust = purposeUpper === "IN LEAVE" ? "IN LEAVE" : customerFromPlan(p); if (!map.has(eng)) map.set(eng, new Map(customers.map((c) => [c, 0]))); const row = map.get(eng); row.set(cust, (row.get(cust) || 0) + 1); });
+    const rows = Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+    const totals = new Map(customers.map((c) => [c, 0]));
+    rows.forEach(([_, row]) => customers.forEach((c) => totals.set(c, totals.get(c) + (row.get(c) || 0))));
+    const grandTotal = customers.filter((c) => c !== "IN LEAVE").reduce((s, c) => s + (totals.get(c) || 0), 0);
+    const aggHeader = ["Engineer", ...customers, "Total"];
+    const aggRows = rows.map(([eng, row]) => { const total = customers.filter((c) => c !== "IN LEAVE").reduce((s, c) => s + (row.get(c) || 0), 0); return { Engineer: eng, ...Object.fromEntries(customers.map((c) => [c, row.get(c) || 0])), Total: total }; });
+    const totalObj = { Engineer: "Total", ...Object.fromEntries(customers.map((c) => [c, totals.get(c) || 0])), Total: grandTotal };
+    const sheet1Data = [Object.fromEntries(aggHeader.map((h) => [h, h])), ...aggRows, totalObj];
+    const detailRows = data.map((p) => { const purposeUpper = String(p.issueType || p.purpose || "").trim().toUpperCase(); const cust = purposeUpper === "IN LEAVE" ? "IN LEAVE" : customerFromPlan(p); return { Date: String(p.date || "").slice(0, 10), Engineer: p.engineer || "", ROCode: p.roCode || "", ROName: p.roName || "", Phase: p.phase || "", IssueType: p.issueType || p.purpose || "", Customer: cust, CountsTowardsTotal: cust !== "IN LEAVE" ? "Yes" : "No" }; });
+    const wb = XLSX.utils.book_new();
+    const ws1 = XLSX.utils.json_to_sheet(sheet1Data, { skipHeader: true });
+    const ws2 = XLSX.utils.json_to_sheet(detailRows);
+    XLSX.utils.book_append_sheet(wb, ws1, "Engineer Monthly");
+    XLSX.utils.book_append_sheet(wb, ws2, "Detail Rows");
+    XLSX.writeFile(wb, `engineer_monthly_${ym}.xlsx`);
+  } catch (e) { console.error("export csv error", e); }
+}
+
+async function loadAMCVisitStatus() {
+  try {
+    const startDate = document.getElementById("amcStartDate").value;
+    const endDate = document.getElementById("amcEndDate").value;
+    if (!startDate || !endDate) { alert("Please select both start and end dates"); return; }
+    const token = localStorage.getItem("token");
+    if (!token) { console.error("No token found"); return; }
+    const response = await fetch(`${baseUrl}/romaster/amcCountStatus?startDate=${startDate}&endDate=${endDate}`, { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, credentials: "include" });
+    if (!response.ok) { console.error("Error fetching AMC status:", response.status); return; }
+    const result = await response.json();
+    const userRes = await fetch(`${baseUrl}/user`, { headers: { Authorization: `Bearer ${token}` } });
+    const currentUser = await userRes.json();
+    window.__amcDetailedData = result.detailedData || [];
+    renderAMCVisitStatus(result.data, currentUser);
+  } catch (error) { console.error("Error loading AMC visit status:", error); }
+}
+
+function renderAMCVisitStatus(data, currentUser) {
+  const tbody = document.getElementById("amcVisitStatusBody"); if (!tbody) return;
+  if (!data || data.length === 0) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--txt3);">No data available</td></tr>'; return; }
+  const role = String(currentUser.role || "").toLowerCase();
+  const currentEngineer = (currentUser.engineerName || currentUser.username || "").trim();
+  let filteredData = data.filter((item) => item.engineerName !== "NAVAL KISHOR PANDEY");
+  if (role === "engineer" && currentEngineer) filteredData = filteredData.filter((item) => String(item.engineerName || "").toLowerCase() === currentEngineer.toLowerCase());
+  filteredData.sort((a, b) => a.engineerName.localeCompare(b.engineerName));
+  let totalAssigned = 0, totalCompleted = 0, totalPending = 0;
+  tbody.innerHTML = filteredData.map((item) => {
+    totalAssigned += item.totalAMCAssigned; totalCompleted += item.totalAMCCompleted; totalPending += item.pendingAMC;
+    const completionPct = item.totalAMCAssigned > 0 ? ((item.totalAMCCompleted / item.totalAMCAssigned) * 100).toFixed(1) : "0.0";
+    const badgeClass = completionPct >= 70 ? "badge-green" : completionPct >= 40 ? "badge-yellow" : "badge-red";
+    const barClass = completionPct >= 70 ? "green" : completionPct >= 40 ? "yellow" : "red";
+    return `<tr><td>${item.engineerName}</td><td>${item.totalAMCAssigned}</td><td>${item.totalAMCCompleted}</td><td style="color:var(--sf-red);font-weight:600;">${item.pendingAMC}</td><td><div style="display:flex;align-items:center;gap:6px;"><div class="amc-bar"><div class="amc-bar-fill ${barClass}" style="width:${Math.min(100,completionPct)}%"></div></div><span class="sf-badge ${badgeClass}">${completionPct}%</span></div></td></tr>`;
+  }).join("");
+  if (role === "admin") {
+    const totalPct = totalAssigned > 0 ? ((totalCompleted / totalAssigned) * 100).toFixed(1) : "0.0";
+    const totalBadge = totalPct >= 70 ? "badge-green" : totalPct >= 40 ? "badge-yellow" : "badge-red";
+    const totalBarClass = totalPct >= 70 ? "green" : totalPct >= 40 ? "yellow" : "red";
+    tbody.innerHTML += `<tr class="sf-total-row"><td>Total</td><td>${totalAssigned}</td><td>${totalCompleted}</td><td style="color:var(--sf-red);">${totalPending}</td><td><div style="display:flex;align-items:center;gap:6px;"><div class="amc-bar"><div class="amc-bar-fill ${totalBarClass}" style="width:${Math.min(100,totalPct)}%"></div></div><span class="sf-badge ${totalBadge}">${totalPct}%</span></div></td></tr>`;
+  }
+}
+
+async function exportAMCVisitStatusCSV() {
+  try {
+    const detailedData = window.__amcDetailedData || [];
+    if (detailedData.length === 0) { alert("No data available for export. Please load AMC data first."); return; }
+    const token = localStorage.getItem("token");
+    if (!token) { alert("User not logged in."); return; }
+    const userRes = await fetch(`${baseUrl}/user`, { headers: { Authorization: `Bearer ${token}` } });
+    const currentUser = await userRes.json();
+    const role = String(currentUser.role || "").toLowerCase();
+    const currentEngineer = (currentUser.engineerName || currentUser.username || "").trim();
+    let filteredData = detailedData.filter((item) => item.engineerName !== "NAVAL KISHOR PANDEY");
+    if (role === "engineer" && currentEngineer) filteredData = filteredData.filter((item) => String(item.engineerName || "").toLowerCase() === currentEngineer.toLowerCase());
+    if (filteredData.length === 0) { alert("No AMC records available for your role."); return; }
+    filteredData.sort((a, b) => { if (a.engineerName !== b.engineerName) return a.engineerName.localeCompare(b.engineerName); return a.roCode.localeCompare(b.roCode); });
+    const rows = [];
+    const header = ["Engineer Name","RO Code","RO Name","Region","Phase","Purpose of Visit","AMC Status","Visit Date","AMC QTR","Issue Type","Site Active Status"];
+    rows.push(header);
+    filteredData.forEach((item) => rows.push([item.engineerName,item.roCode,item.roName,item.region,item.phase,item.purpose,item.amcStatus,item.visitDate,item.amcQtr,item.issueType,item.siteActivestatus]));
+    const csvContent = rows.map((row) => row.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = `amc_visit_detailed_status_${new Date().toLocaleDateString("en-CA")}.csv`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  } catch (error) { console.error("Error exporting AMC visit status CSV:", error); }
+}
+
+loadOverview();
+</script>
+<script src="errorLogger.js"></script>
+</body>
+</html>

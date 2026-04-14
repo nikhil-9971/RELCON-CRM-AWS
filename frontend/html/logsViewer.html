@@ -1,0 +1,1806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Logs Viewer — RELCON CRM</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+<script src="https://cdn.sheetjs.com/xlsx-0.18.5/package/dist/xlsx.full.min.js"></script>
+<style>
+/* ════════════════════════════════════════════════════
+   RELCON CRM — Logs Viewer  |  SF Lightning Design
+════════════════════════════════════════════════════ */
+:root {
+  --sf-blue:#0176d3; --sf-blue-dk:#014486; --sf-blue-lt:#e8f4fd;
+  --sf-navy:#1a2e4a;
+  --sf-green:#2e844a;  --sf-green-lt:#eaf5ea;
+  --sf-red:#ba0517;    --sf-red-lt:#fef1ee;
+  --sf-orange:#dd5a0c; --sf-orange-lt:#fff3e0;
+  --sf-yellow:#b8860b; --sf-yellow-lt:#fff8e6;
+  --sf-purple:#6b3fa0; --sf-purple-lt:#f5f0ff;
+  --sf-teal:#0e7490;   --sf-teal-lt:#ecfeff;
+  --bg:#f3f2f2; --surface:#fff; --surface2:#f9f9f9;
+  --border:#dddbda; --border-lt:#f3f2f2;
+  --txt:#080707; --txt2:#3e3e3c; --txt3:#706e6b; --txt4:#aeaeac;
+  --r-sm:4px; --r:6px; --r-lg:8px;
+  --sh-sm:0 2px 4px rgba(0,0,0,.09); --sh-md:0 8px 24px rgba(0,0,0,.12);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{font-size:13px;-webkit-font-smoothing:antialiased;}
+body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-thumb{background:#c8c6c4;border-radius:3px;}
+
+/* ── PAGE STRIP ── */
+.dv-strip{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:0 20px;height:52px;display:flex;align-items:center;gap:12px;
+  position:sticky;top:0;z-index:200;box-shadow:0 1px 3px rgba(15,23,42,.07);
+}
+.dv-strip-icon{width:28px;height:28px;background:var(--sf-purple-lt);border-radius:5px;display:flex;align-items:center;justify-content:center;color:var(--sf-purple);font-size:13px;}
+.dv-strip-title{font-size:14px;font-weight:700;color:var(--txt);letter-spacing:-.2px;}
+.dv-strip-sep{width:1px;height:18px;background:var(--border);}
+.dv-strip-meta{font-size:10px;font-weight:500;color:var(--txt4);background:var(--surface2);border:1px solid var(--border);padding:2px 9px;border-radius:9999px;}
+.dv-strip-spacer{flex:1;}
+.dv-sync{font-size:10px;color:var(--txt4);}
+.dv-sync span{color:var(--txt3);font-weight:500;}
+
+/* ── BODY ── */
+.sf-body{padding:14px 20px;}
+.sf-bc{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--txt3);margin-bottom:12px;}
+.sf-bc a{color:var(--sf-blue);text-decoration:none;}
+
+/* ── TAB BAR ── */
+.log-tabs{
+  display:flex;gap:2px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-lg);padding:4px;
+  box-shadow:var(--sh-sm);margin-bottom:14px;
+  overflow-x:auto;-webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+}
+.log-tabs::-webkit-scrollbar{display:none;}
+.log-tab{
+  flex:1;min-width:160px;
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  padding:9px 16px;border-radius:6px;
+  cursor:pointer;font-size:12px;font-weight:600;
+  color:var(--txt3);background:none;border:none;
+  transition:all .15s;white-space:nowrap;
+  font-family:'Inter',sans-serif;
+}
+.log-tab:hover{background:var(--bg);color:var(--txt);}
+.log-tab.active{background:var(--sf-navy);color:#e8f4fd;box-shadow:var(--sh-sm);}
+.log-tab.active.login{background:var(--sf-blue);}
+.log-tab.active.audit{background:var(--sf-purple);}
+.log-tab.active.email{background:var(--sf-green);}
+.log-tab.active.error{background:var(--sf-red);}
+.log-tab.active.server{background:var(--sf-navy);}
+.log-tab-icon{font-size:13px;}
+.log-tab-count{
+  background:rgba(255,255,255,.2);color:inherit;
+  font-size:9px;font-weight:700;padding:1px 6px;border-radius:20px;
+  min-width:18px;text-align:center;
+}
+.log-tab:not(.active) .log-tab-count{background:var(--border);color:var(--txt3);}
+
+/* ── KPI STRIP ── */
+.kpi-strip{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;
+  margin-bottom:14px;
+}
+.kpi-mini{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);
+  padding:12px 14px;display:flex;align-items:center;gap:10px;
+  box-shadow:var(--sh-sm);border-left:3px solid transparent;
+}
+.kpi-mini.blue{border-left-color:var(--sf-blue);}
+.kpi-mini.green{border-left-color:var(--sf-green);}
+.kpi-mini.red{border-left-color:var(--sf-red);}
+.kpi-mini.orange{border-left-color:var(--sf-orange);}
+.kpi-mini.purple{border-left-color:var(--sf-purple);}
+.kpi-mini.teal{border-left-color:var(--sf-teal);}
+.kpi-mini-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.kpi-mini-icon.blue{background:var(--sf-blue-lt);color:var(--sf-blue);}
+.kpi-mini-icon.green{background:var(--sf-green-lt);color:var(--sf-green);}
+.kpi-mini-icon.red{background:var(--sf-red-lt);color:var(--sf-red);}
+.kpi-mini-icon.orange{background:var(--sf-orange-lt);color:var(--sf-orange);}
+.kpi-mini-icon.purple{background:var(--sf-purple-lt);color:var(--sf-purple);}
+.kpi-mini-icon.teal{background:var(--sf-teal-lt);color:var(--sf-teal);}
+.kpi-mini-val{font-size:22px;font-weight:700;line-height:1;}
+.kpi-mini-val.blue{color:var(--sf-blue);}
+.kpi-mini-val.green{color:var(--sf-green);}
+.kpi-mini-val.red{color:var(--sf-red);}
+.kpi-mini-val.orange{color:var(--sf-orange);}
+.kpi-mini-val.purple{color:var(--sf-purple);}
+.kpi-mini-val.teal{color:var(--sf-teal);}
+.kpi-mini-label{font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.4px;margin-top:1px;}
+
+/* ── TOOLBAR ── */
+.sf-toolbar{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);
+  box-shadow:var(--sh-sm);padding:10px 16px;margin-bottom:10px;
+  display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;
+}
+.sf-filter-group{display:flex;flex-direction:column;gap:4px;}
+.sf-filter-label{font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;}
+.sf-input,.sf-select{
+  font-family:'Inter',sans-serif;font-size:12px;color:var(--txt);
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-sm);padding:5px 9px;height:32px;outline:none;
+  transition:border-color .15s,box-shadow .15s;
+}
+.sf-input:focus,.sf-select:focus{border-color:var(--sf-blue);box-shadow:0 0 0 3px rgba(1,118,211,.12);}
+.sf-input::placeholder{color:var(--txt4);}
+.sf-select{-webkit-appearance:none;appearance:none;padding-right:24px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath fill='%23aeaeac' d='M0 0l5 7 5-7z'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 8px center;cursor:pointer;}
+.sf-search-wrap{position:relative;}
+.sf-search-wrap i{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--txt4);font-size:11px;pointer-events:none;}
+.sf-search-input{padding-left:28px;width:220px;}
+.sf-toolbar-spacer{flex:1;}
+
+/* ── BUTTONS ── */
+.sf-btn{
+  font-family:'Inter',sans-serif;font-size:12px;font-weight:500;
+  padding:0 14px;height:32px;border-radius:var(--r-sm);
+  cursor:pointer;border:none;display:inline-flex;align-items:center;gap:6px;
+  transition:all .15s;white-space:nowrap;
+}
+.sf-btn-primary{background:var(--sf-blue);color:#fff;}
+.sf-btn-primary:hover{background:var(--sf-blue-dk);transform:translateY(-1px);}
+.sf-btn-neutral{background:var(--surface);color:var(--txt);border:1px solid var(--border);}
+.sf-btn-neutral:hover{background:var(--bg);}
+.sf-btn-success{background:var(--sf-green);color:#fff;}
+.sf-btn-success:hover{background:#1d5e31;transform:translateY(-1px);}
+.sf-btn-purple{background:var(--sf-purple);color:#fff;}
+.sf-btn-purple:hover{background:#4e2b7a;transform:translateY(-1px);}
+.sf-dropdown{position:relative;}
+.sf-dropdown-menu{
+  position:absolute;right:0;top:calc(100% + 4px);
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-lg);box-shadow:var(--sh-md);
+  min-width:200px;z-index:300;overflow:hidden;display:none;
+}
+.sf-dropdown-menu.open{display:block;}
+.sf-dropdown-item{padding:9px 14px;font-size:12px;color:var(--txt2);cursor:pointer;display:flex;align-items:center;gap:8px;}
+.sf-dropdown-item:hover{background:var(--sf-blue-lt);color:var(--sf-blue);}
+.sf-dropdown-divider{height:1px;background:var(--border);}
+
+/* ── TABLE CARD ── */
+.sf-table-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);overflow:hidden;}
+.sf-table-header{
+  padding:10px 16px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;background:var(--surface2);flex-wrap:wrap;
+}
+.sf-table-title{font-size:12px;font-weight:700;color:var(--txt);text-transform:uppercase;letter-spacing:.4px;display:flex;align-items:center;gap:6px;}
+.sf-record-count{background:var(--sf-blue-lt);color:var(--sf-blue);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;}
+.sf-table-wrap{overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 370px);}
+table{width:100%;border-collapse:collapse;font-size:11px;min-width:700px;}
+thead th{
+  background:var(--sf-navy)!important;color:#e8f4fd!important;
+  font-size:10px!important;font-weight:600!important;
+  text-transform:uppercase!important;letter-spacing:.6px!important;
+  padding:9px 12px!important;text-align:left!important;
+  white-space:nowrap!important;border:none!important;
+  border-right:1px solid #253d5b!important;
+  position:sticky;top:0;z-index:10;cursor:pointer;
+}
+thead th:last-child{border-right:none!important;}
+thead th:hover{background:#253d5b!important;}
+tbody tr{border-bottom:1px solid var(--border-lt);transition:background .1s;}
+tbody tr:hover{background:#f0f8ff;}
+tbody td{padding:7px 12px!important;font-size:11px!important;color:var(--txt2)!important;vertical-align:middle!important;border:none!important;border-bottom:1px solid var(--border-lt)!important;white-space:nowrap;}
+tbody td:first-child{font-weight:600;color:var(--txt)!important;}
+
+/* ── BADGES ── */
+.sf-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;white-space:nowrap;}
+.badge-blue{background:var(--sf-blue-lt);color:var(--sf-blue);}
+.badge-green{background:var(--sf-green-lt);color:var(--sf-green);}
+.badge-red{background:var(--sf-red-lt);color:var(--sf-red);}
+.badge-orange{background:var(--sf-orange-lt);color:var(--sf-orange);}
+.badge-purple{background:var(--sf-purple-lt);color:var(--sf-purple);}
+.badge-teal{background:var(--sf-teal-lt);color:var(--sf-teal);}
+.badge-yellow{background:var(--sf-yellow-lt);color:var(--sf-yellow);}
+.badge-gray{background:var(--surface2);color:var(--txt3);border:1px solid var(--border);}
+
+/* ── TIMELINE (Audit Trail) ── */
+.timeline{padding:14px 18px;}
+.tl-item{display:flex;gap:12px;margin-bottom:16px;position:relative;}
+.tl-item:not(:last-child)::before{content:'';position:absolute;left:15px;top:32px;bottom:-16px;width:2px;background:var(--border);}
+.tl-dot{width:32px;height:32px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;border:2px solid var(--surface);}
+.tl-dot.create{background:var(--sf-green-lt);color:var(--sf-green);}
+.tl-dot.update{background:var(--sf-blue-lt);color:var(--sf-blue);}
+.tl-dot.delete{background:var(--sf-red-lt);color:var(--sf-red);}
+.tl-dot.login{background:var(--sf-teal-lt);color:var(--sf-teal);}
+.tl-dot.email{background:var(--sf-purple-lt);color:var(--sf-purple);}
+.tl-dot.default{background:var(--surface2);color:var(--txt3);}
+.tl-body{flex:1;min-width:0;}
+.tl-header{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.tl-user{font-size:12px;font-weight:700;color:var(--txt);}
+.tl-action{font-size:11px;color:var(--txt3);}
+.tl-time{font-size:10px;color:var(--txt4);margin-left:auto;}
+.tl-detail{font-size:11px;color:var(--txt3);margin-top:3px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:6px 10px;line-height:1.5;word-break:break-word;white-space:pre-wrap;}
+.tl-collection{font-size:10px;font-weight:600;color:var(--sf-purple);background:var(--sf-purple-lt);padding:1px 7px;border-radius:20px;}
+
+/* ── PAGINATION ── */
+.sf-pagination{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--border);background:var(--surface2);flex-wrap:wrap;gap:8px;}
+.sf-pagination-info{font-size:11px;color:var(--txt3);}
+.sf-pag-controls{display:flex;align-items:center;gap:4px;}
+.sf-page-btn{width:30px;height:30px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--txt2);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;font-family:'Inter',sans-serif;}
+.sf-page-btn:hover{background:var(--sf-blue-lt);border-color:var(--sf-blue);color:var(--sf-blue);}
+.sf-page-btn.active{background:var(--sf-blue);border-color:var(--sf-blue);color:#fff;font-weight:700;}
+.sf-page-btn:disabled{opacity:.4;cursor:not-allowed;}
+
+/* ── LOADER ── */
+.sf-loader{display:flex;align-items:center;justify-content:center;padding:40px;gap:10px;color:var(--txt3);font-size:12px;}
+.sf-spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--sf-blue);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ── TOAST ── */
+.sf-toast{position:fixed;top:20px;right:20px;z-index:9999;min-width:260px;max-width:340px;background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--sh-md);border:1px solid var(--border);display:flex;align-items:flex-start;gap:10px;padding:12px 14px;transform:translateX(120%);transition:transform .35s cubic-bezier(.34,1.56,.64,1);}
+.sf-toast.show{transform:translateX(0);}
+.sf-toast-icon{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
+.sf-toast.success .sf-toast-icon{background:var(--sf-green-lt);color:var(--sf-green);}
+.sf-toast.error .sf-toast-icon{background:var(--sf-red-lt);color:var(--sf-red);}
+.sf-toast.info .sf-toast-icon{background:var(--sf-blue-lt);color:var(--sf-blue);}
+.sf-toast-title{font-size:12px;font-weight:600;color:var(--txt);}
+.sf-toast-msg{font-size:11px;color:var(--txt3);margin-top:1px;}
+.hidden{display:none!important;}
+
+/* ── VIEW TOGGLE ── */
+.view-toggle{display:flex;gap:4px;}
+.vt-btn{width:30px;height:30px;border:1px solid var(--border);background:var(--surface);border-radius:var(--r-sm);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--txt3);font-size:12px;transition:all .12s;}
+.vt-btn:hover{background:var(--sf-blue-lt);border-color:var(--sf-blue);color:var(--sf-blue);}
+.vt-btn.active{background:var(--sf-blue);border-color:var(--sf-blue);color:#fff;}
+
+/* ── PANELS ── */
+.log-panel{display:none;}
+.log-panel.active{display:block;}
+
+/* ── MOBILE ── */
+@media(max-width:768px){
+  .dv-strip{padding:0 12px;gap:8px;height:48px;}
+  .dv-strip-sep,.dv-strip-meta,.dv-sync{display:none;}
+  .sf-body{padding:10px 12px;}
+  .sf-bc{display:none;}
+  .log-tab{min-width:120px;font-size:11px;padding:7px 10px;}
+  .kpi-strip{grid-template-columns:repeat(2,1fr);gap:8px;}
+  .sf-toolbar{flex-direction:column;align-items:stretch;padding:10px 12px;gap:8px;}
+  .sf-filter-group{width:100%;}
+  .sf-filter-group .sf-input,.sf-filter-group .sf-select{width:100%;}
+  .sf-search-input{width:100%!important;}
+  .sf-toolbar-spacer{display:none;}
+  .sf-table-wrap{max-height:50vh;}
+  thead th{padding:7px 8px!important;font-size:9px!important;}
+  tbody td{padding:6px 8px!important;font-size:10px!important;}
+  .sf-pagination{flex-direction:column;align-items:center;gap:6px;}
+  .sf-toast{right:10px;left:10px;min-width:unset;}
+  .sf-dropdown-menu{right:auto;left:0;}
+  .timeline{padding:10px 12px;}
+  .tl-time{display:block;width:100%;margin-left:0;margin-top:2px;}
+}
+@media(max-width:480px){
+  .kpi-strip{grid-template-columns:repeat(2,1fr);}
+  .kpi-mini-val{font-size:18px;}
+  .log-tab-count{display:none;}
+}
+</style>
+  <script src="config.js"></script>
+</head>
+<body>
+
+<!-- PAGE STRIP -->
+<div class="dv-strip">
+  <div class="dv-strip-icon"><i class="fa-solid fa-scroll"></i></div>
+  <span class="dv-strip-title">Logs Viewer</span>
+  <div class="dv-strip-sep"></div>
+  <span class="dv-strip-meta" id="dateBadge"></span>
+  <div class="dv-strip-spacer"></div>
+  <div class="dv-sync">Last sync: <span id="lastSync">—</span></div>
+  <button class="sf-btn sf-btn-neutral" style="height:28px;font-size:11px;" onclick="reloadAll()">
+    <i class="fa-solid fa-rotate-right"></i> Refresh
+  </button>
+</div>
+
+<main class="sf-body">
+
+  <!-- Breadcrumb -->
+  <div class="sf-bc">
+    <a href="#">Home</a><span>/</span>
+    <a href="#">Admin</a><span>/</span>
+    <span>Logs Viewer</span>
+  </div>
+
+  <!-- Tab Bar -->
+  <div class="log-tabs">
+    <button class="log-tab login active" onclick="switchTab('login',this)">
+      <i class="fa-solid fa-key log-tab-icon"></i>
+      Login Logs
+      <span class="log-tab-count" id="tab-count-login">…</span>
+    </button>
+    <button class="log-tab audit" onclick="switchTab('audit',this)">
+      <i class="fa-solid fa-clipboard-list log-tab-icon"></i>
+      Audit Trail
+      <span class="log-tab-count" id="tab-count-audit">…</span>
+    </button>
+    <button class="log-tab email" onclick="switchTab('email',this)">
+      <i class="fa-solid fa-envelope log-tab-icon"></i>
+      Email Logs
+      <span class="log-tab-count" id="tab-count-email">…</span>
+    </button>
+    <button class="log-tab error" onclick="switchTab('error',this)">
+      <i class="fa-solid fa-bug log-tab-icon"></i>
+      Error Logs
+      <span class="log-tab-count" id="tab-count-error">…</span>
+    </button>
+    <button class="log-tab server" onclick="switchTab('server',this)">
+      <i class="fa-solid fa-server log-tab-icon"></i>
+      Server Logs
+      <span class="log-tab-count" id="tab-count-server">…</span>
+    </button>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       PANEL 1 — LOGIN LOGS
+  ═══════════════════════════════════ -->
+  <div class="log-panel active" id="panel-login">
+
+    <!-- KPI Strip -->
+    <div class="kpi-strip">
+      <div class="kpi-mini blue">
+        <div class="kpi-mini-icon blue"><i class="fa-solid fa-users"></i></div>
+        <div><div class="kpi-mini-val blue" id="ll-total">—</div><div class="kpi-mini-label">Total Logins</div></div>
+      </div>
+      <div class="kpi-mini green">
+        <div class="kpi-mini-icon green"><i class="fa-solid fa-calendar-day"></i></div>
+        <div><div class="kpi-mini-val green" id="ll-today">—</div><div class="kpi-mini-label">Today's Logins</div></div>
+      </div>
+      <div class="kpi-mini teal">
+        <div class="kpi-mini-icon teal"><i class="fa-solid fa-user-check"></i></div>
+        <div><div class="kpi-mini-val teal" id="ll-unique">—</div><div class="kpi-mini-label">Unique Users Today</div></div>
+      </div>
+      <div class="kpi-mini orange">
+        <div class="kpi-mini-icon orange"><i class="fa-solid fa-clock"></i></div>
+        <div><div class="kpi-mini-val orange" id="ll-last">—</div><div class="kpi-mini-label">Last Login (hrs ago)</div></div>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="sf-toolbar">
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">Search</label>
+        <div class="sf-search-wrap">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="ll-search" class="sf-input sf-search-input" placeholder="Username, Engineer…" oninput="renderLoginTable()"/>
+        </div>
+      </div>
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">From Date</label>
+        <input type="date" id="ll-from" class="sf-input" onchange="renderLoginTable()"/>
+      </div>
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">To Date</label>
+        <input type="date" id="ll-to" class="sf-input" onchange="renderLoginTable()"/>
+      </div>
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">Role</label>
+        <select id="ll-role" class="sf-input sf-select" style="width:120px;" onchange="renderLoginTable()">
+          <option value="">All Roles</option>
+          <option value="admin">Admin</option>
+          <option value="engineer">Engineer</option>
+        </select>
+      </div>
+      <button class="sf-btn sf-btn-neutral" onclick="clearLoginFilters()"><i class="fa-solid fa-rotate-left"></i> Clear</button>
+      <div class="sf-toolbar-spacer"></div>
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">Per Page</label>
+        <select id="ll-rpp" class="sf-input sf-select" style="width:70px;" onchange="llPage=1;renderLoginTable()">
+          <option value="25">25</option><option value="50" selected>50</option><option value="100">100</option>
+        </select>
+      </div>
+      <div class="sf-dropdown" id="llExportDrop">
+        <button class="sf-btn sf-btn-primary" onclick="toggleDrop('llExportDrop')">
+          <i class="fa-solid fa-arrow-up-from-bracket"></i> Export <i class="fa-solid fa-chevron-down" style="font-size:10px;"></i>
+        </button>
+        <div class="sf-dropdown-menu" id="llExportMenu">
+          <div class="sf-dropdown-item" onclick="exportLoginExcel()"><i class="fa-solid fa-file-excel" style="color:var(--sf-green);"></i> Excel (All Filtered)</div>
+          <div class="sf-dropdown-divider"></div>
+          <div class="sf-dropdown-item" onclick="exportLoginCSV()"><i class="fa-solid fa-file-csv" style="color:var(--sf-blue);"></i> CSV (Current Page)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="sf-table-card">
+      <div class="sf-table-header">
+        <div class="sf-table-title"><i class="fa-solid fa-key" style="color:var(--sf-blue);"></i> Login Activity</div>
+        <span class="sf-record-count" id="ll-count">Loading…</span>
+      </div>
+      <div class="sf-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th onclick="llSort('engineerName')">#  Engineer <span id="ll-sort-engineerName"></span></th>
+              <th onclick="llSort('username')">Username <span id="ll-sort-username"></span></th>
+              <th onclick="llSort('role')">Role <span id="ll-sort-role"></span></th>
+              <th onclick="llSort('loginTime')">Login Time <span id="ll-sort-loginTime"></span></th>
+              <th onclick="llSort('logoutTime')">Logout Time <span id="ll-sort-logoutTime"></span></th>
+              <th>Session Duration</th>
+              <th onclick="llSort('ipAddress')">IP Address <span id="ll-sort-ipAddress"></span></th>
+              <th>Device / Browser</th>
+            </tr>
+          </thead>
+          <tbody id="ll-tbody">
+            <tr><td colspan="8"><div class="sf-loader"><div class="sf-spinner"></div> Loading login logs…</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="sf-pagination">
+        <div class="sf-pagination-info" id="ll-pag-info">—</div>
+        <div class="sf-pag-controls" id="ll-paginator"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       PANEL 2 — AUDIT TRAIL
+  ═══════════════════════════════════ -->
+  <div class="log-panel" id="panel-audit">
+
+    <!-- KPI Strip -->
+    <div class="kpi-strip">
+      <div class="kpi-mini purple">
+        <div class="kpi-mini-icon purple"><i class="fa-solid fa-list-check"></i></div>
+        <div><div class="kpi-mini-val purple" id="at-total">—</div><div class="kpi-mini-label">Total Events</div></div>
+      </div>
+      <div class="kpi-mini green">
+        <div class="kpi-mini-icon green"><i class="fa-solid fa-plus-circle"></i></div>
+        <div><div class="kpi-mini-val green" id="at-create">—</div><div class="kpi-mini-label">Creates</div></div>
+      </div>
+      <div class="kpi-mini blue">
+        <div class="kpi-mini-icon blue"><i class="fa-solid fa-pen"></i></div>
+        <div><div class="kpi-mini-val blue" id="at-update">—</div><div class="kpi-mini-label">Updates</div></div>
+      </div>
+      <div class="kpi-mini red">
+        <div class="kpi-mini-icon red"><i class="fa-solid fa-trash"></i></div>
+        <div><div class="kpi-mini-val red" id="at-delete">—</div><div class="kpi-mini-label">Deletes</div></div>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="sf-toolbar">
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">Search</label>
+        <div class="sf-search-wrap">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="at-search" class="sf-input sf-search-input" placeholder="User, collection, action…" oninput="renderAuditView()"/>
+        </div>
+      </div>
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">Action</label>
+        <select id="at-action" class="sf-input sf-select" style="width:120px;" onchange="renderAuditView()">
+          <option value="">All Actions</option>
+          <option value="CREATE">Create</option>
+          <option value="UPDATE">Update</option>
+          <option value="DELETE">Delete</option>
+        </select>
+      </div>
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">Collection</label>
+        <select id="at-coll" class="sf-input sf-select" style="width:150px;" onchange="renderAuditView()">
+          <option value="">All Collections</option>
+        </select>
+      </div>
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">From</label>
+        <input type="date" id="at-from" class="sf-input" onchange="renderAuditView()"/>
+      </div>
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">To</label>
+        <input type="date" id="at-to" class="sf-input" onchange="renderAuditView()"/>
+      </div>
+      <button class="sf-btn sf-btn-neutral" onclick="clearAuditFilters()"><i class="fa-solid fa-rotate-left"></i> Clear</button>
+      <div class="sf-toolbar-spacer"></div>
+      <!-- View toggle: Table vs Timeline -->
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">View</label>
+        <div class="view-toggle">
+          <button class="vt-btn active" id="vt-table" onclick="setAuditView('table')" title="Table View"><i class="fa-solid fa-table"></i></button>
+          <button class="vt-btn" id="vt-timeline" onclick="setAuditView('timeline')" title="Timeline View"><i class="fa-solid fa-timeline"></i></button>
+        </div>
+      </div>
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">Per Page</label>
+        <select id="at-rpp" class="sf-input sf-select" style="width:70px;" onchange="atPage=1;renderAuditView()">
+          <option value="25">25</option><option value="50" selected>50</option><option value="100">100</option>
+        </select>
+      </div>
+      <button class="sf-btn sf-btn-purple" onclick="exportAuditExcel()">
+        <i class="fa-solid fa-file-excel"></i> Export
+      </button>
+    </div>
+
+    <!-- Table Card -->
+    <div class="sf-table-card">
+      <div class="sf-table-header">
+        <div class="sf-table-title"><i class="fa-solid fa-clipboard-list" style="color:var(--sf-purple);"></i> Audit Events</div>
+        <span class="sf-record-count" id="at-count">Loading…</span>
+      </div>
+      <!-- Table View -->
+      <div id="at-table-view">
+        <div class="sf-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th onclick="atSort('timestamp')">Timestamp <span id="at-sort-timestamp"></span></th>
+                <th onclick="atSort('user')">User <span id="at-sort-user"></span></th>
+                <th onclick="atSort('action')">Action <span id="at-sort-action"></span></th>
+                <th onclick="atSort('collection')">Collection <span id="at-sort-collection"></span></th>
+                <th>Document ID</th>
+                <th>Changes / Details</th>
+              </tr>
+            </thead>
+            <tbody id="at-tbody">
+              <tr><td colspan="6"><div class="sf-loader"><div class="sf-spinner"></div> Loading audit trail…</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <!-- Timeline View -->
+      <div id="at-timeline-view" style="display:none;">
+        <div class="timeline" id="at-timeline-body"></div>
+      </div>
+      <div class="sf-pagination">
+        <div class="sf-pagination-info" id="at-pag-info">—</div>
+        <div class="sf-pag-controls" id="at-paginator"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       PANEL 3 — EMAIL LOGS
+  ═══════════════════════════════════ -->
+  <div class="log-panel" id="panel-email">
+
+    <!-- KPI Strip -->
+    <div class="kpi-strip">
+      <div class="kpi-mini green">
+        <div class="kpi-mini-icon green"><i class="fa-solid fa-envelope-circle-check"></i></div>
+        <div><div class="kpi-mini-val green" id="el-total">—</div><div class="kpi-mini-label">Total Emails Sent</div></div>
+      </div>
+      <div class="kpi-mini blue">
+        <div class="kpi-mini-icon blue"><i class="fa-solid fa-calendar-day"></i></div>
+        <div><div class="kpi-mini-val blue" id="el-today">—</div><div class="kpi-mini-label">Sent Today</div></div>
+      </div>
+      <div class="kpi-mini orange">
+        <div class="kpi-mini-icon orange"><i class="fa-solid fa-users"></i></div>
+        <div><div class="kpi-mini-val orange" id="el-recipients">—</div><div class="kpi-mini-label">Unique Recipients</div></div>
+      </div>
+      <div class="kpi-mini teal">
+        <div class="kpi-mini-icon teal"><i class="fa-solid fa-tag"></i></div>
+        <div><div class="kpi-mini-val teal" id="el-types">—</div><div class="kpi-mini-label">Email Types</div></div>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="sf-toolbar">
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">Search</label>
+        <div class="sf-search-wrap">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="el-search" class="sf-input sf-search-input" placeholder="Recipient, subject, type…" oninput="renderEmailTable()"/>
+        </div>
+      </div>
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">Type</label>
+        <select id="el-type" class="sf-input sf-select" style="width:150px;" onchange="renderEmailTable()">
+          <option value="">All Types</option>
+        </select>
+      </div>
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">From</label>
+        <input type="date" id="el-from" class="sf-input" onchange="renderEmailTable()"/>
+      </div>
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">To</label>
+        <input type="date" id="el-to" class="sf-input" onchange="renderEmailTable()"/>
+      </div>
+      <button class="sf-btn sf-btn-neutral" onclick="clearEmailFilters()"><i class="fa-solid fa-rotate-left"></i> Clear</button>
+      <div class="sf-toolbar-spacer"></div>
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">Per Page</label>
+        <select id="el-rpp" class="sf-input sf-select" style="width:70px;" onchange="elPage=1;renderEmailTable()">
+          <option value="25">25</option><option value="50" selected>50</option><option value="100">100</option>
+        </select>
+      </div>
+      <button class="sf-btn sf-btn-success" onclick="exportEmailExcel()">
+        <i class="fa-solid fa-file-excel"></i> Export
+      </button>
+    </div>
+
+    <!-- Table -->
+    <div class="sf-table-card">
+      <div class="sf-table-header">
+        <div class="sf-table-title"><i class="fa-solid fa-envelope" style="color:var(--sf-green);"></i> Email Activity</div>
+        <span class="sf-record-count" id="el-count">Loading…</span>
+      </div>
+      <div class="sf-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th onclick="elSort('createdAt')">Sent At <span id="el-sort-createdAt"></span></th>
+              <th onclick="elSort('to')">Recipient <span id="el-sort-to"></span></th>
+              <th onclick="elSort('subject')">Subject <span id="el-sort-subject"></span></th>
+              <th onclick="elSort('type')">Type <span id="el-sort-type"></span></th>
+              <th onclick="elSort('status')">Status <span id="el-sort-status"></span></th>
+              <th>Sent By</th>
+              <th>Details</th>
+            </tr>
+          </thead>
+          <tbody id="el-tbody">
+            <tr><td colspan="7"><div class="sf-loader"><div class="sf-spinner"></div> Loading email logs…</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="sf-pagination">
+        <div class="sf-pagination-info" id="el-pag-info">—</div>
+        <div class="sf-pag-controls" id="el-paginator"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       PANEL 4 — ERROR LOGS
+  ═══════════════════════════════════ -->
+  <div class="log-panel" id="panel-error">
+    <div class="kpi-strip">
+      <div class="kpi-mini red"><div class="kpi-mini-icon red"><i class="fa-solid fa-circle-exclamation"></i></div><div><div class="kpi-mini-val red" id="er-total">—</div><div class="kpi-mini-label">Total Errors</div></div></div>
+      <div class="kpi-mini orange"><div class="kpi-mini-icon orange"><i class="fa-solid fa-calendar-day"></i></div><div><div class="kpi-mini-val orange" id="er-today">—</div><div class="kpi-mini-label">Today's Errors</div></div></div>
+      <div class="kpi-mini yellow"><div class="kpi-mini-icon yellow"><i class="fa-solid fa-triangle-exclamation"></i></div><div><div class="kpi-mini-val yellow" id="er-warnings">—</div><div class="kpi-mini-label">Warnings</div></div></div>
+      <div class="kpi-mini purple"><div class="kpi-mini-icon purple"><i class="fa-solid fa-globe"></i></div><div><div class="kpi-mini-val purple" id="er-fetch">—</div><div class="kpi-mini-label">API Failures</div></div></div>
+      <div class="kpi-mini teal"><div class="kpi-mini-icon teal"><i class="fa-solid fa-file-code"></i></div><div><div class="kpi-mini-val teal" id="er-pages">—</div><div class="kpi-mini-label">Affected Pages</div></div></div>
+    </div>
+
+    <div class="sf-toolbar">
+      <div class="sf-filter-group"><label class="sf-filter-label">Search</label><div class="sf-search-wrap"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="er-search" class="sf-input sf-search-input" placeholder="Message, page, user, endpoint…" oninput="renderErrorTable()"/></div></div>
+      <div class="sf-filter-group"><label class="sf-filter-label">Error Type</label>
+        <select id="er-type" class="sf-input sf-select" style="width:160px;" onchange="renderErrorTable()">
+          <option value="">All Types</option>
+          <option value="js_error">⚡ JS Error</option>
+          <option value="promise_rejection">🔁 Promise Rejection</option>
+          <option value="console_error">🖥 Console Error</option>
+          <option value="console_warn">⚠️ Console Warn</option>
+          <option value="fetch_error">🌐 API / Fetch Error</option>
+          <option value="manual_error">📌 Manual Error</option>
+          <option value="manual_info">ℹ️ Manual Info</option>
+        </select>
+      </div>
+      <div class="sf-filter-group"><label class="sf-filter-label">Page</label><select id="er-page" class="sf-input sf-select" style="width:150px;" onchange="renderErrorTable()"><option value="">All Pages</option></select></div>
+      <div class="sf-filter-group"><label class="sf-filter-label">User</label><select id="er-user" class="sf-input sf-select" style="width:140px;" onchange="renderErrorTable()"><option value="">All Users</option></select></div>
+      <div class="sf-filter-group"><label class="sf-filter-label">From</label><input type="date" id="er-from" class="sf-input" onchange="renderErrorTable()"/></div>
+      <div class="sf-filter-group"><label class="sf-filter-label">To</label><input type="date" id="er-to" class="sf-input" onchange="renderErrorTable()"/></div>
+      <button class="sf-btn sf-btn-neutral" onclick="clearErrorFilters()"><i class="fa-solid fa-rotate-left"></i> Clear</button>
+      <div class="sf-toolbar-spacer"></div>
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">Source</label>
+        <div style="display:flex;gap:5px;">
+          <button class="sf-btn sf-btn-neutral" id="er-src-local" onclick="setErrorSource('local')" style="border-color:var(--sf-blue);color:var(--sf-blue);background:var(--sf-blue-lt);height:32px;font-size:11px;"><i class="fa-solid fa-laptop"></i> Local</button>
+          <button class="sf-btn sf-btn-neutral" id="er-src-backend" onclick="setErrorSource('backend')" style="height:32px;font-size:11px;"><i class="fa-solid fa-server"></i> Backend</button>
+        </div>
+      </div>
+      <div class="sf-filter-group"><label class="sf-filter-label">Per Page</label><select id="er-rpp" class="sf-input sf-select" style="width:70px;" onchange="erPage=1;renderErrorTable()"><option value="25">25</option><option value="50" selected>50</option><option value="100">100</option></select></div>
+      <div style="display:flex;gap:6px;align-self:flex-end;">
+        <button class="sf-btn sf-btn-success" onclick="exportErrorExcel()" style="height:32px;"><i class="fa-solid fa-file-excel"></i> Export</button>
+        <button class="sf-btn" onclick="clearLocalErrors()" style="height:32px;background:var(--sf-red);color:#fff;"><i class="fa-solid fa-trash"></i> Clear Local</button>
+      </div>
+    </div>
+
+    <div class="sf-table-card">
+      <div class="sf-table-header">
+        <div class="sf-table-title"><i class="fa-solid fa-bug" style="color:var(--sf-red);"></i> Error Events</div>
+        <span class="sf-record-count" id="er-count" style="background:var(--sf-red-lt);color:var(--sf-red);">Loading…</span>
+        <div style="flex:1;"></div>
+        <span id="er-source-badge" style="font-size:10px;color:var(--txt3);font-weight:500;background:var(--surface2);padding:2px 8px;border-radius:20px;border:1px solid var(--border);">📍 Local Storage</span>
+      </div>
+      <div class="sf-table-wrap">
+        <table>
+          <thead><tr>
+            <th style="width:140px;">Timestamp</th>
+            <th style="width:110px;">Type</th>
+            <th style="width:120px;">Page</th>
+            <th style="width:100px;">User</th>
+            <th>Error Message</th>
+            <th style="width:80px;">HTTP</th>
+            <th style="width:140px;">Endpoint / File</th>
+            <th style="width:50px;">Info</th>
+          </tr></thead>
+          <tbody id="er-tbody"><tr><td colspan="8"><div class="sf-loader"><div class="sf-spinner"></div> Loading error logs…</div></td></tr></tbody>
+        </table>
+      </div>
+      <div class="sf-pagination">
+        <div class="sf-pagination-info" id="er-pag-info">—</div>
+        <div class="sf-pag-controls" id="er-paginator"></div>
+      </div>
+    </div>
+  </div><!-- end panel-error -->
+
+  <!-- ═══════════════════════════════════
+       PANEL 5 — SERVER / CONTAINER LOGS
+  ═══════════════════════════════════ -->
+  <div class="log-panel" id="panel-server">
+
+    <!-- KPI Strip -->
+    <div class="kpi-strip">
+      <div class="kpi-mini blue"><div class="kpi-mini-icon blue"><i class="fa-solid fa-server"></i></div><div><div class="kpi-mini-val blue" id="sl-total">—</div><div class="kpi-mini-label">Total Logs</div></div></div>
+      <div class="kpi-mini green"><div class="kpi-mini-icon green"><i class="fa-solid fa-calendar-day"></i></div><div><div class="kpi-mini-val green" id="sl-today">—</div><div class="kpi-mini-label">Today</div></div></div>
+      <div class="kpi-mini teal"><div class="kpi-mini-icon teal"><i class="fa-solid fa-clock"></i></div><div><div class="kpi-mini-val teal" id="sl-lasthour">—</div><div class="kpi-mini-label">Last Hour</div></div></div>
+      <div class="kpi-mini red"><div class="kpi-mini-icon red"><i class="fa-solid fa-circle-exclamation"></i></div><div><div class="kpi-mini-val red" id="sl-errors">—</div><div class="kpi-mini-label">Errors</div></div></div>
+      <div class="kpi-mini yellow"><div class="kpi-mini-icon yellow"><i class="fa-solid fa-triangle-exclamation"></i></div><div><div class="kpi-mini-val yellow" id="sl-warns">—</div><div class="kpi-mini-label">Warnings</div></div></div>
+      <div class="kpi-mini orange"><div class="kpi-mini-icon orange"><i class="fa-solid fa-gauge-high"></i></div><div><div class="kpi-mini-val orange" id="sl-slow">—</div><div class="kpi-mini-label">Slow Requests</div></div></div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="sf-toolbar">
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">Search</label>
+        <div class="sf-search-wrap">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="sl-search" class="sf-input sf-search-input" placeholder="Message, URL, user…" oninput="renderServerTable()"/>
+        </div>
+      </div>
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">Level</label>
+        <select id="sl-level" class="sf-input sf-select" style="width:110px;" onchange="loadServerLogs()">
+          <option value="">All</option>
+          <option value="info">Info</option>
+          <option value="warn">Warn</option>
+          <option value="error">Error</option>
+          <option value="debug">Debug</option>
+        </select>
+      </div>
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">Method</label>
+        <select id="sl-method" class="sf-input sf-select" style="width:100px;" onchange="loadServerLogs()">
+          <option value="">All</option>
+          <option value="GET">GET</option>
+          <option value="POST">POST</option>
+          <option value="PUT">PUT</option>
+          <option value="DELETE">DELETE</option>
+        </select>
+      </div>
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">From</label>
+        <input type="date" id="sl-from" class="sf-input" onchange="loadServerLogs()"/>
+      </div>
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">To</label>
+        <input type="date" id="sl-to" class="sf-input" onchange="loadServerLogs()"/>
+      </div>
+      <button class="sf-btn sf-btn-neutral" onclick="clearServerFilters()"><i class="fa-solid fa-rotate-left"></i> Clear</button>
+      <div class="sf-toolbar-spacer"></div>
+
+      <!-- Real-time toggle -->
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">Live Stream</label>
+        <button class="sf-btn" id="sl-stream-btn" onclick="toggleServerStream()" style="height:32px;background:var(--sf-green);color:#fff;font-size:11px;">
+          <i class="fa-solid fa-circle" style="font-size:8px;"></i> Start Live
+        </button>
+      </div>
+
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">Per Page</label>
+        <select id="sl-rpp" class="sf-input sf-select" style="width:70px;" onchange="slPage=1;renderServerTable()">
+          <option value="50">50</option><option value="100" selected>100</option><option value="200">200</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:6px;align-self:flex-end;">
+        <button class="sf-btn sf-btn-success" onclick="exportServerExcel()" style="height:32px;"><i class="fa-solid fa-file-excel"></i> Export</button>
+        <button class="sf-btn" onclick="clearServerLogs()" style="height:32px;background:var(--sf-red);color:#fff;font-size:11px;"><i class="fa-solid fa-trash"></i> Clear Old</button>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="sf-table-card">
+      <div class="sf-table-header">
+        <div class="sf-table-title"><i class="fa-solid fa-terminal" style="color:var(--sf-navy);"></i> Container Logs</div>
+        <span class="sf-record-count" id="sl-count" style="background:var(--surface2);color:var(--txt3);">Loading…</span>
+        <div style="flex:1;"></div>
+        <span id="sl-live-indicator" style="display:none;font-size:10px;font-weight:600;color:var(--sf-green);align-items:center;gap:4px;">
+          <span style="width:6px;height:6px;border-radius:50%;background:var(--sf-green);display:inline-block;animation:aiBlink 1.5s infinite;"></span> LIVE
+        </span>
+      </div>
+      <div class="sf-table-wrap" id="sl-table-wrap">
+        <table>
+          <thead><tr>
+            <th style="width:140px;">Timestamp</th>
+            <th style="width:70px;">Level</th>
+            <th style="width:70px;">Method</th>
+            <th style="width:50px;">Status</th>
+            <th>Message / URL</th>
+            <th style="width:80px;">Duration</th>
+            <th style="width:100px;">User</th>
+            <th style="width:80px;">IP</th>
+          </tr></thead>
+          <tbody id="sl-tbody"><tr><td colspan="8"><div class="sf-loader"><div class="sf-spinner"></div> Loading server logs…</div></td></tr></tbody>
+        </table>
+      </div>
+      <div class="sf-pagination">
+        <div class="sf-pagination-info" id="sl-pag-info">—</div>
+        <div class="sf-pag-controls" id="sl-paginator"></div>
+      </div>
+    </div>
+  </div><!-- end panel-server -->
+
+</main>
+
+<!-- Error panel injected via JS -->
+
+<!-- Toast -->
+<div id="sf-toast" class="sf-toast">
+  <div class="sf-toast-icon" id="sf-toast-icon"><i class="fa-solid fa-check"></i></div>
+  <div><div class="sf-toast-title" id="sf-toast-title">—</div><div class="sf-toast-msg" id="sf-toast-msg"></div></div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════
+   RELCON CRM — Logs Viewer JS
+══════════════════════════════════════════════════ */
+const BASE = window.BACKEND_URL || 'https://relcon-crm.onrender.com';
+const token = localStorage.getItem('token');
+const hdrs = { Authorization: `Bearer ${token}` };
+
+// Raw data stores
+let loginData = [], auditData = [], emailData = [];
+
+// Pagination state
+let llPage = 1, atPage = 1, elPage = 1;
+
+// Sort state
+let llSortKey = 'loginTime', llSortDir = -1;
+let atSortKey = 'timestamp',  atSortDir = -1;
+let elSortKey = 'createdAt',  elSortDir = -1;
+
+// Audit view mode
+let auditViewMode = 'table';
+
+/* ── Helpers ── */
+function esc(s){ return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtDT(d){ if(!d)return '—'; const dt=new Date(d); return isNaN(dt)?String(d):dt.toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true}); }
+function fmtDate(d){ if(!d)return '—'; const dt=new Date(d); return isNaN(dt)?String(d):dt.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}); }
+function today(){ return new Date().toISOString().slice(0,10); }
+function hoursAgo(d){ if(!d)return '—'; const h=Math.round((Date.now()-new Date(d))/3600000); return h<1?'<1h':h<24?`${h}h`:`${Math.round(h/24)}d`; }
+function sessionDur(login,logout){
+  if(!login||!logout)return '—';
+  const ms=new Date(logout)-new Date(login);
+  if(ms<0)return '—';
+  const m=Math.floor(ms/60000), h=Math.floor(m/60);
+  return h>0?`${h}h ${m%60}m`:`${m}m`;
+}
+
+function showToast(title,type='success',msg=''){
+  const icons={success:'fa-check',error:'fa-xmark',info:'fa-circle-info'};
+  const t=document.getElementById('sf-toast');
+  document.getElementById('sf-toast-icon').innerHTML=`<i class="fa-solid ${icons[type]||'fa-check'}"></i>`;
+  document.getElementById('sf-toast-title').textContent=title;
+  document.getElementById('sf-toast-msg').textContent=msg;
+  t.className='sf-toast '+type;
+  setTimeout(()=>t.classList.add('show'),10);
+  setTimeout(()=>t.classList.remove('show'),4000);
+}
+
+function toggleDrop(id){
+  const menu=document.querySelector(`#${id} .sf-dropdown-menu`);
+  menu.classList.toggle('open');
+  setTimeout(()=>document.addEventListener('click',function close(e){
+    if(!e.target.closest('#'+id)){menu.classList.remove('open');document.removeEventListener('click',close);}
+  }),10);
+}
+
+/* ── Tab switching ── */
+function switchTab(tab, el){
+  document.querySelectorAll('.log-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.log-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+tab).classList.add('active');
+}
+
+/* ── Audit view mode ── */
+function setAuditView(mode){
+  auditViewMode=mode;
+  document.getElementById('vt-table').classList.toggle('active',mode==='table');
+  document.getElementById('vt-timeline').classList.toggle('active',mode==='timeline');
+  document.getElementById('at-table-view').style.display=mode==='table'?'':'none';
+  document.getElementById('at-timeline-view').style.display=mode==='timeline'?'':'none';
+  renderAuditView();
+}
+
+/* ══════════════════════════════════════
+   FETCH ALL DATA
+══════════════════════════════════════ */
+async function reloadAll(){
+  document.getElementById('lastSync').textContent='Syncing…';
+  try{
+    const [llRes, atRes, elRes] = await Promise.all([
+      fetch(`${BASE}/audit/loginLogs`,   {headers:hdrs}),
+      fetch(`${BASE}/audit/auditTrails`, {headers:hdrs}),
+      fetch(`${BASE}/audit/emailLogs`,   {headers:hdrs}),
+    ]);
+    loginData = Array.isArray(await llRes.json()) ? (await llRes.clone().json()) : [];
+    auditData = Array.isArray(await atRes.json()) ? (await atRes.clone().json()) : [];
+    emailData = Array.isArray(await elRes.json()) ? (await elRes.clone().json()) : [];
+  }catch(e){
+    // retry individually
+    try{ loginData = await fetch(`${BASE}/audit/loginLogs`,{headers:hdrs}).then(r=>r.json()).catch(()=>[]); }catch{}
+    try{ auditData = await fetch(`${BASE}/audit/auditTrails`,{headers:hdrs}).then(r=>r.json()).catch(()=>[]); }catch{}
+    try{ emailData = await fetch(`${BASE}/audit/emailLogs`,{headers:hdrs}).then(r=>r.json()).catch(()=>[]); }catch{}
+  }
+
+  loginData  = Array.isArray(loginData)  ? loginData  : [];
+  auditData  = Array.isArray(auditData)  ? auditData  : [];
+  emailData  = Array.isArray(emailData)  ? emailData  : [];
+
+  // Update tab counts
+  document.getElementById('tab-count-login').textContent = loginData.length;
+  document.getElementById('tab-count-audit').textContent = auditData.length;
+  document.getElementById('tab-count-email').textContent = emailData.length;
+
+  // Populate dropdowns
+  populateAuditCollDropdown();
+  populateEmailTypeDropdown();
+
+  // Render all
+  llPage=1; atPage=1; elPage=1;
+  renderLoginTable();
+  renderAuditView();
+  renderEmailTable();
+
+  // Load error logs (from localStorage)
+  await loadErrorLogs();
+
+  // Load server/container logs
+  await loadServerLogs();
+
+  document.getElementById('lastSync').textContent = new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+  showToast('Logs loaded','success',`Login: ${loginData.length} | Audit: ${auditData.length} | Email: ${emailData.length} | Errors: ${errorData.length} | Server: ${serverData.length}`);
+}
+
+/* ══════════════════════════════════════
+   LOGIN LOGS
+══════════════════════════════════════ */
+function getLoginFiltered(){
+  const q=(document.getElementById('ll-search').value||'').toLowerCase().trim();
+  const from=document.getElementById('ll-from').value;
+  const to=document.getElementById('ll-to').value;
+  const role=document.getElementById('ll-role').value;
+  return loginData.filter(r=>{
+    if(role && (r.role||'').toLowerCase()!==role) return false;
+    if(from){ const d=String(r.loginTime||'').slice(0,10); if(d&&d<from)return false; }
+    if(to){   const d=String(r.loginTime||'').slice(0,10); if(d&&d>to)return false; }
+    if(q){ const hay=`${r.engineerName||''} ${r.username||''} ${r.role||''} ${r.ipAddress||''}`.toLowerCase(); if(!hay.includes(q))return false; }
+    return true;
+  }).sort((a,b)=>{
+    const av=String(a[llSortKey]||''), bv=String(b[llSortKey]||'');
+    return av.localeCompare(bv)*llSortDir;
+  });
+}
+
+function renderLoginTable(){
+  const rows = getLoginFiltered();
+  const rpp = +document.getElementById('ll-rpp').value||50;
+  const total = rows.length;
+  const pages = Math.max(1,Math.ceil(total/rpp));
+  if(llPage>pages) llPage=pages;
+  const page = rows.slice((llPage-1)*rpp, llPage*rpp);
+
+  // KPIs
+  const todayStr=today();
+  const todayRows=loginData.filter(r=>String(r.loginTime||'').slice(0,10)===todayStr);
+  const uniqueToday=new Set(todayRows.map(r=>r.engineerName||r.username)).size;
+  const lastLogin=loginData.reduce((mx,r)=>r.loginTime&&new Date(r.loginTime)>new Date(mx)?r.loginTime:mx,'');
+  document.getElementById('ll-total').textContent=loginData.length;
+  document.getElementById('ll-today').textContent=todayRows.length;
+  document.getElementById('ll-unique').textContent=uniqueToday;
+  document.getElementById('ll-last').textContent=hoursAgo(lastLogin);
+
+  document.getElementById('ll-count').textContent=`${total} records`;
+  document.getElementById('ll-pag-info').textContent=`Showing ${total===0?0:(llPage-1)*rpp+1}–${Math.min(total,llPage*rpp)} of ${total}`;
+
+  const tbody=document.getElementById('ll-tbody');
+  if(!page.length){ tbody.innerHTML=`<tr><td colspan="8" style="text-align:center;padding:28px;color:var(--txt3);">No records found.</td></tr>`; renderPaginator('ll',total,pages,rpp); return; }
+
+  tbody.innerHTML=page.map(r=>{
+    const roleClass = (r.role||'').toLowerCase()==='admin'?'badge-purple':'badge-blue';
+    const dur = sessionDur(r.loginTime, r.logoutTime);
+    const agent = r.userAgent ? (r.userAgent.includes('Mobile')?'📱 Mobile':'💻 Desktop') : '—';
+    return `<tr>
+      <td style="font-weight:700;">${esc(r.engineerName||r.username||'—')}</td>
+      <td style="color:var(--txt3);">${esc(r.username||'—')}</td>
+      <td><span class="sf-badge ${roleClass}">${esc(r.role||'—')}</span></td>
+      <td style="color:var(--sf-blue);">${fmtDT(r.loginTime)}</td>
+      <td style="color:var(--txt3);">${r.logoutTime?fmtDT(r.logoutTime):'<span class="sf-badge badge-green">Active</span>'}</td>
+      <td style="font-family:monospace;font-size:10px;">${dur}</td>
+      <td style="color:var(--txt3);font-family:monospace;font-size:10px;">${esc(r.ipAddress||'—')}</td>
+      <td style="color:var(--txt3);">${agent}</td>
+    </tr>`;
+  }).join('');
+
+  renderPaginator('ll',total,pages,rpp);
+}
+
+function llSort(key){
+  if(llSortKey===key) llSortDir*=-1; else{llSortKey=key;llSortDir=-1;}
+  document.querySelectorAll('[id^="ll-sort-"]').forEach(e=>e.innerHTML='');
+  const el=document.getElementById('ll-sort-'+key);
+  if(el) el.innerHTML=llSortDir===1?'<i class="fa-solid fa-arrow-up" style="font-size:8px;"></i>':'<i class="fa-solid fa-arrow-down" style="font-size:8px;"></i>';
+  llPage=1; renderLoginTable();
+}
+
+function clearLoginFilters(){
+  ['ll-search','ll-from','ll-to'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('ll-role').value='';
+  llPage=1; renderLoginTable();
+}
+
+/* ══════════════════════════════════════
+   AUDIT TRAIL
+══════════════════════════════════════ */
+function populateAuditCollDropdown(){
+  const colls=[...new Set(auditData.map(r=>r.collection||r.model||r.entity||'').filter(Boolean))].sort();
+  const sel=document.getElementById('at-coll');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">All Collections</option>'+colls.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  if(colls.includes(cur)) sel.value=cur;
+}
+
+function getAuditFiltered(){
+  const q=(document.getElementById('at-search').value||'').toLowerCase().trim();
+  const action=(document.getElementById('at-action').value||'').toUpperCase();
+  const coll=document.getElementById('at-coll').value;
+  const from=document.getElementById('at-from').value;
+  const to=document.getElementById('at-to').value;
+  return auditData.filter(r=>{
+    const act=(r.action||r.method||r.operation||'').toUpperCase();
+    if(action && !act.includes(action)) return false;
+    const c=r.collection||r.model||r.entity||'';
+    if(coll && c!==coll) return false;
+    const ts=r.timestamp||r.createdAt||r.date||'';
+    if(from&&String(ts).slice(0,10)<from)return false;
+    if(to&&String(ts).slice(0,10)>to)return false;
+    if(q){
+      const hay=`${r.user||r.username||r.engineerName||''} ${act} ${c} ${r.documentId||r._id||''} ${JSON.stringify(r.changes||r.diff||r.details||'')}`.toLowerCase();
+      if(!hay.includes(q))return false;
+    }
+    return true;
+  }).sort((a,b)=>{
+    const av=String(a[atSortKey]||a.timestamp||''), bv=String(b[atSortKey]||b.timestamp||'');
+    return av.localeCompare(bv)*atSortDir;
+  });
+}
+
+function renderAuditView(){
+  const rows=getAuditFiltered();
+  const rpp=+document.getElementById('at-rpp').value||50;
+  const total=rows.length;
+  const pages=Math.max(1,Math.ceil(total/rpp));
+  if(atPage>pages)atPage=pages;
+  const page=rows.slice((atPage-1)*rpp,atPage*rpp);
+
+  // KPIs
+  const actions=auditData.map(r=>(r.action||r.method||r.operation||'').toUpperCase());
+  document.getElementById('at-total').textContent=auditData.length;
+  document.getElementById('at-create').textContent=actions.filter(a=>a.includes('CREATE')||a==='POST'||a==='INSERT').length;
+  document.getElementById('at-update').textContent=actions.filter(a=>a.includes('UPDATE')||a==='PUT'||a==='PATCH').length;
+  document.getElementById('at-delete').textContent=actions.filter(a=>a.includes('DELETE')).length;
+
+  document.getElementById('at-count').textContent=`${total} events`;
+  document.getElementById('at-pag-info').textContent=`Showing ${total===0?0:(atPage-1)*rpp+1}–${Math.min(total,atPage*rpp)} of ${total}`;
+
+  if(auditViewMode==='table') renderAuditTable(page);
+  else renderAuditTimeline(page);
+  renderPaginator('at',total,pages,rpp);
+}
+
+function renderAuditTable(page){
+  const tbody=document.getElementById('at-tbody');
+  if(!page.length){tbody.innerHTML=`<tr><td colspan="6" style="text-align:center;padding:28px;color:var(--txt3);">No records found.</td></tr>`;return;}
+  tbody.innerHTML=page.map(r=>{
+    const act=(r.action||r.method||r.operation||'—').toUpperCase();
+    let badgeClass='badge-gray';
+    if(act.includes('CREATE')||act==='POST') badgeClass='badge-green';
+    else if(act.includes('UPDATE')||act==='PUT'||act==='PATCH') badgeClass='badge-blue';
+    else if(act.includes('DELETE')) badgeClass='badge-red';
+    const coll=r.collection||r.model||r.entity||'—';
+    const docId=r.documentId||r.recordId||r.id||'—';
+    const changes=r.changes||r.diff||r.details||r.data||null;
+    const changesStr=changes?JSON.stringify(changes).slice(0,80)+'…':'—';
+    const user=r.user||r.username||r.engineerName||r.performedBy||'—';
+    const ts=r.timestamp||r.createdAt||r.date||'';
+    return `<tr>
+      <td style="color:var(--sf-blue);font-size:10px;">${fmtDT(ts)}</td>
+      <td style="font-weight:700;">${esc(user)}</td>
+      <td><span class="sf-badge ${badgeClass}"><i class="fa-solid ${act.includes('CREATE')||act==='POST'?'fa-plus':act.includes('DELETE')?'fa-trash':act.includes('UPDATE')||act==='PUT'||act==='PATCH'?'fa-pen':'fa-circle'}" style="font-size:8px;"></i> ${act}</span></td>
+      <td><span class="tl-collection">${esc(coll)}</span></td>
+      <td style="font-family:monospace;font-size:10px;color:var(--txt3);">${esc(String(docId).slice(0,20))}</td>
+      <td style="font-size:10px;color:var(--txt3);max-width:200px;overflow:hidden;text-overflow:ellipsis;" title="${esc(JSON.stringify(changes||''))}">${esc(changesStr)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderAuditTimeline(page){
+  const container=document.getElementById('at-timeline-body');
+  if(!page.length){container.innerHTML=`<div style="text-align:center;padding:28px;color:var(--txt3);">No records found.</div>`;return;}
+  container.innerHTML=page.map(r=>{
+    const act=(r.action||r.method||r.operation||'').toUpperCase();
+    let dotClass='default', dotIcon='fa-circle-dot';
+    if(act.includes('CREATE')||act==='POST'){dotClass='create';dotIcon='fa-plus-circle';}
+    else if(act.includes('UPDATE')||act==='PUT'||act==='PATCH'){dotClass='update';dotIcon='fa-pen-circle';}
+    else if(act.includes('DELETE')){dotClass='delete';dotIcon='fa-trash-can';}
+    const user=r.user||r.username||r.engineerName||r.performedBy||'Unknown';
+    const coll=r.collection||r.model||r.entity||'';
+    const ts=r.timestamp||r.createdAt||r.date||'';
+    const changes=r.changes||r.diff||r.details||r.data||null;
+    let detailHtml='';
+    if(changes){
+      try{
+        const ch=typeof changes==='string'?JSON.parse(changes):changes;
+        detailHtml=`<div class="tl-detail">${esc(JSON.stringify(ch,null,2).slice(0,400))}${JSON.stringify(ch).length>400?'\n…':''}</div>`;
+      }catch{
+        detailHtml=`<div class="tl-detail">${esc(String(changes).slice(0,300))}</div>`;
+      }
+    }
+    return `<div class="tl-item">
+      <div class="tl-dot ${dotClass}"><i class="fa-solid ${dotIcon}" style="font-size:11px;"></i></div>
+      <div class="tl-body">
+        <div class="tl-header">
+          <span class="tl-user">${esc(user)}</span>
+          <span class="tl-action">${act.toLowerCase()}</span>
+          ${coll?`<span class="tl-collection">${esc(coll)}</span>`:''}
+          <span class="tl-time">${fmtDT(ts)}</span>
+        </div>
+        ${detailHtml}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function atSort(key){
+  if(atSortKey===key)atSortDir*=-1;else{atSortKey=key;atSortDir=-1;}
+  document.querySelectorAll('[id^="at-sort-"]').forEach(e=>e.innerHTML='');
+  const el=document.getElementById('at-sort-'+key);
+  if(el)el.innerHTML=atSortDir===1?'<i class="fa-solid fa-arrow-up" style="font-size:8px;"></i>':'<i class="fa-solid fa-arrow-down" style="font-size:8px;"></i>';
+  atPage=1;renderAuditView();
+}
+
+function clearAuditFilters(){
+  ['at-search','at-from','at-to'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('at-action').value='';
+  document.getElementById('at-coll').value='';
+  atPage=1;renderAuditView();
+}
+
+/* ══════════════════════════════════════
+   EMAIL LOGS
+══════════════════════════════════════ */
+function populateEmailTypeDropdown(){
+  const types=[...new Set(emailData.map(r=>r.type||r.emailType||r.templateName||'').filter(Boolean))].sort();
+  const sel=document.getElementById('el-type');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">All Types</option>'+types.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
+  if(types.includes(cur))sel.value=cur;
+}
+
+function getEmailFiltered(){
+  const q=(document.getElementById('el-search').value||'').toLowerCase().trim();
+  const type=document.getElementById('el-type').value;
+  const from=document.getElementById('el-from').value;
+  const to=document.getElementById('el-to').value;
+  return emailData.filter(r=>{
+    if(type&&(r.type||r.emailType||r.templateName||'')!==type)return false;
+    const ts=r.createdAt||r.sentAt||r.timestamp||'';
+    if(from&&String(ts).slice(0,10)<from)return false;
+    if(to&&String(ts).slice(0,10)>to)return false;
+    if(q){
+      const hay=`${r.to||r.recipient||''} ${r.subject||''} ${r.type||r.emailType||''} ${r.sentBy||r.user||''} ${r.status||''}`.toLowerCase();
+      if(!hay.includes(q))return false;
+    }
+    return true;
+  }).sort((a,b)=>{
+    const av=String(a[elSortKey]||a.createdAt||''), bv=String(b[elSortKey]||b.createdAt||'');
+    return av.localeCompare(bv)*elSortDir;
+  });
+}
+
+function renderEmailTable(){
+  const rows=getEmailFiltered();
+  const rpp=+document.getElementById('el-rpp').value||50;
+  const total=rows.length;
+  const pages=Math.max(1,Math.ceil(total/rpp));
+  if(elPage>pages)elPage=pages;
+  const page=rows.slice((elPage-1)*rpp,elPage*rpp);
+
+  // KPIs
+  const todayStr=today();
+  const todayRows=emailData.filter(r=>String(r.createdAt||r.sentAt||r.timestamp||'').slice(0,10)===todayStr);
+  const uniqueRec=new Set(emailData.map(r=>r.to||r.recipient||'').filter(Boolean)).size;
+  const types=new Set(emailData.map(r=>r.type||r.emailType||r.templateName||'').filter(Boolean)).size;
+  document.getElementById('el-total').textContent=emailData.length;
+  document.getElementById('el-today').textContent=todayRows.length;
+  document.getElementById('el-recipients').textContent=uniqueRec;
+  document.getElementById('el-types').textContent=types;
+
+  document.getElementById('el-count').textContent=`${total} emails`;
+  document.getElementById('el-pag-info').textContent=`Showing ${total===0?0:(elPage-1)*rpp+1}–${Math.min(total,elPage*rpp)} of ${total}`;
+
+  const tbody=document.getElementById('el-tbody');
+  if(!page.length){tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--txt3);">No records found.</td></tr>`;renderPaginator('el',total,pages,rpp);return;}
+
+  tbody.innerHTML=page.map(r=>{
+    const status=r.status||r.deliveryStatus||'sent';
+    const stClass=status.toLowerCase()==='failed'||status.toLowerCase()==='error'?'badge-red':'badge-green';
+    const stIcon=status.toLowerCase()==='failed'?'fa-xmark':'fa-check';
+    const recipient=r.to||r.recipient||r.email||'—';
+    const subject=r.subject||r.emailSubject||'—';
+    const type=r.type||r.emailType||r.templateName||'—';
+    const sentBy=r.sentBy||r.user||r.triggeredBy||'—';
+    const ts=r.createdAt||r.sentAt||r.timestamp||'';
+    const detail=r.roCode||r.details||r.message||'';
+    return `<tr>
+      <td style="color:var(--sf-blue);font-size:10px;">${fmtDT(ts)}</td>
+      <td style="font-weight:600;color:var(--txt);">${esc(recipient)}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;" title="${esc(subject)}">${esc(subject.slice(0,50))}${subject.length>50?'…':''}</td>
+      <td><span class="sf-badge badge-purple">${esc(type)}</span></td>
+      <td><span class="sf-badge ${stClass}"><i class="fa-solid ${stIcon}" style="font-size:8px;"></i> ${esc(status)}</span></td>
+      <td style="color:var(--txt3);">${esc(sentBy)}</td>
+      <td style="font-size:10px;color:var(--txt3);">${esc(String(detail).slice(0,40))}${String(detail).length>40?'…':''}</td>
+    </tr>`;
+  }).join('');
+
+  renderPaginator('el',total,pages,rpp);
+}
+
+function elSort(key){
+  if(elSortKey===key)elSortDir*=-1;else{elSortKey=key;elSortDir=-1;}
+  document.querySelectorAll('[id^="el-sort-"]').forEach(e=>e.innerHTML='');
+  const el=document.getElementById('el-sort-'+key);
+  if(el)el.innerHTML=elSortDir===1?'<i class="fa-solid fa-arrow-up" style="font-size:8px;"></i>':'<i class="fa-solid fa-arrow-down" style="font-size:8px;"></i>';
+  elPage=1;renderEmailTable();
+}
+
+function clearEmailFilters(){
+  ['el-search','el-from','el-to'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('el-type').value='';
+  elPage=1;renderEmailTable();
+}
+
+/* ══════════════════════════════════════
+   PAGINATION
+══════════════════════════════════════ */
+function renderPaginator(prefix,total,tp,rpp){
+  const curPage=prefix==='ll'?llPage:prefix==='at'?atPage:prefix==='el'?elPage:prefix==='er'?erPage:slPage;
+  const c=document.getElementById(prefix+'-paginator');
+  if(!c) return;
+  c.innerHTML='';
+  function getPage(){return prefix==='ll'?llPage:prefix==='at'?atPage:prefix==='el'?elPage:prefix==='er'?erPage:slPage;}
+  function setPage(p){if(prefix==='ll')llPage=p;else if(prefix==='at')atPage=p;else if(prefix==='el')elPage=p;else if(prefix==='er')erPage=p;else slPage=p;}
+  function renderTable(){if(prefix==='ll')renderLoginTable();else if(prefix==='at')renderAuditView();else if(prefix==='el')renderEmailTable();else if(prefix==='er')renderErrorTable();else renderServerTable();}
+  const prev=document.createElement('button');
+  prev.innerHTML='<i class="fa-solid fa-chevron-left" style="font-size:10px;"></i>';
+  prev.className='sf-page-btn';prev.disabled=curPage===1;
+  prev.onclick=()=>{if(getPage()>1){setPage(getPage()-1);renderTable();}};
+  c.appendChild(prev);
+  let s=Math.max(1,curPage-3),e=Math.min(tp,s+6);
+  if(e-s<6)s=Math.max(1,e-6);
+  for(let i=s;i<=e;i++){
+    const b=document.createElement('button');b.textContent=i;
+    b.className='sf-page-btn'+(i===curPage?' active':'');
+    b.onclick=(p=>()=>{setPage(p);renderTable();})(i);
+    c.appendChild(b);
+  }
+  const next=document.createElement('button');
+  next.innerHTML='<i class="fa-solid fa-chevron-right" style="font-size:10px;"></i>';
+  next.className='sf-page-btn';next.disabled=curPage===tp;
+  next.onclick=()=>{if(getPage()<tp){setPage(getPage()+1);renderTable();}};
+  c.appendChild(next);
+}
+
+/* ══════════════════════════════════════
+   EXPORTS
+══════════════════════════════════════ */
+function toExcel(data,sheetName,filename){
+  const ws=XLSX.utils.json_to_sheet(data);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,sheetName);
+  XLSX.writeFile(wb,filename);
+  showToast('Exported','success',filename);
+}
+
+function exportLoginExcel(){
+  const rows=getLoginFiltered().map(r=>({
+    'Engineer Name':r.engineerName||'','Username':r.username||'','Role':r.role||'',
+    'Login Time':fmtDT(r.loginTime),'Logout Time':r.logoutTime?fmtDT(r.logoutTime):'Active',
+    'Session Duration':sessionDur(r.loginTime,r.logoutTime),'IP Address':r.ipAddress||'',
+    'User Agent':r.userAgent||'',
+  }));
+  toExcel(rows,'Login Logs',`login_logs_${today()}.xlsx`);
+}
+
+function exportLoginCSV(){
+  const rows=getLoginFiltered();
+  const h=['engineerName','username','role','loginTime','logoutTime','ipAddress'];
+  const csv=[h.join(','),...rows.map(r=>h.map(k=>JSON.stringify(r[k]??'')).join(','))].join('\n');
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);a.download=`login_logs_page_${today()}.csv`;a.click();
+}
+
+function exportAuditExcel(){
+  const rows=getAuditFiltered().map(r=>({
+    'Timestamp':fmtDT(r.timestamp||r.createdAt||r.date),
+    'User':r.user||r.username||r.engineerName||r.performedBy||'',
+    'Action':r.action||r.method||r.operation||'',
+    'Collection':r.collection||r.model||r.entity||'',
+    'Document ID':r.documentId||r.recordId||r._id||'',
+    'Changes':JSON.stringify(r.changes||r.diff||r.details||r.data||''),
+  }));
+  toExcel(rows,'Audit Trail',`audit_trail_${today()}.xlsx`);
+}
+
+function exportEmailExcel(){
+  const rows=getEmailFiltered().map(r=>({
+    'Sent At':fmtDT(r.createdAt||r.sentAt||r.timestamp),
+    'Recipient':r.to||r.recipient||r.email||'',
+    'Subject':r.subject||r.emailSubject||'',
+    'Type':r.type||r.emailType||r.templateName||'',
+    'Status':r.status||r.deliveryStatus||'',
+    'Sent By':r.sentBy||r.user||r.triggeredBy||'',
+    'Details':r.roCode||r.details||r.message||'',
+  }));
+  toExcel(rows,'Email Logs',`email_logs_${today()}.xlsx`);
+}
+
+/* ══════════════════════════════════════
+   ERROR LOGS — Source + Data
+══════════════════════════════════════ */
+let errorData = [];
+let errorSource = 'local';
+let erPage = 1;
+let erSortKey = 'timestamp', erSortDir = -1;
+
+function setErrorSource(src) {
+  errorSource = src;
+  document.getElementById('er-src-local').style.cssText   = src==='local'   ? 'border-color:var(--sf-blue);color:var(--sf-blue);background:var(--sf-blue-lt);height:32px;font-size:11px;' : 'height:32px;font-size:11px;';
+  document.getElementById('er-src-backend').style.cssText = src==='backend' ? 'border-color:var(--sf-blue);color:var(--sf-blue);background:var(--sf-blue-lt);height:32px;font-size:11px;' : 'height:32px;font-size:11px;';
+  document.getElementById('er-source-badge').textContent  = src==='local' ? '📍 Local Storage' : '☁️ Backend Server';
+  loadErrorLogs();
+}
+
+async function loadErrorLogs() {
+  if (errorSource === 'local') {
+    // Read from localStorage (errorLogger.js stores here)
+    try {
+      const local = JSON.parse(localStorage.getItem('relcon_error_logs') || '[]');
+      const retry = JSON.parse(localStorage.getItem('relcon_error_retry_queue') || '[]');
+      const seen = new Set();
+      errorData = [...local, ...retry].filter(e => {
+        if (!e.id || seen.has(e.id)) return false;
+        seen.add(e.id); return true;
+      });
+    } catch { errorData = []; }
+
+  } else {
+    // ── Step 1: Ping to check if route is reachable ──
+    try {
+      const pingRes = await fetch(`${BASE}/audit/errorLogs/ping`);
+      if (!pingRes.ok) throw new Error('Ping failed: HTTP ' + pingRes.status);
+    } catch(pingErr) {
+      showToast('Route not reachable', 'error', pingErr.message + ' — Check server.js & errorLogs.js');
+      // Fallback to local
+      errorSource = 'local';
+      document.getElementById('er-src-local').style.cssText = 'border-color:var(--sf-blue);color:var(--sf-blue);background:var(--sf-blue-lt);height:32px;font-size:11px;';
+      document.getElementById('er-src-backend').style.cssText = 'height:32px;font-size:11px;';
+      document.getElementById('er-source-badge').textContent = '📍 Local Storage';
+      try { errorData = JSON.parse(localStorage.getItem('relcon_error_logs') || '[]'); } catch { errorData = []; }
+      document.getElementById('tab-count-error').textContent = errorData.length;
+      populateErrorDropdowns(); erPage = 1; renderErrorTable();
+      return;
+    }
+
+    // ── Step 2: Fetch actual data ──
+    try {
+      const res = await fetch(`${BASE}/audit/errorLogs?limit=500`, { headers: hdrs });
+      if (res.status === 401 || res.status === 403) throw new Error('HTTP ' + res.status + ' — Token invalid ya admin nahi ho');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const json = await res.json();
+      errorData = Array.isArray(json) ? json : (json.logs && Array.isArray(json.logs) ? json.logs : []);
+    } catch(e) {
+      showToast('Backend error logs fetch failed', 'error', e.message);
+      errorSource = 'local';
+      document.getElementById('er-src-local').style.cssText = 'border-color:var(--sf-blue);color:var(--sf-blue);background:var(--sf-blue-lt);height:32px;font-size:11px;';
+      document.getElementById('er-src-backend').style.cssText = 'height:32px;font-size:11px;';
+      document.getElementById('er-source-badge').textContent = '📍 Local Storage';
+      try { errorData = JSON.parse(localStorage.getItem('relcon_error_logs') || '[]'); } catch { errorData = []; }
+    }
+  }
+
+  document.getElementById('tab-count-error').textContent = errorData.length;
+  populateErrorDropdowns();
+  erPage = 1;
+  renderErrorTable();
+}
+
+function populateErrorDropdowns() {
+  // Pages dropdown
+  const pages = [...new Set(errorData.map(r => r.page || '').filter(Boolean))].sort();
+  const pageSel = document.getElementById('er-page');
+  const curPage = pageSel.value;
+  pageSel.innerHTML = '<option value="">All Pages</option>' + pages.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
+  if (pages.includes(curPage)) pageSel.value = curPage;
+
+  // Users dropdown
+  const users = [...new Set(errorData.map(r => r.user || '').filter(Boolean))].sort();
+  const userSel = document.getElementById('er-user');
+  const curUser = userSel.value;
+  userSel.innerHTML = '<option value="">All Users</option>' + users.map(u => `<option value="${esc(u)}">${esc(u)}</option>`).join('');
+  if (users.includes(curUser)) userSel.value = curUser;
+}
+
+function getErrorFiltered() {
+  const q    = (document.getElementById('er-search').value || '').toLowerCase().trim();
+  const type = document.getElementById('er-type').value;
+  const page = document.getElementById('er-page').value;
+  const user = document.getElementById('er-user').value;
+  const from = document.getElementById('er-from').value;
+  const to   = document.getElementById('er-to').value;
+
+  return errorData.filter(r => {
+    if (type && (r.type || '') !== type) return false;
+    if (page && (r.page || '') !== page) return false;
+    if (user && (r.user || '') !== user) return false;
+    if (from && String(r.timestamp || '').slice(0, 10) < from) return false;
+    if (to   && String(r.timestamp || '').slice(0, 10) > to)   return false;
+    if (q) {
+      const hay = `${r.message||''} ${r.page||''} ${r.user||''} ${r.type||''} ${r.url||''} ${r.details?.endpoint||''} ${r.details?.filename||''} ${r.details?.response||''}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  }).sort((a, b) => {
+    const av = String(a.timestamp || ''), bv = String(b.timestamp || '');
+    return av.localeCompare(bv) * erSortDir;
+  });
+}
+
+function renderErrorTable() {
+  const rows = getErrorFiltered();
+  const rpp  = +document.getElementById('er-rpp').value || 50;
+  const total = rows.length;
+  const pages = Math.max(1, Math.ceil(total / rpp));
+  if (erPage > pages) erPage = pages;
+  const page = rows.slice((erPage - 1) * rpp, erPage * rpp);
+
+  // KPIs
+  const todayStr = today();
+  document.getElementById('er-total').textContent    = errorData.length;
+  document.getElementById('er-today').textContent    = errorData.filter(r => String(r.timestamp||'').slice(0,10) === todayStr).length;
+  document.getElementById('er-warnings').textContent = errorData.filter(r => (r.type||'').includes('warn')).length;
+  document.getElementById('er-fetch').textContent    = errorData.filter(r => (r.type||'') === 'fetch_error').length;
+  document.getElementById('er-pages').textContent    = new Set(errorData.map(r => r.page||'').filter(Boolean)).size;
+  document.getElementById('er-count').textContent    = `${total} events`;
+  document.getElementById('er-pag-info').textContent = `Showing ${total===0?0:(erPage-1)*rpp+1}–${Math.min(total,erPage*rpp)} of ${total}`;
+
+  const tbody = document.getElementById('er-tbody');
+  if (!page.length) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:28px;color:var(--txt3);">
+      <i class="fa-solid fa-circle-check" style="color:var(--sf-green);font-size:24px;display:block;margin-bottom:8px;"></i>
+      No errors found — app is running clean! 🎉
+    </td></tr>`;
+    renderPaginator('er', total, pages, rpp);
+    return;
+  }
+
+  // Type badge config
+  const typeConf = {
+    'js_error':          { cls:'badge-red',    icon:'fa-bolt',           label:'JS Error' },
+    'promise_rejection': { cls:'badge-orange',  icon:'fa-rotate',         label:'Promise' },
+    'console_error':     { cls:'badge-red',    icon:'fa-terminal',       label:'Console Err' },
+    'console_warn':      { cls:'badge-yellow', icon:'fa-triangle-exclamation', label:'Warn' },
+    'fetch_error':       { cls:'badge-purple', icon:'fa-globe',           label:'API Fail' },
+    'manual_error':      { cls:'badge-red',    icon:'fa-thumbtack',       label:'Manual Err' },
+    'manual_warn':       { cls:'badge-yellow', icon:'fa-thumbtack',       label:'Manual Warn' },
+    'manual_info':       { cls:'badge-teal',   icon:'fa-circle-info',    label:'Info' },
+  };
+
+  // Detail modal data store
+  window.__errDetails = {};
+
+  tbody.innerHTML = page.map((r, i) => {
+    const conf = typeConf[r.type] || { cls:'badge-gray', icon:'fa-circle-dot', label: r.type||'—' };
+    const status = r.details?.statusCode ? `<span class="sf-badge ${r.details.statusCode>=500?'badge-red':'badge-orange'}">${r.details.statusCode}</span>` : '—';
+    const endpoint = r.details?.endpoint ? r.details.endpoint.replace(window.BACKEND_URL||'https://relcon-crm.onrender.com','').slice(0,35) : (r.details?.filename ? r.details.filename.split('/').pop().slice(0,25) : '—');
+    const msg = (r.message||'—').slice(0,80) + ((r.message||'').length>80?'…':'');
+    const idx = (erPage-1)*rpp + i;
+    window.__errDetails[idx] = r;
+    return `<tr>
+      <td style="font-size:10px;color:var(--sf-blue);white-space:nowrap;">${fmtDT(r.timestamp)}</td>
+      <td><span class="sf-badge ${conf.cls}"><i class="fa-solid ${conf.icon}" style="font-size:8px;"></i> ${conf.label}</span></td>
+      <td style="font-size:10px;font-weight:600;" title="${esc(r.url||'')}">${esc(r.page||'—')}</td>
+      <td style="font-size:11px;">${esc(r.user||'—')}</td>
+      <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;font-size:11px;" title="${esc(r.message||'')}">${esc(msg)}</td>
+      <td>${status}</td>
+      <td style="font-size:10px;color:var(--txt3);font-family:monospace;white-space:nowrap;overflow:hidden;max-width:140px;text-overflow:ellipsis;" title="${esc(r.details?.endpoint||r.details?.filename||'')}">${esc(endpoint)}</td>
+      <td style="text-align:center;">
+        <button onclick="showErrDetail(${idx})" class="sf-btn sf-btn-neutral" style="height:24px;width:28px;padding:0;font-size:11px;" title="View full detail">
+          <i class="fa-solid fa-eye"></i>
+        </button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  renderPaginator('er', total, pages, rpp);
+}
+
+/* Error Detail Modal */
+function showErrDetail(idx) {
+  const r = window.__errDetails[idx];
+  if (!r) return;
+  const body = `
+    <div style="background:var(--surface);border-radius:12px;max-width:640px;width:95%;margin:20px auto;overflow:hidden;box-shadow:var(--sh-md);border:1px solid var(--border);">
+      <div style="background:var(--sf-navy);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;">
+        <span style="color:#e8f4fd;font-weight:700;font-size:14px;"><i class="fa-solid fa-bug"></i> Error Detail</span>
+        <button onclick="document.getElementById('errDetailModal').remove()" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;width:26px;height:26px;border-radius:5px;cursor:pointer;font-size:11px;">✕</button>
+      </div>
+      <div style="padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12px;">
+        <div><div style="font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">Type</div><div>${esc(r.type||'—')}</div></div>
+        <div><div style="font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">Timestamp</div><div>${fmtDT(r.timestamp)}</div></div>
+        <div><div style="font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">User</div><div>${esc(r.user||'—')}</div></div>
+        <div><div style="font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">Page</div><div>${esc(r.page||'—')}</div></div>
+        ${r.details?.statusCode ? `<div><div style="font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">HTTP Status</div><div style="color:var(--sf-red);font-weight:700;">${r.details.statusCode}</div></div>` : ''}
+        ${r.details?.endpoint   ? `<div style="grid-column:1/-1;"><div style="font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">Endpoint</div><div style="font-family:monospace;font-size:11px;word-break:break-all;">${esc(r.details.endpoint)}</div></div>` : ''}
+        ${r.details?.filename   ? `<div style="grid-column:1/-1;"><div style="font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">File</div><div style="font-family:monospace;font-size:11px;">${esc(r.details.filename)} : ${r.details.lineno||'?'}:${r.details.colno||'?'}</div></div>` : ''}
+      </div>
+      <div style="padding:0 16px 8px;">
+        <div style="font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Error Message</div>
+        <div style="background:var(--sf-red-lt);border:1px solid #f5c6ca;border-radius:6px;padding:10px 12px;font-size:11px;color:var(--sf-red);word-break:break-word;">${esc(r.message||'—')}</div>
+      </div>
+      ${r.details?.stack ? `<div style="padding:8px 16px 16px;">
+        <div style="font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Stack Trace</div>
+        <pre style="background:#0b1628;color:#a8d5ff;padding:12px;border-radius:6px;font-size:10px;overflow-x:auto;white-space:pre-wrap;line-height:1.5;">${esc(r.details.stack)}</pre>
+      </div>` : ''}
+      ${r.details?.response ? `<div style="padding:0 16px 16px;">
+        <div style="font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">API Response Body</div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-family:monospace;font-size:10px;color:var(--txt3);word-break:break-word;">${esc(r.details.response)}</div>
+      </div>` : ''}
+      <div style="padding:0 16px 16px;">
+        <div style="font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Full URL</div>
+        <div style="font-size:10px;color:var(--txt4);font-family:monospace;word-break:break-all;">${esc(r.url||'—')}</div>
+      </div>
+    </div>`;
+  const overlay = document.createElement('div');
+  overlay.id = 'errDetailModal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;overflow-y:auto;padding:20px;backdrop-filter:blur(4px);';
+  overlay.innerHTML = body;
+  overlay.onclick = e => { if(e.target===overlay) overlay.remove(); };
+  document.body.appendChild(overlay);
+}
+
+function clearErrorFilters() {
+  ['er-search','er-from','er-to'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('er-type').value = '';
+  document.getElementById('er-page').value = '';
+  document.getElementById('er-user').value = '';
+  erPage = 1; renderErrorTable();
+}
+
+function clearLocalErrors() {
+  if (!confirm('Clear all locally stored error logs? This cannot be undone.')) return;
+  localStorage.removeItem('relcon_error_logs');
+  errorData = [];
+  document.getElementById('tab-count-error').textContent = '0';
+  renderErrorTable();
+  showToast('Local error logs cleared', 'success');
+}
+
+function exportErrorExcel() {
+  const rows = getErrorFiltered().map(r => ({
+    'Timestamp':  fmtDT(r.timestamp),
+    'Type':       r.type || '',
+    'Page':       r.page || '',
+    'User':       r.user || '',
+    'Message':    r.message || '',
+    'HTTP Status':r.details?.statusCode || '',
+    'Endpoint':   r.details?.endpoint || '',
+    'File':       r.details?.filename ? `${r.details.filename}:${r.details.lineno||''}` : '',
+    'Stack':      r.details?.stack || '',
+    'URL':        r.url || '',
+  }));
+  toExcel(rows, 'Error Logs', `error_logs_${today()}.xlsx`);
+}
+
+/* ══════════════════════════════════════
+   SERVER LOGS
+══════════════════════════════════════ */
+let serverData = [];
+let slPage = 1;
+let slStreamActive = false;
+let slEventSource = null;
+
+async function loadServerLogs() {
+  const level  = document.getElementById('sl-level').value;
+  const method = document.getElementById('sl-method').value;
+  const from   = document.getElementById('sl-from').value;
+  const to     = document.getElementById('sl-to').value;
+  const search = document.getElementById('sl-search').value;
+
+  let url = `${BASE}/audit/serverLogs?limit=200`;
+  if (level)  url += `&level=${level}`;
+  if (method) url += `&method=${method}`;
+  if (from)   url += `&from=${from}`;
+  if (to)     url += `&to=${to}`;
+  if (search) url += `&search=${encodeURIComponent(search)}`;
+
+  try {
+    const res = await fetch(url, { headers: hdrs });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const json = await res.json();
+    serverData = Array.isArray(json) ? json : (json.logs || []);
+    document.getElementById('tab-count-server').textContent = json.total || serverData.length;
+  } catch(e) {
+    serverData = [];
+    showToast('Server logs fetch failed', 'error', e.message);
+  }
+
+  // Load stats
+  try {
+    const sRes = await fetch(`${BASE}/audit/serverLogs/stats`, { headers: hdrs });
+    if (sRes.ok) {
+      const s = await sRes.json();
+      document.getElementById('sl-total').textContent    = s.total    || 0;
+      document.getElementById('sl-today').textContent    = s.todayCount || 0;
+      document.getElementById('sl-lasthour').textContent = s.lastHour  || 0;
+      document.getElementById('sl-errors').textContent   = s.byLevel?.error || 0;
+      document.getElementById('sl-warns').textContent    = s.byLevel?.warn  || 0;
+      document.getElementById('sl-slow').textContent     = s.slowRequests?.length || 0;
+    }
+  } catch {}
+
+  slPage = 1;
+  renderServerTable();
+}
+
+function renderServerTable() {
+  const q = (document.getElementById('sl-search').value || '').toLowerCase();
+  const rows = q
+    ? serverData.filter(r => (r.message||'').toLowerCase().includes(q) || (r.url||'').toLowerCase().includes(q) || (r.user||'').toLowerCase().includes(q))
+    : serverData;
+
+  const rpp = +document.getElementById('sl-rpp').value || 100;
+  const total = rows.length;
+  const pages = Math.max(1, Math.ceil(total / rpp));
+  if (slPage > pages) slPage = pages;
+  const page = rows.slice((slPage-1)*rpp, slPage*rpp);
+
+  document.getElementById('sl-count').textContent = `${total} logs`;
+  document.getElementById('sl-pag-info').textContent = `Showing ${total===0?0:(slPage-1)*rpp+1}–${Math.min(total,slPage*rpp)} of ${total}`;
+
+  const tbody = document.getElementById('sl-tbody');
+  if (!page.length) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--txt3);">No server logs found.</td></tr>`;
+    renderPaginator('sl', total, pages, rpp);
+    return;
+  }
+
+  const levelConf = {
+    info:  { cls:'badge-blue',   icon:'fa-circle-info' },
+    warn:  { cls:'badge-yellow', icon:'fa-triangle-exclamation' },
+    error: { cls:'badge-red',    icon:'fa-circle-exclamation' },
+    debug: { cls:'badge-gray',   icon:'fa-bug' },
+  };
+
+  tbody.innerHTML = page.map(r => {
+    const lc = levelConf[r.level] || { cls:'badge-gray', icon:'fa-circle-dot' };
+    const statusCls = !r.statusCode ? '' : r.statusCode >= 500 ? 'color:var(--sf-red);font-weight:700;' : r.statusCode >= 400 ? 'color:var(--sf-orange);font-weight:600;' : 'color:var(--sf-green);';
+    const dur = r.durationMs ? (r.durationMs >= 1000 ? `<span style="color:var(--sf-red);font-weight:700;">${r.durationMs}ms</span>` : `${r.durationMs}ms`) : '—';
+    const msg = (r.message || '—').slice(0, 90) + ((r.message||'').length > 90 ? '…' : '');
+    // Row background for errors
+    const rowBg = r.level === 'error' ? 'background:#fff5f5;' : r.level === 'warn' ? 'background:#fffbf0;' : '';
+    return `<tr style="${rowBg}">
+      <td style="font-size:10px;color:var(--sf-blue);white-space:nowrap;">${fmtDT(r.createdAt)}</td>
+      <td><span class="sf-badge ${lc.cls}"><i class="fa-solid ${lc.icon}" style="font-size:8px;"></i> ${r.level||'—'}</span></td>
+      <td style="font-size:10px;font-weight:600;">${r.method||'—'}</td>
+      <td style="font-size:11px;${statusCls}">${r.statusCode||'—'}</td>
+      <td style="font-size:11px;max-width:320px;overflow:hidden;text-overflow:ellipsis;" title="${esc(r.message||'')}">${esc(msg)}</td>
+      <td style="font-size:11px;">${dur}</td>
+      <td style="font-size:11px;color:var(--txt3);">${esc(r.user||'—')}</td>
+      <td style="font-size:10px;font-family:monospace;color:var(--txt4);">${esc((r.ip||'').slice(0,15))}</td>
+    </tr>`;
+  }).join('');
+
+  renderPaginator('sl', total, pages, rpp);
+}
+
+/* ── Real-time SSE stream ── */
+function toggleServerStream() {
+  if (slStreamActive) {
+    stopServerStream();
+  } else {
+    startServerStream();
+  }
+}
+
+function startServerStream() {
+  if (slEventSource) slEventSource.close();
+  const token = localStorage.getItem('token');
+  slEventSource = new EventSource(`${BASE}/audit/serverLogs/stream?token=${token}`);
+
+  slStreamActive = true;
+  document.getElementById('sl-stream-btn').innerHTML = '<i class="fa-solid fa-stop" style="font-size:8px;"></i> Stop Live';
+  document.getElementById('sl-stream-btn').style.background = 'var(--sf-red)';
+  document.getElementById('sl-live-indicator').style.display = 'flex';
+
+  slEventSource.onmessage = (e) => {
+    try {
+      const log = JSON.parse(e.data);
+      // Prepend to serverData
+      serverData.unshift(log);
+      if (serverData.length > 500) serverData.pop();
+      document.getElementById('tab-count-server').textContent = serverData.length;
+      // Re-render only if on page 1
+      if (slPage === 1) renderServerTable();
+    } catch {}
+  };
+
+  slEventSource.onerror = () => {
+    stopServerStream();
+    showToast('Live stream disconnected', 'warn', 'Click Start Live to reconnect');
+  };
+}
+
+function stopServerStream() {
+  if (slEventSource) { slEventSource.close(); slEventSource = null; }
+  slStreamActive = false;
+  document.getElementById('sl-stream-btn').innerHTML = '<i class="fa-solid fa-circle" style="font-size:8px;"></i> Start Live';
+  document.getElementById('sl-stream-btn').style.background = 'var(--sf-green)';
+  document.getElementById('sl-live-indicator').style.display = 'none';
+}
+
+function clearServerFilters() {
+  ['sl-search','sl-from','sl-to'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('sl-level').value = '';
+  document.getElementById('sl-method').value = '';
+  slPage = 1; loadServerLogs();
+}
+
+async function clearServerLogs() {
+  if (!confirm('Delete server logs older than 7 days?')) return;
+  try {
+    const res = await fetch(`${BASE}/audit/serverLogs`, {
+      method: 'DELETE', headers: { ...hdrs, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ confirm: true, olderThanDays: 7 })
+    });
+    const json = await res.json();
+    showToast(`Deleted ${json.deleted} old logs`, 'success');
+    loadServerLogs();
+  } catch(e) { showToast('Delete failed', 'error', e.message); }
+}
+
+function exportServerExcel() {
+  const rows = serverData.map(r => ({
+    'Timestamp': fmtDT(r.createdAt),
+    'Level':     r.level || '',
+    'Method':    r.method || '',
+    'Status':    r.statusCode || '',
+    'Message':   r.message || '',
+    'URL':       r.url || '',
+    'Duration':  r.durationMs ? r.durationMs + 'ms' : '',
+    'User':      r.user || '',
+    'IP':        r.ip || '',
+  }));
+  toExcel(rows, 'Server Logs', `server_logs_${today()}.xlsx`);
+}
+
+/* renderPaginator now handles all prefixes: ll, at, el, er, sl */
+  new Date().toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+
+reloadAll();
+</script>
+</body>
+</html>
