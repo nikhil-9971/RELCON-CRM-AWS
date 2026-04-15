@@ -1534,7 +1534,7 @@ const isLocal  = (hostname === 'localhost' || hostname === '127.0.0.1') && windo
 const BASE_URL = isLocal ? 'http://localhost:3001' : (window.BACKEND_URL || 'https://relcon-crm.onrender.com');
 const WS_URL   = isLocal
   ? `ws://localhost:3001?token=${encodeURIComponent(token)}`
-  : `${(window.BACKEND_URL||'https://relcon-crm.onrender.com').replace('https://','wss://')}?token=${encodeURIComponent(token)}`;
+  : `${(window.BACKEND_URL || '/api').replace('https://','wss://')}?token=${encodeURIComponent(token)}`;
 
 function parseUser() {
   try {

@@ -605,7 +605,7 @@ const COLLS = [
 const S = {
   url: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
        ? 'http://localhost:3001' 
-       : (window.BACKEND_URL || 'https://relcon-crm.onrender.com'),
+       : (window.BACKEND_URL || '/api'),
   token: '', connected: false, active: null,
   data: [], filtered: [], page: 1, perPage: 25,
   sk: null, sd: 1, counts: {}, editRec: null
