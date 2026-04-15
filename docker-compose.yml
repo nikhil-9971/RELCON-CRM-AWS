@@ -18,6 +18,7 @@ services:
       MONGO_URI: ${MONGO_URI}
       SESSION_SECRET: ${SESSION_SECRET}
       FRONTEND_URL: http://${EC2_HOST}
+      GROQ_API_KEY: ${GROQ_API_KEY}
     ports:
       - "3001:3000"
     networks:
@@ -39,6 +40,7 @@ services:
       - "80:80"
     environment:
       - TZ=Asia/Kolkata
+      - BACKEND_URL=http://${EC2_HOST}/api
     networks:
       - relcon_net
 
