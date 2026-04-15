@@ -37,6 +37,7 @@ connectDB();
 const allowedOrigins = [
   "https://relconecz1.netlify.app",
   "https://relcon-crm-frontend.onrender.com",  // ✅ Render frontend
+  "http://65.1.135.89", 
   "http://localhost:3000",
   "http://localhost:3001",
   "http://127.0.0.1:3000",
@@ -44,6 +45,7 @@ const allowedOrigins = [
   "http://localhost:5500",
   "http://127.0.0.1:5500",
   process.env.FRONTEND_URL,
+ 
   null,
   "null",
 ];
