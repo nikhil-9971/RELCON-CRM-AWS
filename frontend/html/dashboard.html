@@ -1221,7 +1221,7 @@ const typingEl=document.getElementById("typingIndicator");
 let typingTimeout,ws,lastUserMessageEl=null;
 
 function initWS(){
-  ws=new WebSocket(`${(window.BACKEND_URL||"https://relcon-crm.onrender.com").replace("https://","wss://")}?token=${encodeURIComponent(token)}`);
+  ws=new WebSocket(`${(window.BACKEND_URL||"/api").replace("https://","wss://")}?token=${encodeURIComponent(token)}`);
   ws.onopen=()=>{loadGroupHistory();ws.send(JSON.stringify({type:"get_presence"}));};
   ws.onmessage=(e)=>{
     const msg=JSON.parse(e.data);
