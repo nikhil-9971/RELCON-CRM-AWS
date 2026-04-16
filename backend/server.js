@@ -71,22 +71,24 @@ app.use(httpLogger);
 // ✅ Routes
 app.get("/", (req, res) => res.send("✅ RELCON Backend is running"));
 
-app.use("/", authRoutes);
-app.use("/romaster", roRoutes);
-app.use("/", planRoutes);
-app.use("/", statusRoutes);
-app.use("/", atgstatusRoutes);
-app.use("/audit", auditRoutes);
-app.use("/audit", errorLogRoutes);    // Frontend error logs
-app.use("/audit", serverLogsRouter);  // ✅ Server/container logs
-app.use("/", taskRoutes);
-app.use("/jioBP", jioBPStatusRoutes);
-app.use("/bpclStatus", bpclStatusRoutes);
-app.use("/materialRequirement", materialRoutes);
-app.use("/chat", chatRoutes);
-app.use("/", incidentRoutes);
-app.use("/ai", aiAgentRoutes);
-app.use("/materialManagement", materialManagement)
+app.use("/api", authRoutes);
+app.use("/api/romaster", roRoutes);
+app.use("/api", planRoutes);
+app.use("/api", statusRoutes);
+app.use("/api", atgstatusRoutes);
+app.use("/api/audit", auditRoutes);
+app.use("/api/audit", errorLogRoutes);    // Frontend error logs
+app.use("/api/audit", serverLogsRouter);  // ✅ Server/container logs
+app.use("/api", taskRoutes);
+app.use("/api/jioBP", jioBPStatusRoutes);
+app.use("/api/bpclStatus", bpclStatusRoutes);
+app.use("/api/materialRequirement", materialRoutes);
+app.use("/api/chat", chatRoutes);
+app.use("/api", incidentRoutes);
+app.use("/api/ai", aiAgentRoutes);
+app.use("/api/materialManagement", materialManagement)
+
+
 
 const server = http.createServer(app);
 setupWebsocket(server);
