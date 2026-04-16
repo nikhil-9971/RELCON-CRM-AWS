@@ -33,6 +33,9 @@ const app = express();
 // ✅ MongoDB connect
 connectDB();
 
+// ✅ attach websocket
+setupWebsocket(server);
+
 // ✅ CORS
 const allowedOrigins = [
   "https://nikhildevops.co.in",
