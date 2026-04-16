@@ -28,6 +28,9 @@ const { httpLogger }           = require('./utils/logger');       // ✅ NEW
 const { setupWebsocket, broadcastToAll } = require("./chat_ws");
 const { startCronJobs }        = require("./routes/corn");
 
+// ✅ PEHLE server banao
+const server = http.createServer(app);
+
 const app = express();
 
 // ✅ MongoDB connect
@@ -93,8 +96,6 @@ app.use("/api/materialManagement", materialManagement)
 
 
 
-const server = http.createServer(app);
-setupWebsocket(server);
 startCronJobs(broadcastToAll);
 require("./services/mailer");
 
