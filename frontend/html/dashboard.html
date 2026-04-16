@@ -1220,8 +1220,12 @@ const sendBtn=document.getElementById("sendBtn");
 const typingEl=document.getElementById("typingIndicator");
 let typingTimeout,ws,lastUserMessageEl=null;
 
+function buildWsUrl(){
+  const proto=location.protocol==="https:"?"wss:":"ws:";
+  return `${proto}//${location.host}/api?token=${encodeURIComponent(token)}`;
+}
 function initWS(){
-  ws=new WebSocket(`${(window.BACKEND_URL||"/api").replace("https://","wss://")}?token=${encodeURIComponent(token)}`);
+  ws=new WebSocket(buildWsUrl());
   ws.onopen=()=>{loadGroupHistory();ws.send(JSON.stringify({type:"get_presence"}));};
   ws.onmessage=(e)=>{
     const msg=JSON.parse(e.data);
