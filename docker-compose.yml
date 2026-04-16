@@ -37,7 +37,7 @@ services:
     depends_on:
       - backend
     ports:
-      - "80:80"
+      - "8080:80"
     environment:
       - TZ=Asia/Kolkata
       - BACKEND_URL=http://${EC2_HOST}/api
