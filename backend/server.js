@@ -28,10 +28,11 @@ const { httpLogger }           = require('./utils/logger');       // ✅ NEW
 const { setupWebsocket, broadcastToAll } = require("./chat_ws");
 const { startCronJobs }        = require("./routes/corn");
 
-// ✅ PEHLE server banao
-const server = http.createServer(app);
-
+// ✅ STEP 1: app create (IMPORTANT)
 const app = express();
+
+// ✅ STEP 2: server create
+const server = http.createServer(app);
 
 // ✅ MongoDB connect
 connectDB();
