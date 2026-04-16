@@ -14,7 +14,7 @@ sudo apt-get upgrade -y
 
 # ─── Docker install ───
 echo "🐳 Docker install ho raha hai..."
-sudo apt-get install -y \
+sudo apt-get install -y 
     ca-certificates curl gnupg lsb-release
 
 sudo mkdir -p /etc/apt/keyrings
