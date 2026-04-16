@@ -40,7 +40,7 @@ services:
       - "8080:80"
     environment:
       - TZ=Asia/Kolkata
-      - BACKEND_URL=http://${EC2_HOST}/api
+      - BACKEND_URL=https://${EC2_HOST}/api
     networks:
       - relcon_net
 
