@@ -1221,8 +1221,8 @@ const typingEl=document.getElementById("typingIndicator");
 let typingTimeout,ws,lastUserMessageEl=null;
 
 function buildWsUrl(){
-  const proto=location.protocol==="https:"?"wss:":"ws:";
-  return `${proto}//${location.host}/api?token=${encodeURIComponent(token)}`;
+  const proto = location.protocol === "https:" ? "wss:" : "ws:";
+  return `${proto}//${location.host}/ws?token=${encodeURIComponent(token)}`;
 }
 function initWS(){
   ws=new WebSocket(buildWsUrl());

@@ -199,4 +199,34 @@ function broadcastToAll(message) {
   }
 }
 
+server.on("upgrade", (request, socket, head) => {
+  const parsed = url.parse(request.url, true);
+
+  // ✅ IMPORTANT: Only allow /ws
+  if (!parsed.pathname.startsWith("/ws")) {
+    socket.destroy();
+    return;
+  }
+
+  const token = parsed.query.token;
+  const payload = verifyToken(token);
+
+  if (!payload) {
+    socket.destroy();
+    return;
+  }
+
+  const username = (
+    payload.engineerName ||
+    payload.name ||
+    payload.username ||
+    ""
+  ).trim();
+
+  wss.handleUpgrade(request, socket, head, (ws) => {
+    ws.user = username;
+    wss.emit("connection", ws, request);
+  });
+});
+
 module.exports = { setupWebsocket, broadcastToAll };
