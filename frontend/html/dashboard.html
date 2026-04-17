@@ -1220,12 +1220,8 @@ const sendBtn=document.getElementById("sendBtn");
 const typingEl=document.getElementById("typingIndicator");
 let typingTimeout,ws,lastUserMessageEl=null;
 
-function buildWsUrl(){
-  const proto = location.protocol === "https:" ? "wss:" : "ws:";
-  return `${proto}//${location.host}/ws?token=${encodeURIComponent(token)}`;
-}
 function initWS(){
-  ws=new WebSocket(buildWsUrl());
+  ws=new WebSocket(`${(window.BACKEND_URL||"/api").replace("https://","wss://")}?token=${encodeURIComponent(token)}`);
   ws.onopen=()=>{loadGroupHistory();ws.send(JSON.stringify({type:"get_presence"}));};
   ws.onmessage=(e)=>{
     const msg=JSON.parse(e.data);
@@ -1448,7 +1444,7 @@ async function sendAIMessage(){
   const msg=input.value.trim();
   if(!msg) return;
   const messages=document.getElementById("aiMessages");
-  const backendBaseUrl=window.BACKEND_URL||"https://relcon-crm.onrender.com";
+  const backendBaseUrl=window.BACKEND_URL||"/api";
 
   // User bubble
   const userDiv=document.createElement("div");
