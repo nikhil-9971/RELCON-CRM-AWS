@@ -124,7 +124,7 @@ router.get("/:id", verifyToken, async (req, res) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 // POST /materialManagement — create single record (Admin only)
 // ═══════════════════════════════════════════════════════════════════════════════
-router.post("/", verifyToken, requireRole(["Admin"]), async (req, res) => {
+router.post("/", verifyToken, requireRole(["admin"]), async (req, res) => {
   try {
     const { serialNumber, itemCode, itemName, qty, itemType, customerName, engineerName, remarks } = req.body;
 
@@ -160,7 +160,7 @@ router.post("/", verifyToken, requireRole(["Admin"]), async (req, res) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 // PUT /materialManagement/:id — update record (Admin only)
 // ═══════════════════════════════════════════════════════════════════════════════
-router.put("/:id", verifyToken, requireRole(["Admin", "Manager"]), async (req, res) => {
+router.put("/:id", verifyToken, requireRole(["admin", "manager"]), async (req, res) => {
   try {
     const { serialNumber, itemCode, itemName, qty, itemType, customerName, engineerName, remarks } = req.body;
 
@@ -200,7 +200,7 @@ router.put("/:id", verifyToken, requireRole(["Admin", "Manager"]), async (req, r
 // ═══════════════════════════════════════════════════════════════════════════════
 // DELETE /materialManagement/:id — soft delete (Admin only)
 // ═══════════════════════════════════════════════════════════════════════════════
-router.delete("/:id", verifyToken, requireRole(["Admin"]), async (req, res) => {
+router.delete("/:id", verifyToken, requireRole(["admin"]), async (req, res) => {
   try {
     const item = await MaterialManagement.findById(req.params.id);
     if (!item || !item.isActive) return res.status(404).json({ success: false, message: "Record not found" });
@@ -216,7 +216,7 @@ router.delete("/:id", verifyToken, requireRole(["Admin"]), async (req, res) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 // POST /materialManagement/bulk-upload — Admin uploads Excel/CSV sheet
 // ═══════════════════════════════════════════════════════════════════════════════
-router.post("/bulk-upload", verifyToken, requireRole(["Admin"]), upload.single("file"), async (req, res) => {
+router.post("/bulk-upload", verifyToken, requireRole(["admin"]), upload.single("file"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded" });
 
@@ -285,7 +285,7 @@ router.post("/bulk-upload", verifyToken, requireRole(["Admin"]), upload.single("
 // ═══════════════════════════════════════════════════════════════════════════════
 // GET /materialManagement/export/excel — export all as Excel
 // ═══════════════════════════════════════════════════════════════════════════════
-router.get("/export/excel", verifyToken, requireRole(["Admin", "Manager"]), async (req, res) => {
+router.get("/export/excel", verifyToken, requireRole(["admin", "manager"]), async (req, res) => {
   try {
     const data = await MaterialManagement.find({ isActive: true }).lean();
 
