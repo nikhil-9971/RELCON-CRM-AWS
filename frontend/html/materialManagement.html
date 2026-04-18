@@ -411,10 +411,10 @@ td:first-child{padding-left:18px;}
   <!-- Tabs -->
   <div class="ph-tabs">
     <button class="ph-tab active" onclick="switchTab('all',this)">All Materials</button>
-    <button class="ph-tab" onclick="switchTab('Electrical',this)">Electrical</button>
-    <button class="ph-tab" onclick="switchTab('Mechanical',this)">Mechanical</button>
-    <button class="ph-tab" onclick="switchTab('Electronic',this)">Electronic</button>
-    <button class="ph-tab" onclick="switchTab('Spare Part',this)">Spare Parts</button>
+    <button class="ph-tab" onclick="switchTab('HPCL',this)">HPCL</button>
+    <button class="ph-tab" onclick="switchTab('RBML',this)">RBML</button>
+    <button class="ph-tab" onclick="switchTab('BPCL',this)">BPCL</button>
+    <button class="ph-tab" onclick="switchTab('OTHER',this)">OTHER</button>
   </div>
 </div>
 
@@ -465,14 +465,10 @@ td:first-child{padding-left:18px;}
     </div>
     <select class="tb-filter" id="typeFilter" onchange="onFilter()">
       <option value="">All Types</option>
-      <option>Electrical</option>
-      <option>Mechanical</option>
-      <option>Electronic</option>
-      <option>Civil</option>
-      <option>Consumable</option>
-      <option>Spare Part</option>
-      <option>Tool</option>
-      <option>Other</option>
+      <option>HPCL</option>
+      <option>RBML</option>
+      <option>BPCL</option>
+      <option>OTHER</option>
     </select>
     <select class="tb-filter" id="engineerFilter" onchange="onFilter()">
       <option value="">All Engineers</option>
@@ -559,13 +555,10 @@ td:first-child{padding-left:18px;}
           <label>Item Type <span>*</span></label>
           <select id="fItemType">
             <option value="" disabled selected>Select type</option>
-            <option>Electrical</option>
-            <option>Mechanical</option>
-            <option>Electronic</option>
-            <option>Civil</option>
-            <option>Consumable</option>
-            <option>Spare Part</option>
-            <option>Tool</option>
+            <option>HPCL</option>
+            <option>RBML</option>
+            <option>BPCL</option>
+            <option>OTHER</option>
             <option>Other</option>
           </select>
         </div>
@@ -688,7 +681,7 @@ const TOKEN = () => {
   return "";
 };
 const isAdmin = () => {
-  try { return JSON.parse(atob(TOKEN().split('.')[1]))?.role === 'Admin'; } catch { return false; }
+  try { return JSON.parse(atob(TOKEN().split('.')[1]))?.role?.toLowerCase() === 'admin' ; } catch { return false; }
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1032,7 +1025,7 @@ async function doUpload() {
 
 function downloadTemplate() {
   const rows = [
-    ['Serial Number','Item Code','Item Name','Qty','Item Type','Customer','Engineer','Remarks'],
+    ['Serial Number','Item Code','Item Name','Qty','Item Uses','Customer','Engineer','Remarks'],
     ['MAT-001','ELEC-001','4-Core Armoured Cable',10,'Electrical','HPCL Patna RO','Amit Kumar','For Phase-X'],
     ['MAT-002','MECH-001','Pressure Gauge',5,'Mechanical','BPCL Ranchi','Rajan Pandey',''],
   ];
