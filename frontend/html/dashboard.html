@@ -1042,7 +1042,10 @@ function loadPage(page, el){
   const tok=localStorage.getItem("token")||"";
   const tokenParam=tok?`&token=${encodeURIComponent(tok)}`:"";
   iframe.src = page + (page.includes("?") ? "&" : "?") + "cb=" + Date.now() + tokenParam;
-  iframe.onload = () => { hideGlobalLoader(); };
+  iframe.onload = () => {
+    hideGlobalLoader();
+    try{injectDarkStylesInto(iframe.contentDocument||iframe.contentWindow.document);}catch(e){}
+  };
   document.querySelectorAll(".nav-item,.nav-parent").forEach(i => i.classList.remove("active-link","active"));
   if(el) el.classList.add("active-link");
   const name = Object.entries(pageNames).find(([k]) => page.includes(k));
@@ -1089,22 +1092,6 @@ function isTokenExpired(token){
 function logout(){
   localStorage.removeItem("token");
   if(!window.location.href.includes("login.html")) window.location.href="login.html";
-}
-
-function loadPage(page, linkElement){
-  showGlobalLoader();
-  const iframe=document.getElementById("contentFrame");
-  const cacheBust=`cb=${Date.now()}`;
-  const tok=localStorage.getItem("token")||"";
-  const tokenParam=tok?`&token=${encodeURIComponent(tok)}`:"";
-  iframe.src=page+(page.includes("?")?"&":"?")+cacheBust+tokenParam;
-  iframe.onload=()=>{
-    hideGlobalLoader();
-    try{injectDarkStylesInto(iframe.contentDocument||iframe.contentWindow.document);}catch(e){}
-  };
-  document.querySelectorAll("nav a").forEach(link=>link.classList.remove("active-link"));
-  if(linkElement) linkElement.classList.add("active-link");
-  if(window.innerWidth<768) document.getElementById("nav").classList.remove("mobile-open");
 }
 
 function injectDarkStylesInto(doc){

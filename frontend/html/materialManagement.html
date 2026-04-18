@@ -183,10 +183,14 @@ td:first-child{padding-left:18px;}
   padding:2px 9px;border-radius:var(--r-full);
   font-size:11px;font-weight:600;white-space:nowrap;
 }
-.badge-HPCL  {background:#EFF6FF;color:#2563EB;}
-.badge-RBML  {background:#FFF7ED;color:#EA580C;}
-.badge-BPCL  {background:#F0FDF4;color:#16A34A;}
-.badge-OTHER {background:#F8FAFC;color:#64748B;}
+.badge-Electrical  {background:#EFF6FF;color:#2563EB;}
+.badge-Mechanical  {background:#FFF7ED;color:#EA580C;}
+.badge-Electronic  {background:#F5F3FF;color:#7C3AED;}
+.badge-Civil       {background:#F0FDF4;color:#16A34A;}
+.badge-Consumable  {background:#FEF9C3;color:#CA8A04;}
+.badge-Spare       {background:#F0FDFA;color:#0D9488;}
+.badge-Tool        {background:#FDF4FF;color:#A21CAF;}
+.badge-Other       {background:#F8FAFC;color:#64748B;}
 
 /* ── SN chip ── */
 .sn-chip{
@@ -555,6 +559,7 @@ td:first-child{padding-left:18px;}
             <option>RBML</option>
             <option>BPCL</option>
             <option>OTHER</option>
+            <option>Other</option>
           </select>
         </div>
         <div class="form-field">
@@ -1035,11 +1040,28 @@ function downloadTemplate() {
 // ═══════════════════════════════════════════════════════════════════════════
 //  EXPORT
 // ═══════════════════════════════════════════════════════════════════════════
-function exportExcel() {
+async function exportExcel() {
   showToast('Preparing export…', 'info');
-  const a = document.createElement('a');
-  a.href = `${API}/export/excel`;
-  a.click();
+  try {
+    const r = await fetch(`${API}/export/excel`, {
+      headers: { Authorization: `Bearer ${TOKEN()}` }
+    });
+    if (!r.ok) {
+      const j = await r.json().catch(() => ({}));
+      showToast(j.message || `Export failed (${r.status})`, 'error');
+      return;
+    }
+    const blob = await r.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `materials_${new Date().toISOString().slice(0,10)}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Export downloaded ✓', 'success');
+  } catch(e) {
+    showToast('Network error during export', 'error');
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
