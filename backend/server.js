@@ -6,6 +6,7 @@ const express    = require("express");
 const bodyParser = require("body-parser");
 const cors       = require("cors");
 const http       = require("http");
+const path       = require("path");
 const connectDB  = require("./config/db");
 
 const { router: authRoutes }  = require("./routes/auth");
@@ -100,8 +101,21 @@ app.use("/api/materialManagement", materialManagement)
 startCronJobs(broadcastToAll);
 require("./services/mailer");
 
+// ✅ Dashboard — /dashboard pe refresh karne pe bhi kaam kare
+app.get("/dashboard", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "dashboard.html"));
+});
+
+// ✅ Login page clean URL
+app.get("/login", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "login.html"));
+});
+
+// ✅ Block direct .html file access — URL se koi bhi .html directly open na ho
 app.use((req, res, next) => {
-  if (req.path.endsWith(".html")) return res.redirect(301, req.path.slice(0,-5));
+  if (req.path.endsWith(".html")) {
+    return res.status(403).json({ error: "Direct file access not allowed" });
+  }
   next();
 });
 

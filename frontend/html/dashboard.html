@@ -1033,7 +1033,31 @@ const pageNames = {
   'auditReport.html':'Audit Report','mongoExplorer.html':'DB Explorer',
   'materialrequirement.html':'Material Requirement','incident.html':'Incident Manager',
   'romaster.html':'RO Master','activeVsFaulty.html':'Active vs Faulty',
-  'logsViewer.html':'Logs Viewer'
+  'logsViewer.html':'Logs Viewer','materialManagement.html':'Material Management'
+};
+
+// Clean URL slugs — .html kabhi nahi dikhega browser mein
+const pageSlugs = {
+  'overview.html':'dashboard',
+  'dailyPlan.html':'daily-plan',
+  'reportsOverview.html':'reports',
+  'dataView.html':'visit-report',
+  'statusRecords.html':'hpcl-status',
+  'bpclVisitReport.html':'bpcl-visit',
+  'jioBPreport.html':'jiobp-status',
+  'bpclStatusreport.html':'bpcl-status',
+  'atgRecords.html':'atg-report',
+  'taskReport.html':'task-report',
+  'earthingReport.html':'earthing-report',
+  'taskManager.html':'task-management',
+  'auditReport.html':'audit-report',
+  'mongoExplorer.html':'db-explorer',
+  'materialrequirement.html':'material-requirement',
+  'materialManagement.html':'material-management',
+  'incident.html':'incident-manager',
+  'romaster.html':'ro-master',
+  'activeVsFaulty.html':'active-vs-faulty',
+  'logsViewer.html':'logs-viewer'
 };
 
 function loadPage(page, el){
@@ -1051,6 +1075,11 @@ function loadPage(page, el){
   const name = Object.entries(pageNames).find(([k]) => page.includes(k));
   if(name) document.getElementById("currentPage").textContent = name[1];
   if(window.innerWidth < 768) document.getElementById("nav").classList.remove("mobile-open");
+
+  // ── Clean URL: .html hide karo browser se ──
+  const fileKey = Object.keys(pageSlugs).find(k => page.includes(k));
+  const slug = fileKey ? pageSlugs[fileKey] : 'dashboard';
+  history.pushState({ page }, '', '/dashboard#' + slug);
 }
 
 function showGlobalLoader(){
