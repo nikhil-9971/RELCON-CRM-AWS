@@ -848,6 +848,7 @@ tbody td:first-child{font-weight:600;color:var(--txt)!important;}
    RELCON CRM — Logs Viewer JS
 ══════════════════════════════════════════════════ */
 const BASE = window.BACKEND_URL || "/api";
+const token = localStorage.getItem("token");
 const hdrs = { Authorization: `Bearer ${token}` };
 
 // Raw data stores

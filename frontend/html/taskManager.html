@@ -701,7 +701,9 @@
 </div>
 
 <script>
+
 const baseUrl = window.BACKEND_URL || "/api";
+const token = localStorage.getItem("token");
 let allTasks = [], filteredTasks = [];
 let currentTab = "all", currentKPI = "";
 let currentPage = 1, rowsPerPage = 25;
