@@ -430,7 +430,7 @@
   </div>
 
   <script>
-    const baseUrl = window.BACKEND_URL || "/api";
+    const baseUrl = "/api";
     let filteredData = [], allStatusData = [];
     let currentPage = 1;
     const rowsPerPage = 50;
@@ -454,38 +454,15 @@
 
     async function fetchStatusRecords() {
       showLoader();
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 sec timeout
-
-        const res = await fetch(`${baseUrl}/getMergedStatusRecords`, {
-          headers: { Authorization: `Bearer ${token}` },
-          signal: controller.signal
-        });
-        clearTimeout(timeoutId);
-
-        if (!res.ok) throw new Error(`Server error: ${res.status}`);
-
-        const data = await res.json();
-        allStatusData = data;
-
-        const user = JSON.parse(localStorage.getItem("user")) || {};
-        filteredData = (user.role === "admin" && user.username === "anurag.mishra")
-          ? data
-          : data.filter(r => r.isVerified === true || r.isVerified === "true");
-
-        renderTable(filteredData);
-      } catch (err) {
-        if (err.name === "AbortError") {
-          showToast("Request timeout ho gayi. Server start ho raha hai, 30 sec baad retry karein.", "error");
-        } else {
-          showToast("Records load nahi hue: " + err.message, "error");
-        }
-        console.error("fetchStatusRecords failed:", err);
-        document.getElementById("recordCountBadge").textContent = "Error";
-      } finally {
-        hideLoader();
-      }
+      const res = await fetch(`${baseUrl}/getMergedStatusRecords`, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      allStatusData = data;
+      const user = JSON.parse(localStorage.getItem("user")) || {};
+      filteredData = (user.role === "admin" && user.username === "anurag.mishra")
+        ? data
+        : data.filter(r => r.isVerified === true || r.isVerified === "true");
+      renderTable(filteredData);
+      hideLoader();
     }
 
     function applySearch() {
