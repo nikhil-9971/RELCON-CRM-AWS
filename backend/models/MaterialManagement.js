@@ -27,7 +27,7 @@ const materialManagementSchema = new mongoose.Schema(
     itemType: {
       type: String,
       required: true,
-      enum: ["Electrical", "Mechanical", "Electronic", "Civil", "Consumable", "Spare Part", "Tool", "Other"],
+      enum: ["HPCL", "RBML", "BPCL", "OTHER"],
     },
     customerName: {
       type: String,
