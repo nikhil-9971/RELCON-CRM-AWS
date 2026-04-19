@@ -685,35 +685,46 @@
 
     async function fetchLatestStatusMap() {
       const map = {};
-      try {
-        const res = await fetchWithTimeout(baseUrl + "/getMergedStatusRecords", { headers: { Authorization: `Bearer ${token}` } });
-        if (res.ok) {
-          const statuses = await res.json();
+
+      // Run both API calls in parallel
+      const [statusRes, plansRes] = await Promise.allSettled([
+        fetchWithTimeout(baseUrl + "/getMergedStatusRecords", { headers: { Authorization: `Bearer ${token}` } }),
+        fetchWithTimeout(baseUrl + "/getDailyPlans",          { headers: { Authorization: `Bearer ${token}` } })
+      ]);
+
+      if (statusRes.status === "fulfilled" && statusRes.value.ok) {
+        try {
+          const statuses = await statusRes.value.json();
           statuses.forEach(s => {
             const rc = (s.roCode || "").toString().trim().toUpperCase();
-            const d = s.date ? new Date(s.date) : new Date(0);
+            const d  = s.date ? new Date(s.date) : new Date(0);
             const ts = isNaN(d.getTime()) ? 0 : d.getTime();
             const existing = map[rc];
             if (!existing || (existing._ts || 0) < ts) map[rc] = Object.assign({}, s, { _ts: ts });
           });
-        }
-      } catch (e) { console.warn('fetchLatestStatusMap (status) failed:', e.message); }
-      try {
-        const res2 = await fetchWithTimeout(baseUrl + "/getDailyPlans", { headers: { Authorization: `Bearer ${token}` } });
-        if (res2.ok) {
-          const plans = await res2.json();
-          const list = Array.isArray(plans) ? plans : (Array.isArray(plans.data) ? plans.data : []);
+        } catch(e) { console.warn('fetchLatestStatusMap (status) parse failed:', e.message); }
+      } else {
+        console.warn('fetchLatestStatusMap (status) failed');
+      }
+
+      if (plansRes.status === "fulfilled" && plansRes.value.ok) {
+        try {
+          const plans = await plansRes.value.json();
+          const list  = Array.isArray(plans) ? plans : (Array.isArray(plans.data) ? plans.data : []);
           list.forEach(p => {
             const rc = (p.roCode || "").toString().trim().toUpperCase();
             if (!rc) return;
-            const d = p.date ? new Date(p.date) : new Date(0);
+            const d  = p.date ? new Date(p.date) : new Date(0);
             const ts = isNaN(d.getTime()) ? 0 : d.getTime();
             if (ts === 0) return;
             const existing = map[rc];
             if (!existing || (existing._ts || 0) < ts) map[rc] = { date: p.date, _ts: ts, _source: "dailyplan" };
           });
-        }
-      } catch (e) { console.warn('fetchLatestStatusMap (plans) failed:', e.message); }
+        } catch(e) { console.warn('fetchLatestStatusMap (plans) parse failed:', e.message); }
+      } else {
+        console.warn('fetchLatestStatusMap (plans) failed');
+      }
+
       return map;
     }
 
@@ -722,7 +733,13 @@
       showLoader();
       currentPage = 1;
       try {
-        const user = await getCurrentUser();
+        // Run all 3 API calls in parallel for speed
+        const [user, data, statusMap] = await Promise.all([
+          getCurrentUser(),
+          fetchROMasterList(),
+          fetchLatestStatusMap()
+        ]);
+
         if (!user) {
           document.getElementById("tableBody").innerHTML =
             `<tr><td colspan="${columns.length}" style="text-align:center;padding:24px;color:var(--txt3);">Not authenticated. Please login.</td></tr>`;
@@ -730,14 +747,13 @@
         }
         try { localStorage.setItem("user", JSON.stringify(user)); } catch(e) {}
 
-        const data = await fetchROMasterList();
         if (!data) {
           document.getElementById("tableBody").innerHTML =
             `<tr><td colspan="${columns.length}" style="text-align:center;padding:24px;color:var(--txt3);">Failed to fetch RO Master data.</td></tr>`;
           return;
         }
         allData = data;
-        latestStatusMap = await fetchLatestStatusMap();
+        latestStatusMap = statusMap;
         populateFilters(allData);
 
         const isAdmin = user.role === "admin";
@@ -864,11 +880,11 @@
             return `<td>${escapeHtml(formatVisitDate(v))}</td>`;
           }
           if (col.key === "bosIP") {
-            const v = latest.bosIP || row.bosIP || "";
+            const v = row.bosIP || latest.bosIP || "";
             return `<td>${escapeHtml(v)}</td>`;
           }
           if (col.key === "fccIP") {
-            const v = latest.fccIP || row.fccIP || "";
+            const v = row.fccIP || latest.fccIP || "";
             return `<td>${escapeHtml(v)}</td>`;
           }
           // Badge for siteStatus
