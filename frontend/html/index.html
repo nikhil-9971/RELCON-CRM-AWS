@@ -98,6 +98,11 @@ body {
   box-shadow: 0 0 0 3px rgba(37,99,235,.2);
 }
 
+/* Eye toggle */
+.eye-btn { position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:rgba(255,255,255,.25); font-size:13px; padding:4px; transition:color .15s; }
+.eye-btn:hover { color:rgba(255,255,255,.6); }
+.field-input.eye-pad { padding-right:38px; }
+
 /* Sign in button */
 .sign-btn {
   width:100%; height:46px;
@@ -130,8 +135,8 @@ body {
 .clients { margin-top:auto; padding-top:24px; border-top:1px solid rgba(255,255,255,.05); }
 .clients-label { font-size:10px; color:rgba(255,255,255,.2); text-transform:uppercase; letter-spacing:1px; margin-bottom:12px; }
 .clients-logos { display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
-.clients-logos img { height:30px; opacity:.4; filter:brightness(10); transition:opacity .2s; }
-.clients-logos img:hover { opacity:.7; }
+.clients-logos img { height:30px; opacity:1; transition:opacity .2s; }
+.clients-logos img:hover { opacity:.85; }
 
 /* Right */
 .card-right {
@@ -208,7 +213,8 @@ body {
         <label for="password">Password</label>
         <div class="field-wrap">
           <i class="fa-solid fa-lock f-icon"></i>
-          <input type="password" id="password" class="field-input" placeholder="Enter your password" required autocomplete="current-password"/>
+          <input type="password" id="password" class="field-input eye-pad" placeholder="Enter your password" required autocomplete="current-password"/>
+          <button type="button" class="eye-btn" onclick="togglePwd()"><i class="fa-solid fa-eye" id="eyeIcon"></i></button>
         </div>
       </div>
       <button id="loginBtn" type="submit" class="sign-btn">
@@ -249,6 +255,8 @@ body {
 
 <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
 <script>
+  function togglePwd(){const i=document.getElementById("password"),e=document.getElementById("eyeIcon");if(i.type==="password"){i.type="text";e.className="fa-solid fa-eye-slash";}else{i.type="password";e.className="fa-solid fa-eye";}}
+
   const baseUrl = window.BACKEND_URL || "/api";
 
   particlesJS("particles-js",{particles:{number:{value:60,density:{enable:true,value_area:800}},color:{value:["#0061FE","#60A5FA","#3B82F6"]},shape:{type:"circle"},opacity:{value:0.4,random:true},size:{value:3,random:true},line_linked:{enable:true,distance:150,color:"#1E40AF",opacity:0.2,width:1},move:{enable:true,speed:1.5,out_mode:"out"}},interactivity:{detect_on:"canvas",events:{onhover:{enable:true,mode:"grab"},onclick:{enable:true,mode:"push"}},modes:{grab:{distance:200,line_linked:{opacity:0.5}},push:{particles_nb:3}}},retina_detect:true});
