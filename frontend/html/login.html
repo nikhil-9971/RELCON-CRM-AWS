@@ -4,459 +4,248 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>RELCON CRM — Sign In</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-:root{
-  --blue:#2563EB;--blue-dark:#1D4ED8;--blue-deep:#1E3A8A;
-  --purple:#7C3AED;--surface:rgba(15,23,42,0.92);
-  --border:rgba(255,255,255,0.08);--text:#E8F0FB;
-  --sub:rgba(255,255,255,0.38);--input-bg:rgba(255,255,255,0.05);
-}
-body{
-  font-family:'Inter',-apple-system,sans-serif;
-  background:#060D1F;min-height:100vh;
-  display:flex;align-items:center;justify-content:center;
-  position:relative;overflow:hidden;
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #0B1120;
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  position: relative; overflow: hidden;
 }
 
 /* Background */
-.bg-aurora{
-  position:fixed;inset:0;z-index:0;
+.bg-glow {
+  position: fixed; inset:0; z-index:0;
   background:
-    radial-gradient(ellipse 90% 70% at 15% 20%,rgba(37,99,235,0.22) 0%,transparent 55%),
-    radial-gradient(ellipse 70% 60% at 85% 75%,rgba(124,58,237,0.15) 0%,transparent 55%),
-    radial-gradient(ellipse 50% 40% at 50% 100%,rgba(16,185,129,0.06) 0%,transparent 60%);
-  animation:aurora 10s ease-in-out infinite alternate;
+    radial-gradient(ellipse 80% 60% at 20% 30%, rgba(37,99,235,0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 70%, rgba(124,58,237,0.12) 0%, transparent 60%);
+  animation: bgPulse 8s ease-in-out infinite alternate;
 }
-@keyframes aurora{from{opacity:.6}to{opacity:1}}
-.bg-dots{
-  position:fixed;inset:0;z-index:0;
-  background-image:radial-gradient(rgba(255,255,255,0.06) 1px,transparent 1px);
-  background-size:28px 28px;
+@keyframes bgPulse { from{opacity:.7;} to{opacity:1;} }
+.bg-grid {
+  position:fixed; inset:0; z-index:0;
+  background-image: linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 48px 48px;
 }
-#particles-js{position:fixed;inset:0;z-index:1;pointer-events:none;}
 
-/* DateTime */
-#datetime{
-  position:fixed;top:18px;right:22px;
-  color:rgba(255,255,255,0.28);font-size:11px;z-index:10;
-  letter-spacing:.3px;
+#particles-js { position:fixed; inset:0; z-index:1; pointer-events:none; }
+
+#datetime {
+  position:fixed; top:16px; right:20px;
+  color:rgba(255,255,255,0.35); font-size:11.5px; z-index:10;
+  font-family: 'Inter', sans-serif;
 }
 
 /* Card */
-.card{
-  position:relative;z-index:5;
-  display:flex;width:940px;max-width:96vw;
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-radius:24px;
-  box-shadow:0 40px 100px rgba(0,0,0,0.7),0 0 0 1px rgba(37,99,235,0.1),inset 0 1px 0 rgba(255,255,255,0.05);
-  overflow:hidden;backdrop-filter:blur(32px);
-  animation:cardIn .6s cubic-bezier(.34,1.56,.64,1);
+.card {
+  position: relative; z-index: 5;
+  display: flex; width:900px; max-width:96vw;
+  background: rgba(20,29,46,0.88);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(37,99,235,0.12);
+  overflow: hidden;
+  backdrop-filter: blur(24px);
+  animation: cardIn .55s cubic-bezier(.34,1.56,.64,1);
 }
-@keyframes cardIn{from{transform:scale(.94) translateY(30px);opacity:0;}to{transform:none;opacity:1;}}
+@keyframes cardIn { from{transform:scale(.93) translateY(28px);opacity:0;} to{transform:none;opacity:1;} }
 
-/* Left Panel */
-.card-left{
-  width:48%;padding:50px 46px;
-  display:flex;flex-direction:column;
-  border-right:1px solid rgba(255,255,255,0.05);
-  background:linear-gradient(160deg,rgba(15,23,42,0.5) 0%,rgba(10,18,35,0.3) 100%);
+/* Left */
+.card-left {
+  width: 50%; padding: 48px 44px;
+  display: flex; flex-direction: column;
+  border-right: 1px solid rgba(255,255,255,0.06);
 }
 
 /* Brand */
-.brand{display:flex;align-items:center;gap:14px;margin-bottom:40px;}
-.brand-icon{
-  width:44px;height:44px;flex-shrink:0;
-  background:linear-gradient(135deg,#2563EB,#7C3AED);
-  border-radius:14px;display:flex;align-items:center;justify-content:center;
-  font-size:20px;position:relative;
-  box-shadow:0 0 0 1px rgba(255,255,255,0.15),0 8px 24px rgba(37,99,235,0.55),0 0 40px rgba(37,99,235,0.2);
+.brand { display:flex; align-items:center; gap:12px; margin-bottom:36px; }
+.brand-icon {
+  width:40px; height:40px; flex-shrink:0;
+  background: linear-gradient(135deg, #2563EB, #7C3AED);
+  border-radius:12px; display:flex; align-items:center; justify-content:center;
+  font-size:18px;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.1), 0 6px 20px rgba(37,99,235,0.5);
 }
-.brand-icon::after{
-  content:'';position:absolute;inset:0;border-radius:14px;
-  background:linear-gradient(135deg,rgba(255,255,255,0.2),transparent);
-}
-.brand-text .brand-name{
-  font-size:21px;font-weight:900;color:#F8FAFC;
-  letter-spacing:-.5px;line-height:1.1;
-}
-.brand-text .brand-name em{color:#60A5FA;font-style:normal;}
-.brand-text .brand-sub{
-  font-size:10px;color:rgba(255,255,255,0.22);
-  text-transform:uppercase;letter-spacing:1.2px;margin-top:3px;
-}
+.brand-name { font-size:20px; font-weight:800; color:#F8FAFC; letter-spacing:-.3px; line-height:1.1; }
+.brand-name em { color:#60A5FA; font-style:normal; }
+.brand-sub { font-size:10px; color:rgba(255,255,255,.25); text-transform:uppercase; letter-spacing:.8px; margin-top:2px; }
 
-/* Welcome */
-.welcome-section{margin-bottom:30px;}
-.card-title{
-  font-size:26px;font-weight:800;color:#EEF4FF;
-  letter-spacing:-.6px;margin-bottom:8px;
-  line-height:1.2;
-}
-.card-title span{
-  background:linear-gradient(90deg,#60A5FA,#A78BFA);
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
-}
-.card-sub{font-size:13px;color:rgba(255,255,255,0.32);line-height:1.7;}
+.card-title { font-size:22px; font-weight:800; color:#E8F0FB; letter-spacing:-.3px; margin-bottom:6px; }
+.card-sub { font-size:13px; color:rgba(255,255,255,.35); margin-bottom:28px; line-height:1.6; }
 
 /* Fields */
-.field{margin-bottom:20px;}
-.field label{
-  display:block;font-size:10.5px;font-weight:700;
-  color:rgba(255,255,255,0.35);text-transform:uppercase;
-  letter-spacing:.9px;margin-bottom:8px;
+.field { margin-bottom:18px; }
+.field label { display:block; font-size:11px; font-weight:700; color:rgba(255,255,255,.4); text-transform:uppercase; letter-spacing:.7px; margin-bottom:6px; }
+.field-wrap { position:relative; }
+.field-wrap .f-icon { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:rgba(255,255,255,.25); font-size:13px; }
+.field-input {
+  width:100%; height:44px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius:10px;
+  padding: 0 14px 0 40px;
+  font-size:13.5px; color:#E8F0FB;
+  outline:none; font-family:inherit;
+  transition: border-color .15s, background .15s, box-shadow .15s;
 }
-.field-wrap{position:relative;}
-.field-icon{
-  position:absolute;left:15px;top:50%;transform:translateY(-50%);
-  color:rgba(255,255,255,0.22);font-size:13px;pointer-events:none;z-index:1;
+.field-input::placeholder { color:rgba(255,255,255,.2); }
+.field-input:focus {
+  border-color: rgba(37,99,235,.7);
+  background: rgba(37,99,235,.08);
+  box-shadow: 0 0 0 3px rgba(37,99,235,.2);
 }
-.field-input{
-  width:100%;height:48px;
-  background:var(--input-bg);
-  border:1px solid rgba(255,255,255,0.09);
-  border-radius:12px;
-  padding:0 16px 0 44px;
-  font-size:13.5px;color:#E8F0FB;
-  outline:none;font-family:inherit;
-  transition:border-color .2s,background .2s,box-shadow .2s;
-}
-.field-input::placeholder{color:rgba(255,255,255,0.18);}
-.field-input:focus{
-  border-color:rgba(37,99,235,0.75);
-  background:rgba(37,99,235,0.07);
-  box-shadow:0 0 0 4px rgba(37,99,235,0.18);
-}
+
 /* Eye toggle */
-.eye-toggle{
-  position:absolute;right:15px;top:50%;transform:translateY(-50%);
-  color:rgba(255,255,255,0.25);background:none;border:none;
-  cursor:pointer;padding:4px;font-size:13px;
-  transition:color .15s;z-index:2;
-}
-.eye-toggle:hover{color:rgba(255,255,255,0.6);}
-.field-input.has-eye{padding-right:42px;}
+.eye-btn { position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:rgba(255,255,255,.25); font-size:13px; padding:4px; transition:color .15s; }
+.eye-btn:hover { color:rgba(255,255,255,.6); }
+.field-input.eye-pad { padding-right:38px; }
 
-/* Forgot */
-.forgot-row{display:flex;justify-content:flex-end;margin-top:-10px;margin-bottom:20px;}
-.forgot-link{
-  font-size:11.5px;color:rgba(96,165,250,0.7);
-  text-decoration:none;transition:color .15s;
+/* Sign in button */
+.sign-btn {
+  width:100%; height:46px;
+  background: linear-gradient(135deg, #2563EB, #1D4ED8);
+  color:#fff; border:none; border-radius:10px;
+  font-size:14px; font-weight:700; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  font-family:inherit;
+  transition: all .15s;
+  box-shadow: 0 4px 16px rgba(37,99,235,.4);
 }
-.forgot-link:hover{color:#60A5FA;}
-
-/* Sign In Button */
-.sign-btn{
-  width:100%;height:50px;
-  background:linear-gradient(135deg,#2563EB 0%,#1D4ED8 60%,#1E40AF 100%);
-  color:#fff;border:none;border-radius:12px;
-  font-size:14.5px;font-weight:700;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;gap:9px;
-  font-family:inherit;transition:all .18s;
-  box-shadow:0 6px 20px rgba(37,99,235,0.45),0 0 0 1px rgba(37,99,235,0.3);
-  position:relative;overflow:hidden;letter-spacing:.2px;
-}
-.sign-btn::before{
-  content:'';position:absolute;inset:0;
-  background:linear-gradient(135deg,rgba(255,255,255,0.12),transparent);
-  border-radius:12px;
-}
-.sign-btn:hover{
-  background:linear-gradient(135deg,#1D4ED8,#1E3A8A);
-  transform:translateY(-2px);
-  box-shadow:0 12px 32px rgba(37,99,235,0.55),0 0 0 1px rgba(37,99,235,0.4);
-}
-.sign-btn:active{transform:translateY(0);box-shadow:0 4px 12px rgba(37,99,235,0.4);}
-.btn-loading{pointer-events:none;opacity:.85;}
+.sign-btn:hover { background:linear-gradient(135deg,#1D4ED8,#1E40AF); transform:translateY(-1px); box-shadow:0 8px 24px rgba(37,99,235,.5); }
+.sign-btn:active { transform:none; }
+.btn-clicked { animation:btnPulse .3s ease; }
+@keyframes btnPulse { 0%{transform:scale(1);} 50%{transform:scale(1.02);} 100%{transform:scale(1);} }
 
 /* Spinner */
-@keyframes spin{to{transform:rotate(360deg)}}
-.spin-icon{animation:spin .7s linear infinite;display:none;}
+@keyframes spin { to{transform:rotate(360deg)} }
+.spin-svg { animation:spin .8s linear infinite; }
 
 /* Error */
-#error{
-  color:#FCA5A5;font-size:12px;text-align:center;
-  margin-top:14px;display:none;
-  padding:10px 14px;
-  background:rgba(220,38,38,0.08);
-  border:1px solid rgba(220,38,38,0.22);
-  border-radius:10px;line-height:1.5;
+#error {
+  color:#FCA5A5; font-size:12px; text-align:center;
+  margin-top:12px; display:none;
+  padding:8px 12px; background:rgba(220,38,38,.1);
+  border-radius:8px; border:1px solid rgba(220,38,38,.2);
 }
 
-/* Divider */
-.divider{
-  display:flex;align-items:center;gap:12px;margin:24px 0 18px;
-}
-.divider-line{flex:1;height:1px;background:rgba(255,255,255,0.06);}
-.divider-text{font-size:10px;color:rgba(255,255,255,0.2);text-transform:uppercase;letter-spacing:1px;}
+/* Clients */
+.clients { margin-top:auto; padding-top:24px; border-top:1px solid rgba(255,255,255,.05); }
+.clients-label { font-size:10px; color:rgba(255,255,255,.2); text-transform:uppercase; letter-spacing:1px; margin-bottom:12px; }
+.clients-logos { display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+.clients-logos img { height:30px; opacity:.4; filter:brightness(10); transition:opacity .2s; }
+.clients-logos img:hover { opacity:.7; }
 
-/* Clients Section */
-.clients-section{margin-top:auto;padding-top:20px;}
-.clients-label{
-  font-size:10px;color:rgba(255,255,255,0.2);
-  text-transform:uppercase;letter-spacing:1.2px;margin-bottom:12px;
+/* Right */
+.card-right {
+  width:50%; position:relative; overflow:hidden;
+  background: linear-gradient(160deg,#0D1B3E 0%,#1a2d5a 60%,#0f2044 100%);
+  display:flex; align-items:flex-end;
 }
-.clients-logos{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-.client-badge{
-  display:flex;align-items:center;gap:7px;
-  padding:7px 14px;
-  background:rgba(255,255,255,0.04);
-  border:1px solid rgba(255,255,255,0.08);
-  border-radius:8px;
-  transition:all .2s;cursor:default;
-}
-.client-badge:hover{
-  background:rgba(255,255,255,0.07);
-  border-color:rgba(255,255,255,0.14);
-  transform:translateY(-1px);
-}
-.client-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
-.client-badge .client-name{font-size:12px;font-weight:700;letter-spacing:.5px;}
-
-/* HPCL */
-.badge-hpcl .client-dot{background:#22C55E;}
-.badge-hpcl .client-name{color:#86EFAC;}
-/* JioBP */
-.badge-jiobp .client-dot{background:#3B82F6;}
-.badge-jiobp .client-name{color:#93C5FD;}
-/* BPCL */
-.badge-bpcl .client-dot{background:#F59E0B;}
-.badge-bpcl .client-name{color:#FCD34D;}
-
-/* Right Panel */
-.card-right{
-  width:52%;position:relative;overflow:hidden;
-  background:linear-gradient(155deg,#0D1B3E 0%,#0f1f4a 50%,#0a1535 100%);
-  display:flex;align-items:flex-end;
-}
-.card-right video{
-  position:absolute;inset:0;width:100%;height:100%;
-  object-fit:cover;opacity:.5;mix-blend-mode:luminosity;
-}
-.card-right-overlay{
-  position:absolute;inset:0;
-  background:linear-gradient(135deg,rgba(37,99,235,0.15) 0%,rgba(124,58,237,0.1) 100%);
-}
-/* Floating stats */
-.stat-pills{
-  position:absolute;top:28px;right:24px;
-  display:flex;flex-direction:column;gap:8px;
-}
-.stat-pill{
-  display:flex;align-items:center;gap:8px;
-  padding:8px 14px;
-  background:rgba(10,20,44,0.75);
-  border:1px solid rgba(255,255,255,0.1);
-  border-radius:10px;backdrop-filter:blur(12px);
-  animation:floatIn .6s ease forwards;opacity:0;
-}
-.stat-pill:nth-child(1){animation-delay:.2s;}
-.stat-pill:nth-child(2){animation-delay:.4s;}
-.stat-pill:nth-child(3){animation-delay:.6s;}
-@keyframes floatIn{from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:none;}}
-.stat-pill-dot{width:7px;height:7px;border-radius:50%;background:#22C55E;box-shadow:0 0 6px #22C55E;}
-.stat-pill-dot.amber{background:#F59E0B;box-shadow:0 0 6px #F59E0B;}
-.stat-pill-dot.blue{background:#60A5FA;box-shadow:0 0 6px #60A5FA;}
-.stat-pill-text{font-size:11px;color:rgba(255,255,255,0.75);font-weight:600;}
-.stat-pill-num{font-size:11px;color:rgba(255,255,255,0.4);margin-left:auto;padding-left:12px;}
-
-/* Bottom content */
-.card-right-content{
-  position:relative;z-index:2;padding:40px;
-  background:linear-gradient(to top,rgba(6,13,31,0.95) 0%,rgba(6,13,31,0.6) 60%,transparent 100%);
+.card-right video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:.55; }
+.card-right-content {
+  position:relative; z-index:2; padding:36px;
+  background:linear-gradient(to top,rgba(11,17,32,.85) 0%,transparent 100%);
   width:100%;
 }
-.right-tag{
-  display:inline-flex;align-items:center;gap:6px;
-  padding:4px 12px;background:rgba(37,99,235,0.2);
-  border:1px solid rgba(37,99,235,0.35);border-radius:20px;
-  font-size:10px;font-weight:700;color:#60A5FA;
-  text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;
-}
-.right-tag::before{content:'';width:6px;height:6px;border-radius:50%;background:#60A5FA;animation:blink 2s infinite;}
-@keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
-.card-right-content h2{
-  font-size:28px;font-weight:900;color:#fff;
-  letter-spacing:-.8px;line-height:1.2;margin-bottom:10px;
-}
-.card-right-content h2 span{color:#60A5FA;}
-.card-right-content p{font-size:12.5px;color:rgba(255,255,255,0.45);line-height:1.8;margin-bottom:20px;}
-.features{display:flex;flex-direction:column;gap:8px;}
-.feature{
-  display:flex;align-items:center;gap:10px;
-  font-size:12px;color:rgba(255,255,255,0.6);
-}
-.feature-icon{
-  width:22px;height:22px;border-radius:6px;
-  background:rgba(37,99,235,0.2);border:1px solid rgba(37,99,235,0.3);
-  display:flex;align-items:center;justify-content:center;flex-shrink:0;
-}
-.feature-icon i{color:#60A5FA;font-size:9px;}
+.card-right-content h2 { font-size:26px; font-weight:800; color:#fff; letter-spacing:-.5px; }
+.card-right-content p { font-size:12.5px; color:rgba(255,255,255,.5); margin-top:8px; line-height:1.7; }
+.features { display:flex; flex-direction:column; gap:6px; margin-top:16px; }
+.feature { display:flex; align-items:center; gap:8px; font-size:12px; color:rgba(255,255,255,.65); }
+.feature i { color:#60A5FA; font-size:11px; width:14px; }
 
 /* Toast */
-.toaster{
-  position:fixed;top:20px;right:20px;
-  background:linear-gradient(135deg,#2563EB,#1D4ED8);color:#fff;
-  padding:13px 22px;border-radius:12px;
-  box-shadow:0 8px 28px rgba(37,99,235,0.5);
-  z-index:9999;opacity:0;
-  animation:fadeInOut 3.5s ease forwards;
-  font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;
+.toaster {
+  position:fixed; top:20px; right:20px;
+  background:#2563EB; color:#fff;
+  padding:12px 20px; border-radius:10px;
+  box-shadow:0 8px 24px rgba(37,99,235,.4);
+  z-index:9999; opacity:0;
+  animation:fadeInOut 3s ease forwards;
+  font-size:13px; font-weight:600;
   font-family:'Inter',sans-serif;
 }
-@keyframes fadeInOut{
-  0%{opacity:0;transform:translateY(-16px);}
-  12%{opacity:1;transform:none;}
-  88%{opacity:1;}
-  100%{opacity:0;transform:translateY(-8px);}
-}
+@keyframes fadeInOut { 0%{opacity:0;transform:translateY(-12px);} 10%{opacity:1;transform:none;} 90%{opacity:1;} 100%{opacity:0;transform:translateY(-12px);} }
 
-.footer{
-  position:fixed;bottom:16px;width:100%;text-align:center;
-  color:rgba(255,255,255,0.16);font-size:11px;z-index:10;letter-spacing:.3px;
+.footer {
+  position:fixed; bottom:14px; width:100%; text-align:center;
+  color:rgba(255,255,255,.2); font-size:11px; z-index:10;
 }
-.footer strong{color:rgba(96,165,250,0.45);}
+.footer strong { color:rgba(96,165,250,.5); }
 
-@media(max-width:700px){
+@media(max-width:680px){
   .card-right{display:none;}
   .card-left{width:100%;padding:36px 28px;}
-  .card{border-radius:18px;}
+  .card{border-radius:16px;}
 }
 </style>
-<script src="config.js"></script>
+  <script src="config.js"></script>
 </head>
 <body>
 
-<div class="bg-aurora"></div>
-<div class="bg-dots"></div>
+<div class="bg-glow"></div>
+<div class="bg-grid"></div>
 <div id="particles-js"></div>
 <div id="datetime"></div>
 
 <div class="card">
-  <!-- LEFT PANEL -->
   <div class="card-left">
     <div class="brand">
       <div class="brand-icon">⚡</div>
-      <div class="brand-text">
+      <div>
         <div class="brand-name">RELCON <em>CRM</em></div>
         <div class="brand-sub">Field Operations Platform</div>
       </div>
     </div>
-
-    <div class="welcome-section">
-      <h1 class="card-title">Welcome <span>back</span></h1>
-      <p class="card-sub">Sign in to access your field operations dashboard</p>
-    </div>
-
-    <form onsubmit="handleLogin(event)" autocomplete="on">
+    <h1 class="card-title">Welcome back</h1>
+    <p class="card-sub">Sign in to your field operations dashboard</p>
+    <form onsubmit="handleLogin(event)">
       <div class="field">
         <label for="username">Username</label>
         <div class="field-wrap">
-          <i class="fa-solid fa-user field-icon"></i>
+          <i class="fa-solid fa-user f-icon"></i>
           <input type="text" id="username" class="field-input" placeholder="Enter your username" required autocomplete="username"/>
         </div>
       </div>
-
       <div class="field">
         <label for="password">Password</label>
         <div class="field-wrap">
-          <i class="fa-solid fa-lock field-icon"></i>
-          <input type="password" id="password" class="field-input has-eye" placeholder="Enter your password" required autocomplete="current-password"/>
-          <button type="button" class="eye-toggle" id="eyeToggle" onclick="togglePassword()" aria-label="Show password">
-            <i class="fa-solid fa-eye" id="eyeIcon"></i>
-          </button>
+          <i class="fa-solid fa-lock f-icon"></i>
+          <input type="password" id="password" class="field-input eye-pad" placeholder="Enter your password" required autocomplete="current-password"/>
+          <button type="button" class="eye-btn" onclick="togglePwd()"><i class="fa-solid fa-eye" id="eyeIcon"></i></button>
         </div>
       </div>
-
-      <div class="forgot-row">
-        <a href="#" class="forgot-link">Forgot password?</a>
-      </div>
-
       <button id="loginBtn" type="submit" class="sign-btn">
-        <i class="fa-solid fa-arrow-right-to-bracket" id="btnIcon"></i>
         <span id="btnText">Sign In to RELCON</span>
-        <i class="fa-solid fa-spinner spin-icon" id="spinner"></i>
+        <svg id="spinner" class="spin-svg hidden" width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,.3)" stroke-width="3"/>
+          <path d="M4 12a8 8 0 018-8" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+        </svg>
       </button>
     </form>
-
     <div id="toastContainer"></div>
-    <div id="error">⚠️ Invalid credentials. Please check your username and password.</div>
-
-    <div class="divider">
-      <div class="divider-line"></div>
-      <span class="divider-text">Trusted by</span>
-      <div class="divider-line"></div>
-    </div>
-
-    <div class="clients-section">
+    <p id="error">⚠️ Invalid credentials. Please try again.</p>
+    <div class="clients">
       <div class="clients-label">Our Clients</div>
       <div class="clients-logos">
-        <div class="client-badge badge-hpcl">
-          <div class="client-dot"></div>
-          <span class="client-name">HPCL</span>
-        </div>
-        <div class="client-badge badge-jiobp">
-          <div class="client-dot"></div>
-          <span class="client-name">JioBP</span>
-        </div>
-        <div class="client-badge badge-bpcl">
-          <div class="client-dot"></div>
-          <span class="client-name">BPCL</span>
-        </div>
+        <img src="./assets/HPCL.png" alt="HPCL"/>
+        <img src="./assets/JioBP.png" alt="JioBP"/>
+        <img src="./assets/BPCL.png" alt="BPCL"/>
       </div>
     </div>
   </div>
-
-  <!-- RIGHT PANEL -->
   <div class="card-right">
-    <video autoplay muted loop playsinline>
-      <source src="./assets/Loginnew.mp4" type="video/webm"/>
-    </video>
-    <div class="card-right-overlay"></div>
-
-    <!-- Live stats pills -->
-    <div class="stat-pills">
-      <div class="stat-pill">
-        <div class="stat-pill-dot"></div>
-        <span class="stat-pill-text">ATG Systems Live</span>
-        <span class="stat-pill-num">247</span>
-      </div>
-      <div class="stat-pill">
-        <div class="stat-pill-dot amber"></div>
-        <span class="stat-pill-text">Pending Tickets</span>
-        <span class="stat-pill-num">18</span>
-      </div>
-      <div class="stat-pill">
-        <div class="stat-pill-dot blue"></div>
-        <span class="stat-pill-text">Engineers Online</span>
-        <span class="stat-pill-num">34</span>
-      </div>
-    </div>
-
+    <video autoplay muted loop><source src="./assets/Loginnew.mp4" type="video/webm"/></video>
     <div class="card-right-content">
-      <div class="right-tag">Live System</div>
-      <h2>RELCON <span>SYSTEMS</span></h2>
-      <p>Real-time ATG monitoring & intelligent field operations management across India</p>
+      <h2>RELCON SYSTEMS</h2>
+      <p>Real-time ATG monitoring & field operations management</p>
       <div class="features">
-        <div class="feature">
-          <div class="feature-icon"><i class="fa-solid fa-satellite-dish"></i></div>
-          Live ATG Status Tracking
-        </div>
-        <div class="feature">
-          <div class="feature-icon"><i class="fa-solid fa-file-chart-column"></i></div>
-          Multi-client Reports — HPCL, BPCL, JioBP
-        </div>
-        <div class="feature">
-          <div class="feature-icon"><i class="fa-solid fa-comments"></i></div>
-          Real-time Team Chat
-        </div>
-        <div class="feature">
-          <div class="feature-icon"><i class="fa-solid fa-brain"></i></div>
-          AI-powered Data Intelligence
-        </div>
+        <div class="feature"><i class="fa-solid fa-circle-dot"></i> Live ATG Status Tracking</div>
+        <div class="feature"><i class="fa-solid fa-circle-dot"></i> Multi-client Reports (HPCL, BPCL, JioBP)</div>
+        <div class="feature"><i class="fa-solid fa-circle-dot"></i> Real-time Team Chat</div>
+        <div class="feature"><i class="fa-solid fa-circle-dot"></i> AI-powered Data Intelligence</div>
       </div>
     </div>
   </div>
@@ -466,88 +255,43 @@ body{
 
 <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
 <script>
-const baseUrl = window.BACKEND_URL || "/api";
+  function togglePwd(){const i=document.getElementById("password"),e=document.getElementById("eyeIcon");if(i.type==="password"){i.type="text";e.className="fa-solid fa-eye-slash";}else{i.type="password";e.className="fa-solid fa-eye";}}
 
-// Particles
-particlesJS("particles-js",{particles:{number:{value:55,density:{enable:true,value_area:900}},color:{value:["#2563EB","#60A5FA","#7C3AED","#A78BFA"]},shape:{type:"circle"},opacity:{value:0.35,random:true},size:{value:2.5,random:true},line_linked:{enable:true,distance:140,color:"#1E3A8A",opacity:0.18,width:1},move:{enable:true,speed:1.2,out_mode:"out"}},interactivity:{detect_on:"canvas",events:{onhover:{enable:true,mode:"grab"},onclick:{enable:true,mode:"push"}},modes:{grab:{distance:200,line_linked:{opacity:0.45}},push:{particles_nb:3}}},retina_detect:true});
+  const baseUrl = window.BACKEND_URL || "/api";
 
-// DateTime
-function updateDateTime(){
-  const now=new Date();
-  document.getElementById("datetime").textContent=
-    now.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"})+
-    " • "+now.toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit",second:"2-digit"});
-}
-setInterval(updateDateTime,1000); updateDateTime();
+  particlesJS("particles-js",{particles:{number:{value:60,density:{enable:true,value_area:800}},color:{value:["#0061FE","#60A5FA","#3B82F6"]},shape:{type:"circle"},opacity:{value:0.4,random:true},size:{value:3,random:true},line_linked:{enable:true,distance:150,color:"#1E40AF",opacity:0.2,width:1},move:{enable:true,speed:1.5,out_mode:"out"}},interactivity:{detect_on:"canvas",events:{onhover:{enable:true,mode:"grab"},onclick:{enable:true,mode:"push"}},modes:{grab:{distance:200,line_linked:{opacity:0.5}},push:{particles_nb:3}}},retina_detect:true});
 
-// Toast
-function showToast(msg){
-  const t=document.createElement("div");
-  t.className="toaster";t.innerHTML=msg;
-  document.getElementById("toastContainer").appendChild(t);
-  setTimeout(()=>t.remove(),3500);
-}
+  function updateDateTime(){const now=new Date();document.getElementById("datetime").textContent=now.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"})+", "+now.toLocaleTimeString();}
+  setInterval(updateDateTime,1000); updateDateTime();
 
-// JWT
-function decodeJWT(token){
-  const base64Url=token.split(".")[1],base64=base64Url.replace(/-/g,"+").replace(/_/g,"/");
-  return JSON.parse(window.atob(base64));
-}
+  function showToast(msg){const t=document.createElement("div");t.className="toaster";t.textContent=msg;document.getElementById("toastContainer").appendChild(t);setTimeout(()=>t.remove(),3000);}
 
-// Password Eye Toggle
-function togglePassword(){
-  const input=document.getElementById("password");
-  const icon=document.getElementById("eyeIcon");
-  if(input.type==="password"){
-    input.type="text";
-    icon.className="fa-solid fa-eye-slash";
-  }else{
-    input.type="password";
-    icon.className="fa-solid fa-eye";
+  function decodeJWT(token){const base64Url=token.split(".")[1],base64=base64Url.replace(/-/g,"+").replace(/_/g,"/");return JSON.parse(window.atob(base64));}
+
+  async function handleLogin(event){
+    event.preventDefault();
+    const loginBtn=document.getElementById("loginBtn"),spinner=document.getElementById("spinner"),btnText=document.getElementById("btnText");
+    loginBtn.disabled=true;spinner.classList.remove("hidden");btnText.textContent="Signing in...";loginBtn.classList.add("btn-clicked");
+    const username=document.getElementById("username").value,password=document.getElementById("password").value;
+    try{
+      const response=await fetch(`${baseUrl}/login`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username,password})});
+      if(!response.ok) throw new Error("Login failed");
+      const data=await response.json();
+      localStorage.setItem("token",data.token);
+      const user=decodeJWT(data.token);
+      localStorage.setItem("role",user.role);
+      localStorage.setItem("engineerName",user.engineerName);
+      localStorage.setItem("user",JSON.stringify({username:user.username,role:user.role}));
+      showToast("✅ Welcome, "+user.engineerName+"!");
+      setTimeout(()=>{window.location.href="dashboard.html";},800);
+    }catch(err){document.getElementById("error").classList.remove("hidden");}
+    setTimeout(()=>{spinner.classList.add("hidden");btnText.textContent="Sign In";loginBtn.disabled=false;loginBtn.classList.remove("btn-clicked");},400);
   }
-}
 
-// Login
-async function handleLogin(event){
-  event.preventDefault();
-  const loginBtn=document.getElementById("loginBtn");
-  const spinner=document.getElementById("spinner");
-  const btnText=document.getElementById("btnText");
-  const btnIcon=document.getElementById("btnIcon");
-  const errorEl=document.getElementById("error");
-
-  errorEl.style.display="none";
-  loginBtn.classList.add("btn-loading");
-  spinner.style.display="inline-block";
-  btnIcon.style.display="none";
-  btnText.textContent="Signing in...";
-
-  const username=document.getElementById("username").value;
-  const password=document.getElementById("password").value;
-
-  try{
-    const response=await fetch(`${baseUrl}/login`,{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({username,password})
-    });
-    if(!response.ok) throw new Error("Login failed");
-    const data=await response.json();
-    localStorage.setItem("token",data.token);
-    const user=decodeJWT(data.token);
-    localStorage.setItem("role",user.role);
-    localStorage.setItem("engineerName",user.engineerName);
-    localStorage.setItem("user",JSON.stringify({username:user.username,role:user.role}));
-    showToast("✅ Welcome back, "+user.engineerName+"!");
-    setTimeout(()=>{window.location.href="dashboard.html";},900);
-  }catch(err){
-    errorEl.style.display="block";
-    spinner.style.display="none";
-    btnIcon.style.display="inline-block";
-    btnText.textContent="Sign In to RELCON";
-    loginBtn.classList.remove("btn-loading");
-  }
-}
+  // SVG spinner animation
+  const style=document.createElement("style");
+  style.textContent=".animate-spin{animation:spin 0.7s linear infinite;} @keyframes spin{to{transform:rotate(360deg)}} .hidden{display:none;}";
+  document.head.appendChild(style);
 </script>
 </body>
 </html>
