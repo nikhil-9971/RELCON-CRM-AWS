@@ -29,6 +29,7 @@ const {
   APP_USER,
   APP_PASS,
   SESSION_SECRET,
+  MAIL_TO_ADMIN,
 } = process.env;
 
 // Quick env validation
@@ -132,6 +133,21 @@ function toCSV(rows, keys, headerMap = {}) {
   const header = keys.map((k) => esc(headerMap[k] || k)).join(",");
   const lines = rows.map((r) => keys.map((k) => esc(r[k])).join(","));
   return [header, ...lines].join("\n");
+}
+
+function toISODate(date) {
+  return new Date(date).toISOString().slice(0, 10);
+}
+
+function getLastNDaysISO(n, endDate = new Date()) {
+  const list = [];
+  const base = new Date(endDate);
+  for (let i = 0; i < n; i++) {
+    const d = new Date(base);
+    d.setDate(base.getDate() - i);
+    list.push(toISODate(d));
+  }
+  return list.reverse();
 }
 
 // Login to backend to get JWT
@@ -256,7 +272,7 @@ function computePending(plans = [], hpcl = [], jio = [], targetDateISO) {
 }
 
 // Send mail and log outcome. Uses EmailLog with status "success" or "failed" to match typical enum.
-async function sendPendingStatusEmail({ forDateISO } = {}) {
+async function sendPendingStatusEmail({ forDateISO, days = 15 } = {}) {
   try {
     const token = await getFreshToken();
 
@@ -277,49 +293,76 @@ async function sendPendingStatusEmail({ forDateISO } = {}) {
     const hpcl = Array.isArray(hpclRes.data) ? hpclRes.data : [];
     const jio = Array.isArray(jioRes.data) ? jioRes.data : [];
 
-    // default target date = yesterday
-    const dateObj = forDateISO
-      ? new Date(forDateISO + "T00:00:00")
+    // If date explicitly provided, send single-day report (backward compatible).
+    // Else send last N days report ending at yesterday.
+    const targetDates = forDateISO
+      ? [forDateISO]
       : (() => {
-          const d = new Date();
-          d.setDate(d.getDate() - 1);
-          return d;
+          const yesterday = new Date();
+          yesterday.setDate(yesterday.getDate() - 1);
+          return getLastNDaysISO(days, yesterday);
         })();
-    const targetDateISO = dateObj.toISOString().slice(0, 10);
 
-    const { rows, counts } = computePending(plans, hpcl, jio, targetDateISO);
+    let rows = [];
+    const totalCounts = { hpcl: 0, rbml: 0, total: 0 };
+
+    for (const targetDateISO of targetDates) {
+      const { rows: dayRows, counts } = computePending(
+        plans,
+        hpcl,
+        jio,
+        targetDateISO
+      );
+
+      rows.push(
+        ...dayRows.map((r) => ({
+          ...r,
+          reportDate: targetDateISO,
+        }))
+      );
+      totalCounts.hpcl += counts.hpcl;
+      totalCounts.rbml += counts.rbml;
+      totalCounts.total += counts.total;
+    }
 
     const keys = [
-      "customer",
       "date",
+      "customer",
       "roCode",
       "roName",
       "region",
       "engineer",
       "phase",
       "purpose",
+      "reportDate",
     ];
     const headerMap = {
-      customer: "Customer",
       date: "Date",
+      customer: "Customer",
       roCode: "RO Code",
       roName: "RO Name",
       region: "Region",
       engineer: "Engineer",
       phase: "Phase",
       purpose: "Purpose",
+      reportDate: "Report Date",
     };
     const csv = toCSV(rows, keys, headerMap);
 
     const columns = keys.map((k) => ({ key: k, label: headerMap[k] }));
+    const toRecipients = MAIL_TO_ADMIN || MAIL_TO;
+    const dateRangeText =
+      targetDates.length === 1
+        ? targetDates[0]
+        : `${targetDates[0]} to ${targetDates[targetDates.length - 1]}`;
+
     const htmlBody = `
       <div style="font:14px/1.5 Calibri,Segoe UI,Roboto,Arial,sans-serif">
         <h2 style="margin-bottom:6px">Pending Status Report (HPCL + RBML)</h2>
-        <p style="margin:6px 0;color:#374151">Date: <strong>${targetDateISO}</strong></p>
+        <p style="margin:6px 0;color:#374151">Period: <strong>${dateRangeText}</strong></p>
         <p style="margin:6px 0;color:#374151">Total pending: <strong>${
-          counts.total
-        }</strong> • HPCL: <strong>${counts.hpcl}</strong> • RBML: <strong>${
-      counts.rbml
+          totalCounts.total
+        }</strong> • HPCL: <strong>${totalCounts.hpcl}</strong> • RBML: <strong>${totalCounts.rbml
     }</strong></p>
         ${buildTable(
           rows.slice(0, 500),
@@ -330,15 +373,21 @@ async function sendPendingStatusEmail({ forDateISO } = {}) {
       </div>
     `;
 
-    const subject = `Pending Status Report • ${targetDateISO} • Total ${counts.total}`;
+    const subject = `Pending Status Report • ${dateRangeText} • Total ${totalCounts.total}`;
 
     const mailOptions = {
       from: MAIL_FROM,
-      to: MAIL_TO,
+      to: toRecipients,
       subject,
       html: htmlBody,
       attachments: [
-        { filename: `pending_status_${targetDateISO}.csv`, content: csv },
+        {
+          filename:
+            targetDates.length === 1
+              ? `pending_status_${targetDates[0]}.csv`
+              : `pending_status_last_${days}_days_${targetDates[targetDates.length - 1]}.csv`,
+          content: csv,
+        },
       ],
     };
 
@@ -360,12 +409,12 @@ async function sendPendingStatusEmail({ forDateISO } = {}) {
       await EmailLog.create({
         type: "Pending Status Report",
         subject,
-        to: MAIL_TO,
+        to: toRecipients,
         status: "success",
         sentAt: new Date(),
         meta: {
-          date: targetDateISO,
-          total: counts.total,
+          period: dateRangeText,
+          total: totalCounts.total,
           messageId: info.messageId || info,
         },
       });
@@ -376,7 +425,7 @@ async function sendPendingStatusEmail({ forDateISO } = {}) {
       );
     }
 
-    return { ok: true, counts };
+    return { ok: true, counts: totalCounts };
   } catch (err) {
     // comprehensive logging
     console.error("sendPendingStatusEmail error:", {
@@ -392,7 +441,7 @@ async function sendPendingStatusEmail({ forDateISO } = {}) {
       await EmailLog.create({
         type: "Pending Status Report",
         subject: `Pending Status Report - failure`,
-        to: MAIL_TO,
+        to: MAIL_TO_ADMIN || MAIL_TO,
         status: "failed", // use "failed" instead of "error" (avoid schema enum validation error)
         sentAt: new Date(),
         meta: {
