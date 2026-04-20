@@ -392,38 +392,43 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
 .dv-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ══════════════════════════════════════════════════
-   MODALS — Mobile Bottom Sheet (Footer Always Visible)
+   MODALS — GUARANTEED FOOTER VISIBILITY
+   Strategy: overlay = flex column, modal fills it,
+   body scrolls, footer NEVER clips.
 ══════════════════════════════════════════════════ */
+
+/* Overlay fills entire screen */
 .dv-modal-overlay {
-  position: fixed; inset: 0;
-  background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
   z-index: 500;
   display: flex;
-  align-items: flex-end;   /* bottom sheet */
-  justify-content: center;
+  flex-direction: column;      /* stack children vertically */
+  align-items: stretch;
+  justify-content: flex-end;   /* push modal to bottom */
 }
 .dv-modal-overlay.hidden { display: none; }
 
-/* ── BOTTOM SHEET MODAL ── */
+/* Modal = flex column, fills remaining space */
 .dv-modal {
   background: var(--surface);
-  border-radius: 20px 20px 0 0;
-  box-shadow: 0 -8px 40px rgba(15,23,42,0.25);
+  border-radius: 18px 18px 0 0;
+  box-shadow: 0 -6px 32px rgba(15,23,42,0.2);
   width: 100%;
-  max-width: 100%;
-  /* Key fix: use dvh so address bar doesn't cut footer */
-  height: 92dvh;
-  max-height: 92dvh;
+  /* Use flex to fill height — NO fixed height */
+  flex: 0 0 auto;
+  max-height: 90%;
   display: flex;
   flex-direction: column;
-  /* NO overflow:hidden here — let children handle scroll */
+  /* CRITICAL: overflow visible so flex works correctly */
   overflow: visible;
-  animation: slideUp 0.28s cubic-bezier(0.32,0.72,0,1);
+  animation: slideUp 0.26s ease-out;
 }
 @keyframes slideUp {
-  from { transform: translateY(60px); opacity: 0; }
+  from { transform: translateY(40px); opacity: 0; }
   to   { transform: translateY(0);    opacity: 1; }
 }
 
@@ -438,17 +443,17 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
   flex-shrink: 0;
 }
 
-.dv-modal-lg { max-width: 100%; }
-.dv-modal-xl { max-width: 100%; }
+.dv-modal-lg { width: 100%; }
+.dv-modal-xl { width: 100%; }
 
-/* Modal header — never shrinks */
+/* Header — never shrinks */
 .dv-modal-header {
-  padding: 12px 16px 13px;
+  padding: 10px 16px 12px;
   border-bottom: 1px solid var(--border);
   display: flex; align-items: center; justify-content: space-between;
   background: var(--surface);
   flex-shrink: 0;
-  border-radius: 20px 20px 0 0;
+  border-radius: 18px 18px 0 0;
 }
 .dv-modal-header-title {
   font-size: var(--fs-md); font-weight: 700; color: var(--txt);
@@ -460,33 +465,33 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
   font-size: 14px;
 }
 
-/* Modal body — ONLY this scrolls */
+/* Body — ONLY this part scrolls */
 .dv-modal-body {
-  padding: 16px;
+  padding: 14px 16px;
   overflow-y: auto;
   overflow-x: hidden;
-  flex: 1;
-  min-height: 0;        /* critical for flex scroll */
+  flex: 1 1 auto;
+  min-height: 0;          /* CRITICAL: allows flex child to shrink+scroll */
   -webkit-overflow-scrolling: touch;
 }
 
-/* ══ MODAL FOOTER — ALWAYS AT BOTTOM, NEVER CLIPPED ══ */
+/* ══════════════════════════════════════════
+   FOOTER — ALWAYS VISIBLE, NEVER CLIPPED
+   flex-shrink:0 + NOT inside overflow:hidden
+══════════════════════════════════════════ */
 .dv-modal-footer {
+  flex-shrink: 0;
   display: grid;
   grid-template-columns: 1fr 2fr;
   gap: 10px;
   padding: 12px 16px;
-  /* safe area for iPhone notch / home bar */
-  padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));
+  padding-bottom: max(14px, env(safe-area-inset-bottom, 14px));
   border-top: 1px solid var(--border);
   background: var(--surface);
-  flex-shrink: 0;        /* never shrink */
-  box-shadow: 0 -2px 12px rgba(15,23,42,0.07);
-  /* stay inside the rounded sheet */
-  border-radius: 0;
+  box-shadow: 0 -3px 10px rgba(15,23,42,0.06);
 }
 
-/* Buttons inside footer — full width, tall enough to tap */
+/* Buttons — large touch targets */
 .dv-modal-footer .dv-btn {
   width: 100%;
   height: 48px;
@@ -494,18 +499,19 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
   font-size: 14px;
   font-weight: 600;
   justify-content: center;
-  gap: 7px;
+  gap: 6px;
+  border: none;
 }
-
 .dv-modal-footer .dv-btn-neutral {
   background: var(--surface2);
-  border: 1.5px solid var(--border);
+  border: 1.5px solid var(--border) !important;
   color: var(--txt3);
 }
 .dv-modal-footer .dv-btn-neutral:active { background: #E2E8F0; }
-
-.dv-modal-footer .dv-btn-primary { box-shadow: 0 3px 12px rgba(37,99,235,0.35); }
-.dv-modal-footer .dv-btn-success { box-shadow: 0 3px 12px rgba(5,150,105,0.3); }
+.dv-modal-footer .dv-btn-primary  { background: var(--brand);   color: #fff; box-shadow: 0 3px 12px rgba(37,99,235,0.4); }
+.dv-modal-footer .dv-btn-success  { background: var(--success); color: #fff; box-shadow: 0 3px 12px rgba(5,150,105,0.35); }
+.dv-modal-footer .dv-btn-primary:active  { background: var(--brand-dk); }
+.dv-modal-footer .dv-btn-success:active  { background: #047857; }
 
 /* Modal form grid */
 .dv-form-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
@@ -627,17 +633,20 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
    DESKTOP OVERRIDES (≥ 768px)
 ══════════════════════════════════════════════════ */
 @media (min-width: 768px) {
-  .dv-modal-overlay { align-items: center; }
+  .dv-modal-overlay {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+  }
   .dv-modal {
     border-radius: 14px;
     width: 90%; max-width: 560px;
-    height: auto;
     max-height: 88vh;
-    overflow: hidden;   /* desktop: clip to rounded corners */
+    overflow: hidden;
     animation: fadeScale 0.2s ease;
   }
-  .dv-modal-body { min-height: 0; }
   .dv-modal::before { display: none; }
+  .dv-modal-body { min-height: 0; }
   .dv-modal-lg { max-width: 780px; }
   .dv-modal-xl { max-width: 940px; }
   .dv-modal-footer {
@@ -672,11 +681,11 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
 }
 
 @keyframes fadeScale {
-  from { opacity: 0; transform: scale(0.95); }
+  from { opacity: 0; transform: scale(0.96); }
   to   { opacity: 1; transform: scale(1); }
 }
 
-/* Mobile-specific toolbar improvements */
+/* Mobile improvements */
 @media (max-width: 767px) {
   .dv-toolbar { gap: 8px; }
   .dv-filter-group { min-width: 0; }
@@ -688,10 +697,6 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
   .dv-table-wrap-outer { padding: 8px 0 0; }
   .dv-table-card { border-radius: 0; border-left: none; border-right: none; }
   .dv-strip-meta { display: none; }
-  .dv-modal-body { padding: 14px; }
-  /* Mobile modal: body scrolls, header+footer are fixed */
-  .dv-modal-header { position: sticky; top: 0; z-index: 2; }
-  .dv-modal-footer { position: sticky; bottom: 0; z-index: 2; }
 }
 </style>
   <script src="config.js"></script>
