@@ -636,9 +636,10 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
 .dv-close-btn:hover, .dv-close-btn:active { background: var(--danger-lt); border-color: var(--danger); color: var(--danger); }
 
 /* ══════════════════════════════════════════════════
-   DESKTOP OVERRIDES (≥ 768px)
+   MODAL RESPONSIVE — >= 400px
+   Bottom-sheet -> centered modal transition
 ══════════════════════════════════════════════════ */
-@media (min-width: 768px) {
+@media (min-width: 400px) {
   .dv-modal-overlay {
     flex-direction: row;
     align-items: center;
@@ -646,15 +647,16 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
   }
   .dv-modal {
     border-radius: 14px;
-    width: 90%; max-width: 560px;
-    max-height: 88vh;
+    width: 94%;
+    max-width: 800px;
+    max-height: 92vh;
     overflow: hidden;
     animation: fadeScale 0.2s ease;
   }
   .dv-modal::before { display: none; }
   .dv-modal-body { min-height: 0; }
-  .dv-modal-lg { max-width: 780px; }
-  .dv-modal-xl { max-width: 940px; }
+  .dv-modal-lg  { max-width: 800px; }
+  .dv-modal-xl  { max-width: 800px; }
   .dv-modal-footer {
     grid-template-columns: auto auto;
     justify-content: flex-end;
@@ -664,15 +666,29 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
   }
   .dv-modal-footer .dv-btn {
     width: auto;
-    height: 34px;
+    height: 44px;
     border-radius: var(--r-sm);
-    font-size: var(--fs-sm);
-    padding: 0 18px;
+    font-size: 14px;
+    padding: 0 22px;
   }
   .dv-form-grid { grid-template-columns: repeat(2, 1fr); }
   .dv-form-grid-3 { grid-template-columns: repeat(3, 1fr); }
-  .dv-modal-input { height: 34px; }
-  .dv-modal-select { height: 34px; }
+  .dv-modal-input  { height: 40px; }
+  .dv-modal-select { height: 40px; }
+  .dv-modal-input, .dv-modal-select, .dv-modal-textarea { font-size: var(--fs-base); }
+}
+
+/* ══════════════════════════════════════════════════
+   DESKTOP OVERRIDES (>= 768px)
+══════════════════════════════════════════════════ */
+@media (min-width: 768px) {
+  .dv-modal-footer .dv-btn {
+    height: 36px;
+    font-size: var(--fs-sm);
+    padding: 0 20px;
+  }
+  .dv-modal-input  { height: 36px; }
+  .dv-modal-select { height: 36px; }
   .dv-modal-input, .dv-modal-select, .dv-modal-textarea { font-size: var(--fs-sm); }
   #dv-toast-container { top: 64px; bottom: auto; left: auto; right: 16px; transform: none; width: auto; }
   .dv-toast { transform: translateX(120%); opacity: 1; }
