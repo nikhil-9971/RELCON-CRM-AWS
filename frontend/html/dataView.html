@@ -409,6 +409,8 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
   flex-direction: column;      /* stack children vertically */
   align-items: stretch;
   justify-content: flex-end;   /* push modal to bottom */
+  /* Prevent overlay itself from scrolling */
+  overflow: hidden;
 }
 .dv-modal-overlay.hidden { display: none; }
 
@@ -419,12 +421,13 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
   box-shadow: 0 -6px 32px rgba(15,23,42,0.2);
   width: 100%;
   /* Use flex to fill height — NO fixed height */
-  flex: 0 0 auto;
-  max-height: 90%;
+  flex: 0 1 auto;
+  max-height: 92%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  /* CRITICAL: overflow visible so flex works correctly */
-  overflow: visible;
+  /* CRITICAL: overflow hidden so footer stays inside modal bounds */
+  overflow: hidden;
   animation: slideUp 0.26s ease-out;
 }
 @keyframes slideUp {
@@ -481,6 +484,7 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
 ══════════════════════════════════════════ */
 .dv-modal-footer {
   flex-shrink: 0;
+  flex-grow: 0;
   display: grid;
   grid-template-columns: 1fr 2fr;
   gap: 10px;
@@ -489,6 +493,8 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
   border-top: 1px solid var(--border);
   background: var(--surface);
   box-shadow: 0 -3px 10px rgba(15,23,42,0.06);
+  position: relative;
+  z-index: 1;
 }
 
 /* Buttons — large touch targets */
