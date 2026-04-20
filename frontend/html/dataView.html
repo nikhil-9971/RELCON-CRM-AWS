@@ -392,7 +392,7 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
 .dv-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ══════════════════════════════════════════════════
-   MODALS — Mobile-First, Sticky Footer Fix
+   MODALS — Mobile Bottom Sheet (Footer Always Visible)
 ══════════════════════════════════════════════════ */
 .dv-modal-overlay {
   position: fixed; inset: 0;
@@ -400,36 +400,40 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
   backdrop-filter: blur(3px);
   -webkit-backdrop-filter: blur(3px);
   z-index: 500;
-  display: flex; align-items: flex-end; justify-content: center;
+  display: flex;
+  align-items: flex-end;   /* bottom sheet */
+  justify-content: center;
 }
 .dv-modal-overlay.hidden { display: none; }
 
-/* Base modal — mobile bottom sheet style */
+/* ── BOTTOM SHEET MODAL ── */
 .dv-modal {
   background: var(--surface);
   border-radius: 20px 20px 0 0;
-  box-shadow: 0 -8px 40px rgba(15,23,42,0.2);
+  box-shadow: 0 -8px 40px rgba(15,23,42,0.25);
   width: 100%;
   max-width: 100%;
-  height: 92vh;
-  max-height: 92vh;
+  /* Key fix: use dvh so address bar doesn't cut footer */
+  height: 92dvh;
+  max-height: 92dvh;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  animation: slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);
+  /* NO overflow:hidden here — let children handle scroll */
+  overflow: visible;
+  animation: slideUp 0.28s cubic-bezier(0.32,0.72,0,1);
 }
 @keyframes slideUp {
-  from { transform: translateY(100%); opacity: 0; }
-  to   { transform: translateY(0);   opacity: 1; }
+  from { transform: translateY(60px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
 }
 
-/* Drag handle indicator */
+/* Drag handle */
 .dv-modal::before {
   content: '';
   display: block;
-  width: 40px; height: 4px;
+  width: 36px; height: 4px;
   background: var(--border);
-  border-radius: 2px;
+  border-radius: 3px;
   margin: 10px auto 0;
   flex-shrink: 0;
 }
@@ -437,13 +441,14 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
 .dv-modal-lg { max-width: 100%; }
 .dv-modal-xl { max-width: 100%; }
 
-/* Modal header */
+/* Modal header — never shrinks */
 .dv-modal-header {
-  padding: 12px 18px 14px;
+  padding: 12px 16px 13px;
   border-bottom: 1px solid var(--border);
   display: flex; align-items: center; justify-content: space-between;
   background: var(--surface);
   flex-shrink: 0;
+  border-radius: 20px 20px 0 0;
 }
 .dv-modal-header-title {
   font-size: var(--fs-md); font-weight: 700; color: var(--txt);
@@ -455,55 +460,52 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
   font-size: 14px;
 }
 
-/* Modal body — scrollable */
+/* Modal body — ONLY this scrolls */
 .dv-modal-body {
   padding: 16px;
   overflow-y: auto;
+  overflow-x: hidden;
   flex: 1;
+  min-height: 0;        /* critical for flex scroll */
   -webkit-overflow-scrolling: touch;
 }
 
-/* ══ MODAL FOOTER — FIXED AT BOTTOM, NEVER HIDDEN ══ */
+/* ══ MODAL FOOTER — ALWAYS AT BOTTOM, NEVER CLIPPED ══ */
 .dv-modal-footer {
-  padding: 14px 16px;
-  border-top: 1.5px solid var(--border);
-  background: var(--surface);
   display: grid;
   grid-template-columns: 1fr 2fr;
   gap: 10px;
-  flex-shrink: 0;
-  /* Safe area for notch phones */
-  padding-bottom: max(14px, env(safe-area-inset-bottom));
-  box-shadow: 0 -4px 16px rgba(15,23,42,0.06);
+  padding: 12px 16px;
+  /* safe area for iPhone notch / home bar */
+  padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;        /* never shrink */
+  box-shadow: 0 -2px 12px rgba(15,23,42,0.07);
+  /* stay inside the rounded sheet */
+  border-radius: 0;
 }
 
-/* Full-width cancel button */
+/* Buttons inside footer — full width, tall enough to tap */
 .dv-modal-footer .dv-btn {
   width: 100%;
-  height: 46px;
+  height: 48px;
   border-radius: 10px;
-  font-size: var(--fs-base);
+  font-size: 14px;
+  font-weight: 600;
   justify-content: center;
+  gap: 7px;
 }
 
-/* Cancel button styling */
 .dv-modal-footer .dv-btn-neutral {
   background: var(--surface2);
   border: 1.5px solid var(--border);
   color: var(--txt3);
-  font-weight: 600;
 }
-.dv-modal-footer .dv-btn-neutral:active {
-  background: var(--border);
-}
+.dv-modal-footer .dv-btn-neutral:active { background: #E2E8F0; }
 
-/* Save button styling */
-.dv-modal-footer .dv-btn-primary,
-.dv-modal-footer .dv-btn-success {
-  font-weight: 700;
-  letter-spacing: 0.2px;
-  box-shadow: 0 4px 14px rgba(37,99,235,0.3);
-}
+.dv-modal-footer .dv-btn-primary { box-shadow: 0 3px 12px rgba(37,99,235,0.35); }
+.dv-modal-footer .dv-btn-success { box-shadow: 0 3px 12px rgba(5,150,105,0.3); }
 
 /* Modal form grid */
 .dv-form-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
@@ -629,9 +631,12 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
   .dv-modal {
     border-radius: 14px;
     width: 90%; max-width: 560px;
-    height: auto; max-height: 88vh;
+    height: auto;
+    max-height: 88vh;
+    overflow: hidden;   /* desktop: clip to rounded corners */
     animation: fadeScale 0.2s ease;
   }
+  .dv-modal-body { min-height: 0; }
   .dv-modal::before { display: none; }
   .dv-modal-lg { max-width: 780px; }
   .dv-modal-xl { max-width: 940px; }
@@ -639,7 +644,7 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
     grid-template-columns: auto auto;
     justify-content: flex-end;
     gap: 8px;
-    padding-bottom: 12px;
+    padding: 12px 18px;
     box-shadow: none;
   }
   .dv-modal-footer .dv-btn {
@@ -684,6 +689,9 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
   .dv-table-card { border-radius: 0; border-left: none; border-right: none; }
   .dv-strip-meta { display: none; }
   .dv-modal-body { padding: 14px; }
+  /* Mobile modal: body scrolls, header+footer are fixed */
+  .dv-modal-header { position: sticky; top: 0; z-index: 2; }
+  .dv-modal-footer { position: sticky; bottom: 0; z-index: 2; }
 }
 </style>
   <script src="config.js"></script>
