@@ -697,6 +697,27 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
   .dv-table-wrap-outer { padding: 8px 0 0; }
   .dv-table-card { border-radius: 0; border-left: none; border-right: none; }
   .dv-strip-meta { display: none; }
+  .dv-modal {
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  /* 🔥 Body scrollable */
+  .dv-modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: 90px; /* footer ke liye space */
+  }
+
+  /* 🔥 Footer always visible */
+  .dv-modal-footer {
+    position: sticky;
+    bottom: 0;
+    background: #fff;
+    z-index: 50;
+    box-shadow: 0 -4px 10px rgba(0,0,0,0.1);
+  }
 }
 </style>
   <script src="config.js"></script>
