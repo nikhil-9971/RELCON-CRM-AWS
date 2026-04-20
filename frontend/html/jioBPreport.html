@@ -469,8 +469,10 @@
     function closeModal(){document.getElementById("editModal").classList.add("hidden");}
 
     async function saveEdit(){
-      const form=document.getElementById("editForm"), fd=new FormData(form), updated={}, id=fd.get("_id");
-      fd.forEach((val,key)=>{if(key==="_id")return;if(key==="planId"){try{updated.planId=JSON.parse(val)._id||val;}catch{updated.planId=val;}}else if(key==="isVerified")updated.isVerified=val==="true";else updated[key]=val;});
+      const form=document.getElementById("editForm");
+      const inputs=form.querySelectorAll("input[name]");
+      const updated={}, id=form.querySelector("input[name='_id']")?.value;
+      inputs.forEach(input=>{const key=input.name,val=input.value;if(key==="_id")return;if(key==="planId"){try{updated.planId=JSON.parse(val)._id||val;}catch{updated.planId=val;}}else if(key==="isVerified")updated.isVerified=val==="true";else updated[key]=val;});
       const res=await fetch(`${baseUrl}/jioBP/updateJioBPStatus/${id}`,{method:"PUT",headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},body:JSON.stringify(updated)});
       if(res.ok){closeModal();await fetchData();showToast("Record updated successfully.");}
       else showToast("Failed to update record.","error");
