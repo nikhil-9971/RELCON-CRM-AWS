@@ -406,27 +406,27 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
   -webkit-backdrop-filter: blur(2px);
   z-index: 500;
   display: flex;
-  flex-direction: column;      /* stack children vertically */
-  align-items: stretch;
-  justify-content: flex-end;   /* push modal to bottom */
-  /* Prevent overlay itself from scrolling */
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;     /* center modal on all screens */
   overflow: hidden;
+  padding: 16px;               /* safe gap from screen edges */
 }
 .dv-modal-overlay.hidden { display: none; }
 
 /* Modal = flex column, fills remaining space */
 .dv-modal {
   background: var(--surface);
-  border-radius: 18px 18px 0 0;
-  box-shadow: 0 -6px 32px rgba(15,23,42,0.2);
+  border-radius: 14px;
+  box-shadow: 0 8px 40px rgba(15,23,42,0.25);
   width: 100%;
-  /* Use flex to fill height — NO fixed height */
-  flex: 0 1 auto;
-  max-height: 92%;
+  max-width: 520px;
+  /* Limit height so footer is always visible */
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px); /* dynamic viewport for mobile keyboard */
   min-height: 0;
   display: flex;
   flex-direction: column;
-  /* CRITICAL: overflow hidden so footer stays inside modal bounds */
   overflow: hidden;
   animation: slideUp 0.26s ease-out;
 }
@@ -435,16 +435,8 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
   to   { transform: translateY(0);    opacity: 1; }
 }
 
-/* Drag handle */
-.dv-modal::before {
-  content: '';
-  display: block;
-  width: 36px; height: 4px;
-  background: var(--border);
-  border-radius: 3px;
-  margin: 10px auto 0;
-  flex-shrink: 0;
-}
+/* No drag handle needed for centered modal */
+.dv-modal::before { display: none; }
 
 .dv-modal-lg { width: 100%; }
 .dv-modal-xl { width: 100%; }
@@ -639,24 +631,20 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
    MODAL RESPONSIVE — >= 400px
    Bottom-sheet -> centered modal transition
 ══════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════
+   MODAL RESPONSIVE — >= 400px
+   Wider modal on larger phones/tablets
+══════════════════════════════════════════════════ */
 @media (min-width: 400px) {
-  .dv-modal-overlay {
-    flex-direction: row;
-    align-items: center;
-    justify-content: center;
-  }
   .dv-modal {
     border-radius: 14px;
     width: 94%;
     max-width: 800px;
-    max-height: 92vh;
+    max-height: calc(92vh - 32px);
+    max-height: calc(92dvh - 32px);
     overflow: hidden;
     animation: fadeScale 0.2s ease;
   }
-  .dv-modal::before { display: none; }
-  .dv-modal-body { min-height: 0; }
-  .dv-modal-lg  { max-width: 800px; }
-  .dv-modal-xl  { max-width: 800px; }
   .dv-modal-footer {
     grid-template-columns: auto auto;
     justify-content: flex-end;
