@@ -1,7 +1,7 @@
 /**
  * mailer.js (final)
- * - Sends daily "Pending Status (HPCL + RBML)" CSV to configured recipient via SMTP.
- * - Timezone-aware schedule: runs at 14:30 IST (Asia/Kolkata).
+ * - Sends daily "Pending Status (HPCL + BPCL + JIO BP)" CSV to configured recipient via SMTP.
+ * - Timezone-aware schedule: runs at 11:00 IST (Asia/Kolkata).
  * - Improved timeouts, robust error handling, detailed logging and safe EmailLog writes.
  *
  * Env required:
@@ -169,13 +169,8 @@ async function getFreshToken() {
   }
 }
 
-// Build pending dataset
-function computePending(plans = [], hpcl = [], jio = [], targetDateISO) {
-  const key = (rc, d) =>
-    `${String(rc || "")
-      .trim()
-      .toUpperCase()}-${String(d || "").slice(0, 10)}`;
-
+// Build pending dataset from daily plans + saved flags
+function computePending(plans = [], targetDateISO) {
   const plansOnDate = (plans || []).filter((p) => {
     const pd = String(p.date || "").slice(0, 10);
     if (!pd) return false;
@@ -186,86 +181,54 @@ function computePending(plans = [], hpcl = [], jio = [], targetDateISO) {
     return pd === targetDateISO;
   });
 
-  const plansHpcl = plansOnDate.filter((p) =>
-    String(p.phase || "")
-      .toUpperCase()
-      .startsWith("HPCL")
-  );
-  const plansRbml = plansOnDate.filter((p) =>
-    String(p.phase || "")
-      .toUpperCase()
-      .includes("RBML")
-  );
-
-  const hpclStatusSet = new Set(
-    (hpcl || [])
-      .filter(
-        (r) =>
-          String(r.date || r.uploadDate || "").slice(0, 10) === targetDateISO
-      )
-      .filter((r) =>
-        String(r.phase || "")
-          .toUpperCase()
-          .startsWith("HPCL")
-      )
-      .map((r) => key(r.roCode, r.date || r.uploadDate))
-  );
-
-  const rbmlStatusSet = new Set(
-    (jio || [])
-      .filter((r) => {
-        const statusDate = String(
-          r.date || r.uploadDate || r.planId?.date || ""
-        ).slice(0, 10);
-        return statusDate === targetDateISO;
-      })
-      .map((r) => {
-        const ro = (r.roCode || r.siteCode || r.ro || r.planId?.roCode || "")
-          .trim()
-          .toUpperCase();
-        const dt = String(r.date || r.uploadDate || r.planId?.date || "").slice(
-          0,
-          10
-        );
-        return key(ro, dt);
-      })
-  );
-
-  const pendingHpcl = plansHpcl.filter(
-    (p) => !hpclStatusSet.has(key(p.roCode, p.date))
-  );
-  const pendingRbml = plansRbml.filter(
-    (p) => !rbmlStatusSet.has(key(p.roCode || p.siteCode || p.ro, p.date))
-  );
+  const getCustomer = (phase) => {
+    const ph = String(phase || "")
+      .trim()
+      .toUpperCase();
+    if (ph.startsWith("HPCL")) return "HPCL";
+    if (ph.includes("BPCL")) return "BPCL";
+    if (ph.includes("JIO") || ph.includes("RBML")) return "JIO BP";
+    return null;
+  };
 
   const rows = [
-    ...pendingHpcl.map((p) => ({
-      customer: "HPCL",
-      date: String(p.date || "").slice(0, 10),
-      roCode: p.roCode || p.siteCode || p.ro || "",
-      roName: p.roName || "",
-      region: p.region || "",
-      engineer: p.engineer || "",
-      phase: p.phase || "",
-      purpose: p.purpose || "",
-    })),
-    ...pendingRbml.map((p) => ({
-      customer: "RBML",
-      date: String(p.date || "").slice(0, 10),
-      roCode: p.roCode || p.siteCode || p.ro || "",
-      roName: p.roName || "",
-      region: p.region || "",
-      engineer: p.engineer || "",
-      phase: p.phase || "",
-      purpose: p.purpose || "",
-    })),
+    ...plansOnDate
+      .map((p) => ({
+        plan: p,
+        customer: getCustomer(p.phase),
+      }))
+      .filter((item) => item.customer)
+      .filter((item) => {
+        if (item.customer === "HPCL") return !item.plan.statusSaved;
+        if (item.customer === "BPCL") return !item.plan.bpclStatusSaved;
+        if (item.customer === "JIO BP") return !item.plan.jioBPStatusSaved;
+        return false;
+      })
+      .map((item) => {
+        const p = item.plan;
+        return {
+          customer: item.customer,
+          date: String(p.date || "").slice(0, 10),
+          roCode: p.roCode || p.siteCode || p.ro || "",
+          roName: p.roName || "",
+          region: p.region || "",
+          engineer: p.engineer || "",
+          phase: p.phase || "",
+          purpose: p.purpose || "",
+        };
+      }),
   ];
+
+  const hpclCount = rows.filter((r) => r.customer === "HPCL").length;
+  const bpclCount = rows.filter((r) => r.customer === "BPCL").length;
+  const jiobpCount = rows.filter((r) => r.customer === "JIO BP").length;
 
   return {
     rows,
     counts: {
-      hpcl: pendingHpcl.length,
-      rbml: pendingRbml.length,
+      hpcl: hpclCount,
+      bpcl: bpclCount,
+      jiobp: jiobpCount,
       total: rows.length,
     },
   };
@@ -277,21 +240,11 @@ async function sendPendingStatusEmail({ forDateISO, days = 15 } = {}) {
     const token = await getFreshToken();
 
     // fetch all required datasets in parallel
-    const [plansRes, hpclRes, jioRes] = await Promise.all([
-      axios.get(`${BASE_URL}/getDailyPlans`, {
-        headers: { Authorization: `Bearer ${token}` },
-      }),
-      axios.get(`${BASE_URL}/getMergedStatusRecords`, {
-        headers: { Authorization: `Bearer ${token}` },
-      }),
-      axios.get(`${BASE_URL}/jioBP/getAllJioBPStatus`, {
-        headers: { Authorization: `Bearer ${token}` },
-      }),
-    ]);
+    const plansRes = await axios.get(`${BASE_URL}/getDailyPlans`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
     const plans = Array.isArray(plansRes.data) ? plansRes.data : [];
-    const hpcl = Array.isArray(hpclRes.data) ? hpclRes.data : [];
-    const jio = Array.isArray(jioRes.data) ? jioRes.data : [];
 
     // If date explicitly provided, send single-day report (backward compatible).
     // Else send last N days report ending at yesterday.
@@ -304,15 +257,10 @@ async function sendPendingStatusEmail({ forDateISO, days = 15 } = {}) {
         })();
 
     let rows = [];
-    const totalCounts = { hpcl: 0, rbml: 0, total: 0 };
+    const totalCounts = { hpcl: 0, bpcl: 0, jiobp: 0, total: 0 };
 
     for (const targetDateISO of targetDates) {
-      const { rows: dayRows, counts } = computePending(
-        plans,
-        hpcl,
-        jio,
-        targetDateISO
-      );
+      const { rows: dayRows, counts } = computePending(plans, targetDateISO);
 
       rows.push(
         ...dayRows.map((r) => ({
@@ -321,7 +269,8 @@ async function sendPendingStatusEmail({ forDateISO, days = 15 } = {}) {
         }))
       );
       totalCounts.hpcl += counts.hpcl;
-      totalCounts.rbml += counts.rbml;
+      totalCounts.bpcl += counts.bpcl;
+      totalCounts.jiobp += counts.jiobp;
       totalCounts.total += counts.total;
     }
 
@@ -358,12 +307,11 @@ async function sendPendingStatusEmail({ forDateISO, days = 15 } = {}) {
 
     const htmlBody = `
       <div style="font:14px/1.5 Calibri,Segoe UI,Roboto,Arial,sans-serif">
-        <h2 style="margin-bottom:6px">Pending Status Report (HPCL + RBML)</h2>
+        <h2 style="margin-bottom:6px">Pending Status Report (HPCL + BPCL + JIO BP)</h2>
         <p style="margin:6px 0;color:#374151">Period: <strong>${dateRangeText}</strong></p>
         <p style="margin:6px 0;color:#374151">Total pending: <strong>${
           totalCounts.total
-        }</strong> • HPCL: <strong>${totalCounts.hpcl}</strong> • RBML: <strong>${totalCounts.rbml
-    }</strong></p>
+        }</strong> • HPCL: <strong>${totalCounts.hpcl}</strong> • BPCL: <strong>${totalCounts.bpcl}</strong> • JIO BP: <strong>${totalCounts.jiobp}</strong></p>
         ${buildTable(
           rows.slice(0, 500),
           columns,
@@ -462,13 +410,13 @@ async function sendPendingStatusEmail({ forDateISO, days = 15 } = {}) {
 }
 
 // -------------------------------
-// SCHEDULING: timezone-aware -> run at 14:30 IST daily
+// SCHEDULING: timezone-aware -> run at 11:00 IST daily
 // Uses IANA timezone "Asia/Kolkata"
 cron.schedule(
-  "10 15 * * *",
+  "0 11 * * *",
   () => {
     console.log(
-      "🔔 Scheduled pending-status job triggered (14:30 IST):",
+      "🔔 Scheduled pending-status job triggered (11:00 IST):",
       new Date().toISOString()
     );
     sendPendingStatusEmail().catch((e) =>
