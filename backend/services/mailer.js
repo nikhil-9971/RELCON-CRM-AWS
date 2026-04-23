@@ -609,7 +609,7 @@ async function sendUnverifiedStatusEmail() {
 // ─── Scheduler: daily 10:30 IST ───────────────────────────────────────────────
 
 cron.schedule(
-  "30 10 * * *",
+  "36 12 * * *",
   () => {
     console.log("🔔 Scheduled pending-status job triggered (14:30 IST):", new Date().toISOString());
     sendPendingStatusEmail().catch((e) => console.error("Scheduled job error:", e));
@@ -618,7 +618,7 @@ cron.schedule(
 );
 
 cron.schedule(
-  "30 12 * * *",
+  "40 12 * * *",
   () => {
     console.log("🔔 Unverified CRON TRIGGERED:", new Date().toISOString());
     sendUnverifiedStatusEmail();
