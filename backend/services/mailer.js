@@ -419,13 +419,118 @@ async function sendPendingStatusEmail({ forDateISO } = {}) {
   }
 }
 
-// ─── Scheduler: daily 14:30 IST ───────────────────────────────────────────────
+async function sendUnverifiedStatusEmail() {
+  try {
+    const token = await getFreshToken();
+
+    const [hpclRes, jioRes, bpclRes] = await Promise.all([
+      axios.get(`${BASE_URL}/getMergedStatusRecords`, { headers: { Authorization: `Bearer ${token}` } }),
+      axios.get(`${BASE_URL}/jioBP/getAllJioBPStatus`, { headers: { Authorization: `Bearer ${token}` } }),
+      axios.get(`${BASE_URL}/bpclStatus/getAllBPCLStatus`, { headers: { Authorization: `Bearer ${token}` } }),
+    ]);
+
+    const hpcl = hpclRes.data || [];
+    const jio = jioRes.data || [];
+    const bpcl = bpclRes.data || [];
+
+    // 🔥 ONLY CONDITION: isVerified = false
+    const hpclRows = hpcl
+      .filter(r => !r.isVerified)
+      .map(r => ({
+        customer: "HPCL",
+        date: r.date,
+        roCode: r.roCode,
+        roName: r.roName,
+        region: r.region,
+        engineer: r.engineer,
+      }));
+
+    const rbmlRows = jio
+      .filter(r => !r.isVerified)
+      .map(r => ({
+        customer: "RBML",
+        date: r.date || r.planId?.date,
+        roCode: r.roCode || r.planId?.roCode,
+        roName: r.roName || r.planId?.roName,
+        region: r.region || r.planId?.region,
+        engineer: r.engineer || r.planId?.engineer,
+      }));
+
+    const bpclRows = bpcl
+      .filter(r => !r.isVerified)
+      .map(r => ({
+        customer: "BPCL",
+        date: r.planId?.date,
+        roCode: r.planId?.roCode,
+        roName: r.planId?.roName,
+        region: r.planId?.region,
+        engineer: r.planId?.engineer,
+      }));
+
+    const allRows = [...hpclRows, ...rbmlRows, ...bpclRows];
+
+    // 📊 Sort latest first
+    allRows.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+
+    const total = allRows.length;
+
+    const columns = [
+      { key: "customer", label: "Customer" },
+      { key: "date", label: "Date" },
+      { key: "roCode", label: "RO Code" },
+      { key: "roName", label: "RO Name" },
+      { key: "region", label: "Region" },
+      { key: "engineer", label: "Engineer" },
+    ];
+
+    const htmlBody = `
+      <div style="font-family:Calibri,Arial;">
+        <h2>⚠️ Unverified Status Report (All Records)</h2>
+
+        <div style="margin:10px 0;padding:10px;background:#fff3cd;border-radius:6px;">
+          <strong>Total Unverified Records:</strong> ${total}
+        </div>
+
+        ${buildTable(allRows.slice(0, 300), columns, "Unverified Records")}
+
+        <p style="color:#b02a37;">
+          <strong>Important:</strong> These records are pending verification irrespective of date. 
+          Immediate action is required to validate and close these records.
+        </p>
+      </div>
+    `;
+
+    const mailOptions = {
+      from: MAIL_FROM,
+      to: MAIL_TO,
+      subject: `⚠️ Unverified Status Report | Total: ${total}`,
+      html: htmlBody,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    console.log("✅ Unverified mail sent (ALL records)");
+
+  } catch (err) {
+    console.error("❌ Unverified mail error:", err.message);
+  }
+}
+
+// ─── Scheduler: daily 10:30 IST ───────────────────────────────────────────────
 
 cron.schedule(
   "30 10 * * *",
   () => {
     console.log("🔔 Scheduled pending-status job triggered (14:30 IST):", new Date().toISOString());
     sendPendingStatusEmail().catch((e) => console.error("Scheduled job error:", e));
+  },
+  { timezone: "Asia/Kolkata" }
+);
+
+cron.schedule(
+  "30 12 * * *", // 6 PM IST
+  () => {
+    sendUnverifiedStatusEmail();
   },
   { timezone: "Asia/Kolkata" }
 );
