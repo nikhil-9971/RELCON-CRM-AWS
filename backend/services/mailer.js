@@ -606,10 +606,10 @@ async function sendUnverifiedStatusEmail() {
     console.error("❌ Unverified mail error:", err.message);
   }
 }
-// ─── Scheduler: daily 10:30 IST ───────────────────────────────────────────────
+// ─── Scheduler: daily 10:50 IST ───────────────────────────────────────────────
 
 cron.schedule(
-  "48 00 * * *",
+  "50 10 * * *",
   () => {
     console.log("🔔 Scheduled pending-status job triggered (14:30 IST):", new Date().toISOString());
     sendPendingStatusEmail().catch((e) => console.error("Scheduled job error:", e));
@@ -617,8 +617,10 @@ cron.schedule(
   { timezone: "Asia/Kolkata" }
 );
 
+// ─── Scheduler: daily 12:30 IST ───────────────────────────────────────────────
+
 cron.schedule(
-  "50 00 * * *",
+  "30 12 * * *",
   () => {
     console.log("🔔 Unverified CRON TRIGGERED:", new Date().toISOString());
     sendUnverifiedStatusEmail();
