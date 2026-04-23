@@ -347,7 +347,7 @@ async function sendPendingStatusEmail({ forDateISO } = {}) {
       </div>
     `;
 
-    const subject = `Pending Report (15d) • ${fromDateISO} → ${endDateISO} • Total ${totalPending}`;
+    const subject = `Pending Status Report (15d) • ${fromDateISO} → ${endDateISO} • Total ${totalPending}`;
 
     const mailOptions = {
       from: MAIL_FROM,
@@ -609,7 +609,7 @@ async function sendUnverifiedStatusEmail() {
 // ─── Scheduler: daily 10:30 IST ───────────────────────────────────────────────
 
 cron.schedule(
-  "36 00 * * *",
+  "48 00 * * *",
   () => {
     console.log("🔔 Scheduled pending-status job triggered (14:30 IST):", new Date().toISOString());
     sendPendingStatusEmail().catch((e) => console.error("Scheduled job error:", e));
@@ -618,7 +618,7 @@ cron.schedule(
 );
 
 cron.schedule(
-  "40 00 * * *",
+  "50 00 * * *",
   () => {
     console.log("🔔 Unverified CRON TRIGGERED:", new Date().toISOString());
     sendUnverifiedStatusEmail();
