@@ -80,30 +80,32 @@ function getLast15Days(endDateISO, days = 15) {
 
 function buildTable(rows, columns, title) {
   if (!rows.length) {
-    return `<div style="font:13px/1.4 Calibri,Segoe UI,Roboto,Arial,sans-serif">
-      <h3 style="margin:12px 0 4px">${htmlEscape(title)}</h3>
-      <div style="padding:8px 12px;background:#fff3cd;border:1px solid #ffe69c;border-radius:8px">No pending records ✅</div>
+    return `<div style="margin-top:22px">
+      <h3 style="margin:0 0 10px;color:#0f172a;font-size:16px;font-weight:700">${htmlEscape(title)}</h3>
+      <div style="padding:12px 14px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;color:#065f46;font-size:13px;font-weight:600">
+        No pending records in this section.
+      </div>
     </div>`;
   }
 
   const thead = columns
-    .map((c) => `<th style="padding:6px 8px;border:1px solid #d1d5db;background:#e8f4ff;font-size:12px;font-weight:600;text-align:left;white-space:nowrap;">${htmlEscape(c.label)}</th>`)
+    .map((c) => `<th style="padding:10px 12px;border-bottom:1px solid #e2e8f0;background:#f8fafc;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.02em;color:#334155;text-align:left;white-space:nowrap;">${htmlEscape(c.label)}</th>`)
     .join("");
 
   const tbody = rows
-    .map((r) => {
+    .map((r, idx) => {
       const tds = columns
-        .map((c) => `<td style="padding:6px 8px;border:1px solid #d1d5db;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;">${htmlEscape(typeof c.get === "function" ? c.get(r) : r[c.key])}</td>`)
+        .map((c) => `<td style="padding:9px 12px;border-bottom:1px solid #f1f5f9;font-size:12px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;">${htmlEscape(typeof c.get === "function" ? c.get(r) : r[c.key])}</td>`)
         .join("");
-      return `<tr>${tds}</tr>`;
+      return `<tr style="background:${idx % 2 === 0 ? "#ffffff" : "#f8fafc"}">${tds}</tr>`;
     })
     .join("");
 
   return `
-  <div style="font:13px/1.4 Calibri,Segoe UI,Roboto,Arial,sans-serif;margin-top:16px">
-    <h3 style="margin:12px 0 4px">${htmlEscape(title)} <span style="font-weight:normal;color:#6b7280">(${rows.length})</span></h3>
-    <div style="overflow:auto;border:1px solid #d1d5db;border-radius:6px">
-      <table style="width:100%;border-collapse:collapse;min-width:860px;">
+  <div style="margin-top:22px">
+    <h3 style="margin:0 0 10px;color:#0f172a;font-size:16px;font-weight:700">${htmlEscape(title)} <span style="font-weight:600;color:#64748b">(${rows.length})</span></h3>
+    <div style="overflow:auto;border:1px solid #e2e8f0;border-radius:10px;background:#ffffff">
+      <table style="width:100%;border-collapse:separate;border-spacing:0;min-width:860px;">
         <thead><tr>${thead}</tr></thead>
         <tbody>${tbody}</tbody>
       </table>
@@ -300,29 +302,59 @@ async function sendPendingStatusEmail({ forDateISO } = {}) {
     const totalPending = hrCounts.total + bpclCounts.total;
 
     // ── HTML Email Body ──
+    const generatedAt = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
     const htmlBody = `
-      <div style="font:14px/1.5 Calibri,Segoe UI,Roboto,Arial,sans-serif;max-width:1100px">
-        <h2 style="margin-bottom:4px">📋 Pending Status Report — Last 15 Days</h2>
-        <p style="margin:4px 0;color:#6b7280;font-size:13px">Range: <strong>${fromDateISO}</strong> to <strong>${endDateISO}</strong></p>
+      <div style="margin:0;padding:20px 12px;background:#f1f5f9;font:14px/1.6 Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a">
+        <div style="max-width:1120px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(15,23,42,.05)">
+          <div style="padding:18px 22px;background:linear-gradient(135deg,#0f172a,#1e3a8a);color:#ffffff">
+            <p style="margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.85">Relcon CRM • Daily Follow-up</p>
+            <h2 style="margin:0;font-size:22px;font-weight:700">Pending Status Report</h2>
+            <p style="margin:8px 0 0;font-size:13px;opacity:.95">Reporting Window: <strong>${fromDateISO}</strong> to <strong>${endDateISO}</strong> (Last 15 days)</p>
+          </div>
 
-        <div style="margin:12px 0;padding:10px 16px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;display:flex;gap:24px;flex-wrap:wrap">
-          <span>📦 Total Pending: <strong>${totalPending}</strong></span>
-          <span>🔵 HPCL: <strong>${hrCounts.hpcl}</strong></span>
-          <span>🟠 RBML: <strong>${hrCounts.rbml}</strong></span>
-          <span>🟢 BPCL: <strong>${bpclCounts.bpcl}</strong></span>
+          <div style="padding:20px 22px 24px">
+            <p style="margin:0 0 12px;color:#334155;font-size:13px">
+              Hi Team,<br>
+              Please find below the pending status summary for the last 15 days. A complete CSV is attached for detailed review.
+            </p>
+
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+              <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;min-width:170px">
+                <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.05em">Total Pending</div>
+                <div style="font-size:24px;line-height:1.2;font-weight:800;color:#0f172a">${totalPending}</div>
+              </div>
+              <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 12px;min-width:150px">
+                <div style="font-size:11px;color:#1d4ed8;text-transform:uppercase;letter-spacing:.05em">HPCL</div>
+                <div style="font-size:22px;line-height:1.2;font-weight:800;color:#1e40af">${hrCounts.hpcl}</div>
+              </div>
+              <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:10px 12px;min-width:150px">
+                <div style="font-size:11px;color:#c2410c;text-transform:uppercase;letter-spacing:.05em">RBML</div>
+                <div style="font-size:22px;line-height:1.2;font-weight:800;color:#9a3412">${hrCounts.rbml}</div>
+              </div>
+              <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;padding:10px 12px;min-width:150px">
+                <div style="font-size:11px;color:#047857;text-transform:uppercase;letter-spacing:.05em">BPCL</div>
+                <div style="font-size:22px;line-height:1.2;font-weight:800;color:#065f46">${bpclCounts.bpcl}</div>
+              </div>
+            </div>
+
+            <p style="margin:12px 0 0;color:#475569;font-size:12px">
+              Below sections display up to 300 records each for quick review.
+            </p>
+
+            ${buildTable(hrRows.slice(0, 300), columns, "HPCL + RBML Pending")}
+            ${buildTable(bpclRows.slice(0, 300), columns, "BPCL Pending")}
+
+            <div style="margin-top:18px;padding-top:12px;border-top:1px solid #e2e8f0;color:#64748b;font-size:12px">
+              Regards,<br>
+              Relcon CRM Team<br>
+              <span style="display:inline-block;margin-top:6px">Updated on ${generatedAt} IST.</span>
+            </div>
+          </div>
         </div>
-
-        ${buildTable(hrRows.slice(0, 300), columns, "🔵 HPCL + 🟠 RBML Pending")}
-        ${buildTable(bpclRows.slice(0, 300), columns, "🟢 BPCL Pending")}
-
-        <p style="margin-top:14px;color:#6b7280;font-size:12px">
-          ⚠️ Max 300 rows shown per section in email. Full data attached as CSV.<br>
-          This is an automated report generated at ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST.
-        </p>
       </div>
     `;
 
-    const subject = `Pending Report (15d) • ${fromDateISO} → ${endDateISO} • Total ${totalPending}`;
+    const subject = `Pending Status Summary | ${fromDateISO} to ${endDateISO} | Total: ${totalPending}`;
 
     const mailOptions = {
       from: MAIL_FROM,
