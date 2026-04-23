@@ -433,7 +433,7 @@ async function sendUnverifiedStatusEmail() {
     const jio = jioRes.data || [];
     const bpcl = bpclRes.data || [];
 
-    // 🔥 ONLY CONDITION: isVerified = false
+    // 🔥 FILTER: only unverified
     const hpclRows = hpcl
       .filter(r => !r.isVerified)
       .map(r => ({
@@ -467,7 +467,15 @@ async function sendUnverifiedStatusEmail() {
         engineer: r.planId?.engineer,
       }));
 
-    const allRows = [...hpclRows, ...rbmlRows, ...bpclRows];
+    let allRows = [...hpclRows, ...rbmlRows, ...bpclRows];
+
+    // 🧠 Add Aging (days since visit)
+    const today = new Date();
+    allRows = allRows.map(r => {
+      const d = new Date(r.date);
+      const agingDays = isNaN(d) ? "" : Math.floor((today - d) / (1000 * 60 * 60 * 24));
+      return { ...r, agingDays };
+    });
 
     // 📊 Sort latest first
     allRows.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
@@ -481,13 +489,30 @@ async function sendUnverifiedStatusEmail() {
       { key: "roName", label: "RO Name" },
       { key: "region", label: "Region" },
       { key: "engineer", label: "Engineer" },
+      { key: "agingDays", label: "Aging (Days)" },
     ];
 
+    // 📄 CSV GENERATION
+    const keys = ["customer", "date", "roCode", "roName", "region", "engineer", "agingDays"];
+
+    const headerMap = {
+      customer: "Customer",
+      date: "Date",
+      roCode: "RO Code",
+      roName: "RO Name",
+      region: "Region",
+      engineer: "Engineer",
+      agingDays: "Aging (Days)",
+    };
+
+    const csv = toCSV(allRows, keys, headerMap);
+
+    // 📧 EMAIL BODY
     const htmlBody = `
       <div style="font-family:Calibri,Arial;">
         <h2>⚠️ Unverified Status Report (All Records)</h2>
 
-        <div style="margin:10px 0;padding:10px;background:#fff3cd;border-radius:6px;">
+        <div style="margin:10px 0;padding:12px;background:#fff3cd;border-radius:6px;">
           <strong>Total Unverified Records:</strong> ${total}
         </div>
 
@@ -495,27 +520,34 @@ async function sendUnverifiedStatusEmail() {
 
         <p style="color:#b02a37;">
           <strong>Important:</strong> These records are pending verification irrespective of date. 
-          Immediate action is required to validate and close these records.
+          Records with higher aging should be prioritized immediately.
         </p>
       </div>
     `;
+
+    const todayStr = new Date().toISOString().slice(0, 10);
 
     const mailOptions = {
       from: MAIL_FROM,
       to: MAIL_TO,
       subject: `⚠️ Unverified Status Report | Total: ${total}`,
       html: htmlBody,
+      attachments: [
+        {
+          filename: `unverified_status_${todayStr}.csv`,
+          content: csv,
+        },
+      ],
     };
 
     await transporter.sendMail(mailOptions);
 
-    console.log("✅ Unverified mail sent (ALL records)");
+    console.log("✅ Unverified mail sent with CSV");
 
   } catch (err) {
     console.error("❌ Unverified mail error:", err.message);
   }
 }
-
 // ─── Scheduler: daily 10:30 IST ───────────────────────────────────────────────
 
 cron.schedule(
@@ -537,11 +569,28 @@ cron.schedule(
 
 // ─── Manual run ───────────────────────────────────────────────────────────────
 
+// if (require.main === module) {
+//   const dateArg = process.argv[2]; // optional YYYY-MM-DD (end date)
+//   sendPendingStatusEmail({ forDateISO: dateArg })
+//     .then((r) => { console.log("Done:", r); process.exit(r.ok ? 0 : 1); })
+//     .catch((e) => { console.error("❌ error:", e); process.exit(1); });
+// }
+
 if (require.main === module) {
-  const dateArg = process.argv[2]; // optional YYYY-MM-DD (end date)
-  sendPendingStatusEmail({ forDateISO: dateArg })
-    .then((r) => { console.log("Done:", r); process.exit(r.ok ? 0 : 1); })
-    .catch((e) => { console.error("❌ error:", e); process.exit(1); });
+  const type = process.argv[2];   // pending / unverified
+  const dateArg = process.argv[3]; // optional date
+
+  if (type === "unverified") {
+    sendUnverifiedStatusEmail()
+      .then(() => { console.log("Unverified Done"); process.exit(0); })
+      .catch((e) => { console.error("❌ error:", e); process.exit(1); });
+
+  } else {
+    // default = pending
+    sendPendingStatusEmail({ forDateISO: dateArg })
+      .then((r) => { console.log("Pending Done:", r); process.exit(r.ok ? 0 : 1); })
+      .catch((e) => { console.error("❌ error:", e); process.exit(1); });
+  }
 }
 
-module.exports = { sendPendingStatusEmail };
+module.exports = { sendPendingStatusEmail, sendUnverifiedStatusEmail };
