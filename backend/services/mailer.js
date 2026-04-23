@@ -379,7 +379,7 @@ async function sendPendingStatusEmail({ forDateISO } = {}) {
         type: "Pending Status Report",
         subject: "Pending Status Report - failure",
         to: MAIL_TO,
-        status: "failed",
+        status: "failure",
         sentAt: new Date(),
         meta: {
           error: (err.response?.data || err.message || String(err)).toString(),
@@ -397,7 +397,7 @@ async function sendPendingStatusEmail({ forDateISO } = {}) {
 // ─── Scheduler: daily 14:30 IST ───────────────────────────────────────────────
 
 cron.schedule(
-  "30 14 * * *",
+  "30 10 * * *",
   () => {
     console.log("🔔 Scheduled pending-status job triggered (14:30 IST):", new Date().toISOString());
     sendPendingStatusEmail().catch((e) => console.error("Scheduled job error:", e));

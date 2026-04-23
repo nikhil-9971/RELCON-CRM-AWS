@@ -19,6 +19,16 @@ services:
       SESSION_SECRET: ${SESSION_SECRET}
       FRONTEND_URL: https://nikhildevops.co.in
       GROQ_API_KEY: ${GROQ_API_KEY}
+       # ── Mailer ──────────────────────────────
+      BASE_URL: ${BASE_URL}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      MAIL_FROM: ${MAIL_FROM}
+      MAIL_TO: ${MAIL_TO}
+      APP_USER: ${APP_USER}
+      APP_PASS: ${APP_PASS}
     ports:
       - "3001:3000"
     networks:
