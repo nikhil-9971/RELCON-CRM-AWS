@@ -560,8 +560,9 @@ cron.schedule(
 );
 
 cron.schedule(
-  "30 12 * * *", // 6 PM IST
+  "30 12 * * *",
   () => {
+    console.log("🔔 Unverified CRON TRIGGERED:", new Date().toISOString());
     sendUnverifiedStatusEmail();
   },
   { timezone: "Asia/Kolkata" }
