@@ -423,6 +423,8 @@ async function sendUnverifiedStatusEmail() {
   try {
     const token = await getFreshToken();
 
+    const FROM_DATE = "2026-04-01";
+
     const [hpclRes, jioRes, bpclRes] = await Promise.all([
       axios.get(`${BASE_URL}/getMergedStatusRecords`, { headers: { Authorization: `Bearer ${token}` } }),
       axios.get(`${BASE_URL}/jioBP/getAllJioBPStatus`, { headers: { Authorization: `Bearer ${token}` } }),
@@ -433,9 +435,12 @@ async function sendUnverifiedStatusEmail() {
     const jio = jioRes.data || [];
     const bpcl = bpclRes.data || [];
 
-    // 🔥 FILTER: only unverified
+    // 🔥 FILTER: unverified + date >= 01-04-2026
     const hpclRows = hpcl
-      .filter(r => !r.isVerified)
+      .filter(r => {
+        const d = String(r.date || "").slice(0, 10);
+        return !r.isVerified && d >= FROM_DATE;
+      })
       .map(r => ({
         customer: "HPCL",
         date: r.date,
@@ -446,7 +451,10 @@ async function sendUnverifiedStatusEmail() {
       }));
 
     const rbmlRows = jio
-      .filter(r => !r.isVerified)
+      .filter(r => {
+        const d = String(r.date || r.planId?.date || "").slice(0, 10);
+        return !r.isVerified && d >= FROM_DATE;
+      })
       .map(r => ({
         customer: "RBML",
         date: r.date || r.planId?.date,
@@ -457,7 +465,10 @@ async function sendUnverifiedStatusEmail() {
       }));
 
     const bpclRows = bpcl
-      .filter(r => !r.isVerified)
+      .filter(r => {
+        const d = String(r.planId?.date || "").slice(0, 10);
+        return !r.isVerified && d >= FROM_DATE;
+      })
       .map(r => ({
         customer: "BPCL",
         date: r.planId?.date,
@@ -469,7 +480,7 @@ async function sendUnverifiedStatusEmail() {
 
     let allRows = [...hpclRows, ...rbmlRows, ...bpclRows];
 
-    // 🧠 Add Aging (days since visit)
+    // 🧠 Aging
     const today = new Date();
     allRows = allRows.map(r => {
       const d = new Date(r.date);
@@ -482,6 +493,13 @@ async function sendUnverifiedStatusEmail() {
 
     const total = allRows.length;
 
+    // ✅ SUMMARY
+    const summary = {
+      HPCL: allRows.filter(r => r.customer === "HPCL").length,
+      RBML: allRows.filter(r => r.customer === "RBML").length,
+      BPCL: allRows.filter(r => r.customer === "BPCL").length,
+    };
+
     const columns = [
       { key: "customer", label: "Customer" },
       { key: "date", label: "Date" },
@@ -492,7 +510,6 @@ async function sendUnverifiedStatusEmail() {
       { key: "agingDays", label: "Aging (Days)" },
     ];
 
-    // 📄 CSV GENERATION
     const keys = ["customer", "date", "roCode", "roName", "region", "engineer", "agingDays"];
 
     const headerMap = {
@@ -509,28 +526,69 @@ async function sendUnverifiedStatusEmail() {
 
     // 📧 EMAIL BODY
     const htmlBody = `
-      <div style="font-family:Calibri,Arial;">
-        <h2>⚠️ Unverified Status Report (All Records)</h2>
+<div style="margin:0;padding:0;background:#f4f6f8;font-family:Segoe UI,Roboto,Arial,sans-serif;">
+  <div style="max-width:1100px;margin:20px auto;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e0e0e0;box-shadow:0 4px 20px rgba(0,0,0,0.05);">
 
-        <div style="margin:10px 0;padding:12px;background:#fff3cd;border-radius:6px;">
-          <strong>Total Unverified Records:</strong> ${total}
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#0f172a,#1e3a8a);color:#ffffff;padding:20px 25px;">
+      <h2 style="margin:0;font-size:22px;">Unverified Status Report</h2>
+      <p style="margin:6px 0 0;font-size:13px;opacity:0.9;">
+        Reporting From <strong>${FROM_DATE}</strong> | Generated on ${new Date().toLocaleString("en-IN")}
+      </p>
+    </div>
+
+    <!-- Summary Cards -->
+    <div style="padding:20px 25px;">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px;">
+
+        <div style="flex:1;min-width:180px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;">
+          <div style="font-size:12px;color:#64748b;">TOTAL UNVERIFIED</div>
+          <div style="font-size:26px;font-weight:700;color:#0f172a;">${total}</div>
         </div>
 
-        ${buildTable(allRows.slice(0, 300), columns, "Unverified Records")}
+        <div style="flex:1;min-width:160px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px;">
+          <div style="font-size:12px;color:#1d4ed8;">HPCL</div>
+          <div style="font-size:22px;font-weight:700;color:#1e40af;">${summary.HPCL}</div>
+        </div>
 
-        <p style="color:#b02a37;">
-          <strong>Important:</strong> These records are pending verification irrespective of date. 
-          Records with higher aging should be prioritized immediately.
-        </p>
+        <div style="flex:1;min-width:160px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:14px;">
+          <div style="font-size:12px;color:#c2410c;">RBML</div>
+          <div style="font-size:22px;font-weight:700;color:#9a3412;">${summary.RBML}</div>
+        </div>
+
+        <div style="flex:1;min-width:160px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;padding:14px;">
+          <div style="font-size:12px;color:#047857;">BPCL</div>
+          <div style="font-size:22px;font-weight:700;color:#065f46;">${summary.BPCL}</div>
+        </div>
+
       </div>
-    `;
+
+      <!-- Table -->
+      ${buildTable(allRows.slice(0, 300), columns, "Unverified Records (Top 300)")}
+
+      <!-- Footer Note -->
+      <div style="margin-top:20px;padding:14px;background:#fff1f2;border:1px solid #fecdd3;border-radius:8px;color:#b91c1c;font-size:13px;">
+        <strong>Action Required:</strong>  
+        Records pending verification should be reviewed at the earliest.  
+        High aging entries must be prioritized to avoid SLA breach.
+      </div>
+
+      <!-- Footer -->
+      <div style="margin-top:18px;font-size:12px;color:#64748b;text-align:center;">
+        This is an automated email generated by <strong>Relcon CRM</strong>.
+      </div>
+
+    </div>
+  </div>
+</div>
+`;
 
     const todayStr = new Date().toISOString().slice(0, 10);
 
     const mailOptions = {
       from: MAIL_FROM,
       to: MAIL_TO,
-      subject: `⚠️ Unverified Status Report | Total: ${total}`,
+      subject: `⚠️ Unverified Report | Total: ${total} | H:${summary.HPCL} R:${summary.RBML} B:${summary.BPCL}`,
       html: htmlBody,
       attachments: [
         {
@@ -542,7 +600,7 @@ async function sendUnverifiedStatusEmail() {
 
     await transporter.sendMail(mailOptions);
 
-    console.log("✅ Unverified mail sent with CSV");
+    console.log("✅ Unverified mail sent with summary + date filter");
 
   } catch (err) {
     console.error("❌ Unverified mail error:", err.message);
