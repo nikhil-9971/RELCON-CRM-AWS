@@ -7,6 +7,7 @@
 <title>RELCON CRM — Field Operations</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+<script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@joeattardi/emoji-button@4.6.2/dist/emoji-button.min.js"></script>
 <style>
 /* ================================================================
@@ -1060,6 +1061,9 @@ const pageSlugs = {
   'logsViewer.html':'logs-viewer'
 };
 
+// Slug → filename reverse map (reload aur popstate ke liye)
+const slugToPage = Object.fromEntries(Object.entries(pageSlugs).map(([k,v])=>[v,k]));
+
 function loadPage(page, el){
   showGlobalLoader();
   const iframe = document.getElementById("contentFrame");
@@ -1076,11 +1080,43 @@ function loadPage(page, el){
   if(name) document.getElementById("currentPage").textContent = name[1];
   if(window.innerWidth < 768) document.getElementById("nav").classList.remove("mobile-open");
 
-  // ── Clean URL: .html hide karo browser se ──
+  // Clean URL: .html hide karo browser se, /dashboard#slug format
   const fileKey = Object.keys(pageSlugs).find(k => page.includes(k));
   const slug = fileKey ? pageSlugs[fileKey] : 'dashboard';
-  history.pushState({ page }, '', '/dashboard#' + slug);
+  history.pushState({ page, slug }, '', '/dashboard#' + slug);
 }
+
+// Browser back/forward handle karo — iframe update karo
+window.addEventListener('popstate', function(e){
+  const slug = location.hash.replace('#','') || 'dashboard';
+  const page = slugToPage[slug] || 'overview.html';
+  const iframe = document.getElementById("contentFrame");
+  const tok = localStorage.getItem("token") || "";
+  showGlobalLoader();
+  iframe.src = page + "?cb=" + Date.now() + (tok ? `&token=${encodeURIComponent(tok)}` : "");
+  iframe.onload = () => { hideGlobalLoader(); };
+});
+
+// Reload pe hash se correct page load karo
+window.addEventListener('DOMContentLoaded', function(){
+  const hash = location.hash.replace('#','');
+  if(hash && hash !== 'dashboard' && slugToPage[hash]){
+    const page = slugToPage[hash];
+    const iframe = document.getElementById("contentFrame");
+    const tok = localStorage.getItem("token") || "";
+    showGlobalLoader();
+    iframe.src = page + "?cb=" + Date.now() + (tok ? `&token=${encodeURIComponent(tok)}` : "");
+    iframe.onload = () => { hideGlobalLoader(); };
+    // Breadcrumb update
+    const name = pageNames[page];
+    if(name) document.getElementById("currentPage").textContent = name;
+    // Active link set karo
+    document.querySelectorAll(".nav-item").forEach(el=>{
+      if(el.getAttribute("onclick") && el.getAttribute("onclick").includes(page))
+        el.classList.add("active-link");
+    });
+  }
+});
 
 function showGlobalLoader(){
   const bar=document.getElementById("progressBar");
@@ -1106,7 +1142,7 @@ function closeNewSiteModal(){ document.getElementById("newSiteModal").style.disp
 </script>
 
 <script>
-const baseUrl = window.BACKEND_URL || "/api";
+const baseUrl = window.BACKEND_URL || "http://localhost:3000";
 let replyContext = null;
 
 function getToken(){ return localStorage.getItem("token"); }
@@ -1143,7 +1179,12 @@ async function fetchUser(){
   if(isTokenExpired(token)){localStorage.removeItem("token");return logout();}
   try{
     const res=await fetch(`${baseUrl}/user`,{headers:{Authorization:`Bearer ${token}`}});
-    if(res.status===403||res.status===401) throw new Error("Expired");
+    // Sirf 401/403 par logout karo — network error ya 5xx par nahi
+    if(res.status===401||res.status===403){
+      alert("Your session has expired. Please login again.");
+      return logout();
+    }
+    if(!res.ok) throw new Error("NetworkError"); // retry silently
     const user=await res.json();
     const initial=(user.engineerName||user.username||"R")[0].toUpperCase();
     document.getElementById("navUserName").textContent=user.engineerName||user.username;
@@ -1167,9 +1208,8 @@ async function fetchUser(){
       document.getElementById("mongoExplorerLink").style.display="block";
     }
   }catch(err){
-    if(err.message==="Expired") alert("Your session has expired. Please login again.");
-    else alert("Authentication failed. Please login again.");
-    logout();
+    // Network failure — logout mat karo, sirf console mein log karo
+    console.warn("fetchUser failed (network issue), staying on page:", err.message);
   }
 }
 
@@ -1464,7 +1504,7 @@ async function sendAIMessage(){
   const msg=input.value.trim();
   if(!msg) return;
   const messages=document.getElementById("aiMessages");
-  const backendBaseUrl=window.BACKEND_URL||"https://relcon-crm.onrender.com";
+  const backendBaseUrl = window.BACKEND_URL || "http://localhost:3000";
 
   // User bubble
   const userDiv=document.createElement("div");
