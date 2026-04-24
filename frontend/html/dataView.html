@@ -1674,46 +1674,27 @@ async function openStatusModal(planId) {
     setSimFields(false);
   }
 
-  ctClone.addEventListener('change', async function () {
+  ctClone.addEventListener('change', function () {
     const sel = this.value;
     if (sel === 'RELCON SIM') {
-      // Enable fields first, show loading placeholder
-      simIds.forEach(id => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.disabled = false;
-        el.style.background = '';
-        el.style.color = '';
-        if (el.tagName === 'INPUT') el.placeholder = 'Fetching…';
-      });
-      if (roCode) {
-        try {
-          const r = await fetch(`${baseUrl}/getSimDetails/${roCode}`, {
-            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-          });
-          if (r.ok) {
-            const d = await r.json();
-            const hasSim = d.sim1Number || d.sim1Provider || d.sim2Number || d.sim2Provider || d.iemiNumber;
-            setSimFields(true, d);
-            if (hasSim) {
-              showToast('✅ SIM details auto-filled from last visit.', 'info');
-            } else {
-              showToast('No previous SIM record found for this RO.', 'info');
-            }
-          } else {
-            setSimFields(true, {});
-          }
-        } catch {
-          setSimFields(true, {});
+      // Fill SIM fields from previous verified record (_prevHPCLRecord)
+      if (_prevHPCLRecord) {
+        const hasSim = _prevHPCLRecord.sim1Number || _prevHPCLRecord.sim1Provider || _prevHPCLRecord.sim2Number || _prevHPCLRecord.sim2Provider || _prevHPCLRecord.iemiNumber;
+        setSimFields(true, {
+          sim1Provider: _prevHPCLRecord.sim1Provider,
+          sim1Number:   _prevHPCLRecord.sim1Number,
+          sim2Provider: _prevHPCLRecord.sim2Provider,
+          sim2Number:   _prevHPCLRecord.sim2Number,
+          iemiNumber:   _prevHPCLRecord.iemiNumber
+        });
+        if (hasSim) {
+          showToast('✅ SIM details auto-filled from previous verified visit.', 'info');
+        } else {
+          showToast('No previous SIM record found for this RO.', 'info');
         }
       } else {
         setSimFields(true, {});
       }
-      // Clear placeholder after fetch
-      ['sim1Number','sim2Number','iemiNumber'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.placeholder = '';
-      });
     } else {
       setSimFields(false);
     }
