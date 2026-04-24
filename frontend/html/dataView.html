@@ -1595,10 +1595,18 @@ async function openStatusModal(planId) {
   document.getElementById('statusForm').reset();
   const currentPlan = fullData.find(p => p._id === planId);
   const roCode = currentPlan?.roCode;
+  // Store previous record data for connectivity auto-fill
+  let _prevHPCLRecord = null;
   if (roCode) {
     try {
       const r = await fetch(`${baseUrl}/getLatestVerifiedHPCLByRoCode/${roCode}`, { headers:{Authorization:`Bearer ${localStorage.getItem('token')}`} });
-      if (r.ok) { const d = await r.json(); if(d.probeMake) document.getElementById('probeMake').value=d.probeMake; if(d.probeSize) document.getElementById('probeSize').value=d.probeSize; showToast('Probe details auto-filled from verified record.', 'info'); }
+      if (r.ok) {
+        const d = await r.json();
+        _prevHPCLRecord = d;
+        if(d.probeMake) document.getElementById('probeMake').value=d.probeMake;
+        if(d.probeSize) document.getElementById('probeSize').value=d.probeSize;
+        showToast('Probe details auto-filled from verified record.', 'info');
+      }
     } catch {}
   }
   function applyAutoFieldLogic() {
@@ -1643,8 +1651,28 @@ async function openStatusModal(planId) {
     }
   }
 
-  // Set initial state — disable SIM fields until RELCON SIM is selected
-  setSimFields(false);
+  // Auto-fill connectivityType + SIM fields from previous verified record on modal open
+  if (_prevHPCLRecord) {
+    const prevConn = _prevHPCLRecord.connectivityType;
+    if (prevConn) {
+      ctClone.value = prevConn;
+      if (prevConn === 'RELCON SIM') {
+        setSimFields(true, {
+          sim1Provider: _prevHPCLRecord.sim1Provider,
+          sim1Number:   _prevHPCLRecord.sim1Number,
+          sim2Provider: _prevHPCLRecord.sim2Provider,
+          sim2Number:   _prevHPCLRecord.sim2Number,
+          iemiNumber:   _prevHPCLRecord.iemiNumber
+        });
+        showToast('\u2705 Connectivity & SIM details auto-filled from previous visit.', 'info');
+      } else {
+        setSimFields(false);
+      }
+    }
+  } else {
+    // Set initial state — disable SIM fields until RELCON SIM is selected
+    setSimFields(false);
+  }
 
   ctClone.addEventListener('change', async function () {
     const sel = this.value;
