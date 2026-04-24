@@ -1260,7 +1260,7 @@ function hideGlobalLoader(){
 }
 
 const token=getToken();
-if(!token&&!window.location.href.includes("login.html")) logout();
+if((!token||isTokenExpired(token))&&!window.location.href.includes("login.html")){localStorage.removeItem("token");window.location.href="login.html";}
 
 function parseUser(){
   try{const p=JSON.parse(atob(token.split(".")[1]));return(p.engineerName||p.username||"").trim();}catch{return "";}
