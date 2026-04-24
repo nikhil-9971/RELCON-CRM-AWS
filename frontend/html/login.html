@@ -171,9 +171,18 @@ body {
 
 .footer {
   position:fixed; bottom:14px; width:100%; text-align:center;
-  color:rgba(255,255,255,.2); font-size:11px; z-index:10;
+  color:rgba(255,255,255,.18); font-size:10.5px; z-index:10;
+  letter-spacing:.2px;
 }
-.footer strong { color:rgba(96,165,250,.5); }
+.footer strong { color:rgba(96,165,250,.45); }
+
+@keyframes shake {
+  0%,100%{transform:translateX(0);}
+  20%{transform:translateX(-8px);}
+  40%{transform:translateX(8px);}
+  60%{transform:translateX(-6px);}
+  80%{transform:translateX(6px);}
+}
 
 @media(max-width:680px){
   .card-right{display:none;}
@@ -226,7 +235,31 @@ body {
       </button>
     </form>
     <div id="toastContainer"></div>
-    <p id="error">⚠️ Invalid credentials. Please try again.</p>
+
+    <!-- Error Message -->
+    <div id="error" style="display:none; margin-top:14px; padding:10px 14px; background:rgba(220,38,38,.12); border:1px solid rgba(220,38,38,.3); border-radius:10px; color:#FCA5A5; font-size:12.5px; display:flex; align-items:center; gap:8px;">
+      <i class="fa-solid fa-triangle-exclamation" style="color:#F87171; flex-shrink:0;"></i>
+      <span id="errorMsg">Invalid credentials. Please try again.</span>
+    </div>
+
+    <!-- Lockout Window -->
+    <div id="lockoutBox" style="display:none; margin-top:14px; padding:14px 16px; background:rgba(234,88,12,.10); border:1px solid rgba(234,88,12,.35); border-radius:10px; text-align:center;">
+      <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:8px;">
+        <i class="fa-solid fa-shield-halved" style="color:#FB923C; font-size:15px;"></i>
+        <span style="color:#FDBA74; font-size:13px; font-weight:700;">Account Temporarily Locked</span>
+      </div>
+      <p style="color:rgba(255,255,255,.45); font-size:11.5px; margin-bottom:10px; line-height:1.6;">Too many failed attempts. Please wait before trying again.</p>
+      <div style="display:inline-flex; align-items:center; gap:6px; background:rgba(234,88,12,.2); border:1px solid rgba(234,88,12,.3); border-radius:8px; padding:8px 20px;">
+        <i class="fa-regular fa-clock" style="color:#FB923C; font-size:13px;"></i>
+        <span id="countdown" style="font-size:22px; font-weight:800; color:#FDBA74; font-variant-numeric:tabular-nums; letter-spacing:-0.5px;">30</span>
+        <span style="color:rgba(255,255,255,.3); font-size:11px;">sec</span>
+      </div>
+      <div style="margin-top:10px;">
+        <div style="height:4px; background:rgba(255,255,255,.08); border-radius:99px; overflow:hidden;">
+          <div id="lockoutBar" style="height:100%; background:linear-gradient(90deg,#F97316,#FB923C); border-radius:99px; width:100%; transition:width 1s linear;"></div>
+        </div>
+      </div>
+    </div>
     <div class="clients">
       <div class="clients-label">Our Clients</div>
       <div class="clients-logos">
@@ -251,7 +284,10 @@ body {
   </div>
 </div>
 
-<div class="footer">Powered by <strong>Advit Software</strong></div>
+<div class="footer">
+  &copy; <span id="copyrightYear"></span> <strong>Advit Software</strong>. All rights reserved. &nbsp;|&nbsp; RELCON CRM is a trademark of Advit Software. &nbsp;|&nbsp; Powered by <strong>Advit Software</strong>
+</div>
+<script>document.getElementById("copyrightYear").textContent = new Date().getFullYear();</script>
 
 <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
 <script>
@@ -268,10 +304,70 @@ body {
 
   function decodeJWT(token){const base64Url=token.split(".")[1],base64=base64Url.replace(/-/g,"+").replace(/_/g,"/");return JSON.parse(window.atob(base64));}
 
+  // ── Attempt tracking ──────────────────────────────────────────────────────
+  const MAX_ATTEMPTS = 5;
+  const LOCKOUT_SECS = 30;
+  let failCount = 0;
+  let lockoutTimer = null;
+
+  function showError(msg) {
+    const box = document.getElementById("error");
+    document.getElementById("errorMsg").textContent = msg;
+    box.style.display = "flex";
+  }
+
+  function hideError() {
+    document.getElementById("error").style.display = "none";
+  }
+
+  function setFormDisabled(disabled) {
+    document.getElementById("username").disabled = disabled;
+    document.getElementById("password").disabled = disabled;
+    document.getElementById("loginBtn").disabled = disabled;
+  }
+
+  function startLockout() {
+    setFormDisabled(true);
+    hideError();
+    const lockoutBox = document.getElementById("lockoutBox");
+    const countdownEl = document.getElementById("countdown");
+    const bar = document.getElementById("lockoutBar");
+    lockoutBox.style.display = "block";
+
+    let remaining = LOCKOUT_SECS;
+    countdownEl.textContent = remaining;
+    bar.style.width = "100%";
+
+    // Force reflow so transition kicks in
+    bar.getBoundingClientRect();
+    bar.style.width = "0%";
+
+    lockoutTimer = setInterval(() => {
+      remaining--;
+      countdownEl.textContent = remaining;
+      if (remaining <= 0) {
+        clearInterval(lockoutTimer);
+        lockoutTimer = null;
+        failCount = 0;
+        lockoutBox.style.display = "none";
+        setFormDisabled(false);
+        document.getElementById("password").value = "";
+        document.getElementById("password").focus();
+        showToast("🔓 You can try again now.");
+      }
+    }, 1000);
+  }
+
   async function handleLogin(event){
     event.preventDefault();
+
+    // Block if locked out
+    if (lockoutTimer) return;
+
     const loginBtn=document.getElementById("loginBtn"),spinner=document.getElementById("spinner"),btnText=document.getElementById("btnText");
     loginBtn.disabled=true;spinner.classList.remove("hidden");btnText.textContent="Signing in...";loginBtn.classList.add("btn-clicked");
+    hideError();
+
     const username=document.getElementById("username").value,password=document.getElementById("password").value;
     try{
       const response=await fetch(`${baseUrl}/login`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username,password})});
@@ -282,10 +378,27 @@ body {
       localStorage.setItem("role",user.role);
       localStorage.setItem("engineerName",user.engineerName);
       localStorage.setItem("user",JSON.stringify({username:user.username,role:user.role}));
+      failCount = 0;
       showToast("✅ Welcome, "+user.engineerName+"!");
       setTimeout(()=>{window.location.href="dashboard.html";},800);
-    }catch(err){document.getElementById("error").classList.remove("hidden");}
-    setTimeout(()=>{spinner.classList.add("hidden");btnText.textContent="Sign In";loginBtn.disabled=false;loginBtn.classList.remove("btn-clicked");},400);
+    } catch(err) {
+      failCount++;
+      const remaining = MAX_ATTEMPTS - failCount;
+      if (failCount >= MAX_ATTEMPTS) {
+        startLockout();
+      } else {
+        showError(
+          remaining === 1
+            ? `⚠️ Invalid credentials. 1 attempt remaining before lockout.`
+            : `⚠️ Invalid credentials. ${remaining} attempts remaining.`
+        );
+        // Shake the card
+        const card = document.querySelector(".card");
+        card.style.animation = "none";
+        card.style.animation = "shake .4s ease";
+      }
+    }
+    setTimeout(()=>{spinner.classList.add("hidden");btnText.textContent="Sign In to RELCON";loginBtn.disabled=!!lockoutTimer;loginBtn.classList.remove("btn-clicked");},400);
   }
 
   // SVG spinner animation
