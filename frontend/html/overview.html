@@ -889,15 +889,56 @@ function savePcbProvidedCounts() {
 function exportRelconConnectivityCSV() {
   try {
     const statusRecords = window.__statusRecords || [];
+    const allPlans = window.__allPlans || [];
     const currentUser = window.__currentUser || {};
     const userRole = currentUser.role || "";
     const currentEngineer = currentUser.engineerName || currentUser.username || "";
+
+    // Filter RELCON connectivity records
     let relcon = statusRecords.filter((r) => String(r.connectivityType || r.ConnectivityType || "").trim().toUpperCase().includes("RELCON"));
     if (userRole === "engineer" && currentEngineer) relcon = relcon.filter((r) => String(r.engineer || r.Engineer || r.engineerName || "").trim().toLowerCase() === currentEngineer.toLowerCase());
+
+    // Build a map: roCode (uppercase) → earliest GSM Module Install date from allPlans
+    const gsmInstallDateMap = new Map();
+    allPlans.forEach((p) => {
+      const purpose = String(p.issueType || p.purpose || "").trim().toUpperCase();
+      const isGsm = (purpose.includes("GSM MODULE") && (purpose.includes("INSTALL") || purpose.includes("INSTAL"))) || purpose.includes("GSM MODULE INSTALLATION");
+      if (!isGsm) return;
+      const roCode = String(p.roCode || "").trim().toUpperCase();
+      const planDate = String(p.date || "").slice(0, 10);
+      if (!roCode || !planDate) return;
+      // Keep the earliest (first) GSM install date for each RO
+      if (!gsmInstallDateMap.has(roCode) || planDate < gsmInstallDateMap.get(roCode)) {
+        gsmInstallDateMap.set(roCode, planDate);
+      }
+    });
+
+    // Deduplicate by roCode — keep first occurrence
     const uniqueSites = new Map();
-    relcon.forEach((r) => { const roCode = String(r.roCode || r.ROCode || r.rocode || "").trim(); if (roCode && !uniqueSites.has(roCode)) uniqueSites.set(roCode, r); });
-    const csvRows = [["EngineerName","Region","RO Code","RO Name","Phase","Connectivity Type","SIM1 Provider","SIM1 Number","SIM2 Provider","SIM2 Number","IEMI Number"]];
-    uniqueSites.forEach((r) => { csvRows.push([String(r.engineer||r.Engineer||"").trim(),String(r.region||r.Region||"").trim(),String(r.roCode||r.ROCode||r.rocode||"").trim(),String(r.roName||r.ROName||"").trim(),String(r.phase||r.Phase||"").trim(),String(r.connectivityType||r.ConnectivityType||"").trim(),String(r.sim1Provider||r.SIM1Provider||"").trim(),"`"+String(r.sim1Number||r.SIM1Number||"").trim(),String(r.sim2Provider||r.SIM2Provider||"").trim(),"`"+String(r.sim2Number||r.SIM2Number||"").trim(),"`"+String(r.iemiNumber||r.IEMINumber||r.imeiNumber||"").trim()]); });
+    relcon.forEach((r) => {
+      const roCode = String(r.roCode || r.ROCode || r.rocode || "").trim();
+      if (roCode && !uniqueSites.has(roCode)) uniqueSites.set(roCode, r);
+    });
+
+    const csvRows = [["EngineerName","Region","RO Code","RO Name","Phase","Connectivity Type","SIM1 Provider","SIM1 Number","SIM2 Provider","SIM2 Number","IEMI Number","Date of Visit"]];
+    uniqueSites.forEach((r) => {
+      const roCode = String(r.roCode || r.ROCode || r.rocode || "").trim();
+      const dateOfVisit = gsmInstallDateMap.get(roCode.toUpperCase()) || "";
+      csvRows.push([
+        String(r.engineer||r.Engineer||"").trim(),
+        String(r.region||r.Region||"").trim(),
+        roCode,
+        String(r.roName||r.ROName||"").trim(),
+        String(r.phase||r.Phase||"").trim(),
+        String(r.connectivityType||r.ConnectivityType||"").trim(),
+        String(r.sim1Provider||r.SIM1Provider||"").trim(),
+        "`"+String(r.sim1Number||r.SIM1Number||"").trim(),
+        String(r.sim2Provider||r.SIM2Provider||"").trim(),
+        "`"+String(r.sim2Number||r.SIM2Number||"").trim(),
+        "`"+String(r.iemiNumber||r.IEMINumber||r.imeiNumber||"").trim(),
+        dateOfVisit
+      ]);
+    });
     csvRows.push([]); csvRows.push(["Total RELCON Connectivity", uniqueSites.size]);
     const blob = new Blob([csvRows.map((row) => row.join(",")).join("\n")], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
