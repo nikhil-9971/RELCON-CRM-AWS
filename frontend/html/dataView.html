@@ -1595,18 +1595,10 @@ async function openStatusModal(planId) {
   document.getElementById('statusForm').reset();
   const currentPlan = fullData.find(p => p._id === planId);
   const roCode = currentPlan?.roCode;
-  // Store previous record data for connectivity auto-fill
-  let _prevHPCLRecord = null;
   if (roCode) {
     try {
       const r = await fetch(`${baseUrl}/getLatestVerifiedHPCLByRoCode/${roCode}`, { headers:{Authorization:`Bearer ${localStorage.getItem('token')}`} });
-      if (r.ok) {
-        const d = await r.json();
-        _prevHPCLRecord = d;
-        if(d.probeMake) document.getElementById('probeMake').value=d.probeMake;
-        if(d.probeSize) document.getElementById('probeSize').value=d.probeSize;
-        showToast('Probe details auto-filled from verified record.', 'info');
-      }
+      if (r.ok) { const d = await r.json(); if(d.probeMake) document.getElementById('probeMake').value=d.probeMake; if(d.probeSize) document.getElementById('probeSize').value=d.probeSize; showToast('Probe details auto-filled from verified record.', 'info'); }
     } catch {}
   }
   function applyAutoFieldLogic() {
@@ -1622,101 +1614,14 @@ async function openStatusModal(planId) {
     else { document.getElementById('spareRequirmentname').readOnly=false; }
   }
   ['duOffline','tankOffline','spareUsed','spareRequirment'].forEach(id => document.getElementById(id).addEventListener('change', applyAutoFieldLogic));
-  // ── Connectivity Type → SIM auto-populate ──────────────────────────────
-  // Remove any previous listener to avoid duplicates on re-open
-  const ctEl = document.getElementById('connectivityType');
-  const ctClone = ctEl.cloneNode(true);
-  ctEl.parentNode.replaceChild(ctClone, ctEl);
-
-  const simIds = ['sim1Provider','sim1Number','sim2Provider','sim2Number','iemiNumber'];
-
-  function setSimFields(enabled, values = {}) {
-    simIds.forEach(id => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      el.disabled = !enabled;
-      el.style.background = enabled ? '' : 'var(--surface2)';
-      el.style.color = enabled ? '' : 'var(--txt4)';
-    });
-    if (!enabled) {
-      // Set NA for text inputs, keep selects blank or NA
-      ['sim1Number','sim2Number','iemiNumber'].forEach(id => { const el=document.getElementById(id); if(el) el.value='NA'; });
-      ['sim1Provider','sim2Provider'].forEach(id => { const el=document.getElementById(id); if(el) el.value='NA'; });
-    } else {
-      if (values.sim1Number !== undefined) document.getElementById('sim1Number').value = values.sim1Number || '';
-      if (values.sim1Provider !== undefined) document.getElementById('sim1Provider').value = values.sim1Provider || '';
-      if (values.sim2Number !== undefined) document.getElementById('sim2Number').value = values.sim2Number || '';
-      if (values.sim2Provider !== undefined) document.getElementById('sim2Provider').value = values.sim2Provider || '';
-      if (values.iemiNumber !== undefined) document.getElementById('iemiNumber').value = values.iemiNumber || '';
-    }
-  }
-
-  // Auto-fill connectivityType from previous verified record on modal open
-  if (_prevHPCLRecord && _prevHPCLRecord.connectivityType) {
-    ctClone.value = _prevHPCLRecord.connectivityType;
-    if (_prevHPCLRecord.connectivityType === 'RELCON SIM') {
-      // Fetch SIM details from getSimDetails API (same as on manual select)
-      setSimFields(true, {});
+  document.getElementById('connectivityType').addEventListener('change', async function() {
+    const sel = this.value; const ids = ['sim1Provider','sim1Number','sim2Provider','sim2Number','iemiNumber'];
+    if (sel==='RELCON SIM') {
+      ids.forEach(id => document.getElementById(id).disabled=false);
       if (roCode) {
-        fetch(`${baseUrl}/getSimDetails/${roCode}`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        })
-          .then(r => r.ok ? r.json() : null)
-          .then(d => {
-            if (d) {
-              const hasSim = d.sim1Number || d.sim1Provider || d.sim2Number || d.sim2Provider || d.iemiNumber;
-              setSimFields(true, {
-                sim1Provider: d.sim1Provider || '',
-                sim1Number:   d.sim1Number   || '',
-                sim2Provider: d.sim2Provider || '',
-                sim2Number:   d.sim2Number   || '',
-                iemiNumber:   d.iemiNumber   || ''
-              });
-              if (hasSim) showToast('✅ Connectivity & SIM details auto-filled from previous visit.', 'info');
-            }
-          })
-          .catch(() => {});
+        try { const r = await fetch(`${baseUrl}/getSimDetails/${roCode}`, {headers:{Authorization:`Bearer ${localStorage.getItem('token')}`}}); const d = await r.json(); document.getElementById('sim1Number').value=d.sim1Number||''; document.getElementById('sim1Provider').value=d.sim1Provider||''; document.getElementById('sim2Number').value=d.sim2Number||''; document.getElementById('sim2Provider').value=d.sim2Provider||''; document.getElementById('iemiNumber').value=d.iemiNumber||''; } catch {}
       }
-    } else {
-      setSimFields(false);
-    }
-  } else {
-    // Set initial state — disable SIM fields until RELCON SIM is selected
-    setSimFields(false);
-  }
-
-  ctClone.addEventListener('change', async function () {
-    const sel = this.value;
-    if (sel === 'RELCON SIM') {
-      setSimFields(true, {});
-      if (roCode) {
-        try {
-          const r = await fetch(`${baseUrl}/getSimDetails/${roCode}`, {
-            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-          });
-          if (r.ok) {
-            const d = await r.json();
-            const hasSim = d.sim1Number || d.sim1Provider || d.sim2Number || d.sim2Provider || d.iemiNumber;
-            setSimFields(true, {
-              sim1Provider: d.sim1Provider || '',
-              sim1Number:   d.sim1Number   || '',
-              sim2Provider: d.sim2Provider || '',
-              sim2Number:   d.sim2Number   || '',
-              iemiNumber:   d.iemiNumber   || ''
-            });
-            showToast(hasSim ? '✅ SIM details auto-filled from previous visit.' : 'No previous SIM record found for this RO.', 'info');
-          } else {
-            setSimFields(true, {});
-          }
-        } catch {
-          setSimFields(true, {});
-        }
-      } else {
-        setSimFields(true, {});
-      }
-    } else {
-      setSimFields(false);
-    }
+    } else { ['NA','NA','NA','NA','NA'].forEach((v,i) => { document.getElementById(ids[i]).value=v; document.getElementById(ids[i]).disabled=true; }); }
   });
   document.querySelectorAll('#statusModal textarea').forEach(el => el.addEventListener('input', function() { this.value=this.value.toUpperCase(); }));
   const lf = document.getElementById('locationField');
@@ -1729,14 +1634,9 @@ async function saveStatus() {
   const required = ['probeMake','probeSize','lowProductLock','highWaterSet','duSerialNumber','dgStatus','connectivityType','sim1Provider','sim1Number','sim2Provider','sim2Number','iemiNumber','bosVersion','fccVersion','wirelessSlave','sftpConfig','adminPassword','workCompletion','spareUsed','activeSpare','faultySpare','spareRequirment','spareRequirmentname','earthingStatus','voltageReading','duOffline','duDependency','duRemark','tankOffline','tankDependency','tankRemark','bosIP','fccIP','locationField'];
   const loc = document.getElementById('locationField').value;
   if (!loc || loc.includes('Fetching') || loc.includes('Unable') || loc.includes('not supported')) { showToast('Location not available. Please allow location access.', 'error'); return; }
-  for (const id of required) {
-    const el = document.getElementById(id);
-    // Read value directly (works even if disabled)
-    const val = el ? el.value.trim() : '';
-    if (!val) { showToast(`Please fill in: ${id.replace(/([A-Z])/g,' $1')}`, 'error'); if(el && !el.disabled) el.focus(); return; }
-  }
+  for (const id of required) { const el=document.getElementById(id); if(!el||!el.value.trim()) { showToast(`Please fill in: ${id.replace(/([A-Z])/g,' $1')}`, 'error'); el?.focus(); return; } }
   const statusData = {};
-  required.forEach(id => { const el = document.getElementById(id); statusData[id] = el ? el.value : ''; });
+  required.forEach(id => { statusData[id] = document.getElementById(id).value; });
   statusData.planId = document.getElementById('statusPlanId').value;
   const res = await fetch(`${baseUrl}/saveStatus`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(statusData), credentials:'include' });
   if (res.ok) { showToast('Status saved successfully.'); closeStatusModal(); await fetchAndStoreData(); applyFilter(document.getElementById('applyBtn')); }
