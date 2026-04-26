@@ -386,10 +386,11 @@ window.onload = async () => {
   if(!token){ document.getElementById("mainContent").innerHTML = `<div class="empty-state"><i class="fa-solid fa-lock"></i><p>Please login to access attendance.</p></div>`; return; }
 
   try{
-    const res = await fetch(`${baseUrl}/auth/user`, {headers:{Authorization:`Bearer ${token}`}});
-    if(!res.ok) throw new Error("Unauthorized");
-    currentUser = await res.json();
-    currentRole = (currentUser.role||"").toLowerCase();
+    // Decode JWT payload directly — no network call needed
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    if(payload.exp && Date.now() / 1000 > payload.exp) throw new Error("Expired");
+    currentUser = { username: payload.username, role: payload.role, engineerName: payload.engineerName };
+    currentRole = (currentUser.role || "").toLowerCase();
   }catch(e){
     document.getElementById("mainContent").innerHTML = `<div class="empty-state"><i class="fa-solid fa-triangle-exclamation"></i><p>Session expired. Please login again.</p></div>`;
     return;
