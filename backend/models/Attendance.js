@@ -7,16 +7,15 @@ const AttendanceSchema = new mongoose.Schema(
     date:         { type: String, required: true }, // "YYYY-MM-DD"
     status:       {
       type: String,
-      enum: ["Present", "Absent", "Half Day", "On Leave"],
+      enum: ["Present", "Absent", "Half Day", "Holiday"],
       default: "Present",
     },
     remarks:  { type: String, default: "" },
-    markedBy: { type: String, default: "" }, // admin ya khud engineer
+    markedBy: { type: String, default: "" },
   },
   { timestamps: true }
 );
 
-// Same engineer ka same date pe duplicate entry nahi hogi
 AttendanceSchema.index({ engineerName: 1, date: 1 }, { unique: true });
 
 module.exports =

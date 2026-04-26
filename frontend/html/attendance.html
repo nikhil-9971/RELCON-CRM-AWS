@@ -7,7 +7,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
 <script src="config.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 /* ── CSS Variables (matches dashboard) ── */
 :root {
@@ -341,8 +340,7 @@ tbody td{padding:11px 14px;font-size:12.5px;color:var(--txt2);vertical-align:mid
           <option value="Present">Present</option>
           <option value="Absent">Absent</option>
           <option value="Half Day">Half Day</option>
-          <option value="On Leave">On Leave</option>
-        </select>
+          </select>
       </div>
       <div class="form-field" style="grid-column:1/-1">
         <label>Remarks (Optional)</label>
@@ -434,7 +432,7 @@ function closeModal(id){ document.getElementById(id).classList.remove("open"); }
 function statusBadge(status){
   const map = {
     "Present":"badge-present","Absent":"badge-absent",
-    "Half Day":"badge-half","On Leave":"badge-leave","Holiday":"badge-holiday"
+    "Half Day":"badge-half","Holiday":"badge-holiday"
   };
   const cls = map[status] || "badge-present";
   return `<span class="badge ${cls}">${status}</span>`;
@@ -463,7 +461,7 @@ function todayISO(){
 
 function renderAdminHeaderActions(){
   document.getElementById("headerActions").innerHTML = `
-    <button class="btn btn-secondary" onclick="exportPivotExcel()"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
+    <button class="btn btn-secondary" onclick="exportCSV()"><i class="fa-solid fa-file-csv"></i> Export CSV</button>
     <button class="btn btn-primary" onclick="openAdminMarkModal()"><i class="fa-solid fa-plus"></i> Mark Attendance</button>
   `;
 }
@@ -486,7 +484,7 @@ function renderAdminStats(){
   const present = todayRecs.filter(r=>r.status==="Present").length;
   const absent = todayRecs.filter(r=>r.status==="Absent").length;
   const halfDay = todayRecs.filter(r=>r.status==="Half Day").length;
-  const onLeave = todayRecs.filter(r=>r.status==="On Leave").length;
+  
   const total = allAttendance.length;
 
   document.getElementById("statsRow").innerHTML = `
@@ -505,10 +503,6 @@ function renderAdminStats(){
     <div class="stat-card">
       <div class="stat-icon amber"><i class="fa-solid fa-clock-half"></i></div>
       <div><div class="stat-val">${halfDay}</div><div class="stat-lbl">Half Day</div></div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon purple"><i class="fa-solid fa-umbrella-beach"></i></div>
-      <div><div class="stat-val">${onLeave}</div><div class="stat-lbl">On Leave</div></div>
     </div>
     <div class="stat-card">
       <div class="stat-icon blue"><i class="fa-solid fa-database"></i></div>
@@ -537,7 +531,7 @@ function renderAdminMain(){
       <select class="filter-input" id="filterStatus" onchange="applyFilters()">
         <option value="">All Status</option>
         <option>Present</option><option>Absent</option>
-        <option>Half Day</option><option>On Leave</option>
+        <option>Half Day</option><option>Holiday</option>
       </select>
       <div class="tb-spacer"></div>
       <button class="btn btn-secondary btn-sm" onclick="clearFilters()"><i class="fa-solid fa-xmark"></i> Clear</button>
@@ -643,7 +637,7 @@ function renderSummaryTab(records){
   const byEng = {};
   records.forEach(r=>{
     const name = r.engineerName || r.username || "Unknown";
-    if(!byEng[name]) byEng[name] = {Present:0,Absent:0,"Half Day":0,"On Leave":0,total:0};
+    if(!byEng[name]) byEng[name] = {Present:0,Absent:0,"Half Day":0,"Holiday":0,total:0};
     byEng[name][r.status] = (byEng[name][r.status]||0)+1;
     byEng[name].total++;
   });
@@ -661,7 +655,7 @@ function renderSummaryTab(records){
         <table>
           <thead><tr>
             <th>#</th><th>Engineer</th><th>Total Days</th>
-            <th>Present</th><th>Absent</th><th>Half Day</th><th>On Leave</th>
+            <th>Present</th><th>Absent</th><th>Half Day</th><th>Holiday</th>
             <th>Attendance %</th>
           </tr></thead>
           <tbody>
@@ -675,7 +669,7 @@ function renderSummaryTab(records){
                 <td><span class="badge badge-present">${data.Present||0}</span></td>
                 <td><span class="badge badge-absent">${data.Absent||0}</span></td>
                 <td><span class="badge badge-half">${data["Half Day"]||0}</span></td>
-                <td><span class="badge badge-leave">${data["On Leave"]||0}</span></td>
+                <td><span class="badge badge-holiday">${data["Holiday"]||0}</span></td>
                 <td style="min-width:160px;">${bar}</td>
               </tr>`;
             }).join("")}
@@ -782,132 +776,25 @@ async function adminCreateRecord(){
   }catch(e){ showToast("Failed to mark attendance.", "error"); }
 }
 
-/* ── Export Excel — Pivot (Engineer × Date) ── */
-function exportPivotExcel(){
+/* ── Export CSV ── */
+function exportCSV(){
   const filtered = getFiltered();
-  if(!filtered.length){ showToast("No records to export.", "info"); return; }
-
-  const SHORT  = { "Present":"P", "Absent":"A", "Half Day":"H", "On Leave":"L" };
-  const BG     = { "P":"DCFCE7", "A":"FEE2E2", "H":"FEF3C7", "L":"EDE9FE" };
-  const FG     = { "P":"15803D", "A":"B91C1C", "H":"B45309", "L":"6D28D9" };
-
-  // Unique sorted engineers (rows) and dates (columns)
-  const engineers = [...new Set(filtered.map(r => r.engineerName || r.username || ""))]
-    .filter(Boolean).sort();
-  const dates = [...new Set(filtered.map(r => (r.date || "").split("T")[0]))]
-    .filter(Boolean).sort();
-
-  // Pivot map: engineer → date → short status
-  const pivot = {};
-  filtered.forEach(r => {
-    const e = r.engineerName || r.username || "";
-    const d = (r.date || "").split("T")[0];
-    pivot[e] = pivot[e] || {};
-    pivot[e][d] = SHORT[r.status] || "";
-  });
-
-  // ── Header row: ["Engineer", date1, date2, ...] ──
-  const headerRow = ["Engineer", ...dates];
-
-  // ── Data rows: one per engineer ──
-  const dataRows = engineers.map(e => {
-    return [e, ...dates.map(d => (pivot[e] && pivot[e][d]) || "")];
-  });
-
-  // ── Summary row (P/A/H/L count per date) ──
-  const summaryRow = ["SUMMARY", ...dates.map(d => {
-    const p = engineers.filter(e => pivot[e]?.[d] === "P").length;
-    const a = engineers.filter(e => pivot[e]?.[d] === "A").length;
-    const h = engineers.filter(e => pivot[e]?.[d] === "H").length;
-    const l = engineers.filter(e => pivot[e]?.[d] === "L").length;
-    return `P:${p} A:${a} H:${h} L:${l}`;
-  })];
-
-  const allRows = [headerRow, ...dataRows, summaryRow];
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.aoa_to_sheet(allRows);
-
-  // ── Column widths ──
-  const maxEngLen = Math.max(12, ...engineers.map(e => e.length));
-  ws["!cols"] = [
-    { wch: maxEngLen + 2 },        // Engineer column
-    ...dates.map(() => ({ wch: 13 })) // Date columns
-  ];
-
-  // ── Row heights ──
-  ws["!rows"] = [{ hpt: 28 }, ...dataRows.map(() => ({ hpt: 22 })), { hpt: 28 }];
-
-  // ── Cell styling ──
-  const totalRows = allRows.length;
-  const totalCols = headerRow.length;
-
-  for (let R = 0; R < totalRows; R++) {
-    for (let C = 0; C < totalCols; C++) {
-      const addr = XLSX.utils.encode_cell({ r: R, c: C });
-      if (!ws[addr]) ws[addr] = { v: "", t: "s" };
-      const cell = ws[addr];
-      const val  = String(cell.v || "");
-
-      if (R === 0) {
-        // ── Header row ──
-        cell.s = {
-          font:      { bold: true, color: { rgb: "FFFFFF" }, sz: 11, name: "Calibri" },
-          fill:      { fgColor: { rgb: "1E3A5F" } },
-          alignment: { horizontal: "center", vertical: "center", wrapText: true },
-          border:    { bottom: { style: "medium", color: { rgb: "FFFFFF" } } }
-        };
-      } else if (R === totalRows - 1) {
-        // ── Summary row ──
-        cell.s = {
-          font:      { bold: true, color: { rgb: "1E293B" }, sz: 9, name: "Calibri" },
-          fill:      { fgColor: { rgb: "E2E8F0" } },
-          alignment: { horizontal: "center", vertical: "center", wrapText: true },
-          border:    { top: { style: "medium", color: { rgb: "94A3B8" } } }
-        };
-      } else if (C === 0) {
-        // ── Engineer name column ──
-        cell.s = {
-          font:      { bold: true, color: { rgb: "1E293B" }, sz: 11, name: "Calibri" },
-          fill:      { fgColor: { rgb: "F8FAFC" } },
-          alignment: { horizontal: "left", vertical: "center" },
-          border:    { right: { style: "medium", color: { rgb: "94A3B8" } } }
-        };
-      } else {
-        // ── Status cell ──
-        const bg  = BG[val]  || "FFFFFF";
-        const fg  = FG[val]  || "94A3B8";
-        cell.s = {
-          font:      { bold: !!val, color: { rgb: fg }, sz: 12, name: "Calibri" },
-          fill:      { fgColor: { rgb: bg } },
-          alignment: { horizontal: "center", vertical: "center" }
-        };
-      }
-    }
-  }
-
-  // Freeze first column and header row
-  ws["!freeze"] = { xSplit: 1, ySplit: 1, topLeftCell: "B2", activePane: "bottomRight" };
-
-  // ── Legend sheet ──
-  const wsLegend = XLSX.utils.aoa_to_sheet([
-    ["Code", "Full Status", "Color"],
-    ["P",    "Present",     "Green"],
-    ["A",    "Absent",      "Red"],
-    ["H",    "Half Day",    "Yellow"],
-    ["L",    "On Leave",    "Purple"],
-    ["",     "No Record",   "Blank"],
+  if(filtered.length===0){ showToast("No records to export.", "info"); return; }
+  const headers = ["Engineer","Date","Day","Status","Remarks","Submitted At"];
+  const rows = filtered.map(r=>[
+    r.engineerName||r.username||"",
+    (r.date||"").split("T")[0],
+    getDayName(r.date),
+    r.status||"",
+    (r.remarks||"").replace(/,/g,";"),
+    r.createdAt ? new Date(r.createdAt).toLocaleString("en-IN") : ""
   ]);
-  wsLegend["!cols"] = [{ wch: 8 }, { wch: 14 }, { wch: 10 }];
-
-  XLSX.utils.book_append_sheet(wb, ws, "Attendance");
-  XLSX.utils.book_append_sheet(wb, wsLegend, "Legend");
-
-  const dateRange = dates.length > 1
-    ? `${dates[0]}_to_${dates[dates.length - 1]}`
-    : (dates[0] || todayISO());
-
-  XLSX.writeFile(wb, `Attendance_${dateRange}.xlsx`);
-  showToast(`Excel exported! ${engineers.length} engineers × ${dates.length} dates`, "success");
+  const csv = [headers, ...rows].map(r=>r.join(",")).join("\n");
+  const a = document.createElement("a");
+  a.href = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
+  a.download = `attendance_${todayISO()}.csv`;
+  a.click();
+  showToast("CSV exported!", "success");
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -948,9 +835,7 @@ function renderEngineerView(){
             <label class="radio-half" id="lblHalf" onclick="selectStatus('Half Day')">
               <input type="radio" name="selfStatus" value="Half Day"/><span>🕐 Half Day</span>
             </label>
-            <label class="radio-leave" id="lblLeave" onclick="selectStatus('On Leave')">
-              <input type="radio" name="selfStatus" value="On Leave"/><span>🏖 On Leave</span>
-            </label>
+
           </div>
         </div>
       </div>
@@ -989,14 +874,14 @@ function renderEngineerView(){
 let selectedStatus = "Present";
 function selectStatus(val){
   selectedStatus = val;
-  ["Present","Absent","Half Day","On Leave"].forEach(s=>{
+  ["Present","Absent","Half Day","Holiday"].forEach(s=>{
     const id = {
       "Present":"lblPresent","Absent":"lblAbsent",
-      "Half Day":"lblHalf","On Leave":"lblLeave"
+      "Half Day":"lblHalf",
     }[s];
     const cls = {
       "Present":"radio-present","Absent":"radio-absent",
-      "Half Day":"radio-half","On Leave":"radio-leave"
+      "Half Day":"radio-half",
     }[s];
     const el = document.getElementById(id);
     if(el){
@@ -1061,7 +946,7 @@ function renderEngStats(){
   const present = myAttendance.filter(r=>r.status==="Present").length;
   const absent = myAttendance.filter(r=>r.status==="Absent").length;
   const half = myAttendance.filter(r=>r.status==="Half Day").length;
-  const leave = myAttendance.filter(r=>r.status==="On Leave").length;
+  const leave = 0;
   const total = myAttendance.length;
   const pct = total>0 ? Math.round((present/total)*100) : 0;
 
@@ -1084,7 +969,7 @@ function renderEngStats(){
     </div>
     <div class="stat-card">
       <div class="stat-icon purple"><i class="fa-solid fa-umbrella-beach"></i></div>
-      <div><div class="stat-val">${leave}</div><div class="stat-lbl">On Leave</div></div>
+      <div><div class="stat-val">${leave}</div><div class="stat-lbl">Holiday</div></div>
     </div>
     <div class="stat-card">
       <div class="stat-icon ${pct>=80?"green":pct>=60?"amber":"red"}"><i class="fa-solid fa-percent"></i></div>
@@ -1126,8 +1011,8 @@ function renderMyCalendar(month, recs){
   const byDate = {};
   recs.forEach(r=>{ byDate[(r.date||"").split("T")[0]] = r.status; });
 
-  const statusClass = {"Present":"present","Absent":"absent","Half Day":"half","On Leave":"leave"};
-  const statusShort = {"Present":"P","Absent":"A","Half Day":"½","On Leave":"L"};
+  const statusClass = {"Present":"present","Absent":"absent","Half Day":"half",};
+  const statusShort = {"Present":"P","Absent":"A","Half Day":"½",};
 
   let cells = "";
   for(let i=0;i<firstDay;i++) cells += `<div class="cal-day empty"></div>`;
@@ -1149,7 +1034,7 @@ function renderMyCalendar(month, recs){
       <div class="table-card-header">
         <span class="table-card-title"><i class="fa-regular fa-calendar"></i> ${new Date(yr,mo-1).toLocaleDateString("en-IN",{month:"long",year:"numeric"})}</span>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          ${["Present","Absent","Half Day","On Leave"].map(s=>`<span class="badge badge-${statusClass[s]}">${s}</span>`).join("")}
+          ${["Present","Absent","Half Day","Holiday"].map(s=>`<span class="badge badge-${statusClass[s]}">${s}</span>`).join("")}
         </div>
       </div>
       <div class="calendar-grid">

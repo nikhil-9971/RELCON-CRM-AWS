@@ -1310,103 +1310,59 @@ async function fetchAndStoreData() {
   const data = await res.json();
   fullData = data;
   if (loggedInUser.role === 'admin') populateEngineerFilter(data);
-
-  // ── AUTO ATTENDANCE from Visit Records ──
-  await autoMarkAttendanceFromVisits(data, token);
+  await autoMarkAttendanceFromVisits(data, localStorage.getItem('token'));
 }
 
-/**
- * IST-safe today string — YYYY-MM-DD
- * new Date().toISOString() UTC deta hai, IST +5:30 offset manually add karo
- */
 function getTodayIST() {
-  const now = new Date();
-  // IST = UTC + 5:30
-  const istOffset = 5.5 * 60 * 60 * 1000;
-  const ist = new Date(now.getTime() + istOffset);
-  return ist.toISOString().split('T')[0]; // "YYYY-MM-DD"
+  const ist = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+  return ist.toISOString().split('T')[0];
 }
 
-/**
- * Visit records ke basis pe attendance auto-mark:
- *  - Aaj ka record mila  → Present
- *  - roName "IN LEAVE"   → On Leave
- *  - 409 duplicate       → silently skip
- *  - Sirf admin role pe  → engineers ke liye mark karo
- */
 async function autoMarkAttendanceFromVisits(plans, token) {
   const todayStr = getTodayIST();
-  console.log('📅 Auto-attendance check for date:', todayStr);
-
-  // Sirf aaj ke records
-  const todayPlans = plans.filter(p => {
-    const planDate = (p.date || '').trim().split('T')[0]; // handle ISO strings too
-    return planDate === todayStr;
-  });
-
-  console.log(`📋 Aaj ke visit records: ${todayPlans.length}`);
+  const todayPlans = plans.filter(p => (p.date || '').split('T')[0].trim() === todayStr);
   if (!todayPlans.length) return;
 
-  // Engineer → status map (ek engineer, ek entry)
-  // Priority: IN LEAVE > Present
+  const PRIORITY = { 'Absent': 2, 'Holiday': 1, 'Present': 0 };
   const engineerMap = {};
 
   todayPlans.forEach(plan => {
     const engName = (plan.engineer || '').trim();
     if (!engName) return;
-
     const roName = (plan.roName || '').trim().toUpperCase();
-    const isLeave = roName.includes('IN LEAVE');
-    const newStatus = isLeave ? 'On Leave' : 'Present';
 
-    // Leave always wins over Present
-    if (!engineerMap[engName] || newStatus === 'On Leave') {
-      engineerMap[engName] = {
-        engineerName: engName,
-        username: engName,
-        date: todayStr,
-        status: newStatus,
-        remarks: isLeave
-          ? 'Auto: On Leave (visit record)'
-          : `Auto: Present — RO ${(plan.roCode || '')} ${(plan.roName || '')}`.trim(),
-        markedBy: 'system-auto',
-      };
+    let status, remarks;
+    if (roName.includes('IN LEAVE')) {
+      status = 'Absent';
+      remarks = 'Auto: Absent — IN LEAVE';
+    } else if (roName.includes('HOLIDAY')) {
+      status = 'Holiday';
+      remarks = `Auto: Holiday — ${plan.roName}`;
+    } else {
+      status = 'Present';
+      remarks = `Auto: Present — RO ${plan.roCode || ''} ${plan.roName || ''}`.trim();
+    }
+
+    const existing = engineerMap[engName];
+    if (!existing || PRIORITY[status] > PRIORITY[existing.status]) {
+      engineerMap[engName] = { engineerName: engName, username: engName, date: todayStr, status, remarks, markedBy: 'system-auto' };
     }
   });
 
-  console.log('👷 Engineers to mark:', Object.keys(engineerMap));
+  const results = await Promise.all(Object.values(engineerMap).map(async payload => {
+    try {
+      const r = await fetch(`${baseUrl}/attendance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(payload),
+      });
+      if (r.status === 201) return { ...payload, marked: true };
+    } catch (e) { console.error(e); }
+    return { ...payload, marked: false };
+  }));
 
-  // Har engineer ke liye POST karo
-  const results = await Promise.all(
-    Object.values(engineerMap).map(async (payload) => {
-      try {
-        const r = await fetch(`${baseUrl}/attendance`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify(payload),
-        });
-        if (r.status === 201) {
-          console.log(`✅ Auto-marked: ${payload.engineerName} → ${payload.status}`);
-          return { name: payload.engineerName, status: payload.status, marked: true };
-        } else if (r.status === 409) {
-          console.log(`⏭️ Already marked: ${payload.engineerName}`);
-          return { name: payload.engineerName, marked: false };
-        } else {
-          const err = await r.json().catch(()=>({}));
-          console.warn(`⚠️ Failed: ${payload.engineerName} →`, r.status, err);
-          return { name: payload.engineerName, marked: false };
-        }
-      } catch (err) {
-        console.error(`Auto-attendance error for ${payload.engineerName}:`, err.message);
-        return { name: payload.engineerName, marked: false };
-      }
-    })
-  );
-
-  const newlyMarked = results.filter(r => r.marked);
-  if (newlyMarked.length > 0) {
-    showToast(`✅ Auto-attendance marked for ${newlyMarked.length} engineer(s): ${newlyMarked.map(r=>r.name).join(', ')}`, 'success');
-  }
+  const marked = results.filter(r => r.marked);
+  if (marked.length) showToast(`✅ Auto-attendance: ${marked.map(r=>`${r.engineerName}(${r.status})`).join(', ')}`, 'success');
 }
 
 function populateEngineerFilter(data) {
