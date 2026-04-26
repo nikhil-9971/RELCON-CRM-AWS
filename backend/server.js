@@ -28,6 +28,7 @@ const { serverLogsRouter }     = require('./routes/serverLogs');  // ✅ NEW
 const { httpLogger }           = require('./utils/logger');       // ✅ NEW
 const { setupWebsocket, broadcastToAll } = require("./chat_ws");
 const { startCronJobs }        = require("./routes/corn");
+const attendance = require("./routes/attendanceRoutes");
 
 // ✅ STEP 1: app create (IMPORTANT)
 const app = express();
@@ -94,7 +95,8 @@ app.use("/api/materialRequirement", materialRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api", incidentRoutes);
 app.use("/api/ai", aiAgentRoutes);
-app.use("/api/materialManagement", materialManagement)
+app.use("/api/materialManagement", materialManagement);
+app.use("/api/attendance", attendance);
 
 
 
