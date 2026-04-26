@@ -739,6 +739,7 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
 
       <div class="nav-label">Operations</div>
       <button id="taskManagementLink" class="nav-item" style="display:none" onclick="loadPage('taskManager.html', this)"><i class="fa-solid fa-list-check"></i><span class="nav-txt">Task Management</span></button>
+      <button class="nav-item" onclick="loadPage('attendance.html', this)" id="attendanceLink"><i class="fa-solid fa-calendar-check"></i><span class="nav-txt">Attendance</span></button>
       <button class="nav-item" onclick="loadPage('materialrequirement.html', this)"><i class="fa-solid fa-boxes-packing"></i><span class="nav-txt">Material Requirement</span></button>
       <button class="nav-item" onclick="loadPage('materialManagement.html', this)"><i class="fa-solid fa-boxes-packing"></i><span class="nav-txt">Material Management</span></button>
       <button id="incidentId" class="nav-item" style="display:none" onclick="loadPage('incident.html', this)"><i class="fa-solid fa-triangle-exclamation"></i><span class="nav-txt">Incident Manager</span></button>
@@ -1034,7 +1035,8 @@ const pageNames = {
   'auditReport.html':'Audit Report','mongoExplorer.html':'DB Explorer',
   'materialrequirement.html':'Material Requirement','incident.html':'Incident Manager',
   'romaster.html':'RO Master','activeVsFaulty.html':'Active vs Faulty',
-  'logsViewer.html':'Logs Viewer','materialManagement.html':'Material Management'
+  'logsViewer.html':'Logs Viewer','materialManagement.html':'Material Management',
+  'attendance.html':'Attendance'
 };
 
 // Clean URL slugs — .html kabhi nahi dikhega browser mein
@@ -1058,7 +1060,8 @@ const pageSlugs = {
   'incident.html':'incident-manager',
   'romaster.html':'ro-master',
   'activeVsFaulty.html':'active-vs-faulty',
-  'logsViewer.html':'logs-viewer'
+  'logsViewer.html':'logs-viewer',
+  'attendance.html':'attendance'
 };
 
 // Slug → filename reverse map (reload aur popstate ke liye)

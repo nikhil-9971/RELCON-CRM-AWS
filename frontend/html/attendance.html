@@ -1,0 +1,1088 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Attendance — RELCON CRM</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+<script src="config.js"></script>
+<style>
+/* ── CSS Variables (matches dashboard) ── */
+:root {
+  --brand:#2563EB; --brand-dk:#1D4ED8; --brand-lt:#EFF6FF;
+  --brand-glow:rgba(37,99,235,0.14);
+  --success:#059669; --warn:#D97706; --danger:#DC2626; --purple:#7C3AED;
+  --page-bg:#F1F5F9; --surface:#FFFFFF; --surface2:#F8FAFC;
+  --border:#E2E8F0; --border-lt:#F1F5F9;
+  --txt:#0F172A; --txt2:#1E293B; --txt3:#64748B; --txt4:#94A3B8;
+  --r-sm:4px; --r:8px; --r-lg:12px; --r-xl:16px; --r-full:9999px;
+  --sh-xs:0 1px 2px rgba(15,23,42,.05);
+  --sh-sm:0 1px 4px rgba(15,23,42,.08);
+  --sh:0 4px 12px rgba(15,23,42,.10);
+  --sh-lg:0 8px 24px rgba(15,23,42,.12);
+  --font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);background:var(--page-bg);-webkit-font-smoothing:antialiased;padding:0;min-height:100vh;}
+
+/* ── PAGE WRAPPER ── */
+.att-page{padding:24px;max-width:1400px;margin:0 auto;}
+
+/* ── HEADER ── */
+.att-header{
+  display:flex;align-items:flex-start;justify-content:space-between;
+  margin-bottom:24px;gap:16px;flex-wrap:wrap;
+}
+.att-header-left h1{
+  font-size:22px;font-weight:800;color:var(--txt);letter-spacing:-.4px;
+  display:flex;align-items:center;gap:10px;
+}
+.att-header-left h1 i{
+  width:38px;height:38px;background:linear-gradient(135deg,#2563EB,#7C3AED);
+  border-radius:10px;display:flex;align-items:center;justify-content:center;
+  font-size:16px;color:#fff;box-shadow:0 4px 12px rgba(37,99,235,.35);
+  flex-shrink:0;
+}
+.att-header-left p{font-size:12.5px;color:var(--txt3);margin-top:4px;margin-left:48px;}
+.att-header-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+
+/* ── STAT CARDS ── */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:24px;}
+.stat-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);
+  padding:16px 18px;box-shadow:var(--sh-xs);
+  display:flex;align-items:center;gap:13px;
+  transition:box-shadow .15s,transform .15s;
+}
+.stat-card:hover{box-shadow:var(--sh);transform:translateY(-1px);}
+.stat-icon{
+  width:42px;height:42px;border-radius:var(--r-lg);flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:16px;
+}
+.stat-icon.blue{background:#EFF6FF;color:#2563EB;}
+.stat-icon.green{background:#F0FDF4;color:#059669;}
+.stat-icon.red{background:#FEF2F2;color:#DC2626;}
+.stat-icon.amber{background:#FFFBEB;color:#D97706;}
+.stat-icon.purple{background:#F5F3FF;color:#7C3AED;}
+.stat-val{font-size:24px;font-weight:800;color:var(--txt);line-height:1;}
+.stat-lbl{font-size:11px;color:var(--txt3);margin-top:3px;font-weight:500;}
+
+/* ── TOOLBAR ── */
+.att-toolbar{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);
+  padding:14px 18px;margin-bottom:18px;box-shadow:var(--sh-xs);
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+}
+.att-toolbar label{font-size:11.5px;font-weight:600;color:var(--txt3);}
+.filter-input{
+  height:36px;border:1px solid var(--border);border-radius:var(--r);
+  padding:0 12px;font-size:13px;color:var(--txt);background:var(--surface2);
+  outline:none;font-family:var(--font);transition:border-color .15s,box-shadow .15s;
+}
+.filter-input:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-glow);}
+.tb-spacer{flex:1;}
+.btn{
+  height:36px;padding:0 16px;border-radius:var(--r);font-size:12.5px;
+  font-weight:600;cursor:pointer;border:1px solid transparent;
+  transition:all .15s;font-family:var(--font);display:flex;align-items:center;gap:6px;
+}
+.btn-primary{background:var(--brand);color:#fff;border-color:var(--brand-dk);}
+.btn-primary:hover{background:var(--brand-dk);}
+.btn-secondary{background:var(--surface);color:var(--txt);border-color:var(--border);}
+.btn-secondary:hover{background:var(--page-bg);}
+.btn-success{background:#059669;color:#fff;border-color:#047857;}
+.btn-success:hover{background:#047857;}
+.btn-danger{background:#DC2626;color:#fff;border-color:#B91C1C;}
+.btn-danger:hover{background:#B91C1C;}
+.btn-sm{height:30px;padding:0 12px;font-size:12px;}
+
+/* ── ENGINEER SELF-SUBMIT CARD ── */
+.self-submit-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);
+  padding:22px 24px;margin-bottom:20px;box-shadow:var(--sh-xs);
+}
+.self-submit-card h2{
+  font-size:15px;font-weight:700;color:var(--txt);margin-bottom:14px;
+  display:flex;align-items:center;gap:8px;
+}
+.self-submit-card h2 i{color:var(--brand);}
+.submit-form-row{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;}
+.form-field{display:flex;flex-direction:column;gap:5px;}
+.form-field label{font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;}
+.form-field input,.form-field select,.form-field textarea{
+  border:1px solid var(--border);border-radius:var(--r);
+  padding:0 12px;height:38px;font-size:13px;color:var(--txt);
+  background:var(--surface2);outline:none;font-family:var(--font);
+  transition:border-color .15s,box-shadow .15s;
+}
+.form-field textarea{height:auto;padding:10px 12px;resize:vertical;}
+.form-field input:focus,.form-field select:focus,.form-field textarea:focus{
+  border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-glow);background:var(--surface);
+}
+.form-field input[readonly]{background:var(--page-bg);color:var(--txt3);cursor:default;}
+
+/* Status pills in form */
+.status-radio-group{display:flex;gap:8px;}
+.status-radio-group label{
+  display:flex;align-items:center;gap:6px;
+  padding:6px 14px;border-radius:var(--r-full);
+  border:1.5px solid var(--border);cursor:pointer;
+  font-size:12.5px;font-weight:500;color:var(--txt3);
+  transition:all .15s;
+}
+.status-radio-group input[type=radio]{display:none;}
+.status-radio-group input[type=radio]:checked + span{font-weight:700;}
+.radio-present:has(input:checked),.radio-present.selected{border-color:#059669;background:#F0FDF4;color:#059669;}
+.radio-absent:has(input:checked),.radio-absent.selected{border-color:#DC2626;background:#FEF2F2;color:#DC2626;}
+.radio-half:has(input:checked),.radio-half.selected{border-color:#D97706;background:#FFFBEB;color:#D97706;}
+.radio-leave:has(input:checked),.radio-leave.selected{border-color:#7C3AED;background:#F5F3FF;color:#7C3AED;}
+
+/* ── TABLE ── */
+.table-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);
+  box-shadow:var(--sh-xs);overflow:hidden;
+}
+.table-card-header{
+  padding:14px 18px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+  background:var(--surface2);
+}
+.table-card-title{font-size:14px;font-weight:700;color:var(--txt);display:flex;align-items:center;gap:8px;}
+.table-card-title i{color:var(--brand);}
+.table-scroll{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;}
+thead tr{background:var(--surface2);border-bottom:2px solid var(--border);}
+thead th{
+  padding:11px 14px;font-size:11px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.6px;color:var(--txt3);
+  text-align:left;white-space:nowrap;
+}
+tbody tr{border-bottom:1px solid var(--border-lt);transition:background .1s;}
+tbody tr:hover{background:#F8FAFC;}
+tbody td{padding:11px 14px;font-size:12.5px;color:var(--txt2);vertical-align:middle;}
+.td-name{font-weight:600;color:var(--txt);}
+.td-date{color:var(--txt3);font-size:12px;}
+.td-actions{display:flex;gap:6px;}
+
+/* ── STATUS BADGE ── */
+.badge{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:3px 10px;border-radius:var(--r-full);
+  font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;
+}
+.badge-present{background:#DCFCE7;color:#15803D;}
+.badge-absent{background:#FEE2E2;color:#B91C1C;}
+.badge-half{background:#FEF3C7;color:#B45309;}
+.badge-leave{background:#EDE9FE;color:#6D28D9;}
+.badge-holiday{background:#E0F2FE;color:#0369A1;}
+.badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;}
+
+/* ── TABS ── */
+.att-tabs{display:flex;gap:2px;margin-bottom:18px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:4px;width:fit-content;}
+.att-tab{
+  padding:8px 18px;border-radius:var(--r);font-size:12.5px;font-weight:500;
+  color:var(--txt3);cursor:pointer;border:none;background:none;
+  transition:all .15s;font-family:var(--font);
+}
+.att-tab.active{background:var(--brand);color:#fff;font-weight:700;box-shadow:var(--sh-sm);}
+.att-tab:hover:not(.active){background:var(--page-bg);color:var(--txt);}
+
+/* ── MONTH CALENDAR VIEW ── */
+.calendar-grid{
+  display:grid;grid-template-columns:repeat(7,1fr);gap:3px;
+  padding:16px;
+}
+.cal-day-head{
+  text-align:center;padding:6px 0;font-size:10px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.6px;color:var(--txt4);
+}
+.cal-day{
+  aspect-ratio:1;border-radius:var(--r);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  border:1px solid transparent;font-size:12px;font-weight:500;
+  color:var(--txt3);cursor:default;transition:all .12s;
+}
+.cal-day:not(.empty):hover{border-color:var(--border);box-shadow:var(--sh-xs);}
+.cal-day.today{border-color:var(--brand);background:var(--brand-lt);}
+.cal-day.present{background:#DCFCE7;color:#15803D;font-weight:700;}
+.cal-day.absent{background:#FEE2E2;color:#B91C1C;font-weight:700;}
+.cal-day.half{background:#FEF3C7;color:#B45309;font-weight:700;}
+.cal-day.leave{background:#EDE9FE;color:#6D28D9;font-weight:700;}
+.cal-day.holiday{background:#E0F2FE;color:#0369A1;}
+.cal-day.empty{border:none;background:none;cursor:default;}
+.cal-day .day-num{font-size:13px;font-weight:700;line-height:1;}
+.cal-day .day-status{font-size:8px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-top:2px;opacity:.8;}
+.cal-day.sunday{color:#DC2626;background:#FFF5F5;}
+
+/* ── EMPTY STATE ── */
+.empty-state{
+  text-align:center;padding:60px 20px;color:var(--txt4);
+}
+.empty-state i{font-size:40px;margin-bottom:12px;display:block;opacity:.4;}
+.empty-state p{font-size:13px;}
+
+/* ── MODAL ── */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(15,23,42,.5);
+  display:none;align-items:center;justify-content:center;z-index:800;backdrop-filter:blur(6px);
+}
+.modal-overlay.open{display:flex;}
+.modal{
+  background:var(--surface);border-radius:var(--r-xl);box-shadow:var(--sh-lg);
+  width:90%;max-width:520px;overflow:hidden;border:1px solid var(--border);
+  animation:modalIn .22s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes modalIn{from{transform:scale(.92) translateY(16px);opacity:0;}to{transform:none;opacity:1;}}
+.modal-header{
+  padding:18px 22px 14px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--surface2);
+}
+.modal-title{font-size:15px;font-weight:700;color:var(--txt);display:flex;align-items:center;gap:8px;}
+.modal-title i{color:var(--brand);}
+.modal-close{
+  width:28px;height:28px;background:var(--page-bg);border:1px solid var(--border);
+  color:var(--txt3);border-radius:var(--r);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:12px;transition:all .12s;
+}
+.modal-close:hover{background:var(--border);color:var(--txt);}
+.modal-body{padding:20px 22px;display:flex;flex-direction:column;gap:14px;}
+.modal-footer{
+  padding:14px 22px;border-top:1px solid var(--border);
+  display:flex;justify-content:flex-end;gap:8px;background:var(--surface2);
+}
+
+/* ── TOAST ── */
+#toastContainer{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;}
+.toast{
+  padding:12px 18px;border-radius:var(--r-lg);font-size:13px;font-weight:600;
+  color:#fff;box-shadow:var(--sh-lg);animation:toastIn .2s ease;
+  display:flex;align-items:center;gap:8px;
+}
+.toast.success{background:linear-gradient(135deg,#059669,#10B981);}
+.toast.error{background:linear-gradient(135deg,#DC2626,#EF4444);}
+.toast.info{background:linear-gradient(135deg,#2563EB,#3B82F6);}
+@keyframes toastIn{from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:none;}}
+
+/* ── LOADER ── */
+.inline-loader{display:flex;align-items:center;justify-content:center;padding:40px;}
+.spin{width:30px;height:30px;border:3px solid rgba(37,99,235,.18);border-top-color:var(--brand);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px){
+  .att-page{padding:14px;}
+  .stats-row{grid-template-columns:repeat(2,1fr);}
+  .submit-form-row{flex-direction:column;}
+}
+</style>
+</head>
+<body>
+<div class="att-page">
+
+  <!-- ════════ PAGE HEADER ════════ -->
+  <div class="att-header">
+    <div class="att-header-left">
+      <h1><i class="fa-solid fa-calendar-check"></i> Attendance Monitoring</h1>
+      <p id="headerSubtitle">Loading your workspace…</p>
+    </div>
+    <div class="att-header-right" id="headerActions">
+      <!-- dynamically inserted -->
+    </div>
+  </div>
+
+  <!-- ════════ STAT CARDS ════════ -->
+  <div class="stats-row" id="statsRow">
+    <div class="inline-loader" style="grid-column:1/-1;"><div class="spin"></div></div>
+  </div>
+
+  <!-- ════════ MAIN CONTENT ════════ -->
+  <div id="mainContent">
+    <div class="inline-loader"><div class="spin"></div></div>
+  </div>
+
+</div>
+
+<!-- ════════ VIEW DETAIL MODAL ════════ -->
+<div class="modal-overlay" id="viewModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title"><i class="fa-solid fa-user-clock"></i> Attendance Detail</span>
+      <button class="modal-close" onclick="closeModal('viewModal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body" id="viewModalBody">—</div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('viewModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ ADMIN EDIT MODAL ════════ -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title"><i class="fa-solid fa-pen-to-square"></i> Edit Attendance</span>
+      <button class="modal-close" onclick="closeModal('editModal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-field">
+        <label>Engineer Name</label>
+        <input type="text" id="editEngineerName" readonly/>
+      </div>
+      <div class="form-field">
+        <label>Date</label>
+        <input type="date" id="editDate"/>
+      </div>
+      <div class="form-field">
+        <label>Status</label>
+        <select id="editStatus">
+          <option value="Present">Present</option>
+          <option value="Absent">Absent</option>
+          <option value="Half Day">Half Day</option>
+          <option value="On Leave">On Leave</option>
+        </select>
+      </div>
+      <div class="form-field" style="grid-column:1/-1">
+        <label>Remarks (Optional)</label>
+        <textarea id="editRemarks" rows="2" placeholder="Any notes…" style="height:auto;padding:10px 12px;"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('editModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEdit()"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<div id="toastContainer"></div>
+
+<script>
+/* ─────────────────────────────────────────────────
+   CONFIG & GLOBALS
+───────────────────────────────────────────────── */
+const baseUrl = window.BACKEND_URL || "/api";
+
+let currentUser = null;
+let currentRole = null;
+let allAttendance = [];
+let activeTab = "list";
+let editingId = null;
+
+/* ─────────────────────────────────────────────────
+   TOKEN HELPERS
+───────────────────────────────────────────────── */
+function getToken(){
+  // Try URL param first (iframe pass-through), then localStorage
+  const params = new URLSearchParams(window.location.search);
+  return params.get("token") || localStorage.getItem("token");
+}
+
+/* ─────────────────────────────────────────────────
+   INIT
+───────────────────────────────────────────────── */
+window.onload = async () => {
+  const token = getToken();
+  if(!token){ document.getElementById("mainContent").innerHTML = `<div class="empty-state"><i class="fa-solid fa-lock"></i><p>Please login to access attendance.</p></div>`; return; }
+
+  try{
+    const res = await fetch(`${baseUrl}/auth/user`, {headers:{Authorization:`Bearer ${token}`}});
+    if(!res.ok) throw new Error("Unauthorized");
+    currentUser = await res.json();
+    currentRole = (currentUser.role||"").toLowerCase();
+  }catch(e){
+    document.getElementById("mainContent").innerHTML = `<div class="empty-state"><i class="fa-solid fa-triangle-exclamation"></i><p>Session expired. Please login again.</p></div>`;
+    return;
+  }
+
+  document.getElementById("headerSubtitle").textContent =
+    currentRole === "admin"
+      ? "Monitor and manage attendance for all engineers"
+      : `Your attendance records — ${currentUser.engineerName || currentUser.username}`;
+
+  if(currentRole === "admin"){
+    renderAdminHeaderActions();
+    await loadAdminData();
+  } else {
+    renderEngineerView();
+    await loadMyAttendance();
+  }
+};
+
+/* ─────────────────────────────────────────────────
+   TOAST
+───────────────────────────────────────────────── */
+function showToast(msg, type="success"){
+  const t = document.createElement("div");
+  t.className = "toast " + type;
+  t.innerHTML = `<i class="fa-solid fa-${type==="success"?"check-circle":type==="error"?"xmark-circle":"info-circle"}"></i> ${msg}`;
+  document.getElementById("toastContainer").appendChild(t);
+  setTimeout(()=>t.remove(), 3200);
+}
+
+/* ─────────────────────────────────────────────────
+   MODAL HELPERS
+───────────────────────────────────────────────── */
+function openModal(id){ document.getElementById(id).classList.add("open"); }
+function closeModal(id){ document.getElementById(id).classList.remove("open"); }
+
+/* ─────────────────────────────────────────────────
+   STATUS BADGE
+───────────────────────────────────────────────── */
+function statusBadge(status){
+  const map = {
+    "Present":"badge-present","Absent":"badge-absent",
+    "Half Day":"badge-half","On Leave":"badge-leave","Holiday":"badge-holiday"
+  };
+  const cls = map[status] || "badge-present";
+  return `<span class="badge ${cls}">${status}</span>`;
+}
+
+/* ─────────────────────────────────────────────────
+   FORMAT DATE
+───────────────────────────────────────────────── */
+function fmtDate(dateStr){
+  if(!dateStr) return "—";
+  const d = new Date(dateStr);
+  return d.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric",weekday:"short"});
+}
+function todayISO(){
+  return new Date().toISOString().split("T")[0];
+}
+
+/* ═══════════════════════════════════════════════════
+   ██████╗  █████╗ ██████╗ ███╗   ███╗██╗███╗   ██╗
+   ██╔══██╗██╔══██╗██╔══██╗████╗ ████║██║████╗  ██║
+   ███████║██║  ██║██║  ██║██╔████╔██║██║██╔██╗ ██║
+   ██╔══██║██║  ██║██║  ██║██║╚██╔╝██║██║██║╚██╗██║
+   ██║  ██║╚█████╔╝██████╔╝██║ ╚═╝ ██║██║██║ ╚████║
+   ADMIN VIEW
+═══════════════════════════════════════════════════ */
+
+function renderAdminHeaderActions(){
+  document.getElementById("headerActions").innerHTML = `
+    <button class="btn btn-secondary" onclick="exportCSV()"><i class="fa-solid fa-file-csv"></i> Export CSV</button>
+    <button class="btn btn-primary" onclick="openAdminMarkModal()"><i class="fa-solid fa-plus"></i> Mark Attendance</button>
+  `;
+}
+
+async function loadAdminData(){
+  const token = getToken();
+  try{
+    const res = await fetch(`${baseUrl}/attendance/all`, {headers:{Authorization:`Bearer ${token}`}});
+    const data = await res.json();
+    allAttendance = Array.isArray(data) ? data : (data.attendance || []);
+  }catch(e){ allAttendance = []; }
+
+  renderAdminStats();
+  renderAdminMain();
+}
+
+function renderAdminStats(){
+  const today = todayISO();
+  const todayRecs = allAttendance.filter(r => r.date && r.date.startsWith(today));
+  const present = todayRecs.filter(r=>r.status==="Present").length;
+  const absent = todayRecs.filter(r=>r.status==="Absent").length;
+  const halfDay = todayRecs.filter(r=>r.status==="Half Day").length;
+  const onLeave = todayRecs.filter(r=>r.status==="On Leave").length;
+  const total = allAttendance.length;
+
+  document.getElementById("statsRow").innerHTML = `
+    <div class="stat-card">
+      <div class="stat-icon blue"><i class="fa-solid fa-users"></i></div>
+      <div><div class="stat-val">${todayRecs.length}</div><div class="stat-lbl">Today's Records</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon green"><i class="fa-solid fa-circle-check"></i></div>
+      <div><div class="stat-val">${present}</div><div class="stat-lbl">Present Today</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon red"><i class="fa-solid fa-circle-xmark"></i></div>
+      <div><div class="stat-val">${absent}</div><div class="stat-lbl">Absent Today</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon amber"><i class="fa-solid fa-clock-half"></i></div>
+      <div><div class="stat-val">${halfDay}</div><div class="stat-lbl">Half Day</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon purple"><i class="fa-solid fa-umbrella-beach"></i></div>
+      <div><div class="stat-val">${onLeave}</div><div class="stat-lbl">On Leave</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon blue"><i class="fa-solid fa-database"></i></div>
+      <div><div class="stat-val">${total}</div><div class="stat-lbl">Total Records</div></div>
+    </div>
+  `;
+}
+
+function renderAdminMain(){
+  document.getElementById("mainContent").innerHTML = `
+    <!-- Tabs -->
+    <div class="att-tabs">
+      <button class="att-tab ${activeTab==="list"?"active":""}" onclick="switchTab('list')"><i class="fa-solid fa-list"></i> All Records</button>
+      <button class="att-tab ${activeTab==="summary"?"active":""}" onclick="switchTab('summary')"><i class="fa-solid fa-chart-bar"></i> Summary</button>
+    </div>
+
+    <!-- Filters -->
+    <div class="att-toolbar">
+      <label>From</label>
+      <input type="date" class="filter-input" id="filterFrom" onchange="applyFilters()"/>
+      <label>To</label>
+      <input type="date" class="filter-input" id="filterTo" value="${todayISO()}" onchange="applyFilters()"/>
+      <label>Engineer</label>
+      <input type="text" class="filter-input" id="filterEngineer" placeholder="Search engineer…" oninput="applyFilters()" style="width:180px;"/>
+      <label>Status</label>
+      <select class="filter-input" id="filterStatus" onchange="applyFilters()">
+        <option value="">All Status</option>
+        <option>Present</option><option>Absent</option>
+        <option>Half Day</option><option>On Leave</option>
+      </select>
+      <div class="tb-spacer"></div>
+      <button class="btn btn-secondary btn-sm" onclick="clearFilters()"><i class="fa-solid fa-xmark"></i> Clear</button>
+    </div>
+
+    <div id="tabContent"></div>
+  `;
+  renderListTab(allAttendance);
+}
+
+function switchTab(tab){
+  activeTab = tab;
+  document.querySelectorAll(".att-tab").forEach(t=>{
+    t.classList.toggle("active", t.textContent.includes(tab==="list"?"Records":"Summary"));
+  });
+  const filtered = getFiltered();
+  if(tab==="list") renderListTab(filtered);
+  else renderSummaryTab(filtered);
+}
+
+function getFiltered(){
+  const from = document.getElementById("filterFrom")?.value || "";
+  const to = document.getElementById("filterTo")?.value || "";
+  const eng = (document.getElementById("filterEngineer")?.value || "").toLowerCase().trim();
+  const status = document.getElementById("filterStatus")?.value || "";
+  return allAttendance.filter(r=>{
+    const d = (r.date||"").split("T")[0];
+    if(from && d < from) return false;
+    if(to && d > to) return false;
+    if(eng && !(r.engineerName||r.username||"").toLowerCase().includes(eng)) return false;
+    if(status && r.status !== status) return false;
+    return true;
+  });
+}
+
+function applyFilters(){
+  const filtered = getFiltered();
+  if(activeTab==="list") renderListTab(filtered);
+  else renderSummaryTab(filtered);
+}
+
+function clearFilters(){
+  document.getElementById("filterFrom").value = "";
+  document.getElementById("filterTo").value = todayISO();
+  document.getElementById("filterEngineer").value = "";
+  document.getElementById("filterStatus").value = "";
+  applyFilters();
+}
+
+function renderListTab(records){
+  const sorted = [...records].sort((a,b)=>new Date(b.date)-new Date(a.date));
+  document.getElementById("tabContent").innerHTML = `
+    <div class="table-card">
+      <div class="table-card-header">
+        <span class="table-card-title"><i class="fa-solid fa-table"></i> Attendance Records <span style="background:#EFF6FF;color:#2563EB;font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;margin-left:6px;">${sorted.length}</span></span>
+      </div>
+      <div class="table-scroll">
+        ${sorted.length === 0 ? `<div class="empty-state"><i class="fa-regular fa-calendar-xmark"></i><p>No records found for selected filters.</p></div>` : `
+        <table>
+          <thead><tr>
+            <th>#</th>
+            <th>Engineer</th>
+            <th>Date</th>
+            <th>Day</th>
+            <th>Status</th>
+            <th>Remarks</th>
+            <th>Submitted At</th>
+            <th>Actions</th>
+          </tr></thead>
+          <tbody>
+            ${sorted.map((r,i)=>`
+              <tr>
+                <td style="color:var(--txt4);font-size:11px;">${i+1}</td>
+                <td class="td-name">${r.engineerName || r.username || "—"}</td>
+                <td class="td-date">${fmtDate(r.date)}</td>
+                <td style="font-size:11.5px;color:var(--txt3);">${getDayName(r.date)}</td>
+                <td>${statusBadge(r.status)}</td>
+                <td style="color:var(--txt3);font-size:12px;max-width:180px;">${r.remarks||"—"}</td>
+                <td style="font-size:11.5px;color:var(--txt4);">${r.createdAt ? new Date(r.createdAt).toLocaleString("en-IN",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}) : "—"}</td>
+                <td>
+                  <div class="td-actions">
+                    <button class="btn btn-secondary btn-sm" onclick="openViewModal(${JSON.stringify(r).replace(/"/g,"&quot;")})"><i class="fa-solid fa-eye"></i></button>
+                    <button class="btn btn-primary btn-sm" onclick="openEditModal(${JSON.stringify(r).replace(/"/g,"&quot;")})"><i class="fa-solid fa-pen"></i></button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteRecord('${r._id}')"><i class="fa-solid fa-trash"></i></button>
+                  </div>
+                </td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>`}
+      </div>
+    </div>
+  `;
+}
+
+function getDayName(dateStr){
+  if(!dateStr) return "—";
+  return new Date(dateStr).toLocaleDateString("en-IN",{weekday:"short"});
+}
+
+function renderSummaryTab(records){
+  // Group by engineer
+  const byEng = {};
+  records.forEach(r=>{
+    const name = r.engineerName || r.username || "Unknown";
+    if(!byEng[name]) byEng[name] = {Present:0,Absent:0,"Half Day":0,"On Leave":0,total:0};
+    byEng[name][r.status] = (byEng[name][r.status]||0)+1;
+    byEng[name].total++;
+  });
+
+  const rows = Object.entries(byEng).sort((a,b)=>b[1].total-a[1].total);
+
+  document.getElementById("tabContent").innerHTML = `
+    <div class="table-card">
+      <div class="table-card-header">
+        <span class="table-card-title"><i class="fa-solid fa-chart-bar"></i> Engineer-wise Summary</span>
+        <span style="font-size:12px;color:var(--txt3);">Based on filtered records (${records.length} entries)</span>
+      </div>
+      <div class="table-scroll">
+        ${rows.length === 0 ? `<div class="empty-state"><i class="fa-regular fa-chart-bar"></i><p>No data for selected filters.</p></div>` : `
+        <table>
+          <thead><tr>
+            <th>#</th><th>Engineer</th><th>Total Days</th>
+            <th>Present</th><th>Absent</th><th>Half Day</th><th>On Leave</th>
+            <th>Attendance %</th>
+          </tr></thead>
+          <tbody>
+            ${rows.map(([name, data], i)=>{
+              const pct = data.total > 0 ? Math.round((data.Present/data.total)*100) : 0;
+              const bar = `<div style="display:flex;align-items:center;gap:8px;"><div style="flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden;"><div style="width:${pct}%;height:100%;background:${pct>=80?"#059669":pct>=60?"#D97706":"#DC2626"};border-radius:3px;"></div></div><span style="font-size:11.5px;font-weight:700;color:${pct>=80?"#059669":pct>=60?"#D97706":"#DC2626"};">${pct}%</span></div>`;
+              return `<tr>
+                <td style="color:var(--txt4);font-size:11px;">${i+1}</td>
+                <td class="td-name">${name}</td>
+                <td style="font-weight:700;">${data.total}</td>
+                <td><span class="badge badge-present">${data.Present||0}</span></td>
+                <td><span class="badge badge-absent">${data.Absent||0}</span></td>
+                <td><span class="badge badge-half">${data["Half Day"]||0}</span></td>
+                <td><span class="badge badge-leave">${data["On Leave"]||0}</span></td>
+                <td style="min-width:160px;">${bar}</td>
+              </tr>`;
+            }).join("")}
+          </tbody>
+        </table>`}
+      </div>
+    </div>
+  `;
+}
+
+/* ── Admin: View Detail ── */
+function openViewModal(r){
+  document.getElementById("viewModalBody").innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="form-field"><label>Engineer</label><input type="text" readonly value="${r.engineerName||r.username||"—"}"/></div>
+      <div class="form-field"><label>Date</label><input type="text" readonly value="${fmtDate(r.date)}"/></div>
+      <div class="form-field"><label>Day</label><input type="text" readonly value="${getDayName(r.date)}"/></div>
+      <div class="form-field"><label>Status</label><div style="margin-top:2px;">${statusBadge(r.status)}</div></div>
+      <div class="form-field" style="grid-column:1/-1"><label>Remarks</label><textarea readonly rows="2" style="height:auto;padding:10px 12px;">${r.remarks||"—"}</textarea></div>
+      <div class="form-field"><label>Submitted At</label><input type="text" readonly value="${r.createdAt ? new Date(r.createdAt).toLocaleString("en-IN") : "—"}"/></div>
+      <div class="form-field"><label>Record ID</label><input type="text" readonly value="${r._id||"—"}" style="font-size:11px;font-family:monospace;"/></div>
+    </div>
+  `;
+  openModal("viewModal");
+}
+
+/* ── Admin: Edit ── */
+function openEditModal(r){
+  editingId = r._id;
+  document.getElementById("editEngineerName").value = r.engineerName || r.username || "";
+  document.getElementById("editDate").value = (r.date||"").split("T")[0];
+  document.getElementById("editStatus").value = r.status || "Present";
+  document.getElementById("editRemarks").value = r.remarks || "";
+  openModal("editModal");
+}
+
+async function saveEdit(){
+  const token = getToken();
+  const payload = {
+    status: document.getElementById("editStatus").value,
+    date: document.getElementById("editDate").value,
+    remarks: document.getElementById("editRemarks").value
+  };
+  try{
+    const res = await fetch(`${baseUrl}/attendance/${editingId}`, {
+      method:"PUT", headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},
+      body: JSON.stringify(payload)
+    });
+    if(!res.ok) throw new Error();
+    showToast("Attendance updated successfully!", "success");
+    closeModal("editModal");
+    await loadAdminData();
+  }catch(e){ showToast("Failed to update. Check server.", "error"); }
+}
+
+/* ── Admin: Delete ── */
+async function deleteRecord(id){
+  if(!confirm("Delete this attendance record? This cannot be undone.")) return;
+  const token = getToken();
+  try{
+    const res = await fetch(`${baseUrl}/attendance/${id}`, {method:"DELETE",headers:{Authorization:`Bearer ${token}`}});
+    if(!res.ok) throw new Error();
+    showToast("Record deleted.", "success");
+    await loadAdminData();
+  }catch(e){ showToast("Failed to delete.", "error"); }
+}
+
+/* ── Admin: Mark Attendance Modal ── */
+function openAdminMarkModal(){
+  // Re-use edit modal with empty data
+  editingId = null;
+  document.getElementById("editEngineerName").value = "";
+  document.getElementById("editEngineerName").readOnly = false;
+  document.getElementById("editDate").value = todayISO();
+  document.getElementById("editStatus").value = "Present";
+  document.getElementById("editRemarks").value = "";
+  document.querySelector("#editModal .modal-title").innerHTML = `<i class="fa-solid fa-plus"></i> Mark Attendance`;
+  document.querySelector("#editModal .modal-footer .btn-primary").onclick = adminCreateRecord;
+  openModal("editModal");
+}
+
+async function adminCreateRecord(){
+  const token = getToken();
+  const payload = {
+    engineerName: document.getElementById("editEngineerName").value.trim(),
+    date: document.getElementById("editDate").value,
+    status: document.getElementById("editStatus").value,
+    remarks: document.getElementById("editRemarks").value
+  };
+  if(!payload.engineerName){ showToast("Engineer name required.", "error"); return; }
+  try{
+    const res = await fetch(`${baseUrl}/attendance`, {
+      method:"POST", headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},
+      body: JSON.stringify(payload)
+    });
+    if(!res.ok) throw new Error();
+    showToast("Attendance marked!", "success");
+    closeModal("editModal");
+    // Reset modal back
+    document.getElementById("editEngineerName").readOnly = true;
+    document.querySelector("#editModal .modal-title").innerHTML = `<i class="fa-solid fa-pen-to-square"></i> Edit Attendance`;
+    document.querySelector("#editModal .modal-footer .btn-primary").onclick = saveEdit;
+    await loadAdminData();
+  }catch(e){ showToast("Failed to mark attendance.", "error"); }
+}
+
+/* ── Export CSV ── */
+function exportCSV(){
+  const filtered = getFiltered();
+  if(filtered.length===0){ showToast("No records to export.", "info"); return; }
+  const headers = ["Engineer","Date","Day","Status","Remarks","Submitted At"];
+  const rows = filtered.map(r=>[
+    r.engineerName||r.username||"",
+    (r.date||"").split("T")[0],
+    getDayName(r.date),
+    r.status||"",
+    (r.remarks||"").replace(/,/g,";"),
+    r.createdAt ? new Date(r.createdAt).toLocaleString("en-IN") : ""
+  ]);
+  const csv = [headers, ...rows].map(r=>r.join(",")).join("\n");
+  const a = document.createElement("a");
+  a.href = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
+  a.download = `attendance_${todayISO()}.csv`;
+  a.click();
+  showToast("CSV exported!", "success");
+}
+
+/* ═══════════════════════════════════════════════════════
+   ███████╗███╗   ██╗ ██████╗ ██╗███╗   ██╗███████╗███████╗██████╗
+   ██╔════╝████╗  ██║██╔════╝ ██║████╗  ██║██╔════╝██╔════╝██╔══██╗
+   █████╗  ██╔██╗ ██║██║  ███╗██║██╔██╗ ██║█████╗  █████╗  ██████╔╝
+   ██╔══╝  ██║╚██╗██║██║   ██║██║██║╚██╗██║██╔══╝  ██╔══╝  ██╔══██╗
+   ███████╗██║ ╚████║╚██████╔╝██║██║ ╚████║███████╗███████╗██║  ██║
+   ENGINEER VIEW
+═══════════════════════════════════════════════════════ */
+
+let myAttendance = [];
+
+function renderEngineerView(){
+  const today = todayISO();
+  document.getElementById("mainContent").innerHTML = `
+    <!-- Today's Submission Card -->
+    <div class="self-submit-card">
+      <h2><i class="fa-solid fa-calendar-plus"></i> Mark Today's Attendance</h2>
+      <div class="submit-form-row">
+        <div class="form-field">
+          <label>Your Name</label>
+          <input type="text" id="selfName" readonly value="${currentUser.engineerName || currentUser.username || ""}"/>
+        </div>
+        <div class="form-field">
+          <label>Date</label>
+          <input type="date" id="selfDate" value="${today}" max="${today}"/>
+        </div>
+        <div class="form-field" style="flex:1;">
+          <label>Status</label>
+          <div class="status-radio-group" id="selfStatusGroup">
+            <label class="radio-present" id="lblPresent" onclick="selectStatus('Present')">
+              <input type="radio" name="selfStatus" value="Present" checked/><span>✅ Present</span>
+            </label>
+            <label class="radio-absent" id="lblAbsent" onclick="selectStatus('Absent')">
+              <input type="radio" name="selfStatus" value="Absent"/><span>❌ Absent</span>
+            </label>
+            <label class="radio-half" id="lblHalf" onclick="selectStatus('Half Day')">
+              <input type="radio" name="selfStatus" value="Half Day"/><span>🕐 Half Day</span>
+            </label>
+            <label class="radio-leave" id="lblLeave" onclick="selectStatus('On Leave')">
+              <input type="radio" name="selfStatus" value="On Leave"/><span>🏖 On Leave</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:12px;display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;">
+        <div class="form-field" style="flex:1;min-width:200px;">
+          <label>Remarks (Optional)</label>
+          <input type="text" id="selfRemarks" placeholder="E.g. Field visit, WFH…"/>
+        </div>
+        <button class="btn btn-success" id="selfSubmitBtn" onclick="submitMyAttendance()">
+          <i class="fa-solid fa-paper-plane"></i> Submit Attendance
+        </button>
+      </div>
+      <div id="selfMsg" style="margin-top:10px;font-size:12.5px;display:none;"></div>
+    </div>
+
+    <!-- My History -->
+    <div class="att-tabs">
+      <button class="att-tab active" onclick="switchEngTab('calendar')"><i class="fa-regular fa-calendar"></i> Calendar View</button>
+      <button class="att-tab" onclick="switchEngTab('list')"><i class="fa-solid fa-list"></i> History</button>
+    </div>
+    
+    <!-- Month filter -->
+    <div class="att-toolbar">
+      <label>Month</label>
+      <input type="month" class="filter-input" id="engMonth" value="${today.substring(0,7)}" onchange="filterMyRecords()"/>
+      <div class="tb-spacer"></div>
+      <span id="myMonthStats" style="font-size:12px;color:var(--txt3);"></span>
+    </div>
+
+    <div id="engTabContent">
+      <div class="inline-loader"><div class="spin"></div></div>
+    </div>
+  `;
+}
+
+let selectedStatus = "Present";
+function selectStatus(val){
+  selectedStatus = val;
+  ["Present","Absent","Half Day","On Leave"].forEach(s=>{
+    const id = {
+      "Present":"lblPresent","Absent":"lblAbsent",
+      "Half Day":"lblHalf","On Leave":"lblLeave"
+    }[s];
+    const cls = {
+      "Present":"radio-present","Absent":"radio-absent",
+      "Half Day":"radio-half","On Leave":"radio-leave"
+    }[s];
+    const el = document.getElementById(id);
+    if(el){
+      el.className = cls + (s===val?" selected":"");
+    }
+  });
+  // Also check the radio
+  const radios = document.querySelectorAll("input[name='selfStatus']");
+  radios.forEach(r=>{ if(r.value===val) r.checked=true; });
+}
+
+async function submitMyAttendance(){
+  const token = getToken();
+  const date = document.getElementById("selfDate").value;
+  const remarks = document.getElementById("selfRemarks").value.trim();
+  const msg = document.getElementById("selfMsg");
+
+  if(!date){ showToast("Please select a date.", "error"); return; }
+
+  const payload = {
+    engineerName: currentUser.engineerName || currentUser.username,
+    username: currentUser.username,
+    date, status: selectedStatus, remarks
+  };
+
+  document.getElementById("selfSubmitBtn").disabled = true;
+  document.getElementById("selfSubmitBtn").innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Submitting…`;
+
+  try{
+    const res = await fetch(`${baseUrl}/attendance`, {
+      method:"POST", headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if(res.ok){
+      showToast("Attendance submitted successfully!", "success");
+      msg.style.display="flex";
+      msg.style.color="#059669";
+      msg.innerHTML=`<i class="fa-solid fa-check-circle" style="margin-right:6px;"></i> Submitted: <strong style="margin-left:4px;">${selectedStatus}</strong> for ${fmtDate(date)}`;
+      await loadMyAttendance();
+    } else {
+      showToast(data.message || "Failed to submit. Already submitted today?", "error");
+    }
+  }catch(e){ showToast("Server error. Try again.", "error"); }
+
+  document.getElementById("selfSubmitBtn").disabled = false;
+  document.getElementById("selfSubmitBtn").innerHTML = `<i class="fa-solid fa-paper-plane"></i> Submit Attendance`;
+}
+
+async function loadMyAttendance(){
+  const token = getToken();
+  try{
+    const res = await fetch(`${baseUrl}/attendance/mine`, {headers:{Authorization:`Bearer ${token}`}});
+    const data = await res.json();
+    myAttendance = Array.isArray(data) ? data : (data.attendance || []);
+  }catch(e){ myAttendance = []; }
+  renderEngStats();
+  filterMyRecords();
+}
+
+function renderEngStats(){
+  const present = myAttendance.filter(r=>r.status==="Present").length;
+  const absent = myAttendance.filter(r=>r.status==="Absent").length;
+  const half = myAttendance.filter(r=>r.status==="Half Day").length;
+  const leave = myAttendance.filter(r=>r.status==="On Leave").length;
+  const total = myAttendance.length;
+  const pct = total>0 ? Math.round((present/total)*100) : 0;
+
+  document.getElementById("statsRow").innerHTML = `
+    <div class="stat-card">
+      <div class="stat-icon blue"><i class="fa-solid fa-calendar-days"></i></div>
+      <div><div class="stat-val">${total}</div><div class="stat-lbl">Total Records</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon green"><i class="fa-solid fa-circle-check"></i></div>
+      <div><div class="stat-val">${present}</div><div class="stat-lbl">Present Days</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon red"><i class="fa-solid fa-circle-xmark"></i></div>
+      <div><div class="stat-val">${absent}</div><div class="stat-lbl">Absent Days</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon amber"><i class="fa-solid fa-clock-half"></i></div>
+      <div><div class="stat-val">${half}</div><div class="stat-lbl">Half Days</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon purple"><i class="fa-solid fa-umbrella-beach"></i></div>
+      <div><div class="stat-val">${leave}</div><div class="stat-lbl">On Leave</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon ${pct>=80?"green":pct>=60?"amber":"red"}"><i class="fa-solid fa-percent"></i></div>
+      <div><div class="stat-val">${pct}%</div><div class="stat-lbl">Attendance Rate</div></div>
+    </div>
+  `;
+}
+
+let engActiveTab = "calendar";
+function switchEngTab(tab){
+  engActiveTab = tab;
+  document.querySelectorAll(".att-tab").forEach(t=>{
+    t.classList.toggle("active",
+      (tab==="calendar" && t.textContent.includes("Calendar")) ||
+      (tab==="list" && t.textContent.includes("History"))
+    );
+  });
+  filterMyRecords();
+}
+
+function filterMyRecords(){
+  const month = document.getElementById("engMonth")?.value || todayISO().substring(0,7);
+  const recs = myAttendance.filter(r => (r.date||"").startsWith(month));
+
+  const p=recs.filter(r=>r.status==="Present").length;
+  const s = document.getElementById("myMonthStats");
+  if(s) s.textContent = `${recs.length} records · ${p} Present · ${recs.filter(r=>r.status==="Absent").length} Absent`;
+
+  if(engActiveTab==="calendar") renderMyCalendar(month, recs);
+  else renderMyList(recs);
+}
+
+function renderMyCalendar(month, recs){
+  const [yr, mo] = month.split("-").map(Number);
+  const firstDay = new Date(yr, mo-1, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(yr, mo, 0).getDate();
+  const today = new Date();
+
+  const byDate = {};
+  recs.forEach(r=>{ byDate[(r.date||"").split("T")[0]] = r.status; });
+
+  const statusClass = {"Present":"present","Absent":"absent","Half Day":"half","On Leave":"leave"};
+  const statusShort = {"Present":"P","Absent":"A","Half Day":"½","On Leave":"L"};
+
+  let cells = "";
+  for(let i=0;i<firstDay;i++) cells += `<div class="cal-day empty"></div>`;
+  for(let d=1;d<=daysInMonth;d++){
+    const dateStr = `${yr}-${String(mo).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    const isToday = today.getFullYear()===yr && today.getMonth()===mo-1 && today.getDate()===d;
+    const status = byDate[dateStr];
+    const isSun = new Date(yr,mo-1,d).getDay()===0;
+    const cls = status ? statusClass[status]||"" : (isSun?"sunday":"");
+    cells += `<div class="cal-day ${cls} ${isToday?"today":""}">
+      <div class="day-num">${d}</div>
+      ${status ? `<div class="day-status">${statusShort[status]}</div>` : ""}
+    </div>`;
+  }
+
+  const days = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  document.getElementById("engTabContent").innerHTML = `
+    <div class="table-card">
+      <div class="table-card-header">
+        <span class="table-card-title"><i class="fa-regular fa-calendar"></i> ${new Date(yr,mo-1).toLocaleDateString("en-IN",{month:"long",year:"numeric"})}</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          ${["Present","Absent","Half Day","On Leave"].map(s=>`<span class="badge badge-${statusClass[s]}">${s}</span>`).join("")}
+        </div>
+      </div>
+      <div class="calendar-grid">
+        ${days.map(d=>`<div class="cal-day-head">${d}</div>`).join("")}
+        ${cells}
+      </div>
+    </div>
+  `;
+}
+
+function renderMyList(recs){
+  const sorted = [...recs].sort((a,b)=>new Date(b.date)-new Date(a.date));
+  document.getElementById("engTabContent").innerHTML = `
+    <div class="table-card">
+      <div class="table-card-header">
+        <span class="table-card-title"><i class="fa-solid fa-list"></i> My Attendance History</span>
+        <span style="font-size:12px;color:var(--txt3);">${sorted.length} records</span>
+      </div>
+      <div class="table-scroll">
+        ${sorted.length===0 ? `<div class="empty-state"><i class="fa-regular fa-calendar-xmark"></i><p>No records for this month.</p></div>` : `
+        <table>
+          <thead><tr><th>#</th><th>Date</th><th>Day</th><th>Status</th><th>Remarks</th><th>Submitted At</th></tr></thead>
+          <tbody>
+            ${sorted.map((r,i)=>`<tr>
+              <td style="color:var(--txt4);font-size:11px;">${i+1}</td>
+              <td class="td-date">${fmtDate(r.date)}</td>
+              <td style="font-size:11.5px;color:var(--txt3);">${getDayName(r.date)}</td>
+              <td>${statusBadge(r.status)}</td>
+              <td style="color:var(--txt3);font-size:12px;">${r.remarks||"—"}</td>
+              <td style="font-size:11.5px;color:var(--txt4);">${r.createdAt?new Date(r.createdAt).toLocaleString("en-IN",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}):"—"}</td>
+            </tr>`).join("")}
+          </tbody>
+        </table>`}
+      </div>
+    </div>
+  `;
+}
+
+// Close modals on overlay click
+document.querySelectorAll(".modal-overlay").forEach(o=>{
+  o.addEventListener("click", e=>{ if(e.target===o) o.classList.remove("open"); });
+});
+</script>
+</body>
+</html>
