@@ -406,7 +406,6 @@ window.onload = async () => {
     await loadAdminData();
   } else {
     renderEngineerView();
-    await autoMarkMyAttendance();   // ← visit records se auto-mark
     await loadMyAttendance();
   }
 };
@@ -901,108 +900,6 @@ function selectStatus(val){
   radios.forEach(r=>{ if(r.value===val) r.checked=true; });
 }
 
-/* ─────────────────────────────────────────────────
-   AUTO MARK ATTENDANCE from Visit Records
-   Engineer page load hote hi check karo:
-   - Aaj ka visit record mila → Present
-   - roName mein "IN LEAVE" → On Leave
-   - 409 (duplicate) → already marked, skip silently
-───────────────────────────────────────────────── */
-async function autoMarkMyAttendance(){
-  const token = getToken();
-  const today = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD
-  const myName = currentUser.engineerName || currentUser.username;
-
-  try {
-    // Aaj ke visit plans fetch karo
-    const res = await fetch(`${baseUrl}/getDailyPlans`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (!res.ok) return;
-    const plans = await res.json();
-
-    // Sirf apne aur aaj ke records
-    const myPlans = plans.filter(p =>
-      (p.engineer || "").trim() === myName.trim() &&
-      (p.date || "").trim() === today
-    );
-
-    if (!myPlans.length) return; // Aaj koi visit record nahi — manual submit rehne do
-
-    // Status decide karo: koi bhi IN LEAVE → On Leave, warna Present
-    const hasLeave = myPlans.some(p =>
-      (p.roName || "").trim().toUpperCase().includes("IN LEAVE")
-    );
-    const status = hasLeave ? "On Leave" : "Present";
-    const leaveRO = hasLeave ? myPlans.find(p => (p.roName||"").toUpperCase().includes("IN LEAVE")) : null;
-    const visitRO = !hasLeave ? myPlans[0] : null;
-
-    const remarks = hasLeave
-      ? `Auto: On Leave (from visit record)`
-      : `Auto: Visit at ${(visitRO?.roCode || "")} ${(visitRO?.roName || "")}`.trim();
-
-    const payload = {
-      engineerName: myName,
-      username: currentUser.username,
-      date: today,
-      status,
-      remarks,
-      markedBy: "system-auto"
-    };
-
-    const postRes = await fetch(`${baseUrl}/attendance`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify(payload)
-    });
-
-    if (postRes.status === 201) {
-      // Successfully auto-marked — show info banner
-      showAutoAttBanner(status, today);
-    }
-    // 409 = already submitted today → silently skip (no toast, no error)
-
-  } catch(e) {
-    console.warn("Auto attendance check failed:", e.message);
-  }
-}
-
-function showAutoAttBanner(status, date){
-  const bannerColor = status === "On Leave" ? "#7C3AED" : "#059669";
-  const bannerBg   = status === "On Leave" ? "#F5F3FF" : "#F0FDF4";
-  const bannerBdr  = status === "On Leave" ? "#DDD6FE" : "#BBF7D0";
-  const icon = status === "On Leave" ? "umbrella-beach" : "circle-check";
-
-  // Insert banner above submit card
-  const card = document.querySelector(".self-submit-card");
-  if (!card) return;
-
-  const banner = document.createElement("div");
-  banner.style.cssText = `
-    background:${bannerBg};border:1.5px solid ${bannerBdr};border-radius:12px;
-    padding:12px 18px;margin-bottom:14px;display:flex;align-items:center;gap:10px;
-    font-size:13px;font-weight:600;color:${bannerColor};
-  `;
-  banner.innerHTML = `
-    <i class="fa-solid fa-${icon}" style="font-size:16px;"></i>
-    <div>
-      <div>Attendance auto-marked: <strong>${status}</strong> for ${fmtDate(date)}</div>
-      <div style="font-size:11.5px;font-weight:400;opacity:.8;margin-top:2px;">
-        Visit record mila toh automatically mark hua. Agar galat hai toh neeche manually change karo.
-      </div>
-    </div>
-  `;
-  card.insertBefore(banner, card.firstChild);
-
-  // Disable submit button — already marked
-  const btn = document.getElementById("selfSubmitBtn");
-  if(btn){
-    btn.disabled = true;
-    btn.style.opacity = "0.5";
-    btn.title = "Already auto-marked from visit records";
-  }
-}
-
 async function submitMyAttendance(){
   const token = getToken();
   const date = document.getElementById("selfDate").value;
@@ -1032,10 +929,8 @@ async function submitMyAttendance(){
       msg.style.color="#059669";
       msg.innerHTML=`<i class="fa-solid fa-check-circle" style="margin-right:6px;"></i> Submitted: <strong style="margin-left:4px;">${selectedStatus}</strong> for ${fmtDate(date)}`;
       await loadMyAttendance();
-    } else if(res.status === 409) {
-      showToast("Attendance already submitted for today.", "info");
     } else {
-      showToast(data.message || "Failed to submit.", "error");
+      showToast(data.message || "Failed to submit. Already submitted today?", "error");
     }
   }catch(e){ showToast("Server error. Try again.", "error"); }
 
