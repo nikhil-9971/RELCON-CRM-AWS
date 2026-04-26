@@ -406,7 +406,6 @@ window.onload = async () => {
     await loadAdminData();
   } else {
     renderEngineerView();
-    await autoMarkMyAttendance();   // ← visit records se auto-mark
     await loadMyAttendance();
   }
 };
@@ -523,6 +522,7 @@ function renderAdminMain(){
     <div class="att-tabs">
       <button class="att-tab ${activeTab==="list"?"active":""}" onclick="switchTab('list')"><i class="fa-solid fa-list"></i> All Records</button>
       <button class="att-tab ${activeTab==="summary"?"active":""}" onclick="switchTab('summary')"><i class="fa-solid fa-chart-bar"></i> Summary</button>
+      <button class="att-tab ${activeTab==="myatt"?"active":""}" onclick="switchTab('myatt')"><i class="fa-solid fa-user-clock"></i> My Attendance</button>
     </div>
 
     <!-- Filters -->
@@ -551,8 +551,17 @@ function renderAdminMain(){
 function switchTab(tab){
   activeTab = tab;
   document.querySelectorAll(".att-tab").forEach(t=>{
-    t.classList.toggle("active", t.textContent.includes(tab==="list"?"Records":"Summary"));
+    const lbl = t.textContent.trim();
+    t.classList.toggle("active",
+      (tab==="list" && lbl.includes("Records")) ||
+      (tab==="summary" && lbl.includes("Summary")) ||
+      (tab==="myatt" && lbl.includes("My Attendance"))
+    );
   });
+  if(tab==="myatt"){
+    renderAdminSelfAttendance();
+    return;
+  }
   const filtered = getFiltered();
   if(tab==="list") renderListTab(filtered);
   else renderSummaryTab(filtered);
@@ -803,6 +812,257 @@ function exportCSV(){
   showToast("CSV exported!", "success");
 }
 
+/* ── Admin: My Attendance (self-submit) ── */
+let adminSelfAttendance = [];
+let adminSelectedStatus = "Present";
+let adminEngActiveTab = "calendar";
+
+async function renderAdminSelfAttendance(){
+  const token = getToken();
+  const today = todayISO();
+  const myName = currentUser.engineerName || currentUser.username;
+
+  // Load admin's own records
+  try{
+    const res = await fetch(`${baseUrl}/attendance/mine`, {headers:{Authorization:`Bearer ${token}`}});
+    const data = await res.json();
+    adminSelfAttendance = Array.isArray(data) ? data : (data.attendance || []);
+  }catch(e){ adminSelfAttendance = []; }
+
+  // Check if already submitted today
+  const todayRecord = adminSelfAttendance.find(r => (r.date||"").startsWith(today));
+
+  document.getElementById("tabContent").innerHTML = `
+    <!-- Self Submit Card -->
+    <div class="self-submit-card" id="adminSelfCard">
+      <h2><i class="fa-solid fa-user-clock"></i> My Attendance — ${myName}</h2>
+      ${todayRecord ? `
+        <div style="background:#F0FDF4;border:1.5px solid #BBF7D0;border-radius:10px;padding:13px 18px;
+          display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+          <i class="fa-solid fa-circle-check" style="color:#059669;font-size:18px;"></i>
+          <div>
+            <div style="font-weight:700;color:#059669;font-size:13.5px;">
+              Aaj ki attendance pehle se mark hai: <strong>${todayRecord.status}</strong>
+            </div>
+            <div style="font-size:12px;color:#64748B;margin-top:2px;">
+              ${fmtDate(todayRecord.date)} &nbsp;·&nbsp; ${todayRecord.remarks || "No remarks"}
+            </div>
+          </div>
+        </div>
+      ` : `
+        <div class="submit-form-row">
+          <div class="form-field">
+            <label>Your Name</label>
+            <input type="text" readonly value="${myName}" style="background:var(--page-bg);color:var(--txt3);"/>
+          </div>
+          <div class="form-field">
+            <label>Date</label>
+            <input type="date" id="adminSelfDate" value="${today}" max="${today}"/>
+          </div>
+          <div class="form-field" style="flex:1;">
+            <label>Status</label>
+            <div class="status-radio-group" id="adminStatusGroup">
+              <label class="radio-present selected" id="adLblPresent" onclick="adminSelectStatus('Present')">
+                <input type="radio" name="adminStatus" value="Present" checked/><span>✅ Present</span>
+              </label>
+              <label class="radio-absent" id="adLblAbsent" onclick="adminSelectStatus('Absent')">
+                <input type="radio" name="adminStatus" value="Absent"/><span>❌ Absent</span>
+              </label>
+              <label class="radio-half" id="adLblHalf" onclick="adminSelectStatus('Half Day')">
+                <input type="radio" name="adminStatus" value="Half Day"/><span>🕐 Half Day</span>
+              </label>
+              <label class="radio-leave" id="adLblLeave" onclick="adminSelectStatus('On Leave')">
+                <input type="radio" name="adminStatus" value="On Leave"/><span>🏖 On Leave</span>
+              </label>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:12px;display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;">
+          <div class="form-field" style="flex:1;min-width:200px;">
+            <label>Remarks (Optional)</label>
+            <input type="text" id="adminSelfRemarks" placeholder="E.g. Office work, WFH…"/>
+          </div>
+          <button class="btn btn-success" id="adminSelfSubmitBtn" onclick="submitAdminSelfAttendance()">
+            <i class="fa-solid fa-paper-plane"></i> Submit My Attendance
+          </button>
+        </div>
+        <div id="adminSelfMsg" style="margin-top:10px;font-size:12.5px;display:none;"></div>
+      `}
+    </div>
+
+    <!-- My History Tabs -->
+    <div class="att-tabs">
+      <button class="att-tab ${adminEngActiveTab==="calendar"?"active":""}" onclick="switchAdminSelfTab('calendar')">
+        <i class="fa-regular fa-calendar"></i> Calendar View
+      </button>
+      <button class="att-tab ${adminEngActiveTab==="list"?"active":""}" onclick="switchAdminSelfTab('list')">
+        <i class="fa-solid fa-list"></i> My History
+      </button>
+    </div>
+
+    <div class="att-toolbar">
+      <label>Month</label>
+      <input type="month" class="filter-input" id="adminSelfMonth" value="${today.substring(0,7)}" onchange="filterAdminSelfRecords()"/>
+      <div class="tb-spacer"></div>
+      <span id="adminSelfMonthStats" style="font-size:12px;color:var(--txt3);"></span>
+    </div>
+
+    <div id="adminSelfTabContent">
+      <div class="inline-loader"><div class="spin"></div></div>
+    </div>
+  `;
+
+  filterAdminSelfRecords();
+}
+
+function adminSelectStatus(val){
+  adminSelectedStatus = val;
+  const map = {
+    "Present":  {id:"adLblPresent", cls:"radio-present"},
+    "Absent":   {id:"adLblAbsent",  cls:"radio-absent"},
+    "Half Day": {id:"adLblHalf",    cls:"radio-half"},
+    "On Leave": {id:"adLblLeave",   cls:"radio-leave"}
+  };
+  Object.entries(map).forEach(([s, {id, cls}]) => {
+    const el = document.getElementById(id);
+    if(el) el.className = cls + (s===val?" selected":"");
+  });
+  document.querySelectorAll("input[name='adminStatus']").forEach(r=>{ if(r.value===val) r.checked=true; });
+}
+
+async function submitAdminSelfAttendance(){
+  const token = getToken();
+  const date = document.getElementById("adminSelfDate")?.value;
+  const remarks = document.getElementById("adminSelfRemarks")?.value.trim() || "";
+  const msg = document.getElementById("adminSelfMsg");
+  if(!date){ showToast("Please select a date.", "error"); return; }
+
+  const payload = {
+    engineerName: currentUser.engineerName || currentUser.username,
+    username: currentUser.username,
+    date, status: adminSelectedStatus, remarks,
+    markedBy: currentUser.username
+  };
+
+  const btn = document.getElementById("adminSelfSubmitBtn");
+  btn.disabled = true;
+  btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Submitting…`;
+
+  try{
+    const res = await fetch(`${baseUrl}/attendance`, {
+      method:"POST", headers:{"Content-Type":"application/json", Authorization:`Bearer ${token}`},
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if(res.ok){
+      showToast("Your attendance marked!", "success");
+      // Re-render to show "already marked" banner
+      await renderAdminSelfAttendance();
+    } else if(res.status === 409){
+      showToast("Already submitted for this date.", "info");
+    } else {
+      showToast(data.message || "Failed to submit.", "error");
+      btn.disabled = false;
+      btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> Submit My Attendance`;
+    }
+  }catch(e){
+    showToast("Server error.", "error");
+    btn.disabled = false;
+    btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> Submit My Attendance`;
+  }
+}
+
+function switchAdminSelfTab(tab){
+  adminEngActiveTab = tab;
+  document.querySelectorAll("#tabContent .att-tab").forEach(t=>{
+    const lbl = t.textContent.trim();
+    t.classList.toggle("active",
+      (tab==="calendar" && lbl.includes("Calendar")) ||
+      (tab==="list" && lbl.includes("History"))
+    );
+  });
+  filterAdminSelfRecords();
+}
+
+function filterAdminSelfRecords(){
+  const month = document.getElementById("adminSelfMonth")?.value || todayISO().substring(0,7);
+  const recs = adminSelfAttendance.filter(r => (r.date||"").startsWith(month));
+  const p = recs.filter(r=>r.status==="Present").length;
+  const s = document.getElementById("adminSelfMonthStats");
+  if(s) s.textContent = `${recs.length} records · ${p} Present · ${recs.filter(r=>r.status==="Absent").length} Absent`;
+  if(adminEngActiveTab==="calendar") renderAdminSelfCalendar(month, recs);
+  else renderAdminSelfList(recs);
+}
+
+function renderAdminSelfCalendar(month, recs){
+  const [yr, mo] = month.split("-").map(Number);
+  const firstDay = new Date(yr, mo-1, 1).getDay();
+  const daysInMonth = new Date(yr, mo, 0).getDate();
+  const today = new Date();
+  const byDate = {};
+  recs.forEach(r=>{ byDate[(r.date||"").split("T")[0]] = r.status; });
+  const statusClass = {"Present":"present","Absent":"absent","Half Day":"half","On Leave":"leave"};
+  const statusShort = {"Present":"P","Absent":"A","Half Day":"½","On Leave":"L"};
+  let cells = "";
+  for(let i=0;i<firstDay;i++) cells += `<div class="cal-day empty"></div>`;
+  for(let d=1;d<=daysInMonth;d++){
+    const dateStr = `${yr}-${String(mo).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    const isToday = today.getFullYear()===yr && today.getMonth()===mo-1 && today.getDate()===d;
+    const status = byDate[dateStr];
+    const isSun = new Date(yr,mo-1,d).getDay()===0;
+    const cls = status ? statusClass[status]||"" : (isSun?"sunday":"");
+    cells += `<div class="cal-day ${cls} ${isToday?"today":""}">
+      <div class="day-num">${d}</div>
+      ${status ? `<div class="day-status">${statusShort[status]}</div>` : ""}
+    </div>`;
+  }
+  const days = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  document.getElementById("adminSelfTabContent").innerHTML = `
+    <div class="table-card">
+      <div class="table-card-header">
+        <span class="table-card-title"><i class="fa-regular fa-calendar"></i>
+          ${new Date(yr,mo-1).toLocaleDateString("en-IN",{month:"long",year:"numeric"})}
+        </span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          ${["Present","Absent","Half Day","On Leave"].map(s=>`<span class="badge badge-${statusClass[s]}">${s}</span>`).join("")}
+        </div>
+      </div>
+      <div class="calendar-grid">
+        ${days.map(d=>`<div class="cal-day-head">${d}</div>`).join("")}
+        ${cells}
+      </div>
+    </div>
+  `;
+}
+
+function renderAdminSelfList(recs){
+  const sorted = [...recs].sort((a,b)=>new Date(b.date)-new Date(a.date));
+  document.getElementById("adminSelfTabContent").innerHTML = `
+    <div class="table-card">
+      <div class="table-card-header">
+        <span class="table-card-title"><i class="fa-solid fa-list"></i> My Attendance History</span>
+        <span style="font-size:12px;color:var(--txt3);">${sorted.length} records</span>
+      </div>
+      <div class="table-scroll">
+        ${sorted.length===0 ? `<div class="empty-state"><i class="fa-regular fa-calendar-xmark"></i><p>No records for this month.</p></div>` : `
+        <table>
+          <thead><tr><th>#</th><th>Date</th><th>Day</th><th>Status</th><th>Remarks</th><th>Submitted At</th></tr></thead>
+          <tbody>
+            ${sorted.map((r,i)=>`<tr>
+              <td style="color:var(--txt4);font-size:11px;">${i+1}</td>
+              <td class="td-date">${fmtDate(r.date)}</td>
+              <td style="font-size:11.5px;color:var(--txt3);">${getDayName(r.date)}</td>
+              <td>${statusBadge(r.status)}</td>
+              <td style="color:var(--txt3);font-size:12px;">${r.remarks||"—"}</td>
+              <td style="font-size:11.5px;color:var(--txt4);">${r.createdAt?new Date(r.createdAt).toLocaleString("en-IN",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}):"—"}</td>
+            </tr>`).join("")}
+          </tbody>
+        </table>`}
+      </div>
+    </div>
+  `;
+}
+
 /* ═══════════════════════════════════════════════════════
    ███████╗███╗   ██╗ ██████╗ ██╗███╗   ██╗███████╗███████╗██████╗
    ██╔════╝████╗  ██║██╔════╝ ██║████╗  ██║██╔════╝██╔════╝██╔══██╗
@@ -901,108 +1161,6 @@ function selectStatus(val){
   radios.forEach(r=>{ if(r.value===val) r.checked=true; });
 }
 
-/* ─────────────────────────────────────────────────
-   AUTO MARK ATTENDANCE from Visit Records
-   Engineer page load hote hi check karo:
-   - Aaj ka visit record mila → Present
-   - roName mein "IN LEAVE" → On Leave
-   - 409 (duplicate) → already marked, skip silently
-───────────────────────────────────────────────── */
-async function autoMarkMyAttendance(){
-  const token = getToken();
-  const today = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD
-  const myName = currentUser.engineerName || currentUser.username;
-
-  try {
-    // Aaj ke visit plans fetch karo
-    const res = await fetch(`${baseUrl}/getDailyPlans`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (!res.ok) return;
-    const plans = await res.json();
-
-    // Sirf apne aur aaj ke records
-    const myPlans = plans.filter(p =>
-      (p.engineer || "").trim() === myName.trim() &&
-      (p.date || "").trim() === today
-    );
-
-    if (!myPlans.length) return; // Aaj koi visit record nahi — manual submit rehne do
-
-    // Status decide karo: koi bhi IN LEAVE → On Leave, warna Present
-    const hasLeave = myPlans.some(p =>
-      (p.roName || "").trim().toUpperCase().includes("IN LEAVE")
-    );
-    const status = hasLeave ? "On Leave" : "Present";
-    const leaveRO = hasLeave ? myPlans.find(p => (p.roName||"").toUpperCase().includes("IN LEAVE")) : null;
-    const visitRO = !hasLeave ? myPlans[0] : null;
-
-    const remarks = hasLeave
-      ? `Auto: On Leave (from visit record)`
-      : `Auto: Visit at ${(visitRO?.roCode || "")} ${(visitRO?.roName || "")}`.trim();
-
-    const payload = {
-      engineerName: myName,
-      username: currentUser.username,
-      date: today,
-      status,
-      remarks,
-      markedBy: "system-auto"
-    };
-
-    const postRes = await fetch(`${baseUrl}/attendance`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify(payload)
-    });
-
-    if (postRes.status === 201) {
-      // Successfully auto-marked — show info banner
-      showAutoAttBanner(status, today);
-    }
-    // 409 = already submitted today → silently skip (no toast, no error)
-
-  } catch(e) {
-    console.warn("Auto attendance check failed:", e.message);
-  }
-}
-
-function showAutoAttBanner(status, date){
-  const bannerColor = status === "On Leave" ? "#7C3AED" : "#059669";
-  const bannerBg   = status === "On Leave" ? "#F5F3FF" : "#F0FDF4";
-  const bannerBdr  = status === "On Leave" ? "#DDD6FE" : "#BBF7D0";
-  const icon = status === "On Leave" ? "umbrella-beach" : "circle-check";
-
-  // Insert banner above submit card
-  const card = document.querySelector(".self-submit-card");
-  if (!card) return;
-
-  const banner = document.createElement("div");
-  banner.style.cssText = `
-    background:${bannerBg};border:1.5px solid ${bannerBdr};border-radius:12px;
-    padding:12px 18px;margin-bottom:14px;display:flex;align-items:center;gap:10px;
-    font-size:13px;font-weight:600;color:${bannerColor};
-  `;
-  banner.innerHTML = `
-    <i class="fa-solid fa-${icon}" style="font-size:16px;"></i>
-    <div>
-      <div>Attendance auto-marked: <strong>${status}</strong> for ${fmtDate(date)}</div>
-      <div style="font-size:11.5px;font-weight:400;opacity:.8;margin-top:2px;">
-        Visit record mila toh automatically mark hua. Agar galat hai toh neeche manually change karo.
-      </div>
-    </div>
-  `;
-  card.insertBefore(banner, card.firstChild);
-
-  // Disable submit button — already marked
-  const btn = document.getElementById("selfSubmitBtn");
-  if(btn){
-    btn.disabled = true;
-    btn.style.opacity = "0.5";
-    btn.title = "Already auto-marked from visit records";
-  }
-}
-
 async function submitMyAttendance(){
   const token = getToken();
   const date = document.getElementById("selfDate").value;
@@ -1032,10 +1190,8 @@ async function submitMyAttendance(){
       msg.style.color="#059669";
       msg.innerHTML=`<i class="fa-solid fa-check-circle" style="margin-right:6px;"></i> Submitted: <strong style="margin-left:4px;">${selectedStatus}</strong> for ${fmtDate(date)}`;
       await loadMyAttendance();
-    } else if(res.status === 409) {
-      showToast("Attendance already submitted for today.", "info");
     } else {
-      showToast(data.message || "Failed to submit.", "error");
+      showToast(data.message || "Failed to submit. Already submitted today?", "error");
     }
   }catch(e){ showToast("Server error. Try again.", "error"); }
 
