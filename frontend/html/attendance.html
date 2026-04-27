@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
 <script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 /* ── CSS Variables (matches dashboard) ── */
 :root {
@@ -461,7 +462,8 @@ function todayISO(){
 
 function renderAdminHeaderActions(){
   document.getElementById("headerActions").innerHTML = `
-    <button class="btn btn-secondary" onclick="exportCSV()"><i class="fa-solid fa-file-csv"></i> Export CSV</button>
+    <button class="btn btn-secondary" onclick="exportPivotExcel()"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
+    <button class="btn" style="background:#0369A1;color:#fff;border-color:#0284C7;" onclick="openHolidayModal()"><i class="fa-solid fa-calendar-xmark"></i> Mark Holiday</button>
     <button class="btn btn-primary" onclick="openAdminMarkModal()"><i class="fa-solid fa-plus"></i> Mark Attendance</button>
   `;
 }
@@ -776,25 +778,217 @@ async function adminCreateRecord(){
   }catch(e){ showToast("Failed to mark attendance.", "error"); }
 }
 
-/* ── Export CSV ── */
-function exportCSV(){
+/* ── Export Excel — Engineer(rows) × Date(cols) Pivot ── */
+function exportPivotExcel(){
   const filtered = getFiltered();
-  if(filtered.length===0){ showToast("No records to export.", "info"); return; }
-  const headers = ["Engineer","Date","Day","Status","Remarks","Submitted At"];
-  const rows = filtered.map(r=>[
-    r.engineerName||r.username||"",
-    (r.date||"").split("T")[0],
-    getDayName(r.date),
-    r.status||"",
-    (r.remarks||"").replace(/,/g,";"),
-    r.createdAt ? new Date(r.createdAt).toLocaleString("en-IN") : ""
+  if(!filtered.length){ showToast("No records to export.", "info"); return; }
+
+  const SHORT = { "Present":"P", "Absent":"A", "Half Day":"H", "Holiday":"HOL" };
+  const BG    = { "P":"DCFCE7", "A":"FEE2E2", "H":"FEF3C7", "HOL":"E0F2FE" };
+  const FG    = { "P":"15803D", "A":"B91C1C", "H":"B45309", "HOL":"0369A1" };
+
+  // Unique sorted engineers (rows) and dates (columns)
+  const engineers = [...new Set(filtered.map(r => r.engineerName||r.username||""))].filter(Boolean).sort();
+  const dates     = [...new Set(filtered.map(r => (r.date||"").split("T")[0]))].filter(Boolean).sort();
+
+  // pivot[engineer][date] = short code
+  const pivot = {};
+  filtered.forEach(r => {
+    const e = r.engineerName||r.username||"";
+    const d = (r.date||"").split("T")[0];
+    if(!pivot[e]) pivot[e] = {};
+    pivot[e][d] = SHORT[r.status] || r.status || "";
+  });
+
+  // Header row: Engineer | date1 | date2 | ...
+  const headerRow = ["Engineer", ...dates];
+
+  // Data rows: one per engineer
+  const dataRows = engineers.map(e => [e, ...dates.map(d => pivot[e]?.[d] || "")]);
+
+  // Summary row: count per date
+  const summaryRow = ["SUMMARY", ...dates.map(d => {
+    const p   = engineers.filter(e => pivot[e]?.[d]==="P").length;
+    const a   = engineers.filter(e => pivot[e]?.[d]==="A").length;
+    const h   = engineers.filter(e => pivot[e]?.[d]==="H").length;
+    const hol = engineers.filter(e => pivot[e]?.[d]==="HOL").length;
+    return `P:${p} A:${a} H:${h} HOL:${hol}`;
+  })];
+
+  const allRows = [headerRow, ...dataRows, summaryRow];
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(allRows);
+
+  // Column widths
+  const maxEng = Math.max(14, ...engineers.map(e=>e.length)) + 2;
+  ws["!cols"] = [{ wch: maxEng }, ...dates.map(() => ({ wch: 12 }))];
+  ws["!rows"] = [{ hpt: 28 }, ...dataRows.map(() => ({ hpt: 22 })), { hpt: 26 }];
+
+  const totalRows = allRows.length;
+  const totalCols = headerRow.length;
+
+  for(let R = 0; R < totalRows; R++){
+    for(let C = 0; C < totalCols; C++){
+      const addr = XLSX.utils.encode_cell({ r: R, c: C });
+      if(!ws[addr]) ws[addr] = { v: "", t: "s" };
+      const cell = ws[addr];
+      const val  = String(cell.v || "");
+
+      if(R === 0){
+        cell.s = { font:{ bold:true, color:{ rgb:"FFFFFF" }, sz:11, name:"Calibri" },
+          fill:{ fgColor:{ rgb:"1E3A5F" } },
+          alignment:{ horizontal:"center", vertical:"center", wrapText:true } };
+      } else if(R === totalRows - 1){
+        cell.s = { font:{ bold:true, color:{ rgb:"1E293B" }, sz:9, name:"Calibri" },
+          fill:{ fgColor:{ rgb:"E2E8F0" } },
+          alignment:{ horizontal:"center", vertical:"center", wrapText:true },
+          border:{ top:{ style:"medium", color:{ rgb:"94A3B8" } } } };
+      } else if(C === 0){
+        cell.s = { font:{ bold:true, color:{ rgb:"1E293B" }, sz:11, name:"Calibri" },
+          fill:{ fgColor:{ rgb:"F8FAFC" } },
+          alignment:{ horizontal:"left", vertical:"center" },
+          border:{ right:{ style:"medium", color:{ rgb:"94A3B8" } } } };
+      } else {
+        const bg = BG[val] || "FFFFFF";
+        const fg = FG[val] || "94A3B8";
+        cell.s = { font:{ bold:!!val, color:{ rgb:fg }, sz:12, name:"Calibri" },
+          fill:{ fgColor:{ rgb:bg } },
+          alignment:{ horizontal:"center", vertical:"center" } };
+      }
+    }
+  }
+
+  ws["!freeze"] = { xSplit:1, ySplit:1, topLeftCell:"B2", activePane:"bottomRight" };
+
+  // Legend sheet
+  const wsL = XLSX.utils.aoa_to_sheet([
+    ["Code","Status","Color"],
+    ["P","Present","Green"],
+    ["A","Absent","Red"],
+    ["H","Half Day","Yellow"],
+    ["HOL","Holiday","Blue"],
+    ["","No Record","Blank"],
   ]);
-  const csv = [headers, ...rows].map(r=>r.join(",")).join("\n");
-  const a = document.createElement("a");
-  a.href = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
-  a.download = `attendance_${todayISO()}.csv`;
-  a.click();
-  showToast("CSV exported!", "success");
+  wsL["!cols"] = [{ wch:8 },{ wch:12 },{ wch:10 }];
+
+  XLSX.utils.book_append_sheet(wb, ws, "Attendance");
+  XLSX.utils.book_append_sheet(wb, wsL, "Legend");
+
+  const dr = dates.length > 1 ? `${dates[0]}_to_${dates[dates.length-1]}` : (dates[0]||todayISO());
+  XLSX.writeFile(wb, `Attendance_${dr}.xlsx`);
+  showToast(`Excel exported! ${engineers.length} engineers × ${dates.length} dates`, "success");
+}
+
+/* ── Holiday Manager ── */
+function openHolidayModal(){
+  // Remove existing modal if any
+  const ex = document.getElementById("holidayModal");
+  if(ex) ex.remove();
+
+  const modal = document.createElement("div");
+  modal.id = "holidayModal";
+  modal.className = "modal-overlay open";
+  modal.innerHTML = `
+    <div class="modal" style="max-width:480px;">
+      <div class="modal-header">
+        <span class="modal-title"><i class="fa-solid fa-calendar-xmark" style="color:#0369A1;"></i> Mark Holiday for All Engineers</span>
+        <button class="modal-close" onclick="document.getElementById('holidayModal').remove()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:11px 14px;
+          font-size:12.5px;color:#1D4ED8;margin-bottom:4px;display:flex;gap:8px;align-items:flex-start;">
+          <i class="fa-solid fa-circle-info" style="margin-top:2px;flex-shrink:0;"></i>
+          <span>Selected date pe <strong>sabhi engineers</strong> ka attendance Holiday mark ho jayega. Jo already mark hai unhe skip kiya jayega.</span>
+        </div>
+        <div class="form-field" style="margin-top:4px;">
+          <label>Holiday Date</label>
+          <input type="date" id="holidayDate" value="${todayISO()}" max="${todayISO()}" style="height:38px;border:1px solid var(--border);border-radius:var(--r);padding:0 12px;font-size:13px;background:var(--surface2);width:100%;outline:none;font-family:var(--font);"/>
+        </div>
+        <div class="form-field">
+          <label>Holiday Name / Reason</label>
+          <input type="text" id="holidayReason" placeholder="E.g. Diwali, Republic Day, Eid…" style="height:38px;border:1px solid var(--border);border-radius:var(--r);padding:0 12px;font-size:13px;background:var(--surface2);width:100%;outline:none;font-family:var(--font);"/>
+        </div>
+        <div id="holidayEngineerList" style="margin-top:4px;">
+          <div style="font-size:11px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">
+            Engineers to mark (<span id="engCount">loading…</span>)
+          </div>
+          <div id="engListBox" style="max-height:160px;overflow-y:auto;border:1px solid var(--border);
+            border-radius:var(--r);padding:8px;background:var(--surface2);font-size:12.5px;color:var(--txt3);">
+            Loading engineers…
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="document.getElementById('holidayModal').remove()">Cancel</button>
+        <button class="btn" style="background:#0369A1;color:#fff;border-color:#0284C7;" onclick="applyHoliday()">
+          <i class="fa-solid fa-calendar-check"></i> Apply Holiday
+        </button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener("click", e => { if(e.target===modal) modal.remove(); });
+
+  // Load engineer list from current allAttendance
+  loadEngineersForHoliday();
+}
+
+function loadEngineersForHoliday(){
+  const engineers = [...new Set(allAttendance.map(r => r.engineerName||r.username||""))].filter(Boolean).sort();
+  const box = document.getElementById("engListBox");
+  const cnt = document.getElementById("engCount");
+  if(!engineers.length){
+    box.textContent = "No engineers found. Load attendance data first.";
+    cnt.textContent = "0";
+    return;
+  }
+  cnt.textContent = engineers.length;
+  box.innerHTML = engineers.map(e =>
+    `<div style="padding:4px 6px;border-radius:4px;display:flex;align-items:center;gap:6px;">
+      <i class="fa-solid fa-user" style="color:#2563EB;font-size:10px;"></i> ${e}
+    </div>`
+  ).join("");
+}
+
+async function applyHoliday(){
+  const token = getToken();
+  const date   = document.getElementById("holidayDate").value;
+  const reason = document.getElementById("holidayReason").value.trim() || "Holiday";
+  if(!date){ showToast("Date select karo.", "error"); return; }
+
+  const engineers = [...new Set(allAttendance.map(r => r.engineerName||r.username||""))].filter(Boolean);
+  if(!engineers.length){ showToast("Koi engineer nahi mila.", "error"); return; }
+
+  const btn = document.querySelector("#holidayModal .modal-footer .btn:last-child");
+  btn.disabled = true;
+  btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Marking…`;
+
+  let success = 0, skipped = 0, failed = 0;
+
+  await Promise.all(engineers.map(async engName => {
+    try {
+      const r = await fetch(`${baseUrl}/attendance`, {
+        method: "POST",
+        headers: { "Content-Type":"application/json", Authorization:`Bearer ${token}` },
+        body: JSON.stringify({
+          engineerName: engName,
+          username: engName,
+          date, status: "Holiday",
+          remarks: `Holiday: ${reason}`,
+          markedBy: currentUser.username
+        })
+      });
+      if(r.status === 201)      success++;
+      else if(r.status === 409) skipped++;
+      else                      failed++;
+    } catch(e){ failed++; }
+  }));
+
+  btn.disabled = false;
+  btn.innerHTML = `<i class="fa-solid fa-calendar-check"></i> Apply Holiday`;
+
+  showToast(`✅ Holiday marked! ${success} new · ${skipped} already existed · ${failed} failed`, "success");
+  document.getElementById("holidayModal").remove();
+  await loadAdminData(); // refresh table
 }
 
 /* ═══════════════════════════════════════════════════════
