@@ -9,353 +9,389 @@
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
-/* ── CSS Variables (matches dashboard) ── */
+/* ══════════════════════════════════════════════════
+   RELCON CRM — Salesforce Lightning Design
+   Attendance v2.0 — Task Manager Style
+══════════════════════════════════════════════════ */
 :root {
-  --brand:#2563EB; --brand-dk:#1D4ED8; --brand-lt:#EFF6FF;
-  --brand-glow:rgba(37,99,235,0.14);
-  --success:#059669; --warn:#D97706; --danger:#DC2626; --purple:#7C3AED;
-  --page-bg:#F1F5F9; --surface:#FFFFFF; --surface2:#F8FAFC;
-  --border:#E2E8F0; --border-lt:#F1F5F9;
-  --txt:#0F172A; --txt2:#1E293B; --txt3:#64748B; --txt4:#94A3B8;
-  --r-sm:4px; --r:8px; --r-lg:12px; --r-xl:16px; --r-full:9999px;
-  --sh-xs:0 1px 2px rgba(15,23,42,.05);
-  --sh-sm:0 1px 4px rgba(15,23,42,.08);
-  --sh:0 4px 12px rgba(15,23,42,.10);
-  --sh-lg:0 8px 24px rgba(15,23,42,.12);
-  --font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --sf-blue:#0176d3; --sf-blue-dk:#014486; --sf-blue-lt:#e8f4fd; --sf-blue-hover:#0b5faa;
+  --sf-navy:#1a2e4a;
+  --sf-green:#2e844a; --sf-green-lt:#eaf5ea;
+  --sf-red:#ba0517;   --sf-red-lt:#fef1ee;
+  --sf-orange:#dd5a0c; --sf-orange-lt:#fff3e0;
+  --sf-yellow:#b8860b; --sf-yellow-lt:#fff8e6;
+  --sf-purple:#6b3fa0; --sf-purple-lt:#f5f0ff;
+  --sf-teal:#0e7490;   --sf-teal-lt:#ecfeff;
+  --bg:#f3f2f2; --surface:#fff; --surface2:#f9f9f9;
+  --border:#dddbda; --border-lt:#f3f2f2;
+  --txt:#080707; --txt2:#3e3e3c; --txt3:#706e6b; --txt4:#aeaeac;
+  --r-sm:4px; --r:6px; --r-lg:8px;
+  --sh-sm:0 2px 4px rgba(0,0,0,0.09); --sh-md:0 8px 24px rgba(0,0,0,0.12);
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);background:var(--page-bg);-webkit-font-smoothing:antialiased;padding:0;min-height:100vh;}
+html{font-size:13px;-webkit-font-smoothing:antialiased;}
+body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-thumb{background:#c8c6c4;border-radius:3px;}
 
-/* ── PAGE WRAPPER ── */
-.att-page{padding:24px;max-width:1400px;margin:0 auto;}
+/* ── PAGE STRIP ── */
+.dv-strip{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:52px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:200;box-shadow:0 1px 3px rgba(15,23,42,0.07);}
+.dv-strip-icon{width:28px;height:28px;background:#e8f4fd;border-radius:5px;display:flex;align-items:center;justify-content:center;color:var(--sf-blue);font-size:13px;}
+.dv-strip-title{font-size:14px;font-weight:700;color:var(--txt);letter-spacing:-0.2px;}
+.dv-strip-sep{width:1px;height:18px;background:var(--border);}
+.dv-strip-meta{font-size:10px;font-weight:500;color:var(--txt4);background:var(--surface2);border:1px solid var(--border);padding:2px 9px;border-radius:9999px;}
+.dv-strip-spacer{flex:1;}
 
-/* ── HEADER ── */
-.att-header{
-  display:flex;align-items:flex-start;justify-content:space-between;
-  margin-bottom:24px;gap:16px;flex-wrap:wrap;
-}
-.att-header-left h1{
-  font-size:22px;font-weight:800;color:var(--txt);letter-spacing:-.4px;
-  display:flex;align-items:center;gap:10px;
-}
-.att-header-left h1 i{
-  width:38px;height:38px;background:linear-gradient(135deg,#2563EB,#7C3AED);
-  border-radius:10px;display:flex;align-items:center;justify-content:center;
-  font-size:16px;color:#fff;box-shadow:0 4px 12px rgba(37,99,235,.35);
-  flex-shrink:0;
-}
-.att-header-left p{font-size:12.5px;color:var(--txt3);margin-top:4px;margin-left:48px;}
-.att-header-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+/* ── BODY ── */
+.sf-body{padding:16px 20px;}
+.sf-bc{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--txt3);margin-bottom:10px;}
+.sf-bc a{color:var(--sf-blue);text-decoration:none;}
+.sf-bc a:hover{text-decoration:underline;}
 
-/* ── STAT CARDS ── */
-.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:24px;}
-.stat-card{
-  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);
-  padding:16px 18px;box-shadow:var(--sh-xs);
-  display:flex;align-items:center;gap:13px;
-  transition:box-shadow .15s,transform .15s;
-}
-.stat-card:hover{box-shadow:var(--sh);transform:translateY(-1px);}
-.stat-icon{
-  width:42px;height:42px;border-radius:var(--r-lg);flex-shrink:0;
-  display:flex;align-items:center;justify-content:center;font-size:16px;
-}
-.stat-icon.blue{background:#EFF6FF;color:#2563EB;}
-.stat-icon.green{background:#F0FDF4;color:#059669;}
-.stat-icon.red{background:#FEF2F2;color:#DC2626;}
-.stat-icon.amber{background:#FFFBEB;color:#D97706;}
-.stat-icon.purple{background:#F5F3FF;color:#7C3AED;}
-.stat-val{font-size:24px;font-weight:800;color:var(--txt);line-height:1;}
-.stat-lbl{font-size:11px;color:var(--txt3);margin-top:3px;font-weight:500;}
+/* ── KPI CARDS ── */
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:14px;}
+.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 16px;box-shadow:var(--sh-sm);display:flex;flex-direction:column;gap:4px;border-left:3px solid transparent;cursor:pointer;transition:box-shadow 0.15s,transform 0.15s;}
+.kpi-card:hover{box-shadow:var(--sh-md);transform:translateY(-1px);}
+.kpi-card.blue{border-left-color:var(--sf-blue);}
+.kpi-card.green{border-left-color:var(--sf-green);}
+.kpi-card.red{border-left-color:var(--sf-red);}
+.kpi-card.orange{border-left-color:var(--sf-orange);}
+.kpi-card.purple{border-left-color:var(--sf-purple);}
+.kpi-card.teal{border-left-color:var(--sf-teal);}
+.kpi-num{font-size:24px;font-weight:700;line-height:1;}
+.kpi-num.blue{color:var(--sf-blue);} .kpi-num.red{color:var(--sf-red);} .kpi-num.orange{color:var(--sf-orange);} .kpi-num.green{color:var(--sf-green);} .kpi-num.purple{color:var(--sf-purple);} .kpi-num.teal{color:var(--sf-teal);}
+.kpi-label{font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:0.5px;}
 
-/* ── TOOLBAR ── */
-.att-toolbar{
-  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);
-  padding:14px 18px;margin-bottom:18px;box-shadow:var(--sh-xs);
-  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
-}
-.att-toolbar label{font-size:11.5px;font-weight:600;color:var(--txt3);}
-.filter-input{
-  height:36px;border:1px solid var(--border);border-radius:var(--r);
-  padding:0 12px;font-size:13px;color:var(--txt);background:var(--surface2);
-  outline:none;font-family:var(--font);transition:border-color .15s,box-shadow .15s;
-}
-.filter-input:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-glow);}
-.tb-spacer{flex:1;}
-.btn{
-  height:36px;padding:0 16px;border-radius:var(--r);font-size:12.5px;
-  font-weight:600;cursor:pointer;border:1px solid transparent;
-  transition:all .15s;font-family:var(--font);display:flex;align-items:center;gap:6px;
-}
-.btn-primary{background:var(--brand);color:#fff;border-color:var(--brand-dk);}
-.btn-primary:hover{background:var(--brand-dk);}
-.btn-secondary{background:var(--surface);color:var(--txt);border-color:var(--border);}
-.btn-secondary:hover{background:var(--page-bg);}
-.btn-success{background:#059669;color:#fff;border-color:#047857;}
-.btn-success:hover{background:#047857;}
-.btn-danger{background:#DC2626;color:#fff;border-color:#B91C1C;}
-.btn-danger:hover{background:#B91C1C;}
-.btn-sm{height:30px;padding:0 12px;font-size:12px;}
-
-/* ── ENGINEER SELF-SUBMIT CARD ── */
-.self-submit-card{
-  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);
-  padding:22px 24px;margin-bottom:20px;box-shadow:var(--sh-xs);
-}
-.self-submit-card h2{
-  font-size:15px;font-weight:700;color:var(--txt);margin-bottom:14px;
-  display:flex;align-items:center;gap:8px;
-}
-.self-submit-card h2 i{color:var(--brand);}
-.submit-form-row{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;}
-.form-field{display:flex;flex-direction:column;gap:5px;}
-.form-field label{font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;}
-.form-field input,.form-field select,.form-field textarea{
-  border:1px solid var(--border);border-radius:var(--r);
-  padding:0 12px;height:38px;font-size:13px;color:var(--txt);
-  background:var(--surface2);outline:none;font-family:var(--font);
-  transition:border-color .15s,box-shadow .15s;
-}
-.form-field textarea{height:auto;padding:10px 12px;resize:vertical;}
-.form-field input:focus,.form-field select:focus,.form-field textarea:focus{
-  border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-glow);background:var(--surface);
-}
-.form-field input[readonly]{background:var(--page-bg);color:var(--txt3);cursor:default;}
-
-/* Status pills in form */
-.status-radio-group{display:flex;gap:8px;}
-.status-radio-group label{
-  display:flex;align-items:center;gap:6px;
-  padding:6px 14px;border-radius:var(--r-full);
-  border:1.5px solid var(--border);cursor:pointer;
-  font-size:12.5px;font-weight:500;color:var(--txt3);
-  transition:all .15s;
-}
-.status-radio-group input[type=radio]{display:none;}
-.status-radio-group input[type=radio]:checked + span{font-weight:700;}
-.radio-present:has(input:checked),.radio-present.selected{border-color:#059669;background:#F0FDF4;color:#059669;}
-.radio-absent:has(input:checked),.radio-absent.selected{border-color:#DC2626;background:#FEF2F2;color:#DC2626;}
-.radio-half:has(input:checked),.radio-half.selected{border-color:#D97706;background:#FFFBEB;color:#D97706;}
-.radio-leave:has(input:checked),.radio-leave.selected{border-color:#7C3AED;background:#F5F3FF;color:#7C3AED;}
-
-/* ── TABLE ── */
-.table-card{
-  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);
-  box-shadow:var(--sh-xs);overflow:hidden;
-}
-.table-card-header{
-  padding:14px 18px;border-bottom:1px solid var(--border);
-  display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
-  background:var(--surface2);
-}
-.table-card-title{font-size:14px;font-weight:700;color:var(--txt);display:flex;align-items:center;gap:8px;}
-.table-card-title i{color:var(--brand);}
-.table-scroll{overflow-x:auto;}
-table{width:100%;border-collapse:collapse;}
-thead tr{background:var(--surface2);border-bottom:2px solid var(--border);}
-thead th{
-  padding:11px 14px;font-size:11px;font-weight:700;
-  text-transform:uppercase;letter-spacing:.6px;color:var(--txt3);
-  text-align:left;white-space:nowrap;
-}
-tbody tr{border-bottom:1px solid var(--border-lt);transition:background .1s;}
-tbody tr:hover{background:#F8FAFC;}
-tbody td{padding:11px 14px;font-size:12.5px;color:var(--txt2);vertical-align:middle;}
-.td-name{font-weight:600;color:var(--txt);}
-.td-date{color:var(--txt3);font-size:12px;}
-.td-actions{display:flex;gap:6px;}
-
-/* ── STATUS BADGE ── */
-.badge{
-  display:inline-flex;align-items:center;gap:4px;
-  padding:3px 10px;border-radius:var(--r-full);
-  font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;
-}
-.badge-present{background:#DCFCE7;color:#15803D;}
-.badge-absent{background:#FEE2E2;color:#B91C1C;}
-.badge-half{background:#FEF3C7;color:#B45309;}
-.badge-leave{background:#EDE9FE;color:#6D28D9;}
-.badge-holiday{background:#E0F2FE;color:#0369A1;}
-.badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;}
+/* ── PAGE HEADER ── */
+.sf-page-header{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 20px;margin-bottom:12px;display:flex;align-items:center;gap:14px;box-shadow:var(--sh-sm);flex-wrap:wrap;}
+.sf-page-icon{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#4da6f5,#0176d3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;box-shadow:0 2px 8px rgba(1,118,211,0.35);flex-shrink:0;}
+.sf-page-title{font-size:18px;font-weight:700;color:var(--txt);letter-spacing:-0.3px;}
+.sf-page-meta{font-size:12px;color:var(--txt3);margin-top:2px;}
+.sf-page-actions{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
 
 /* ── TABS ── */
-.att-tabs{display:flex;gap:2px;margin-bottom:18px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:4px;width:fit-content;}
-.att-tab{
-  padding:8px 18px;border-radius:var(--r);font-size:12.5px;font-weight:500;
-  color:var(--txt3);cursor:pointer;border:none;background:none;
-  transition:all .15s;font-family:var(--font);
-}
-.att-tab.active{background:var(--brand);color:#fff;font-weight:700;box-shadow:var(--sh-sm);}
-.att-tab:hover:not(.active){background:var(--page-bg);color:var(--txt);}
+.sf-tabs{display:flex;gap:2px;padding:0 20px;background:var(--surface);border-bottom:1px solid var(--border);}
+.sf-tab{font-family:'Inter',sans-serif;font-size:12px;font-weight:500;padding:10px 16px;cursor:pointer;border:none;background:transparent;color:var(--txt3);border-bottom:3px solid transparent;transition:all 0.15s;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
+.sf-tab:hover{color:var(--txt);background:var(--surface2);}
+.sf-tab.active{color:var(--sf-blue);border-bottom-color:var(--sf-blue);font-weight:600;}
+.sf-tab-badge{background:var(--sf-red-lt);color:var(--sf-red);font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;min-width:18px;text-align:center;}
+.sf-tab.active .sf-tab-badge{background:var(--sf-blue-lt);color:var(--sf-blue);}
 
-/* ── MONTH CALENDAR VIEW ── */
-.calendar-grid{
-  display:grid;grid-template-columns:repeat(7,1fr);gap:3px;
-  padding:16px;
-}
-.cal-day-head{
-  text-align:center;padding:6px 0;font-size:10px;font-weight:700;
-  text-transform:uppercase;letter-spacing:.6px;color:var(--txt4);
-}
-.cal-day{
-  aspect-ratio:1;border-radius:var(--r);display:flex;flex-direction:column;
-  align-items:center;justify-content:center;
-  border:1px solid transparent;font-size:12px;font-weight:500;
-  color:var(--txt3);cursor:default;transition:all .12s;
-}
-.cal-day:not(.empty):hover{border-color:var(--border);box-shadow:var(--sh-xs);}
-.cal-day.today{border-color:var(--brand);background:var(--brand-lt);}
-.cal-day.present{background:#DCFCE7;color:#15803D;font-weight:700;}
-.cal-day.absent{background:#FEE2E2;color:#B91C1C;font-weight:700;}
-.cal-day.half{background:#FEF3C7;color:#B45309;font-weight:700;}
-.cal-day.leave{background:#EDE9FE;color:#6D28D9;font-weight:700;}
-.cal-day.holiday{background:#E0F2FE;color:#0369A1;}
-.cal-day.empty{border:none;background:none;cursor:default;}
+/* ── TOOLBAR ── */
+.sf-toolbar{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);padding:12px 20px;margin-bottom:10px;display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;}
+.sf-filter-group{display:flex;flex-direction:column;gap:4px;}
+.sf-filter-label{font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:0.5px;}
+.sf-input,.sf-select{font-family:'Inter',sans-serif;font-size:12px;color:var(--txt);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:5px 9px;height:32px;outline:none;transition:border-color 0.15s,box-shadow 0.15s;}
+.sf-input:focus,.sf-select:focus{border-color:var(--sf-blue);box-shadow:0 0 0 3px rgba(1,118,211,0.12);}
+.sf-input::placeholder{color:var(--txt4);}
+.sf-search-wrap{position:relative;}
+.sf-search-wrap i{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--txt4);font-size:11px;pointer-events:none;}
+.sf-search-input{padding-left:28px;width:220px;}
+.sf-select{-webkit-appearance:none;appearance:none;padding-right:26px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath fill='%23aeaeac' d='M0 0l5 7 5-7z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;cursor:pointer;}
+.sf-toolbar-spacer{flex:1;}
+
+/* ── BUTTONS ── */
+.sf-btn{font-family:'Inter',sans-serif;font-size:12px;font-weight:500;padding:0 14px;height:32px;border-radius:var(--r-sm);cursor:pointer;border:none;display:inline-flex;align-items:center;gap:6px;transition:all 0.15s;white-space:nowrap;}
+.sf-btn-primary{background:var(--sf-blue);color:#fff;box-shadow:0 1px 3px rgba(1,118,211,0.3);}
+.sf-btn-primary:hover{background:var(--sf-blue-hover);transform:translateY(-1px);}
+.sf-btn-neutral{background:var(--surface);color:var(--txt);border:1px solid var(--border);}
+.sf-btn-neutral:hover{background:var(--bg);}
+.sf-btn-success{background:var(--sf-green);color:#fff;}
+.sf-btn-success:hover{background:#1d5e31;transform:translateY(-1px);}
+.sf-btn-danger{background:var(--sf-red);color:#fff;}
+.sf-btn-danger:hover{background:#920210;}
+.sf-btn-warn{background:var(--sf-orange);color:#fff;}
+.sf-btn-warn:hover{background:#b84d09;}
+.sf-btn-teal{background:var(--sf-teal);color:#fff;}
+.sf-btn-teal:hover{background:#095f72;}
+.sf-btn-lg{height:36px;padding:0 18px;font-size:13px;}
+
+/* ── TABLE CARD ── */
+.sf-table-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);overflow:hidden;}
+.sf-table-header{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--surface2);flex-wrap:wrap;}
+.sf-table-title{font-size:12px;font-weight:700;color:var(--txt);text-transform:uppercase;letter-spacing:0.4px;display:flex;align-items:center;gap:6px;}
+.sf-record-count{background:var(--sf-blue-lt);color:var(--sf-blue);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;}
+.sf-table-wrap{overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 380px);}
+table{width:100%;border-collapse:collapse;font-size:11px;min-width:900px;}
+thead th{background:var(--sf-navy)!important;color:#e8f4fd!important;font-size:10px!important;font-weight:600!important;text-transform:uppercase!important;letter-spacing:0.6px!important;padding:9px 12px!important;text-align:left!important;white-space:nowrap!important;border:none!important;border-right:1px solid #253d5b!important;position:sticky;top:0;z-index:10;}
+thead th:last-child{border-right:none!important;}
+tbody tr{border-bottom:1px solid var(--border-lt);transition:background 0.1s;}
+tbody tr:hover{background:#f0f8ff;}
+tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!important;vertical-align:middle!important;border:none!important;border-bottom:1px solid var(--border-lt)!important;white-space:nowrap;}
+.td-name{font-weight:600;color:var(--txt)!important;}
+
+/* Action buttons */
+.sf-ab{display:flex;gap:3px;align-items:center;}
+.sf-action-btn{font-size:10px;font-weight:500;height:24px;padding:0 7px;border-radius:var(--r-sm);cursor:pointer;border:none;display:inline-flex;align-items:center;gap:3px;transition:all 0.12s;font-family:'Inter',sans-serif;}
+.sf-ab-view{background:var(--sf-blue-lt);color:var(--sf-blue);border:1px solid #c5dff5;}
+.sf-ab-view:hover{background:#cce8f7;}
+.sf-ab-edit{background:var(--sf-orange-lt);color:var(--sf-orange);border:1px solid #f0c8a0;}
+.sf-ab-edit:hover{background:#fde8cc;}
+.sf-ab-delete{background:var(--sf-red-lt);color:var(--sf-red);border:1px solid #f5c6c3;}
+.sf-ab-delete:hover{background:#fbd5d0;}
+
+/* ── STATUS BADGES ── */
+.sf-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;white-space:nowrap;}
+.sf-badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;}
+.badge-present{background:#d3f5d3;color:#1d5e31;}
+.badge-absent{background:var(--sf-red-lt);color:var(--sf-red);}
+.badge-half{background:var(--sf-orange-lt);color:var(--sf-orange);}
+.badge-leave{background:var(--sf-purple-lt);color:var(--sf-purple);}
+.badge-holiday{background:var(--sf-teal-lt);color:var(--sf-teal);}
+
+/* ── PAGINATION ── */
+.sf-pagination{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--border);background:var(--surface2);flex-wrap:wrap;gap:8px;}
+.sf-pagination-info{font-size:11px;color:var(--txt3);}
+.sf-pag-controls{display:flex;align-items:center;gap:4px;}
+.sf-page-btn{width:30px;height:30px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--txt2);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.12s;font-family:'Inter',sans-serif;}
+.sf-page-btn:hover{background:var(--sf-blue-lt);border-color:var(--sf-blue);color:var(--sf-blue);}
+.sf-page-btn.active{background:var(--sf-blue);border-color:var(--sf-blue);color:#fff;font-weight:700;}
+.sf-page-btn:disabled{opacity:0.4;cursor:not-allowed;}
+
+/* ── SELF SUBMIT CARD (Engineer View) ── */
+.att-submit-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:18px 20px;margin-bottom:14px;box-shadow:var(--sh-sm);}
+.att-submit-card-header{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+.att-submit-card-icon{width:32px;height:32px;background:var(--sf-green-lt);border-radius:var(--r);display:flex;align-items:center;justify-content:center;color:var(--sf-green);font-size:14px;}
+.att-submit-card-title{font-size:14px;font-weight:700;color:var(--txt);}
+.att-form-row{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;}
+.sf-form-field{display:flex;flex-direction:column;gap:4px;}
+.sf-form-label{font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:0.5px;}
+.sf-form-input,.sf-form-select{font-family:'Inter',sans-serif;font-size:12px;color:var(--txt);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:5px 9px;height:34px;outline:none;transition:border-color 0.15s,box-shadow 0.15s;}
+.sf-form-input:focus,.sf-form-select:focus{border-color:var(--sf-blue);box-shadow:0 0 0 3px rgba(1,118,211,0.12);}
+.sf-form-input[readonly]{background:var(--bg);color:var(--txt3);}
+.sf-form-input::placeholder{color:var(--txt4);}
+
+/* Status radio pills */
+.status-pill-group{display:flex;gap:6px;flex-wrap:wrap;}
+.status-pill{display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;border:1.5px solid var(--border);cursor:pointer;font-size:12px;font-weight:500;color:var(--txt3);transition:all 0.15s;user-select:none;}
+.status-pill input[type=radio]{display:none;}
+.status-pill.pill-present:has(input:checked),.status-pill.pill-present.selected{border-color:var(--sf-green);background:var(--sf-green-lt);color:var(--sf-green);font-weight:700;}
+.status-pill.pill-absent:has(input:checked),.status-pill.pill-absent.selected{border-color:var(--sf-red);background:var(--sf-red-lt);color:var(--sf-red);font-weight:700;}
+.status-pill.pill-half:has(input:checked),.status-pill.pill-half.selected{border-color:var(--sf-orange);background:var(--sf-orange-lt);color:var(--sf-orange);font-weight:700;}
+
+/* ── CALENDAR ── */
+.cal-wrapper{padding:16px;}
+.cal-header-row{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:4px;}
+.cal-day-head{text-align:center;padding:5px 0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--txt4);}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+.cal-day{aspect-ratio:1;border-radius:var(--r-sm);display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid transparent;font-size:12px;font-weight:500;color:var(--txt3);transition:all 0.12s;}
+.cal-day:not(.empty):hover{border-color:var(--border);box-shadow:var(--sh-sm);}
+.cal-day.today{border-color:var(--sf-blue);background:var(--sf-blue-lt);}
+.cal-day.present{background:#d3f5d3;color:#1d5e31;font-weight:700;}
+.cal-day.absent{background:var(--sf-red-lt);color:var(--sf-red);font-weight:700;}
+.cal-day.half{background:var(--sf-orange-lt);color:var(--sf-orange);font-weight:700;}
+.cal-day.leave{background:var(--sf-purple-lt);color:var(--sf-purple);font-weight:700;}
+.cal-day.holiday{background:var(--sf-teal-lt);color:var(--sf-teal);}
+.cal-day.empty{border:none;background:none;}
 .cal-day .day-num{font-size:13px;font-weight:700;line-height:1;}
-.cal-day .day-status{font-size:8px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-top:2px;opacity:.8;}
-.cal-day.sunday{color:#DC2626;background:#FFF5F5;}
+.cal-day .day-status{font-size:8px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;margin-top:2px;opacity:0.8;}
+.cal-day.sunday{color:var(--sf-red);background:#fff0f0;}
+
+/* ── SUMMARY TABLE ── */
+.progress-bar-wrap{display:flex;align-items:center;gap:8px;min-width:140px;}
+.progress-bar-bg{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden;}
+.progress-bar-fill{height:100%;border-radius:3px;}
 
 /* ── EMPTY STATE ── */
-.empty-state{
-  text-align:center;padding:60px 20px;color:var(--txt4);
-}
-.empty-state i{font-size:40px;margin-bottom:12px;display:block;opacity:.4;}
-.empty-state p{font-size:13px;}
-
-/* ── MODAL ── */
-.modal-overlay{
-  position:fixed;inset:0;background:rgba(15,23,42,.5);
-  display:none;align-items:center;justify-content:center;z-index:800;backdrop-filter:blur(6px);
-}
-.modal-overlay.open{display:flex;}
-.modal{
-  background:var(--surface);border-radius:var(--r-xl);box-shadow:var(--sh-lg);
-  width:90%;max-width:520px;overflow:hidden;border:1px solid var(--border);
-  animation:modalIn .22s cubic-bezier(.34,1.56,.64,1);
-}
-@keyframes modalIn{from{transform:scale(.92) translateY(16px);opacity:0;}to{transform:none;opacity:1;}}
-.modal-header{
-  padding:18px 22px 14px;border-bottom:1px solid var(--border);
-  display:flex;align-items:center;justify-content:space-between;
-  background:var(--surface2);
-}
-.modal-title{font-size:15px;font-weight:700;color:var(--txt);display:flex;align-items:center;gap:8px;}
-.modal-title i{color:var(--brand);}
-.modal-close{
-  width:28px;height:28px;background:var(--page-bg);border:1px solid var(--border);
-  color:var(--txt3);border-radius:var(--r);cursor:pointer;
-  display:flex;align-items:center;justify-content:center;font-size:12px;transition:all .12s;
-}
-.modal-close:hover{background:var(--border);color:var(--txt);}
-.modal-body{padding:20px 22px;display:flex;flex-direction:column;gap:14px;}
-.modal-footer{
-  padding:14px 22px;border-top:1px solid var(--border);
-  display:flex;justify-content:flex-end;gap:8px;background:var(--surface2);
-}
-
-/* ── TOAST ── */
-#toastContainer{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;}
-.toast{
-  padding:12px 18px;border-radius:var(--r-lg);font-size:13px;font-weight:600;
-  color:#fff;box-shadow:var(--sh-lg);animation:toastIn .2s ease;
-  display:flex;align-items:center;gap:8px;
-}
-.toast.success{background:linear-gradient(135deg,#059669,#10B981);}
-.toast.error{background:linear-gradient(135deg,#DC2626,#EF4444);}
-.toast.info{background:linear-gradient(135deg,#2563EB,#3B82F6);}
-@keyframes toastIn{from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:none;}}
+.sf-empty{text-align:center;padding:48px 20px;color:var(--txt4);}
+.sf-empty i{font-size:36px;margin-bottom:10px;display:block;opacity:0.35;}
+.sf-empty p{font-size:12px;}
 
 /* ── LOADER ── */
-.inline-loader{display:flex;align-items:center;justify-content:center;padding:40px;}
-.spin{width:30px;height:30px;border:3px solid rgba(37,99,235,.18);border-top-color:var(--brand);border-radius:50%;animation:spin .8s linear infinite;}
-@keyframes spin{to{transform:rotate(360deg)}}
+.sf-loader{position:fixed;inset:0;background:rgba(243,242,242,0.75);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:400;}
+.sf-loader.hidden{display:none;}
+.sf-spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--sf-blue);border-radius:50%;animation:sf-spin 0.7s linear infinite;}
+.sf-loader-text{font-size:12px;color:var(--txt3);margin-top:10px;font-weight:500;}
+@keyframes sf-spin{to{transform:rotate(360deg);}}
+.inline-spin{width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--sf-blue);border-radius:50%;animation:sf-spin 0.7s linear infinite;display:inline-block;}
+
+/* ── MODALS ── */
+.sf-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:500;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+.sf-overlay.open{display:flex;}
+.sf-modal{background:var(--surface);border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,0.25);width:90%;max-width:560px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;animation:modalIn .22s cubic-bezier(.34,1.56,.64,1);}
+@keyframes modalIn{from{transform:scale(.92) translateY(16px);opacity:0;}to{transform:none;opacity:1;}}
+.sf-modal-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface2);flex-shrink:0;}
+.sf-modal-title{font-size:15px;font-weight:700;color:var(--txt);display:flex;align-items:center;gap:8px;}
+.sf-modal-close{background:none;border:none;cursor:pointer;color:var(--txt3);font-size:16px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:var(--r-sm);}
+.sf-modal-close:hover{background:var(--sf-red-lt);color:var(--sf-red);}
+.sf-modal-body{flex:1;overflow-y:auto;padding:20px;}
+.sf-modal-footer{padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;background:var(--surface2);flex-shrink:0;}
+.sf-modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.sf-modal-grid .full{grid-column:1/-1;}
+.sf-modal-label{font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;}
+.sf-modal-input,.sf-modal-select,.sf-modal-textarea{font-family:'Inter',sans-serif;font-size:12px;color:var(--txt);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:6px 10px;height:34px;outline:none;width:100%;transition:border-color 0.15s,box-shadow 0.15s;}
+.sf-modal-input:focus,.sf-modal-select:focus,.sf-modal-textarea:focus{border-color:var(--sf-blue);box-shadow:0 0 0 3px rgba(1,118,211,0.12);}
+.sf-modal-input[readonly]{background:var(--bg);color:var(--txt3);}
+.sf-modal-textarea{height:auto;min-height:72px;resize:vertical;}
+.sf-modal-select{-webkit-appearance:none;appearance:none;padding-right:28px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath fill='%23aeaeac' d='M0 0l5 7 5-7z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center;}
+
+/* Detail view */
+.det-section{margin-bottom:16px;}
+.det-section-title{font-size:11px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:0.6px;border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:10px;}
+.det-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;}
+.det-field{display:flex;flex-direction:column;gap:2px;}
+.det-label{font-size:10px;font-weight:600;color:var(--txt4);text-transform:uppercase;letter-spacing:0.4px;}
+.det-value{font-size:12px;color:var(--txt);font-weight:500;}
+
+/* Confirm delete */
+.sf-confirm-modal{background:var(--surface);border-radius:12px;box-shadow:var(--sh-md);width:360px;overflow:hidden;}
+.sf-confirm-header{padding:14px 20px;background:var(--sf-red-lt);border-bottom:1px solid #f8d0ca;}
+.sf-confirm-title{font-size:14px;font-weight:700;color:var(--sf-red);display:flex;align-items:center;gap:8px;}
+.sf-confirm-body{padding:16px 20px;font-size:13px;color:var(--txt2);}
+.sf-confirm-footer{padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;}
+
+/* ── TOAST ── */
+.sf-toast{position:fixed;top:20px;right:20px;z-index:9999;min-width:280px;max-width:360px;background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--sh-md);border:1px solid var(--border);display:flex;align-items:flex-start;gap:10px;padding:12px 14px;transform:translateX(120%);transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1);}
+.sf-toast.show{transform:translateX(0);}
+.sf-toast-icon{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
+.sf-toast.success .sf-toast-icon{background:var(--sf-green-lt);color:var(--sf-green);}
+.sf-toast.error   .sf-toast-icon{background:var(--sf-red-lt);color:var(--sf-red);}
+.sf-toast.info    .sf-toast-icon{background:var(--sf-blue-lt);color:var(--sf-blue);}
+.sf-toast-title{font-size:12px;font-weight:600;color:var(--txt);}
+.sf-toast-msg{font-size:11px;color:var(--txt3);margin-top:1px;}
 
 /* ── RESPONSIVE ── */
 @media(max-width:768px){
-  .att-page{padding:14px;}
-  .stats-row{grid-template-columns:repeat(2,1fr);}
-  .submit-form-row{flex-direction:column;}
+  .sf-body{padding:10px 12px;}
+  .kpi-row{grid-template-columns:repeat(3,1fr);gap:8px;}
+  .kpi-num{font-size:20px;}
+  .att-form-row{flex-direction:column;align-items:stretch;}
+  .sf-toolbar{flex-direction:column;align-items:stretch;}
+  .sf-modal{width:100%!important;max-width:100%!important;border-radius:16px 16px 0 0;}
+  .sf-overlay{align-items:flex-end;}
+  .sf-modal-grid{grid-template-columns:1fr!important;}
+}
+@media(max-width:480px){
+  .kpi-row{grid-template-columns:repeat(2,1fr);}
+  .sf-page-title{font-size:15px;}
+  .sf-page-icon{width:36px;height:36px;font-size:15px;}
 }
 </style>
 </head>
 <body>
-<div class="att-page">
 
-  <!-- ════════ PAGE HEADER ════════ -->
-  <div class="att-header">
-    <div class="att-header-left">
-      <h1><i class="fa-solid fa-calendar-check"></i> Attendance Monitoring</h1>
-      <p id="headerSubtitle">Loading your workspace…</p>
-    </div>
-    <div class="att-header-right" id="headerActions">
-      <!-- dynamically inserted -->
+<!-- PAGE STRIP -->
+<div class="dv-strip">
+  <div class="dv-strip-icon"><i class="fa-solid fa-calendar-check"></i></div>
+  <span class="dv-strip-title">Attendance</span>
+  <div class="dv-strip-sep"></div>
+  <span class="dv-strip-meta" id="dateBadge"></span>
+  <div class="dv-strip-spacer"></div>
+  <div style="display:flex;align-items:center;gap:6px;">
+    <span style="font-size:10px;color:var(--txt4);">Last sync:</span>
+    <span id="lastSyncTime" style="font-size:10px;color:var(--txt3);font-weight:500;">—</span>
+  </div>
+</div>
+
+<main class="sf-body">
+
+  <!-- Breadcrumb -->
+  <div class="sf-bc">
+    <a href="#">Home</a><span>/</span>
+    <a href="#">HR</a><span>/</span>
+    <span id="bcLabel">Attendance Monitoring</span>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="kpi-row" id="statsRow">
+    <div class="kpi-card blue" style="align-items:center;justify-content:center;">
+      <div class="inline-spin"></div>
     </div>
   </div>
 
-  <!-- ════════ STAT CARDS ════════ -->
-  <div class="stats-row" id="statsRow">
-    <div class="inline-loader" style="grid-column:1/-1;"><div class="spin"></div></div>
+  <!-- Page Header -->
+  <div class="sf-page-header">
+    <div class="sf-page-icon"><i class="fa-solid fa-calendar-check"></i></div>
+    <div>
+      <div class="sf-page-title">Attendance Monitoring</div>
+      <div class="sf-page-meta" id="headerSubtitle">Loading your workspace…</div>
+    </div>
+    <div class="sf-page-actions" id="headerActions"></div>
   </div>
 
-  <!-- ════════ MAIN CONTENT ════════ -->
+  <!-- Main Content -->
   <div id="mainContent">
-    <div class="inline-loader"><div class="spin"></div></div>
-  </div>
-
-</div>
-
-<!-- ════════ VIEW DETAIL MODAL ════════ -->
-<div class="modal-overlay" id="viewModal">
-  <div class="modal">
-    <div class="modal-header">
-      <span class="modal-title"><i class="fa-solid fa-user-clock"></i> Attendance Detail</span>
-      <button class="modal-close" onclick="closeModal('viewModal')"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-    <div class="modal-body" id="viewModalBody">—</div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('viewModal')">Close</button>
+    <div style="display:flex;align-items:center;justify-content:center;padding:60px;">
+      <div class="inline-spin" style="width:32px;height:32px;border-width:3px;"></div>
     </div>
   </div>
+
+</main>
+
+<!-- ════ VIEW DETAIL MODAL ════ -->
+<div class="sf-overlay" id="viewModal">
+  <div class="sf-modal">
+    <div class="sf-modal-header">
+      <div class="sf-modal-title"><i class="fa-solid fa-user-clock" style="color:var(--sf-blue);"></i> Attendance Detail</div>
+      <button class="sf-modal-close" onclick="closeModal('viewModal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="sf-modal-body" id="viewModalBody"></div>
+    <div class="sf-modal-footer">
+      <button class="sf-btn sf-btn-neutral" onclick="closeModal('viewModal')"><i class="fa-solid fa-xmark"></i> Close</button>
+    </div>
+  </div>
 </div>
 
-<!-- ════════ ADMIN EDIT MODAL ════════ -->
-<div class="modal-overlay" id="editModal">
-  <div class="modal">
-    <div class="modal-header">
-      <span class="modal-title"><i class="fa-solid fa-pen-to-square"></i> Edit Attendance</span>
-      <button class="modal-close" onclick="closeModal('editModal')"><i class="fa-solid fa-xmark"></i></button>
+<!-- ════ EDIT / MARK MODAL ════ -->
+<div class="sf-overlay" id="editModal">
+  <div class="sf-modal">
+    <div class="sf-modal-header">
+      <div class="sf-modal-title" id="editModalTitle"><i class="fa-solid fa-pen-to-square" style="color:var(--sf-orange);"></i> Edit Attendance</div>
+      <button class="sf-modal-close" onclick="closeModal('editModal')"><i class="fa-solid fa-xmark"></i></button>
     </div>
-    <div class="modal-body">
-      <div class="form-field">
-        <label>Engineer Name</label>
-        <input type="text" id="editEngineerName" readonly/>
-      </div>
-      <div class="form-field">
-        <label>Date</label>
-        <input type="date" id="editDate"/>
-      </div>
-      <div class="form-field">
-        <label>Status</label>
-        <select id="editStatus">
-          <option value="Present">Present</option>
-          <option value="Absent">Absent</option>
-          <option value="Half Day">Half Day</option>
+    <div class="sf-modal-body">
+      <div class="sf-modal-grid">
+        <div>
+          <div class="sf-modal-label">Engineer Name</div>
+          <input type="text" class="sf-modal-input" id="editEngineerName" readonly/>
+        </div>
+        <div>
+          <div class="sf-modal-label">Date</div>
+          <input type="date" class="sf-modal-input" id="editDate"/>
+        </div>
+        <div>
+          <div class="sf-modal-label">Status</div>
+          <select class="sf-modal-select" id="editStatus">
+            <option value="Present">Present</option>
+            <option value="Absent">Absent</option>
+            <option value="Half Day">Half Day</option>
+            <option value="Holiday">Holiday</option>
           </select>
-      </div>
-      <div class="form-field" style="grid-column:1/-1">
-        <label>Remarks (Optional)</label>
-        <textarea id="editRemarks" rows="2" placeholder="Any notes…" style="height:auto;padding:10px 12px;"></textarea>
+        </div>
+        <div class="full">
+          <div class="sf-modal-label">Remarks (Optional)</div>
+          <textarea class="sf-modal-textarea" id="editRemarks" rows="2" placeholder="Any notes…"></textarea>
+        </div>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('editModal')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveEdit()"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
+    <div class="sf-modal-footer">
+      <button class="sf-btn sf-btn-neutral" onclick="closeModal('editModal')">Cancel</button>
+      <button class="sf-btn sf-btn-primary" id="editSaveBtn" onclick="saveEdit()"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
     </div>
   </div>
 </div>
 
-<div id="toastContainer"></div>
+<!-- ════ DELETE CONFIRM ════ -->
+<div class="sf-overlay" id="deleteModal">
+  <div class="sf-confirm-modal">
+    <div class="sf-confirm-header">
+      <div class="sf-confirm-title"><i class="fa-solid fa-triangle-exclamation"></i> Delete Record?</div>
+    </div>
+    <div class="sf-confirm-body">This attendance record will be permanently deleted and cannot be recovered.</div>
+    <div class="sf-confirm-footer">
+      <button class="sf-btn sf-btn-neutral" onclick="closeModal('deleteModal')">Cancel</button>
+      <button class="sf-btn sf-btn-danger" id="confirmDeleteBtn"><i class="fa-solid fa-trash"></i> Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════ HOLIDAY MODAL (dynamically inserted) ════ -->
+
+<!-- ════ LOADER ════ -->
+<div class="sf-loader hidden" id="globalLoader">
+  <div class="sf-spinner"></div>
+  <div class="sf-loader-text" id="loaderText">Loading…</div>
+</div>
 
 <script>
 /* ─────────────────────────────────────────────────
@@ -368,57 +404,56 @@ let currentRole = null;
 let allAttendance = [];
 let activeTab = "list";
 let editingId = null;
+let deleteTargetId = null;
+let myAttendance = [];
+let selectedStatus = "Present";
+let engActiveTab = "calendar";
+
+/* Pagination */
+let currentPage = 1;
+let rowsPerPage = 25;
+let filteredRecords = [];
+
+/* ─────────────────────────────────────────────────
+   DATE BADGE
+───────────────────────────────────────────────── */
+document.getElementById("dateBadge").textContent =
+  new Date().toLocaleDateString("en-IN",{weekday:"short",day:"2-digit",month:"short",year:"numeric"});
 
 /* ─────────────────────────────────────────────────
    TOKEN HELPERS
 ───────────────────────────────────────────────── */
-function getToken(){
-  // Try URL param first (iframe pass-through), then localStorage
-  const params = new URLSearchParams(window.location.search);
-  return params.get("token") || localStorage.getItem("token");
+function getToken(){ return localStorage.getItem("token") || sessionStorage.getItem("token") || ""; }
+function getUser(){
+  try{
+    const t = getToken();
+    if(!t) return null;
+    const payload = JSON.parse(atob(t.split(".")[1]));
+    return payload;
+  }catch(e){ return null; }
 }
 
 /* ─────────────────────────────────────────────────
-   INIT
+   LOADER / TOAST
 ───────────────────────────────────────────────── */
-window.onload = async () => {
-  const token = getToken();
-  if(!token){ document.getElementById("mainContent").innerHTML = `<div class="empty-state"><i class="fa-solid fa-lock"></i><p>Please login to access attendance.</p></div>`; return; }
+function showLoader(msg="Loading…"){
+  document.getElementById("loaderText").textContent = msg;
+  document.getElementById("globalLoader").classList.remove("hidden");
+}
+function hideLoader(){ document.getElementById("globalLoader").classList.add("hidden"); }
 
-  try{
-    // Decode JWT payload directly — no network call needed
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    if(payload.exp && Date.now() / 1000 > payload.exp) throw new Error("Expired");
-    currentUser = { username: payload.username, role: payload.role, engineerName: payload.engineerName };
-    currentRole = (currentUser.role || "").toLowerCase();
-  }catch(e){
-    document.getElementById("mainContent").innerHTML = `<div class="empty-state"><i class="fa-solid fa-triangle-exclamation"></i><p>Session expired. Please login again.</p></div>`;
-    return;
-  }
-
-  document.getElementById("headerSubtitle").textContent =
-    currentRole === "admin"
-      ? "Monitor and manage attendance for all engineers"
-      : `Your attendance records — ${currentUser.engineerName || currentUser.username}`;
-
-  if(currentRole === "admin"){
-    renderAdminHeaderActions();
-    await loadAdminData();
-  } else {
-    renderEngineerView();
-    await loadMyAttendance();
-  }
-};
-
-/* ─────────────────────────────────────────────────
-   TOAST
-───────────────────────────────────────────────── */
-function showToast(msg, type="success"){
+let _toastEl = null;
+function showToast(title, type="success", msg=""){
+  if(_toastEl){ _toastEl.remove(); }
+  const icons = { success:"fa-circle-check", error:"fa-circle-xmark", info:"fa-circle-info" };
   const t = document.createElement("div");
-  t.className = "toast " + type;
-  t.innerHTML = `<i class="fa-solid fa-${type==="success"?"check-circle":type==="error"?"xmark-circle":"info-circle"}"></i> ${msg}`;
-  document.getElementById("toastContainer").appendChild(t);
-  setTimeout(()=>t.remove(), 3200);
+  t.className = `sf-toast ${type}`;
+  t.innerHTML = `<div class="sf-toast-icon"><i class="fa-solid ${icons[type]||icons.info}"></i></div>
+    <div><div class="sf-toast-title">${title}</div>${msg?`<div class="sf-toast-msg">${msg}</div>`:""}</div>`;
+  document.body.appendChild(t);
+  _toastEl = t;
+  requestAnimationFrame(()=> t.classList.add("show"));
+  setTimeout(()=>{ t.classList.remove("show"); setTimeout(()=>t.remove(),400); }, 3200);
 }
 
 /* ─────────────────────────────────────────────────
@@ -427,44 +462,64 @@ function showToast(msg, type="success"){
 function openModal(id){ document.getElementById(id).classList.add("open"); }
 function closeModal(id){ document.getElementById(id).classList.remove("open"); }
 
+document.querySelectorAll(".sf-overlay").forEach(o=>{
+  o.addEventListener("click", e=>{ if(e.target===o) o.classList.remove("open"); });
+});
+
 /* ─────────────────────────────────────────────────
    STATUS BADGE
 ───────────────────────────────────────────────── */
 function statusBadge(status){
-  const map = {
-    "Present":"badge-present","Absent":"badge-absent",
-    "Half Day":"badge-half","Holiday":"badge-holiday"
-  };
-  const cls = map[status] || "badge-present";
-  return `<span class="badge ${cls}">${status}</span>`;
+  const map = { "Present":"badge-present","Absent":"badge-absent","Half Day":"badge-half","Holiday":"badge-holiday" };
+  return `<span class="sf-badge ${map[status]||"badge-present"}">${status}</span>`;
 }
 
 /* ─────────────────────────────────────────────────
-   FORMAT DATE
+   DATE HELPERS
 ───────────────────────────────────────────────── */
 function fmtDate(dateStr){
   if(!dateStr) return "—";
-  const d = new Date(dateStr);
-  return d.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric",weekday:"short"});
+  return new Date(dateStr).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric",weekday:"short"});
 }
-function todayISO(){
-  return new Date().toISOString().split("T")[0];
+function todayISO(){ return new Date().toISOString().split("T")[0]; }
+function getDayName(dateStr){
+  if(!dateStr) return "—";
+  return new Date(dateStr).toLocaleDateString("en-IN",{weekday:"short"});
 }
 
-/* ═══════════════════════════════════════════════════
+/* ─────────────────────────────────────────────────
+   INIT
+───────────────────────────────────────────────── */
+window.onload = async function(){
+  currentUser = getUser();
+  currentRole = currentUser?.role || "engineer";
+  
+  document.getElementById("lastSyncTime").textContent =
+    new Date().toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"});
+
+  if(currentRole === "admin" || currentRole === "superadmin"){
+    document.getElementById("headerSubtitle").textContent = "Admin — manage all engineer attendance records";
+    renderAdminHeaderActions();
+    await loadAdminData();
+  } else {
+    document.getElementById("headerSubtitle").textContent =
+      `${currentUser?.engineerName || currentUser?.username || "Engineer"} — your attendance dashboard`;
+    renderEngineerView();
+    await loadMyAttendance();
+  }
+};
+
+/* ══════════════════════════════════════════════════
    ██████╗  █████╗ ██████╗ ███╗   ███╗██╗███╗   ██╗
-   ██╔══██╗██╔══██╗██╔══██╗████╗ ████║██║████╗  ██║
-   ███████║██║  ██║██║  ██║██╔████╔██║██║██╔██╗ ██║
-   ██╔══██║██║  ██║██║  ██║██║╚██╔╝██║██║██║╚██╗██║
-   ██║  ██║╚█████╔╝██████╔╝██║ ╚═╝ ██║██║██║ ╚████║
    ADMIN VIEW
-═══════════════════════════════════════════════════ */
+══════════════════════════════════════════════════ */
 
 function renderAdminHeaderActions(){
   document.getElementById("headerActions").innerHTML = `
-    <button class="btn btn-secondary" onclick="exportPivotExcel()"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
-    <button class="btn" style="background:#0369A1;color:#fff;border-color:#0284C7;" onclick="openHolidayModal()"><i class="fa-solid fa-calendar-xmark"></i> Mark Holiday</button>
-    <button class="btn btn-primary" onclick="openAdminMarkModal()"><i class="fa-solid fa-plus"></i> Mark Attendance</button>
+    <button class="sf-btn sf-btn-neutral" onclick="loadAdminData()"><i class="fa-solid fa-rotate-right"></i> Sync</button>
+    <button class="sf-btn sf-btn-teal" onclick="openHolidayModal()"><i class="fa-solid fa-calendar-xmark"></i> Mark Holiday</button>
+    <button class="sf-btn sf-btn-success" onclick="openAdminMarkModal()"><i class="fa-solid fa-plus"></i> Mark Attendance</button>
+    <button class="sf-btn sf-btn-primary" onclick="exportPivotExcel()"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
   `;
 }
 
@@ -476,6 +531,8 @@ async function loadAdminData(){
     allAttendance = Array.isArray(data) ? data : (data.attendance || []);
   }catch(e){ allAttendance = []; }
 
+  document.getElementById("lastSyncTime").textContent =
+    new Date().toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"});
   renderAdminStats();
   renderAdminMain();
 }
@@ -483,32 +540,37 @@ async function loadAdminData(){
 function renderAdminStats(){
   const today = todayISO();
   const todayRecs = allAttendance.filter(r => r.date && r.date.startsWith(today));
-  const present = todayRecs.filter(r=>r.status==="Present").length;
-  const absent = todayRecs.filter(r=>r.status==="Absent").length;
-  const halfDay = todayRecs.filter(r=>r.status==="Half Day").length;
-  
-  const total = allAttendance.length;
+  const present  = todayRecs.filter(r=>r.status==="Present").length;
+  const absent   = todayRecs.filter(r=>r.status==="Absent").length;
+  const halfDay  = todayRecs.filter(r=>r.status==="Half Day").length;
+  const holiday  = todayRecs.filter(r=>r.status==="Holiday").length;
+  const total    = allAttendance.length;
+  const pct      = todayRecs.length > 0 ? Math.round((present/todayRecs.length)*100) : 0;
 
   document.getElementById("statsRow").innerHTML = `
-    <div class="stat-card">
-      <div class="stat-icon blue"><i class="fa-solid fa-users"></i></div>
-      <div><div class="stat-val">${todayRecs.length}</div><div class="stat-lbl">Today's Records</div></div>
+    <div class="kpi-card blue">
+      <div class="kpi-num blue">${todayRecs.length}</div>
+      <div class="kpi-label"><i class="fa-solid fa-users" style="font-size:9px;"></i> Today's Records</div>
     </div>
-    <div class="stat-card">
-      <div class="stat-icon green"><i class="fa-solid fa-circle-check"></i></div>
-      <div><div class="stat-val">${present}</div><div class="stat-lbl">Present Today</div></div>
+    <div class="kpi-card green">
+      <div class="kpi-num green">${present}</div>
+      <div class="kpi-label"><i class="fa-solid fa-circle-check" style="font-size:9px;"></i> Present Today</div>
     </div>
-    <div class="stat-card">
-      <div class="stat-icon red"><i class="fa-solid fa-circle-xmark"></i></div>
-      <div><div class="stat-val">${absent}</div><div class="stat-lbl">Absent Today</div></div>
+    <div class="kpi-card red">
+      <div class="kpi-num red">${absent}</div>
+      <div class="kpi-label"><i class="fa-solid fa-circle-xmark" style="font-size:9px;"></i> Absent Today</div>
     </div>
-    <div class="stat-card">
-      <div class="stat-icon amber"><i class="fa-solid fa-clock-half"></i></div>
-      <div><div class="stat-val">${halfDay}</div><div class="stat-lbl">Half Day</div></div>
+    <div class="kpi-card orange">
+      <div class="kpi-num orange">${halfDay}</div>
+      <div class="kpi-label"><i class="fa-solid fa-clock" style="font-size:9px;"></i> Half Day</div>
     </div>
-    <div class="stat-card">
-      <div class="stat-icon blue"><i class="fa-solid fa-database"></i></div>
-      <div><div class="stat-val">${total}</div><div class="stat-lbl">Total Records</div></div>
+    <div class="kpi-card teal">
+      <div class="kpi-num teal">${holiday}</div>
+      <div class="kpi-label"><i class="fa-solid fa-umbrella-beach" style="font-size:9px;"></i> Holiday</div>
+    </div>
+    <div class="kpi-card ${pct>=80?"green":pct>=60?"orange":"red"}">
+      <div class="kpi-num ${pct>=80?"green":pct>=60?"orange":"red"}">${pct}%</div>
+      <div class="kpi-label"><i class="fa-solid fa-chart-line" style="font-size:9px;"></i> Attendance Rate</div>
     </div>
   `;
 }
@@ -516,48 +578,78 @@ function renderAdminStats(){
 function renderAdminMain(){
   document.getElementById("mainContent").innerHTML = `
     <!-- Tabs -->
-    <div class="att-tabs">
-      <button class="att-tab ${activeTab==="list"?"active":""}" onclick="switchTab('list')"><i class="fa-solid fa-list"></i> All Records</button>
-      <button class="att-tab ${activeTab==="summary"?"active":""}" onclick="switchTab('summary')"><i class="fa-solid fa-chart-bar"></i> Summary</button>
+    <div class="sf-table-card" style="border-radius:var(--r-lg) var(--r-lg) 0 0;overflow:visible;border-bottom:none;margin-bottom:0;">
+      <div class="sf-tabs">
+        <button class="sf-tab ${activeTab==="list"?"active":""}" onclick="switchAdminTab('list')">
+          <i class="fa-solid fa-table"></i> All Records
+          <span class="sf-tab-badge" id="tabBadgeAll">${allAttendance.length}</span>
+        </button>
+        <button class="sf-tab ${activeTab==="summary"?"active":""}" onclick="switchAdminTab('summary')">
+          <i class="fa-solid fa-chart-bar"></i> Engineer Summary
+        </button>
+      </div>
     </div>
 
-    <!-- Filters -->
-    <div class="att-toolbar">
-      <label>From</label>
-      <input type="date" class="filter-input" id="filterFrom" onchange="applyFilters()"/>
-      <label>To</label>
-      <input type="date" class="filter-input" id="filterTo" value="${todayISO()}" onchange="applyFilters()"/>
-      <label>Engineer</label>
-      <input type="text" class="filter-input" id="filterEngineer" placeholder="Search engineer…" oninput="applyFilters()" style="width:180px;"/>
-      <label>Status</label>
-      <select class="filter-input" id="filterStatus" onchange="applyFilters()">
-        <option value="">All Status</option>
-        <option>Present</option><option>Absent</option>
-        <option>Half Day</option><option>Holiday</option>
-      </select>
-      <div class="tb-spacer"></div>
-      <button class="btn btn-secondary btn-sm" onclick="clearFilters()"><i class="fa-solid fa-xmark"></i> Clear</button>
+    <!-- Toolbar -->
+    <div class="sf-toolbar" style="border-radius:0;border-top:none;margin-bottom:0;border-bottom:none;">
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">From Date</label>
+        <input type="date" class="sf-input" id="filterFrom" onchange="applyAdminFilters()"/>
+      </div>
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">To Date</label>
+        <input type="date" class="sf-input" id="filterTo" value="${todayISO()}" onchange="applyAdminFilters()"/>
+      </div>
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">Engineer</label>
+        <div class="sf-search-wrap">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" class="sf-input sf-search-input" id="filterEngineer" placeholder="Search engineer…" oninput="applyAdminFilters()" style="width:190px;"/>
+        </div>
+      </div>
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">Status</label>
+        <select class="sf-input sf-select" id="filterStatus" onchange="applyAdminFilters()" style="width:130px;">
+          <option value="">All Status</option>
+          <option>Present</option><option>Absent</option>
+          <option>Half Day</option><option>Holiday</option>
+        </select>
+      </div>
+      <button class="sf-btn sf-btn-neutral" onclick="clearAdminFilters()" style="align-self:flex-end;">
+        <i class="fa-solid fa-rotate-left"></i> Clear
+      </button>
+      <div class="sf-toolbar-spacer"></div>
+      <div class="sf-filter-group" style="align-self:flex-end;">
+        <label class="sf-filter-label">Rows/Page</label>
+        <select class="sf-input sf-select" style="width:75px;" onchange="rowsPerPage=+this.value;currentPage=1;renderAdminTable()">
+          <option value="10">10</option>
+          <option value="25" selected>25</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+        </select>
+      </div>
     </div>
 
-    <div id="tabContent"></div>
+    <!-- Table / Content -->
+    <div id="adminTabContent" style="border-radius:0 0 var(--r-lg) var(--r-lg);border-top:none;"></div>
   `;
-  renderListTab(allAttendance);
+
+  applyAdminFilters();
 }
 
-function switchTab(tab){
+function switchAdminTab(tab){
   activeTab = tab;
-  document.querySelectorAll(".att-tab").forEach(t=>{
-    t.classList.toggle("active", t.textContent.includes(tab==="list"?"Records":"Summary"));
+  document.querySelectorAll(".sf-tab").forEach(t=>{
+    if(tab==="list") t.classList.toggle("active", t.textContent.includes("Records"));
+    else t.classList.toggle("active", t.textContent.includes("Summary"));
   });
-  const filtered = getFiltered();
-  if(tab==="list") renderListTab(filtered);
-  else renderSummaryTab(filtered);
+  applyAdminFilters();
 }
 
-function getFiltered(){
-  const from = document.getElementById("filterFrom")?.value || "";
-  const to = document.getElementById("filterTo")?.value || "";
-  const eng = (document.getElementById("filterEngineer")?.value || "").toLowerCase().trim();
+function getAdminFiltered(){
+  const from   = document.getElementById("filterFrom")?.value || "";
+  const to     = document.getElementById("filterTo")?.value || "";
+  const eng    = (document.getElementById("filterEngineer")?.value || "").toLowerCase().trim();
   const status = document.getElementById("filterStatus")?.value || "";
   return allAttendance.filter(r=>{
     const d = (r.date||"").split("T")[0];
@@ -569,73 +661,96 @@ function getFiltered(){
   });
 }
 
-function applyFilters(){
-  const filtered = getFiltered();
-  if(activeTab==="list") renderListTab(filtered);
-  else renderSummaryTab(filtered);
+function applyAdminFilters(){
+  filteredRecords = getAdminFiltered();
+  currentPage = 1;
+  const badge = document.getElementById("tabBadgeAll");
+  if(badge) badge.textContent = filteredRecords.length;
+  if(activeTab === "list") renderAdminTable();
+  else renderSummaryTable(filteredRecords);
 }
 
-function clearFilters(){
+function clearAdminFilters(){
   document.getElementById("filterFrom").value = "";
   document.getElementById("filterTo").value = todayISO();
   document.getElementById("filterEngineer").value = "";
   document.getElementById("filterStatus").value = "";
-  applyFilters();
+  applyAdminFilters();
 }
 
-function renderListTab(records){
-  const sorted = [...records].sort((a,b)=>new Date(b.date)-new Date(a.date));
-  document.getElementById("tabContent").innerHTML = `
-    <div class="table-card">
-      <div class="table-card-header">
-        <span class="table-card-title"><i class="fa-solid fa-table"></i> Attendance Records <span style="background:#EFF6FF;color:#2563EB;font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;margin-left:6px;">${sorted.length}</span></span>
+function renderAdminTable(){
+  const sorted  = [...filteredRecords].sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const total   = sorted.length;
+  const start   = (currentPage - 1) * rowsPerPage;
+  const pageData= sorted.slice(start, start + rowsPerPage);
+  const totalPages = Math.ceil(total / rowsPerPage) || 1;
+
+  const rows = pageData.length === 0
+    ? `<tr><td colspan="8"><div class="sf-empty"><i class="fa-regular fa-calendar-xmark"></i><p>No records found for selected filters.</p></div></td></tr>`
+    : pageData.map((r, i) => `
+      <tr>
+        <td style="color:var(--txt4);font-size:10px;">${start+i+1}</td>
+        <td class="td-name">${r.engineerName || r.username || "—"}</td>
+        <td>${fmtDate(r.date)}</td>
+        <td style="color:var(--txt3);">${getDayName(r.date)}</td>
+        <td>${statusBadge(r.status)}</td>
+        <td style="color:var(--txt3);max-width:160px;overflow:hidden;text-overflow:ellipsis;">${r.remarks||"—"}</td>
+        <td style="color:var(--txt4);">${r.createdAt ? new Date(r.createdAt).toLocaleString("en-IN",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}) : "—"}</td>
+        <td>
+          <div class="sf-ab">
+            <button class="sf-action-btn sf-ab-view" onclick='openViewModal(${JSON.stringify(r)})' title="View"><i class="fa-solid fa-eye"></i></button>
+            <button class="sf-action-btn sf-ab-edit" onclick='openEditModalFn(${JSON.stringify(r)})' title="Edit"><i class="fa-solid fa-pen"></i></button>
+            <button class="sf-action-btn sf-ab-delete" onclick="promptDelete('${r._id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
+          </div>
+        </td>
+      </tr>`).join("");
+
+  /* pagination */
+  let pagBtns = `<button class="sf-page-btn" ${currentPage===1?"disabled":""} onclick="goPage(${currentPage-1})"><i class="fa-solid fa-chevron-left" style="font-size:10px;"></i></button>`;
+  const range = 2;
+  for(let p = Math.max(1,currentPage-range); p <= Math.min(totalPages,currentPage+range); p++){
+    pagBtns += `<button class="sf-page-btn ${p===currentPage?"active":""}" onclick="goPage(${p})">${p}</button>`;
+  }
+  pagBtns += `<button class="sf-page-btn" ${currentPage===totalPages?"disabled":""} onclick="goPage(${currentPage+1})"><i class="fa-solid fa-chevron-right" style="font-size:10px;"></i></button>`;
+
+  document.getElementById("adminTabContent").innerHTML = `
+    <div class="sf-table-card" style="border-radius:0 0 var(--r-lg) var(--r-lg);">
+      <div class="sf-table-header">
+        <div class="sf-table-title"><i class="fa-solid fa-table-cells-large" style="color:var(--sf-blue);"></i> Attendance Records</div>
+        <span class="sf-record-count">${total} records</span>
       </div>
-      <div class="table-scroll">
-        ${sorted.length === 0 ? `<div class="empty-state"><i class="fa-regular fa-calendar-xmark"></i><p>No records found for selected filters.</p></div>` : `
+      <div class="sf-table-wrap">
         <table>
-          <thead><tr>
-            <th>#</th>
-            <th>Engineer</th>
-            <th>Date</th>
-            <th>Day</th>
-            <th>Status</th>
-            <th>Remarks</th>
-            <th>Submitted At</th>
-            <th>Actions</th>
-          </tr></thead>
-          <tbody>
-            ${sorted.map((r,i)=>`
-              <tr>
-                <td style="color:var(--txt4);font-size:11px;">${i+1}</td>
-                <td class="td-name">${r.engineerName || r.username || "—"}</td>
-                <td class="td-date">${fmtDate(r.date)}</td>
-                <td style="font-size:11.5px;color:var(--txt3);">${getDayName(r.date)}</td>
-                <td>${statusBadge(r.status)}</td>
-                <td style="color:var(--txt3);font-size:12px;max-width:180px;">${r.remarks||"—"}</td>
-                <td style="font-size:11.5px;color:var(--txt4);">${r.createdAt ? new Date(r.createdAt).toLocaleString("en-IN",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}) : "—"}</td>
-                <td>
-                  <div class="td-actions">
-                    <button class="btn btn-secondary btn-sm" onclick="openViewModal(${JSON.stringify(r).replace(/"/g,"&quot;")})"><i class="fa-solid fa-eye"></i></button>
-                    <button class="btn btn-primary btn-sm" onclick="openEditModal(${JSON.stringify(r).replace(/"/g,"&quot;")})"><i class="fa-solid fa-pen"></i></button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteRecord('${r._id}')"><i class="fa-solid fa-trash"></i></button>
-                  </div>
-                </td>
-              </tr>
-            `).join("")}
-          </tbody>
-        </table>`}
+          <thead>
+            <tr>
+              <th style="width:36px;">#</th>
+              <th>Engineer</th>
+              <th>Date</th>
+              <th>Day</th>
+              <th>Status</th>
+              <th>Remarks</th>
+              <th>Submitted At</th>
+              <th style="text-align:center;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div class="sf-pagination">
+        <div class="sf-pagination-info">Showing ${Math.min(start+1,total)}–${Math.min(start+rowsPerPage,total)} of ${total}</div>
+        <div class="sf-pag-controls">${pagBtns}</div>
       </div>
     </div>
   `;
 }
 
-function getDayName(dateStr){
-  if(!dateStr) return "—";
-  return new Date(dateStr).toLocaleDateString("en-IN",{weekday:"short"});
+function goPage(p){
+  const total = Math.ceil(filteredRecords.length/rowsPerPage)||1;
+  currentPage = Math.max(1, Math.min(p, total));
+  renderAdminTable();
 }
 
-function renderSummaryTab(records){
-  // Group by engineer
+function renderSummaryTable(records){
   const byEng = {};
   records.forEach(r=>{
     const name = r.engineerName || r.username || "Unknown";
@@ -643,68 +758,80 @@ function renderSummaryTab(records){
     byEng[name][r.status] = (byEng[name][r.status]||0)+1;
     byEng[name].total++;
   });
-
   const rows = Object.entries(byEng).sort((a,b)=>b[1].total-a[1].total);
 
-  document.getElementById("tabContent").innerHTML = `
-    <div class="table-card">
-      <div class="table-card-header">
-        <span class="table-card-title"><i class="fa-solid fa-chart-bar"></i> Engineer-wise Summary</span>
-        <span style="font-size:12px;color:var(--txt3);">Based on filtered records (${records.length} entries)</span>
+  document.getElementById("adminTabContent").innerHTML = `
+    <div class="sf-table-card" style="border-radius:0 0 var(--r-lg) var(--r-lg);">
+      <div class="sf-table-header">
+        <div class="sf-table-title"><i class="fa-solid fa-chart-bar" style="color:var(--sf-blue);"></i> Engineer-wise Summary</div>
+        <span class="sf-record-count">${records.length} records</span>
       </div>
-      <div class="table-scroll">
-        ${rows.length === 0 ? `<div class="empty-state"><i class="fa-regular fa-chart-bar"></i><p>No data for selected filters.</p></div>` : `
-        <table>
-          <thead><tr>
-            <th>#</th><th>Engineer</th><th>Total Days</th>
-            <th>Present</th><th>Absent</th><th>Half Day</th><th>Holiday</th>
-            <th>Attendance %</th>
-          </tr></thead>
+      <div class="sf-table-wrap">
+        <table style="min-width:700px;">
+          <thead>
+            <tr>
+              <th>#</th><th>Engineer</th><th>Total</th>
+              <th>Present</th><th>Absent</th><th>Half Day</th><th>Holiday</th>
+              <th>Attendance %</th>
+            </tr>
+          </thead>
           <tbody>
-            ${rows.map(([name, data], i)=>{
-              const pct = data.total > 0 ? Math.round((data.Present/data.total)*100) : 0;
-              const bar = `<div style="display:flex;align-items:center;gap:8px;"><div style="flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden;"><div style="width:${pct}%;height:100%;background:${pct>=80?"#059669":pct>=60?"#D97706":"#DC2626"};border-radius:3px;"></div></div><span style="font-size:11.5px;font-weight:700;color:${pct>=80?"#059669":pct>=60?"#D97706":"#DC2626"};">${pct}%</span></div>`;
-              return `<tr>
-                <td style="color:var(--txt4);font-size:11px;">${i+1}</td>
-                <td class="td-name">${name}</td>
-                <td style="font-weight:700;">${data.total}</td>
-                <td><span class="badge badge-present">${data.Present||0}</span></td>
-                <td><span class="badge badge-absent">${data.Absent||0}</span></td>
-                <td><span class="badge badge-half">${data["Half Day"]||0}</span></td>
-                <td><span class="badge badge-holiday">${data["Holiday"]||0}</span></td>
-                <td style="min-width:160px;">${bar}</td>
-              </tr>`;
-            }).join("")}
+            ${rows.length===0 ? `<tr><td colspan="8"><div class="sf-empty"><i class="fa-regular fa-chart-bar"></i><p>No data available.</p></div></td></tr>` :
+              rows.map(([name, d], i)=>{
+                const pct = d.total>0 ? Math.round((d.Present/d.total)*100) : 0;
+                const color = pct>=80?"var(--sf-green)":pct>=60?"var(--sf-orange)":"var(--sf-red)";
+                return `<tr>
+                  <td style="color:var(--txt4);">${i+1}</td>
+                  <td class="td-name">${name}</td>
+                  <td style="font-weight:700;">${d.total}</td>
+                  <td><span class="sf-badge badge-present">${d.Present||0}</span></td>
+                  <td><span class="sf-badge badge-absent">${d.Absent||0}</span></td>
+                  <td><span class="sf-badge badge-half">${d["Half Day"]||0}</span></td>
+                  <td><span class="sf-badge badge-holiday">${d["Holiday"]||0}</span></td>
+                  <td>
+                    <div class="progress-bar-wrap">
+                      <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${pct}%;background:${color};"></div></div>
+                      <span style="font-size:11px;font-weight:700;color:${color};min-width:30px;">${pct}%</span>
+                    </div>
+                  </td>
+                </tr>`;
+              }).join("")}
           </tbody>
-        </table>`}
+        </table>
       </div>
     </div>
   `;
 }
 
-/* ── Admin: View Detail ── */
+/* ─── Admin: View Modal ─── */
 function openViewModal(r){
   document.getElementById("viewModalBody").innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-      <div class="form-field"><label>Engineer</label><input type="text" readonly value="${r.engineerName||r.username||"—"}"/></div>
-      <div class="form-field"><label>Date</label><input type="text" readonly value="${fmtDate(r.date)}"/></div>
-      <div class="form-field"><label>Day</label><input type="text" readonly value="${getDayName(r.date)}"/></div>
-      <div class="form-field"><label>Status</label><div style="margin-top:2px;">${statusBadge(r.status)}</div></div>
-      <div class="form-field" style="grid-column:1/-1"><label>Remarks</label><textarea readonly rows="2" style="height:auto;padding:10px 12px;">${r.remarks||"—"}</textarea></div>
-      <div class="form-field"><label>Submitted At</label><input type="text" readonly value="${r.createdAt ? new Date(r.createdAt).toLocaleString("en-IN") : "—"}"/></div>
-      <div class="form-field"><label>Record ID</label><input type="text" readonly value="${r._id||"—"}" style="font-size:11px;font-family:monospace;"/></div>
+    <div class="det-section">
+      <div class="det-section-title">Attendance Info</div>
+      <div class="det-grid">
+        <div class="det-field"><div class="det-label">Engineer</div><div class="det-value">${r.engineerName||r.username||"—"}</div></div>
+        <div class="det-field"><div class="det-label">Date</div><div class="det-value">${fmtDate(r.date)}</div></div>
+        <div class="det-field"><div class="det-label">Day</div><div class="det-value">${getDayName(r.date)}</div></div>
+        <div class="det-field"><div class="det-label">Status</div><div class="det-value">${statusBadge(r.status)}</div></div>
+        <div class="det-field"><div class="det-label">Submitted At</div><div class="det-value">${r.createdAt ? new Date(r.createdAt).toLocaleString("en-IN") : "—"}</div></div>
+        <div class="det-field"><div class="det-label">Record ID</div><div class="det-value" style="font-family:monospace;font-size:10px;">${r._id||"—"}</div></div>
+      </div>
     </div>
+    ${r.remarks ? `<div class="det-section"><div class="det-section-title">Remarks</div><div style="font-size:12px;color:var(--txt2);background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 12px;">${r.remarks}</div></div>` : ""}
   `;
   openModal("viewModal");
 }
 
-/* ── Admin: Edit ── */
-function openEditModal(r){
+/* ─── Admin: Edit ─── */
+function openEditModalFn(r){
   editingId = r._id;
+  document.getElementById("editModalTitle").innerHTML = `<i class="fa-solid fa-pen-to-square" style="color:var(--sf-orange);"></i> Edit Attendance`;
   document.getElementById("editEngineerName").value = r.engineerName || r.username || "";
+  document.getElementById("editEngineerName").readOnly = true;
   document.getElementById("editDate").value = (r.date||"").split("T")[0];
   document.getElementById("editStatus").value = r.status || "Present";
   document.getElementById("editRemarks").value = r.remarks || "";
+  document.getElementById("editSaveBtn").onclick = saveEdit;
   openModal("editModal");
 }
 
@@ -715,44 +842,53 @@ async function saveEdit(){
     date: document.getElementById("editDate").value,
     remarks: document.getElementById("editRemarks").value
   };
+  showLoader("Saving…");
   try{
     const res = await fetch(`${baseUrl}/attendance/${editingId}`, {
       method:"PUT", headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},
       body: JSON.stringify(payload)
     });
     if(!res.ok) throw new Error();
+    hideLoader();
     showToast("Attendance updated successfully!", "success");
     closeModal("editModal");
     await loadAdminData();
-  }catch(e){ showToast("Failed to update. Check server.", "error"); }
+  }catch(e){ hideLoader(); showToast("Update failed", "error", "Check server connection."); }
 }
 
-/* ── Admin: Delete ── */
-async function deleteRecord(id){
-  if(!confirm("Delete this attendance record? This cannot be undone.")) return;
+/* ─── Admin: Delete ─── */
+function promptDelete(id){
+  deleteTargetId = id;
+  document.getElementById("confirmDeleteBtn").onclick = confirmDeleteAction;
+  openModal("deleteModal");
+}
+async function confirmDeleteAction(){
   const token = getToken();
+  showLoader("Deleting…");
+  closeModal("deleteModal");
   try{
-    const res = await fetch(`${baseUrl}/attendance/${id}`, {method:"DELETE",headers:{Authorization:`Bearer ${token}`}});
+    const res = await fetch(`${baseUrl}/attendance/${deleteTargetId}`, {method:"DELETE",headers:{Authorization:`Bearer ${token}`}});
     if(!res.ok) throw new Error();
-    showToast("Record deleted.", "success");
+    hideLoader();
+    showToast("Record deleted", "success");
     await loadAdminData();
-  }catch(e){ showToast("Failed to delete.", "error"); }
+  }catch(e){ hideLoader(); showToast("Delete failed", "error"); }
+  deleteTargetId = null;
 }
 
-/* ── Admin: Mark Attendance Modal ── */
+/* ─── Admin: Mark Attendance ─── */
 function openAdminMarkModal(){
-  // Re-use edit modal with empty data
   editingId = null;
+  document.getElementById("editModalTitle").innerHTML = `<i class="fa-solid fa-plus" style="color:var(--sf-green);"></i> Mark Attendance`;
   document.getElementById("editEngineerName").value = "";
   document.getElementById("editEngineerName").readOnly = false;
   document.getElementById("editDate").value = todayISO();
   document.getElementById("editStatus").value = "Present";
   document.getElementById("editRemarks").value = "";
-  document.querySelector("#editModal .modal-title").innerHTML = `<i class="fa-solid fa-plus"></i> Mark Attendance`;
-  document.querySelector("#editModal .modal-footer .btn-primary").onclick = adminCreateRecord;
+  document.getElementById("editSaveBtn").innerHTML = `<i class="fa-solid fa-check"></i> Mark Attendance`;
+  document.getElementById("editSaveBtn").onclick = adminCreateRecord;
   openModal("editModal");
 }
-
 async function adminCreateRecord(){
   const token = getToken();
   const payload = {
@@ -761,330 +897,219 @@ async function adminCreateRecord(){
     status: document.getElementById("editStatus").value,
     remarks: document.getElementById("editRemarks").value
   };
-  if(!payload.engineerName){ showToast("Engineer name required.", "error"); return; }
+  if(!payload.engineerName){ showToast("Engineer name required", "error"); return; }
+  showLoader("Marking attendance…");
   try{
     const res = await fetch(`${baseUrl}/attendance`, {
       method:"POST", headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},
       body: JSON.stringify(payload)
     });
     if(!res.ok) throw new Error();
+    hideLoader();
     showToast("Attendance marked!", "success");
     closeModal("editModal");
-    // Reset modal back
     document.getElementById("editEngineerName").readOnly = true;
-    document.querySelector("#editModal .modal-title").innerHTML = `<i class="fa-solid fa-pen-to-square"></i> Edit Attendance`;
-    document.querySelector("#editModal .modal-footer .btn-primary").onclick = saveEdit;
+    document.getElementById("editSaveBtn").innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Changes`;
+    document.getElementById("editSaveBtn").onclick = saveEdit;
     await loadAdminData();
-  }catch(e){ showToast("Failed to mark attendance.", "error"); }
+  }catch(e){ hideLoader(); showToast("Failed to mark attendance", "error"); }
 }
 
-/* ── Export Excel — Engineer(rows) × Date(cols) Pivot ── */
+/* ─── Export Pivot Excel ─── */
 function exportPivotExcel(){
-  const filtered = getFiltered();
-  if(!filtered.length){ showToast("No records to export.", "info"); return; }
-
-  const SHORT = { "Present":"P", "Absent":"A", "Half Day":"H", "Holiday":"HOL" };
-  const BG    = { "P":"DCFCE7", "A":"FEE2E2", "H":"FEF3C7", "HOL":"E0F2FE" };
-  const FG    = { "P":"15803D", "A":"B91C1C", "H":"B45309", "HOL":"0369A1" };
-
-  // Unique sorted engineers (rows) and dates (columns)
-  const engineers = [...new Set(filtered.map(r => r.engineerName||r.username||""))].filter(Boolean).sort();
-  const dates     = [...new Set(filtered.map(r => (r.date||"").split("T")[0]))].filter(Boolean).sort();
-
-  // pivot[engineer][date] = short code
+  const filtered = getAdminFiltered();
+  if(!filtered.length){ showToast("No records to export", "info"); return; }
+  const SHORT = {"Present":"P","Absent":"A","Half Day":"H","Holiday":"HOL"};
+  const BG = {"P":"d3f5d3","A":"fef1ee","H":"fff3e0","HOL":"ecfeff"};
+  const FG = {"P":"1d5e31","A":"ba0517","H":"dd5a0c","HOL":"0e7490"};
+  const engineers = [...new Set(filtered.map(r=>r.engineerName||r.username||""))].filter(Boolean).sort();
+  const dates = [...new Set(filtered.map(r=>(r.date||"").split("T")[0]))].filter(Boolean).sort();
   const pivot = {};
-  filtered.forEach(r => {
-    const e = r.engineerName||r.username||"";
-    const d = (r.date||"").split("T")[0];
-    if(!pivot[e]) pivot[e] = {};
-    pivot[e][d] = SHORT[r.status] || r.status || "";
+  filtered.forEach(r=>{
+    const e=r.engineerName||r.username||""; const d=(r.date||"").split("T")[0];
+    if(!pivot[e]) pivot[e]={};
+    pivot[e][d]=SHORT[r.status]||r.status||"";
   });
-
-  // Header row: Engineer | date1 | date2 | ...
-  const headerRow = ["Engineer", ...dates];
-
-  // Data rows: one per engineer
-  const dataRows = engineers.map(e => [e, ...dates.map(d => pivot[e]?.[d] || "")]);
-
-  // Summary row: count per date
-  const summaryRow = ["SUMMARY", ...dates.map(d => {
-    const p   = engineers.filter(e => pivot[e]?.[d]==="P").length;
-    const a   = engineers.filter(e => pivot[e]?.[d]==="A").length;
-    const h   = engineers.filter(e => pivot[e]?.[d]==="H").length;
-    const hol = engineers.filter(e => pivot[e]?.[d]==="HOL").length;
-    return `P:${p} A:${a} H:${h} HOL:${hol}`;
-  })];
-
-  const allRows = [headerRow, ...dataRows, summaryRow];
+  const headerRow = ["Engineer",...dates];
+  const dataRows = engineers.map(e=>[e,...dates.map(d=>pivot[e]?.[d]||"")]);
+  const allRows = [headerRow,...dataRows];
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet(allRows);
-
-  // Column widths
-  const maxEng = Math.max(14, ...engineers.map(e=>e.length)) + 2;
-  ws["!cols"] = [{ wch: maxEng }, ...dates.map(() => ({ wch: 12 }))];
-  ws["!rows"] = [{ hpt: 28 }, ...dataRows.map(() => ({ hpt: 22 })), { hpt: 26 }];
-
-  const totalRows = allRows.length;
+  ws["!cols"] = [{wch:20},...dates.map(()=>({wch:12}))];
   const totalCols = headerRow.length;
-
-  for(let R = 0; R < totalRows; R++){
-    for(let C = 0; C < totalCols; C++){
-      const addr = XLSX.utils.encode_cell({ r: R, c: C });
-      if(!ws[addr]) ws[addr] = { v: "", t: "s" };
-      const cell = ws[addr];
-      const val  = String(cell.v || "");
-
-      if(R === 0){
-        cell.s = { font:{ bold:true, color:{ rgb:"FFFFFF" }, sz:11, name:"Calibri" },
-          fill:{ fgColor:{ rgb:"1E3A5F" } },
-          alignment:{ horizontal:"center", vertical:"center", wrapText:true } };
-      } else if(R === totalRows - 1){
-        cell.s = { font:{ bold:true, color:{ rgb:"1E293B" }, sz:9, name:"Calibri" },
-          fill:{ fgColor:{ rgb:"E2E8F0" } },
-          alignment:{ horizontal:"center", vertical:"center", wrapText:true },
-          border:{ top:{ style:"medium", color:{ rgb:"94A3B8" } } } };
-      } else if(C === 0){
-        cell.s = { font:{ bold:true, color:{ rgb:"1E293B" }, sz:11, name:"Calibri" },
-          fill:{ fgColor:{ rgb:"F8FAFC" } },
-          alignment:{ horizontal:"left", vertical:"center" },
-          border:{ right:{ style:"medium", color:{ rgb:"94A3B8" } } } };
-      } else {
-        const bg = BG[val] || "FFFFFF";
-        const fg = FG[val] || "94A3B8";
-        cell.s = { font:{ bold:!!val, color:{ rgb:fg }, sz:12, name:"Calibri" },
-          fill:{ fgColor:{ rgb:bg } },
-          alignment:{ horizontal:"center", vertical:"center" } };
-      }
+  for(let R=0;R<allRows.length;R++){
+    for(let C=0;C<totalCols;C++){
+      const addr = XLSX.utils.encode_cell({r:R,c:C});
+      if(!ws[addr]) ws[addr]={v:"",t:"s"};
+      const cell=ws[addr]; const val=String(cell.v||"");
+      if(R===0){ cell.s={font:{bold:true,color:{rgb:"FFFFFF"},sz:11},fill:{fgColor:{rgb:"1a2e4a"}},alignment:{horizontal:"center",vertical:"center"}}; }
+      else if(C===0){ cell.s={font:{bold:true,color:{rgb:"1a2e4a"},sz:11},fill:{fgColor:{rgb:"f9f9f9"}},alignment:{horizontal:"left",vertical:"center"}}; }
+      else{ const bg=BG[val]||"FFFFFF"; const fg=FG[val]||"aeaeac"; cell.s={font:{bold:!!val,color:{rgb:fg},sz:12},fill:{fgColor:{rgb:bg}},alignment:{horizontal:"center",vertical:"center"}}; }
     }
   }
-
-  ws["!freeze"] = { xSplit:1, ySplit:1, topLeftCell:"B2", activePane:"bottomRight" };
-
-  // Legend sheet
-  const wsL = XLSX.utils.aoa_to_sheet([
-    ["Code","Status","Color"],
-    ["P","Present","Green"],
-    ["A","Absent","Red"],
-    ["H","Half Day","Yellow"],
-    ["HOL","Holiday","Blue"],
-    ["","No Record","Blank"],
-  ]);
-  wsL["!cols"] = [{ wch:8 },{ wch:12 },{ wch:10 }];
-
-  XLSX.utils.book_append_sheet(wb, ws, "Attendance");
-  XLSX.utils.book_append_sheet(wb, wsL, "Legend");
-
-  const dr = dates.length > 1 ? `${dates[0]}_to_${dates[dates.length-1]}` : (dates[0]||todayISO());
-  XLSX.writeFile(wb, `Attendance_${dr}.xlsx`);
-  showToast(`Excel exported! ${engineers.length} engineers × ${dates.length} dates`, "success");
+  ws["!freeze"]={xSplit:1,ySplit:1,topLeftCell:"B2",activePane:"bottomRight"};
+  XLSX.utils.book_append_sheet(wb,ws,"Attendance");
+  const dr=dates.length>1?`${dates[0]}_to_${dates[dates.length-1]}`:(dates[0]||todayISO());
+  XLSX.writeFile(wb,`Attendance_${dr}.xlsx`);
+  showToast("Excel exported!", "success", `${engineers.length} engineers × ${dates.length} dates`);
 }
 
-/* ── Holiday Manager ── */
+/* ─── Holiday Modal ─── */
 function openHolidayModal(){
-  // Remove existing modal if any
-  const ex = document.getElementById("holidayModal");
-  if(ex) ex.remove();
-
+  const ex = document.getElementById("holidayModal"); if(ex) ex.remove();
   const modal = document.createElement("div");
   modal.id = "holidayModal";
-  modal.className = "modal-overlay open";
+  modal.className = "sf-overlay open";
   modal.innerHTML = `
-    <div class="modal" style="max-width:480px;">
-      <div class="modal-header">
-        <span class="modal-title"><i class="fa-solid fa-calendar-xmark" style="color:#0369A1;"></i> Mark Holiday for All Engineers</span>
-        <button class="modal-close" onclick="document.getElementById('holidayModal').remove()"><i class="fa-solid fa-xmark"></i></button>
+    <div class="sf-modal" style="max-width:480px;">
+      <div class="sf-modal-header">
+        <div class="sf-modal-title"><i class="fa-solid fa-calendar-xmark" style="color:var(--sf-teal);"></i> Mark Holiday for All Engineers</div>
+        <button class="sf-modal-close" onclick="document.getElementById('holidayModal').remove()"><i class="fa-solid fa-xmark"></i></button>
       </div>
-      <div class="modal-body">
-        <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:11px 14px;
-          font-size:12.5px;color:#1D4ED8;margin-bottom:4px;display:flex;gap:8px;align-items:flex-start;">
-          <i class="fa-solid fa-circle-info" style="margin-top:2px;flex-shrink:0;"></i>
+      <div class="sf-modal-body">
+        <div style="background:var(--sf-blue-lt);border:1px solid #c5dff5;border-radius:var(--r-sm);padding:10px 12px;font-size:12px;color:var(--sf-blue-dk);margin-bottom:14px;display:flex;gap:8px;">
+          <i class="fa-solid fa-circle-info" style="margin-top:1px;flex-shrink:0;"></i>
           <span>Selected date pe <strong>sabhi engineers</strong> ka attendance Holiday mark ho jayega. Jo already mark hai unhe skip kiya jayega.</span>
         </div>
-        <div class="form-field" style="margin-top:4px;">
-          <label>Holiday Date</label>
-          <input type="date" id="holidayDate" value="${todayISO()}" max="${todayISO()}" style="height:38px;border:1px solid var(--border);border-radius:var(--r);padding:0 12px;font-size:13px;background:var(--surface2);width:100%;outline:none;font-family:var(--font);"/>
-        </div>
-        <div class="form-field">
-          <label>Holiday Name / Reason</label>
-          <input type="text" id="holidayReason" placeholder="E.g. Diwali, Republic Day, Eid…" style="height:38px;border:1px solid var(--border);border-radius:var(--r);padding:0 12px;font-size:13px;background:var(--surface2);width:100%;outline:none;font-family:var(--font);"/>
-        </div>
-        <div id="holidayEngineerList" style="margin-top:4px;">
-          <div style="font-size:11px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">
-            Engineers to mark (<span id="engCount">loading…</span>)
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+          <div>
+            <div class="sf-modal-label">Holiday Date</div>
+            <input type="date" class="sf-modal-input" id="holidayDate" value="${todayISO()}" max="${todayISO()}"/>
           </div>
-          <div id="engListBox" style="max-height:160px;overflow-y:auto;border:1px solid var(--border);
-            border-radius:var(--r);padding:8px;background:var(--surface2);font-size:12.5px;color:var(--txt3);">
-            Loading engineers…
+          <div>
+            <div class="sf-modal-label">Holiday Name / Reason</div>
+            <input type="text" class="sf-modal-input" id="holidayReason" placeholder="E.g. Diwali, Republic Day…"/>
+          </div>
+        </div>
+        <div>
+          <div class="sf-modal-label" style="margin-bottom:6px;">Engineers to Mark (<span id="engCount">${[...new Set(allAttendance.map(r=>r.engineerName||r.username||""))].filter(Boolean).length}</span>)</div>
+          <div style="max-height:150px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r-sm);padding:8px;background:var(--surface2);">
+            ${[...new Set(allAttendance.map(r=>r.engineerName||r.username||""))].filter(Boolean).sort().map(e=>`
+              <div style="padding:4px 6px;font-size:11px;display:flex;align-items:center;gap:6px;color:var(--txt3);">
+                <i class="fa-solid fa-user" style="color:var(--sf-blue);font-size:10px;"></i> ${e}
+              </div>`).join("")}
           </div>
         </div>
       </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="document.getElementById('holidayModal').remove()">Cancel</button>
-        <button class="btn" style="background:#0369A1;color:#fff;border-color:#0284C7;" onclick="applyHoliday()">
-          <i class="fa-solid fa-calendar-check"></i> Apply Holiday
-        </button>
+      <div class="sf-modal-footer">
+        <button class="sf-btn sf-btn-neutral" onclick="document.getElementById('holidayModal').remove()">Cancel</button>
+        <button class="sf-btn sf-btn-teal" onclick="applyHoliday()"><i class="fa-solid fa-calendar-check"></i> Apply Holiday</button>
       </div>
     </div>`;
   document.body.appendChild(modal);
-  modal.addEventListener("click", e => { if(e.target===modal) modal.remove(); });
-
-  // Load engineer list from current allAttendance
-  loadEngineersForHoliday();
-}
-
-function loadEngineersForHoliday(){
-  const engineers = [...new Set(allAttendance.map(r => r.engineerName||r.username||""))].filter(Boolean).sort();
-  const box = document.getElementById("engListBox");
-  const cnt = document.getElementById("engCount");
-  if(!engineers.length){
-    box.textContent = "No engineers found. Load attendance data first.";
-    cnt.textContent = "0";
-    return;
-  }
-  cnt.textContent = engineers.length;
-  box.innerHTML = engineers.map(e =>
-    `<div style="padding:4px 6px;border-radius:4px;display:flex;align-items:center;gap:6px;">
-      <i class="fa-solid fa-user" style="color:#2563EB;font-size:10px;"></i> ${e}
-    </div>`
-  ).join("");
+  modal.addEventListener("click", e=>{ if(e.target===modal) modal.remove(); });
 }
 
 async function applyHoliday(){
   const token = getToken();
   const date   = document.getElementById("holidayDate").value;
   const reason = document.getElementById("holidayReason").value.trim() || "Holiday";
-  if(!date){ showToast("Date select karo.", "error"); return; }
-
-  const engineers = [...new Set(allAttendance.map(r => r.engineerName||r.username||""))].filter(Boolean);
-  if(!engineers.length){ showToast("Koi engineer nahi mila.", "error"); return; }
-
-  const btn = document.querySelector("#holidayModal .modal-footer .btn:last-child");
-  btn.disabled = true;
-  btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Marking…`;
-
-  let success = 0, skipped = 0, failed = 0;
-
-  await Promise.all(engineers.map(async engName => {
-    try {
-      const r = await fetch(`${baseUrl}/attendance`, {
-        method: "POST",
-        headers: { "Content-Type":"application/json", Authorization:`Bearer ${token}` },
-        body: JSON.stringify({
-          engineerName: engName,
-          username: engName,
-          date, status: "Holiday",
-          remarks: `Holiday: ${reason}`,
-          markedBy: currentUser.username
-        })
-      });
-      if(r.status === 201)      success++;
-      else if(r.status === 409) skipped++;
-      else                      failed++;
-    } catch(e){ failed++; }
+  if(!date){ showToast("Date select karo", "error"); return; }
+  const engineers = [...new Set(allAttendance.map(r=>r.engineerName||r.username||""))].filter(Boolean);
+  if(!engineers.length){ showToast("Koi engineer nahi mila", "error"); return; }
+  showLoader("Marking holiday for all engineers…");
+  let success=0, skipped=0, failed=0;
+  await Promise.all(engineers.map(async engName=>{
+    try{
+      const r = await fetch(`${baseUrl}/attendance`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},
+        body:JSON.stringify({engineerName:engName,username:engName,date,status:"Holiday",remarks:`Holiday: ${reason}`,markedBy:currentUser?.username})});
+      if(r.status===201) success++;
+      else if(r.status===409) skipped++;
+      else failed++;
+    }catch(e){ failed++; }
   }));
-
-  btn.disabled = false;
-  btn.innerHTML = `<i class="fa-solid fa-calendar-check"></i> Apply Holiday`;
-
-  showToast(`✅ Holiday marked! ${success} new · ${skipped} already existed · ${failed} failed`, "success");
-  document.getElementById("holidayModal").remove();
-  await loadAdminData(); // refresh table
+  hideLoader();
+  showToast("Holiday marked!", "success", `${success} new · ${skipped} already existed · ${failed} failed`);
+  document.getElementById("holidayModal")?.remove();
+  await loadAdminData();
 }
 
-/* ═══════════════════════════════════════════════════════
-   ███████╗███╗   ██╗ ██████╗ ██╗███╗   ██╗███████╗███████╗██████╗
-   ██╔════╝████╗  ██║██╔════╝ ██║████╗  ██║██╔════╝██╔════╝██╔══██╗
-   █████╗  ██╔██╗ ██║██║  ███╗██║██╔██╗ ██║█████╗  █████╗  ██████╔╝
-   ██╔══╝  ██║╚██╗██║██║   ██║██║██║╚██╗██║██╔══╝  ██╔══╝  ██╔══██╗
-   ███████╗██║ ╚████║╚██████╔╝██║██║ ╚████║███████╗███████╗██║  ██║
+/* ══════════════════════════════════════════════════
    ENGINEER VIEW
-═══════════════════════════════════════════════════════ */
-
-let myAttendance = [];
+══════════════════════════════════════════════════ */
 
 function renderEngineerView(){
   const today = todayISO();
   document.getElementById("mainContent").innerHTML = `
-    <!-- Today's Submission Card -->
-    <div class="self-submit-card">
-      <h2><i class="fa-solid fa-calendar-plus"></i> Mark Today's Attendance</h2>
-      <div class="submit-form-row">
-        <div class="form-field">
-          <label>Your Name</label>
-          <input type="text" id="selfName" readonly value="${currentUser.engineerName || currentUser.username || ""}"/>
+    <!-- Self Submit Card -->
+    <div class="att-submit-card">
+      <div class="att-submit-card-header">
+        <div class="att-submit-card-icon"><i class="fa-solid fa-calendar-plus"></i></div>
+        <div class="att-submit-card-title">Mark Today's Attendance</div>
+      </div>
+      <div class="att-form-row">
+        <div class="sf-form-field">
+          <div class="sf-form-label">Your Name</div>
+          <input type="text" class="sf-form-input" id="selfName" readonly value="${currentUser?.engineerName||currentUser?.username||""}"/>
         </div>
-        <div class="form-field">
-          <label>Date</label>
-          <input type="date" id="selfDate" value="${today}" max="${today}"/>
+        <div class="sf-form-field">
+          <div class="sf-form-label">Date</div>
+          <input type="date" class="sf-form-input" id="selfDate" value="${today}" max="${today}"/>
         </div>
-        <div class="form-field" style="flex:1;">
-          <label>Status</label>
-          <div class="status-radio-group" id="selfStatusGroup">
-            <label class="radio-present" id="lblPresent" onclick="selectStatus('Present')">
-              <input type="radio" name="selfStatus" value="Present" checked/><span>✅ Present</span>
+        <div class="sf-form-field">
+          <div class="sf-form-label">Status</div>
+          <div class="status-pill-group">
+            <label class="status-pill pill-present selected" id="lblPresent" onclick="selectStatus('Present')">
+              <input type="radio" name="selfStatus" value="Present" checked/><i class="fa-solid fa-circle-check" style="font-size:11px;"></i> Present
             </label>
-            <label class="radio-absent" id="lblAbsent" onclick="selectStatus('Absent')">
-              <input type="radio" name="selfStatus" value="Absent"/><span>❌ Absent</span>
+            <label class="status-pill pill-absent" id="lblAbsent" onclick="selectStatus('Absent')">
+              <input type="radio" name="selfStatus" value="Absent"/><i class="fa-solid fa-circle-xmark" style="font-size:11px;"></i> Absent
             </label>
-            <label class="radio-half" id="lblHalf" onclick="selectStatus('Half Day')">
-              <input type="radio" name="selfStatus" value="Half Day"/><span>🕐 Half Day</span>
+            <label class="status-pill pill-half" id="lblHalf" onclick="selectStatus('Half Day')">
+              <input type="radio" name="selfStatus" value="Half Day"/><i class="fa-solid fa-clock" style="font-size:11px;"></i> Half Day
             </label>
-
           </div>
         </div>
-      </div>
-      <div style="margin-top:12px;display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;">
-        <div class="form-field" style="flex:1;min-width:200px;">
-          <label>Remarks (Optional)</label>
-          <input type="text" id="selfRemarks" placeholder="E.g. Field visit, WFH…"/>
+        <div class="sf-form-field" style="flex:1;min-width:180px;">
+          <div class="sf-form-label">Remarks (Optional)</div>
+          <input type="text" class="sf-form-input" id="selfRemarks" placeholder="E.g. Field visit, WFH…"/>
         </div>
-        <button class="btn btn-success" id="selfSubmitBtn" onclick="submitMyAttendance()">
+        <button class="sf-btn sf-btn-success sf-btn-lg" id="selfSubmitBtn" onclick="submitMyAttendance()" style="align-self:flex-end;">
           <i class="fa-solid fa-paper-plane"></i> Submit Attendance
         </button>
       </div>
-      <div id="selfMsg" style="margin-top:10px;font-size:12.5px;display:none;"></div>
+      <div id="selfMsg" style="margin-top:10px;font-size:12px;display:none;padding:8px 12px;border-radius:var(--r-sm);"></div>
     </div>
 
-    <!-- My History -->
-    <div class="att-tabs">
-      <button class="att-tab active" onclick="switchEngTab('calendar')"><i class="fa-regular fa-calendar"></i> Calendar View</button>
-      <button class="att-tab" onclick="switchEngTab('list')"><i class="fa-solid fa-list"></i> History</button>
+    <!-- My History Tabs -->
+    <div class="sf-table-card" style="border-radius:var(--r-lg) var(--r-lg) 0 0;overflow:visible;border-bottom:none;margin-bottom:0;">
+      <div class="sf-tabs">
+        <button class="sf-tab active" onclick="switchEngTab('calendar')">
+          <i class="fa-regular fa-calendar"></i> Calendar View
+        </button>
+        <button class="sf-tab" onclick="switchEngTab('list')">
+          <i class="fa-solid fa-list"></i> History
+        </button>
+      </div>
     </div>
-    
+
     <!-- Month filter -->
-    <div class="att-toolbar">
-      <label>Month</label>
-      <input type="month" class="filter-input" id="engMonth" value="${today.substring(0,7)}" onchange="filterMyRecords()"/>
-      <div class="tb-spacer"></div>
-      <span id="myMonthStats" style="font-size:12px;color:var(--txt3);"></span>
+    <div class="sf-toolbar" style="border-radius:0;border-top:none;margin-bottom:0;border-bottom:none;">
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">Month</label>
+        <input type="month" class="sf-input" id="engMonth" value="${today.substring(0,7)}" onchange="filterMyRecords()"/>
+      </div>
+      <div class="sf-toolbar-spacer"></div>
+      <span id="myMonthStats" style="font-size:11px;color:var(--txt3);align-self:center;"></span>
     </div>
 
-    <div id="engTabContent">
-      <div class="inline-loader"><div class="spin"></div></div>
+    <div id="engTabContent" style="border-radius:0 0 var(--r-lg) var(--r-lg);border-top:none;">
+      <div style="display:flex;justify-content:center;padding:40px;">
+        <div class="inline-spin" style="width:28px;height:28px;border-width:3px;"></div>
+      </div>
     </div>
   `;
 }
 
-let selectedStatus = "Present";
 function selectStatus(val){
   selectedStatus = val;
-  ["Present","Absent","Half Day","Holiday"].forEach(s=>{
-    const id = {
-      "Present":"lblPresent","Absent":"lblAbsent",
-      "Half Day":"lblHalf",
-    }[s];
-    const cls = {
-      "Present":"radio-present","Absent":"radio-absent",
-      "Half Day":"radio-half",
-    }[s];
+  const map = {"Present":"lblPresent","Absent":"lblAbsent","Half Day":"lblHalf"};
+  const cls  = {"Present":"pill-present","Absent":"pill-absent","Half Day":"pill-half"};
+  Object.entries(map).forEach(([s,id])=>{
     const el = document.getElementById(id);
-    if(el){
-      el.className = cls + (s===val?" selected":"");
-    }
+    if(el){ el.className = `status-pill ${cls[s]}${s===val?" selected":""}`; }
   });
-  // Also check the radio
-  const radios = document.querySelectorAll("input[name='selfStatus']");
-  radios.forEach(r=>{ if(r.value===val) r.checked=true; });
+  document.querySelectorAll("input[name='selfStatus']").forEach(r=>{ if(r.value===val) r.checked=true; });
 }
 
 async function submitMyAttendance(){
@@ -1092,45 +1117,39 @@ async function submitMyAttendance(){
   const date = document.getElementById("selfDate").value;
   const remarks = document.getElementById("selfRemarks").value.trim();
   const msg = document.getElementById("selfMsg");
-
-  if(!date){ showToast("Please select a date.", "error"); return; }
-
+  if(!date){ showToast("Please select a date", "error"); return; }
   const payload = {
-    engineerName: currentUser.engineerName || currentUser.username,
-    username: currentUser.username,
+    engineerName: currentUser?.engineerName||currentUser?.username,
+    username: currentUser?.username,
     date, status: selectedStatus, remarks
   };
-
-  document.getElementById("selfSubmitBtn").disabled = true;
-  document.getElementById("selfSubmitBtn").innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Submitting…`;
-
+  const btn = document.getElementById("selfSubmitBtn");
+  btn.disabled = true;
+  btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Submitting…`;
   try{
-    const res = await fetch(`${baseUrl}/attendance`, {
-      method:"POST", headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},
-      body: JSON.stringify(payload)
-    });
+    const res = await fetch(`${baseUrl}/attendance`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},body:JSON.stringify(payload)});
     const data = await res.json();
     if(res.ok){
-      showToast("Attendance submitted successfully!", "success");
-      msg.style.display="flex";
-      msg.style.color="#059669";
-      msg.innerHTML=`<i class="fa-solid fa-check-circle" style="margin-right:6px;"></i> Submitted: <strong style="margin-left:4px;">${selectedStatus}</strong> for ${fmtDate(date)}`;
+      showToast("Attendance submitted!", "success");
+      msg.style.display = "block";
+      msg.style.background = "var(--sf-green-lt)";
+      msg.style.color = "var(--sf-green)";
+      msg.innerHTML = `<i class="fa-solid fa-circle-check"></i> Submitted: <strong>${selectedStatus}</strong> for ${fmtDate(date)}`;
       await loadMyAttendance();
     } else {
-      showToast(data.message || "Failed to submit. Already submitted today?", "error");
+      showToast(data.message||"Failed to submit. Already submitted today?", "error");
     }
   }catch(e){ showToast("Server error. Try again.", "error"); }
-
-  document.getElementById("selfSubmitBtn").disabled = false;
-  document.getElementById("selfSubmitBtn").innerHTML = `<i class="fa-solid fa-paper-plane"></i> Submit Attendance`;
+  btn.disabled = false;
+  btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> Submit Attendance`;
 }
 
 async function loadMyAttendance(){
   const token = getToken();
   try{
-    const res = await fetch(`${baseUrl}/attendance/mine`, {headers:{Authorization:`Bearer ${token}`}});
+    const res = await fetch(`${baseUrl}/attendance/mine`,{headers:{Authorization:`Bearer ${token}`}});
     const data = await res.json();
-    myAttendance = Array.isArray(data) ? data : (data.attendance || []);
+    myAttendance = Array.isArray(data) ? data : (data.attendance||[]);
   }catch(e){ myAttendance = []; }
   renderEngStats();
   filterMyRecords();
@@ -1138,102 +1157,98 @@ async function loadMyAttendance(){
 
 function renderEngStats(){
   const present = myAttendance.filter(r=>r.status==="Present").length;
-  const absent = myAttendance.filter(r=>r.status==="Absent").length;
-  const half = myAttendance.filter(r=>r.status==="Half Day").length;
-  const leave = 0;
-  const total = myAttendance.length;
-  const pct = total>0 ? Math.round((present/total)*100) : 0;
+  const absent  = myAttendance.filter(r=>r.status==="Absent").length;
+  const half    = myAttendance.filter(r=>r.status==="Half Day").length;
+  const holiday = myAttendance.filter(r=>r.status==="Holiday").length;
+  const total   = myAttendance.length;
+  const pct     = total>0 ? Math.round((present/total)*100) : 0;
 
   document.getElementById("statsRow").innerHTML = `
-    <div class="stat-card">
-      <div class="stat-icon blue"><i class="fa-solid fa-calendar-days"></i></div>
-      <div><div class="stat-val">${total}</div><div class="stat-lbl">Total Records</div></div>
+    <div class="kpi-card blue">
+      <div class="kpi-num blue">${total}</div>
+      <div class="kpi-label"><i class="fa-solid fa-calendar-days" style="font-size:9px;"></i> Total Records</div>
     </div>
-    <div class="stat-card">
-      <div class="stat-icon green"><i class="fa-solid fa-circle-check"></i></div>
-      <div><div class="stat-val">${present}</div><div class="stat-lbl">Present Days</div></div>
+    <div class="kpi-card green">
+      <div class="kpi-num green">${present}</div>
+      <div class="kpi-label"><i class="fa-solid fa-circle-check" style="font-size:9px;"></i> Present Days</div>
     </div>
-    <div class="stat-card">
-      <div class="stat-icon red"><i class="fa-solid fa-circle-xmark"></i></div>
-      <div><div class="stat-val">${absent}</div><div class="stat-lbl">Absent Days</div></div>
+    <div class="kpi-card red">
+      <div class="kpi-num red">${absent}</div>
+      <div class="kpi-label"><i class="fa-solid fa-circle-xmark" style="font-size:9px;"></i> Absent Days</div>
     </div>
-    <div class="stat-card">
-      <div class="stat-icon amber"><i class="fa-solid fa-clock-half"></i></div>
-      <div><div class="stat-val">${half}</div><div class="stat-lbl">Half Days</div></div>
+    <div class="kpi-card orange">
+      <div class="kpi-num orange">${half}</div>
+      <div class="kpi-label"><i class="fa-solid fa-clock" style="font-size:9px;"></i> Half Days</div>
     </div>
-    <div class="stat-card">
-      <div class="stat-icon purple"><i class="fa-solid fa-umbrella-beach"></i></div>
-      <div><div class="stat-val">${leave}</div><div class="stat-lbl">Holiday</div></div>
+    <div class="kpi-card teal">
+      <div class="kpi-num teal">${holiday}</div>
+      <div class="kpi-label"><i class="fa-solid fa-umbrella-beach" style="font-size:9px;"></i> Holidays</div>
     </div>
-    <div class="stat-card">
-      <div class="stat-icon ${pct>=80?"green":pct>=60?"amber":"red"}"><i class="fa-solid fa-percent"></i></div>
-      <div><div class="stat-val">${pct}%</div><div class="stat-lbl">Attendance Rate</div></div>
+    <div class="kpi-card ${pct>=80?"green":pct>=60?"orange":"red"}">
+      <div class="kpi-num ${pct>=80?"green":pct>=60?"orange":"red"}">${pct}%</div>
+      <div class="kpi-label"><i class="fa-solid fa-chart-line" style="font-size:9px;"></i> Attendance Rate</div>
     </div>
   `;
 }
 
-let engActiveTab = "calendar";
 function switchEngTab(tab){
   engActiveTab = tab;
-  document.querySelectorAll(".att-tab").forEach(t=>{
-    t.classList.toggle("active",
-      (tab==="calendar" && t.textContent.includes("Calendar")) ||
-      (tab==="list" && t.textContent.includes("History"))
-    );
+  document.querySelectorAll(".sf-tab").forEach(t=>{
+    if(tab==="calendar") t.classList.toggle("active", t.textContent.includes("Calendar"));
+    else t.classList.toggle("active", t.textContent.includes("History"));
   });
   filterMyRecords();
 }
 
 function filterMyRecords(){
   const month = document.getElementById("engMonth")?.value || todayISO().substring(0,7);
-  const recs = myAttendance.filter(r => (r.date||"").startsWith(month));
-
-  const p=recs.filter(r=>r.status==="Present").length;
+  const recs  = myAttendance.filter(r=>(r.date||"").startsWith(month));
+  const p = recs.filter(r=>r.status==="Present").length;
   const s = document.getElementById("myMonthStats");
   if(s) s.textContent = `${recs.length} records · ${p} Present · ${recs.filter(r=>r.status==="Absent").length} Absent`;
-
   if(engActiveTab==="calendar") renderMyCalendar(month, recs);
   else renderMyList(recs);
 }
 
 function renderMyCalendar(month, recs){
   const [yr, mo] = month.split("-").map(Number);
-  const firstDay = new Date(yr, mo-1, 1).getDay(); // 0=Sun
-  const daysInMonth = new Date(yr, mo, 0).getDate();
-  const today = new Date();
-
-  const byDate = {};
+  const firstDay  = new Date(yr, mo-1, 1).getDay();
+  const daysInMo  = new Date(yr, mo, 0).getDate();
+  const today     = new Date();
+  const byDate    = {};
   recs.forEach(r=>{ byDate[(r.date||"").split("T")[0]] = r.status; });
-
-  const statusClass = {"Present":"present","Absent":"absent","Half Day":"half",};
-  const statusShort = {"Present":"P","Absent":"A","Half Day":"½",};
+  const statusCls = {"Present":"present","Absent":"absent","Half Day":"half","Holiday":"holiday"};
+  const statusShort= {"Present":"P","Absent":"A","Half Day":"½","Holiday":"H"};
 
   let cells = "";
   for(let i=0;i<firstDay;i++) cells += `<div class="cal-day empty"></div>`;
-  for(let d=1;d<=daysInMonth;d++){
+  for(let d=1;d<=daysInMo;d++){
     const dateStr = `${yr}-${String(mo).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
     const isToday = today.getFullYear()===yr && today.getMonth()===mo-1 && today.getDate()===d;
-    const status = byDate[dateStr];
-    const isSun = new Date(yr,mo-1,d).getDay()===0;
-    const cls = status ? statusClass[status]||"" : (isSun?"sunday":"");
+    const status  = byDate[dateStr];
+    const isSun   = new Date(yr,mo-1,d).getDay()===0;
+    const cls     = status ? (statusCls[status]||"") : (isSun?"sunday":"");
     cells += `<div class="cal-day ${cls} ${isToday?"today":""}">
       <div class="day-num">${d}</div>
-      ${status ? `<div class="day-status">${statusShort[status]}</div>` : ""}
+      ${status ? `<div class="day-status">${statusShort[status]||""}</div>` : ""}
     </div>`;
   }
 
   const days = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
   document.getElementById("engTabContent").innerHTML = `
-    <div class="table-card">
-      <div class="table-card-header">
-        <span class="table-card-title"><i class="fa-regular fa-calendar"></i> ${new Date(yr,mo-1).toLocaleDateString("en-IN",{month:"long",year:"numeric"})}</span>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          ${["Present","Absent","Half Day","Holiday"].map(s=>`<span class="badge badge-${statusClass[s]}">${s}</span>`).join("")}
+    <div class="sf-table-card" style="border-radius:0 0 var(--r-lg) var(--r-lg);">
+      <div class="sf-table-header">
+        <div class="sf-table-title"><i class="fa-regular fa-calendar" style="color:var(--sf-blue);"></i> ${new Date(yr,mo-1).toLocaleDateString("en-IN",{month:"long",year:"numeric"})}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <span class="sf-badge badge-present">Present</span>
+          <span class="sf-badge badge-absent">Absent</span>
+          <span class="sf-badge badge-half">Half Day</span>
+          <span class="sf-badge badge-holiday">Holiday</span>
         </div>
       </div>
-      <div class="calendar-grid">
-        ${days.map(d=>`<div class="cal-day-head">${d}</div>`).join("")}
-        ${cells}
+      <div class="cal-wrapper">
+        <div class="cal-header-row">${days.map(d=>`<div class="cal-day-head">${d}</div>`).join("")}</div>
+        <div class="cal-grid">${cells}</div>
       </div>
     </div>
   `;
@@ -1241,36 +1256,34 @@ function renderMyCalendar(month, recs){
 
 function renderMyList(recs){
   const sorted = [...recs].sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const rows = sorted.length === 0
+    ? `<tr><td colspan="5"><div class="sf-empty"><i class="fa-regular fa-calendar-xmark"></i><p>No records for this month.</p></div></td></tr>`
+    : sorted.map((r,i)=>`
+      <tr>
+        <td style="color:var(--txt4);">${i+1}</td>
+        <td>${fmtDate(r.date)}</td>
+        <td style="color:var(--txt3);">${getDayName(r.date)}</td>
+        <td>${statusBadge(r.status)}</td>
+        <td style="color:var(--txt3);">${r.remarks||"—"}</td>
+      </tr>`).join("");
+
   document.getElementById("engTabContent").innerHTML = `
-    <div class="table-card">
-      <div class="table-card-header">
-        <span class="table-card-title"><i class="fa-solid fa-list"></i> My Attendance History</span>
-        <span style="font-size:12px;color:var(--txt3);">${sorted.length} records</span>
+    <div class="sf-table-card" style="border-radius:0 0 var(--r-lg) var(--r-lg);">
+      <div class="sf-table-header">
+        <div class="sf-table-title"><i class="fa-solid fa-list" style="color:var(--sf-blue);"></i> My Attendance History</div>
+        <span class="sf-record-count">${sorted.length} records</span>
       </div>
-      <div class="table-scroll">
-        ${sorted.length===0 ? `<div class="empty-state"><i class="fa-regular fa-calendar-xmark"></i><p>No records for this month.</p></div>` : `
-        <table>
-          <thead><tr><th>#</th><th>Date</th><th>Day</th><th>Status</th><th>Remarks</th><th>Submitted At</th></tr></thead>
-          <tbody>
-            ${sorted.map((r,i)=>`<tr>
-              <td style="color:var(--txt4);font-size:11px;">${i+1}</td>
-              <td class="td-date">${fmtDate(r.date)}</td>
-              <td style="font-size:11.5px;color:var(--txt3);">${getDayName(r.date)}</td>
-              <td>${statusBadge(r.status)}</td>
-              <td style="color:var(--txt3);font-size:12px;">${r.remarks||"—"}</td>
-              <td style="font-size:11.5px;color:var(--txt4);">${r.createdAt?new Date(r.createdAt).toLocaleString("en-IN",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}):"—"}</td>
-            </tr>`).join("")}
-          </tbody>
-        </table>`}
+      <div class="sf-table-wrap" style="max-height:420px;">
+        <table style="min-width:500px;">
+          <thead><tr>
+            <th>#</th><th>Date</th><th>Day</th><th>Status</th><th>Remarks</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
       </div>
     </div>
   `;
 }
-
-// Close modals on overlay click
-document.querySelectorAll(".modal-overlay").forEach(o=>{
-  o.addEventListener("click", e=>{ if(e.target===o) o.classList.remove("open"); });
-});
 </script>
 </body>
 </html>
