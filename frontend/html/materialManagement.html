@@ -117,10 +117,43 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
 .qty-pill{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:22px;padding:0 8px;background:linear-gradient(135deg,#18a999,#0e7490);color:#fff;border-radius:999px;font-size:11px;font-weight:700;}
 .action-group{display:flex;gap:3px;align-items:center;}
 .act-btn{font-size:10px;font-weight:500;height:24px;width:24px;border-radius:var(--r-sm);cursor:pointer;border:none;display:inline-flex;align-items:center;justify-content:center;transition:all 0.12s;font-family:'Inter',sans-serif;background:var(--surface);}
+.act-btn.view{background:#edf6ff;color:#155eef;border:1px solid #c7d7fe;}
+.act-btn.view:hover{background:#dbeafe;}
+.act-btn.transfer{background:var(--sf-yellow-lt);color:var(--sf-yellow);border:1px solid #f6d98a;}
+.act-btn.transfer:hover{background:#fff1c2;}
 .act-btn.edit{background:var(--sf-blue-lt);color:var(--sf-blue);border:1px solid #c5dff5;}
 .act-btn.edit:hover{background:#cce8f7;}
 .act-btn.del{background:var(--sf-red-lt);color:var(--sf-red);border:1px solid #f5c6c3;}
 .act-btn.del:hover{background:#fbd5d0;}
+
+.ops-grid{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(280px,1fr);gap:12px;margin:12px 0;}
+.ops-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);overflow:hidden;}
+.ops-card-head{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;background:var(--surface2);}
+.ops-card-title{font-size:12px;font-weight:700;color:var(--txt);text-transform:uppercase;letter-spacing:.4px;}
+.ops-card-body{padding:14px;}
+.ops-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+.ops-action{border:1px solid var(--border);border-radius:var(--r-lg);padding:12px;background:linear-gradient(180deg,#fff,#fbfbfb);cursor:pointer;transition:all .15s;text-align:left;}
+.ops-action:hover{transform:translateY(-1px);box-shadow:var(--sh-sm);border-color:#c9d8f5;}
+.ops-action i{font-size:14px;margin-bottom:8px;display:block;color:var(--sf-blue);}
+.ops-action strong{display:block;font-size:12px;color:var(--txt);margin-bottom:2px;}
+.ops-action span{display:block;font-size:11px;color:var(--txt3);line-height:1.4;}
+.activity-list{display:flex;flex-direction:column;gap:10px;max-height:250px;overflow:auto;}
+.activity-item{border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;background:#fff;}
+.activity-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;}
+.activity-pill{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;background:var(--sf-yellow-lt);color:var(--sf-yellow);}
+.activity-text{font-size:11px;color:var(--txt2);line-height:1.45;}
+.activity-meta{font-size:10px;color:var(--txt4);}
+.activity-empty{padding:18px;border:1px dashed var(--border);border-radius:var(--r);font-size:11px;color:var(--txt4);text-align:center;}
+
+.detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;}
+.detail-field{display:flex;flex-direction:column;gap:3px;}
+.detail-label{font-size:10px;font-weight:700;color:var(--txt4);text-transform:uppercase;letter-spacing:.5px;}
+.detail-value{font-size:12px;color:var(--txt2);}
+.detail-history{margin-top:14px;border-top:1px solid var(--border);padding-top:14px;}
+.history-list{display:flex;flex-direction:column;gap:8px;}
+.history-row{border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;background:var(--surface2);}
+.history-row strong{font-size:11px;color:var(--txt);}
+.history-row span{display:block;font-size:10px;color:var(--txt3);margin-top:2px;}
 
 /* ── EMPTY STATE ── */
 .empty-state{
@@ -274,6 +307,7 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
   .kpi-row{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;}
   .sf-toolbar{gap:8px;padding:10px 14px;}
   .sf-page-header{padding:12px 16px;}
+  .ops-grid{grid-template-columns:1fr;}
 }
 @media(max-width:768px){
   .dv-strip{padding:0 12px;gap:8px;height:48px;}
@@ -299,6 +333,7 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
   table{font-size:11px;min-width:880px;}
   thead th{padding:7px 8px!important;font-size:9px!important;}
   tbody td{padding:6px 8px!important;font-size:11px!important;}
+  .ops-actions{grid-template-columns:1fr;}
   .pagination{flex-direction:column;align-items:center;gap:6px;padding:8px 12px;}
   .pag-info{font-size:10px;}
   .modal-overlay{align-items:flex-end;padding-bottom:0;}
@@ -359,6 +394,11 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
       <div class="kpi-num red" id="statFaulty">—</div>
       <div class="kpi-label"><i class="fa-solid fa-circle-xmark" style="font-size:9px;"></i> Faulty Items</div>
       <div class="kpi-sub" id="statFaultySub"></div>
+    </div>
+    <div class="kpi-card" style="border-left-color:var(--sf-yellow);" id="kpiCardLowStock" onclick="filterLowStock()">
+      <div class="kpi-num" style="color:var(--sf-yellow);" id="statLowStock">—</div>
+      <div class="kpi-label"><i class="fa-solid fa-bell" style="font-size:9px;"></i> Low Stock</div>
+      <div class="kpi-sub" id="statLowStockSub">Qty 1 ya usse kam</div>
     </div>
   </div>
 
@@ -422,6 +462,14 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
       </select>
     </div>
 
+    <div class="sf-filter-group">
+      <label class="sf-filter-label">Stock Alert</label>
+      <select class="sf-input sf-select" id="stockFilter" style="width:150px;" onchange="onFilter()">
+        <option value="">All Stock</option>
+        <option value="low">Low Stock</option>
+      </select>
+    </div>
+
     <button class="sf-btn sf-btn-neutral" onclick="clearAllFilters()" id="clearFilterBtn" style="display:none;align-self:flex-end;">
       <i class="fa-solid fa-rotate-left"></i> Clear
     </button>
@@ -433,6 +481,50 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
     <button class="sf-btn sf-btn-success" onclick="openAddModal()" id="mobileAddBtn" style="display:none;">
       <i class="fa-solid fa-plus"></i>
     </button>
+  </div>
+
+  <div class="ops-grid">
+    <div class="ops-card">
+      <div class="ops-card-head">
+        <i class="fa-solid fa-bolt" style="color:var(--sf-blue);"></i>
+        <div class="ops-card-title">Quick Operations</div>
+      </div>
+      <div class="ops-card-body">
+        <div class="ops-actions">
+          <button class="ops-action" onclick="openTransferModalFromSelection()">
+            <i class="fa-solid fa-right-left"></i>
+            <strong>Transfer Material</strong>
+            <span>Selected ya opened record ko dusre engineer ko move karein.</span>
+          </button>
+          <button class="ops-action" onclick="filterLowStock()">
+            <i class="fa-solid fa-triangle-exclamation" style="color:var(--sf-yellow);"></i>
+            <strong>Low Stock Watch</strong>
+            <span>Critical qty records ko ek click mein isolate karein.</span>
+          </button>
+          <button class="ops-action" onclick="openUploadModal()">
+            <i class="fa-solid fa-file-arrow-up" style="color:var(--sf-green);"></i>
+            <strong>Bulk Intake</strong>
+            <span>Excel/CSV se fresh stock ingest karein.</span>
+          </button>
+          <button class="ops-action" onclick="exportExcel()">
+            <i class="fa-solid fa-file-excel" style="color:var(--sf-green);"></i>
+            <strong>Ops Export</strong>
+            <span>Current stock ka Excel snapshot download karein.</span>
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="ops-card">
+      <div class="ops-card-head">
+        <i class="fa-solid fa-clock-rotate-left" style="color:var(--sf-yellow);"></i>
+        <div class="ops-card-title">Recent Activity</div>
+      </div>
+      <div class="ops-card-body">
+        <div class="activity-list" id="activityList">
+          <div class="activity-empty">Activity load ho rahi hai…</div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="sf-table-card" style="border-radius:0 0 var(--r-lg) var(--r-lg);border-top:none;">
@@ -459,7 +551,7 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
             <th style="width:70px;">Qty</th>
             <th style="width:130px;">Item Status</th>
             <th>Engineer</th>
-            <th style="width:90px;">Actions</th>
+            <th style="width:130px;">Actions</th>
           </tr>
         </thead>
         <tbody id="tableBody">
@@ -543,6 +635,67 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
       <button class="sf-btn sf-btn-neutral" onclick="closeModal('materialModal')">Cancel</button>
       <button class="sf-btn sf-btn-primary" id="modalSaveBtn" onclick="saveMaterial()">
         <i class="fa-solid fa-floppy-disk"></i> Save
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="detailModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title"><i class="fa-solid fa-box-open"></i> Material Snapshot</span>
+      <button class="modal-close" onclick="closeModal('detailModal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="detail-grid" id="detailGrid"></div>
+      <div class="detail-history">
+        <div class="ops-card-title" style="margin-bottom:10px;">Transfer History</div>
+        <div class="history-list" id="detailHistoryList"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="sf-btn sf-btn-neutral" onclick="closeModal('detailModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="transferModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title"><i class="fa-solid fa-right-left"></i> Transfer Material</span>
+      <button class="modal-close" onclick="closeModal('transferModal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="transferRecordId"/>
+      <div class="form-grid">
+        <div class="form-field full">
+          <label>Selected Material</label>
+          <input type="text" id="transferMaterialLabel" readonly/>
+        </div>
+        <div class="form-field">
+          <label>Available Qty</label>
+          <input type="text" id="transferAvailableQty" readonly/>
+        </div>
+        <div class="form-field">
+          <label>Transfer Qty <span>*</span></label>
+          <input type="number" id="transferQty" min="1" placeholder="0"/>
+        </div>
+        <div class="form-field full">
+          <label>Transfer To Engineer <span>*</span></label>
+          <select id="transferToEngineer">
+            <option value="" disabled selected>Select engineer</option>
+          </select>
+        </div>
+        <div class="form-field full">
+          <label>Transfer Note</label>
+          <textarea id="transferNote" placeholder="Optional note for ops history"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="sf-btn sf-btn-neutral" onclick="closeModal('transferModal')">Cancel</button>
+      <button class="sf-btn sf-btn-primary" id="transferSaveBtn" onclick="submitTransfer()">
+        <i class="fa-solid fa-right-left"></i> Transfer
       </button>
     </div>
   </div>
@@ -639,6 +792,10 @@ const TOKEN = () => {
 const isAdmin = () => {
   try { return JSON.parse(atob(TOKEN().split('.')[1]))?.role?.toLowerCase() === 'admin'; } catch { return false; }
 };
+const currentRole = () => {
+  try { return JSON.parse(atob(TOKEN().split('.')[1]))?.role?.toLowerCase() || ''; } catch { return ''; }
+};
+const canManageMaterials = () => ['admin', 'manager'].includes(currentRole());
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  STATE
@@ -651,6 +808,8 @@ let activeTab = 'all';
 let searchDebounce;
 const PAGE_SIZE = 20;
 const lastStatsSnapshot = { total: 0, byType: [] };
+let recentTransfers = [];
+let selectedTransferRecord = null;
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  INIT
@@ -679,13 +838,17 @@ async function loadStats() {
   try {
     const r = await fetch(`${API}/stats`, { headers: { Authorization: `Bearer ${TOKEN()}` } });
     if (!r.ok) return;
-    const { total, byType, byEngineer } = await r.json();
+    const { total, byType, byEngineer, lowStockCount = 0, recentTransfers: transferFeed = [] } = await r.json();
     lastStatsSnapshot.total = total || 0;
     lastStatsSnapshot.byType = Array.isArray(byType) ? byType : [];
+    recentTransfers = Array.isArray(transferFeed) ? transferFeed : [];
 
     document.getElementById('statTotal').textContent = total;
     document.getElementById('statTotalSub').textContent = `Across ${byType.length} item type(s)`;
+    document.getElementById('statLowStock').textContent = lowStockCount || 0;
+    document.getElementById('statLowStockSub').textContent = lowStockCount ? `${lowStockCount} record(s) need attention` : 'Stock looks stable';
     renderTypeTabs(byType, total);
+    renderActivityFeed();
 
     // Fetch all data for OK and Faulty count
     const custR = await fetch(`${API}?limit=5000`, { headers: { Authorization: `Bearer ${TOKEN()}` } });
@@ -717,6 +880,7 @@ async function loadStats() {
       o.textContent = e._id;
       engSel.appendChild(o);
     });
+    populateTransferEngineers(byEngineer.map(e => e._id));
 
     // Populate Item Type filter dropdown dynamically from DB
     const typeSel = document.getElementById('typeFilter');
@@ -752,6 +916,7 @@ async function loadData(page = 1) {
   const type   = activeTab !== 'all' ? activeTab : document.getElementById('typeFilter').value;
   const eng    = document.getElementById('engineerFilter').value;
   const status = document.getElementById('statusFilter').value;
+  const lowStockOnly = document.getElementById('stockFilter').value === 'low';
 
   const params = new URLSearchParams({
     page, limit: PAGE_SIZE,
@@ -760,14 +925,18 @@ async function loadData(page = 1) {
     ...(eng    && { engineerName: eng }),
     // itemStatus filter — pass if backend supports it
     ...(status && { itemStatus: status }),
+    ...(lowStockOnly && { lowStock: 'true' }),
   });
 
   // Update active type label
   const lbl = document.getElementById('activeTypeLabel');
-  lbl.textContent = type ? `— Filtered: ${type}` : '';
+  const labelBits = [];
+  if (type) labelBits.push(type);
+  if (lowStockOnly) labelBits.push('Low Stock');
+  lbl.textContent = labelBits.length ? `Filtered: ${labelBits.join(' | ')}` : '';
 
   // Show/hide clear button
-  const hasFilter = type || eng || status || search;
+  const hasFilter = type || eng || status || search || lowStockOnly;
   document.getElementById('clearFilterBtn').style.display = hasFilter ? 'flex' : 'none';
   updateStatusKpis();
 
@@ -779,7 +948,9 @@ async function loadData(page = 1) {
     totalRecs = total;
     renderTable(data);
     renderPagination(total, page);
-    document.getElementById('countChip').textContent = `${total} record${total !== 1 ? 's' : ''}`;
+    document.getElementById('countChip').textContent = lowStockOnly
+      ? `${total} low-stock record${total !== 1 ? 's' : ''}`
+      : `${total} record${total !== 1 ? 's' : ''}`;
     setLastSyncTime();
   } catch(e) {
     showToast('Network error', 'error');
@@ -805,6 +976,7 @@ function renderTable(data) {
     return;
   }
   const admin = isAdmin();
+  const manager = canManageMaterials();
   const offset = (curPage - 1) * PAGE_SIZE;
   tbody.innerHTML = data.map((r, i) => {
     // Item Type badge class
@@ -843,10 +1015,12 @@ function renderTable(data) {
       </td>
       <td>
         <div class="action-group">
+          <button class="act-btn view" title="View" onclick="openDetailModal('${r._id}')"><i class="fa-solid fa-eye"></i></button>
+          ${manager ? `<button class="act-btn transfer" title="Transfer" onclick="openTransferModal('${r._id}')"><i class="fa-solid fa-right-left"></i></button>` : ``}
           ${admin ? `
             <button class="act-btn edit" title="Edit" onclick="openEditModal('${r._id}')"><i class="fa-solid fa-pen"></i></button>
             <button class="act-btn del" title="Delete" onclick="confirmDelete('${r._id}','${esc(r.itemName)}')"><i class="fa-solid fa-trash"></i></button>
-          ` : `<span style="font-size:11px;color:var(--txt4);">View Only</span>`}
+          ` : ``}
         </div>
       </td>
     </tr>
@@ -901,6 +1075,12 @@ function filterByStatus(status) {
   loadData(1);
 }
 
+function filterLowStock() {
+  document.getElementById('stockFilter').value = 'low';
+  updateStatusKpis();
+  loadData(1);
+}
+
 // Item Type dropdown change
 function onTypeFilterChange() {
   const val = document.getElementById('typeFilter').value;
@@ -926,6 +1106,7 @@ function clearAllFilters() {
   document.getElementById('typeFilter').value = '';
   document.getElementById('statusFilter').value = '';
   document.getElementById('engineerFilter').value = '';
+  document.getElementById('stockFilter').value = '';
   syncActiveTab();
   updateStatusKpis();
   loadData(1);
@@ -955,6 +1136,66 @@ function openEditModal(id) {
   document.getElementById('fItemStatus').value = rec.itemStatus || '';
   document.getElementById('fEngineer').value   = rec.engineerName;
   openModal('materialModal');
+}
+
+function openDetailModal(id) {
+  const rec = allData.find(r => r._id === id);
+  if (!rec) return;
+  const fields = [
+    ['Item Code', rec.itemCode],
+    ['Item Name', rec.itemName],
+    ['Item Type', rec.itemType],
+    ['Engineer', rec.engineerName],
+    ['Quantity', rec.qty],
+    ['Status', rec.itemStatus || '—'],
+    ['Serial Number', rec.serialNumber],
+    ['Uploaded By', rec.uploadedBy || '—'],
+    ['Last Updated', rec.updatedAt ? new Date(rec.updatedAt).toLocaleString('en-IN') : '—'],
+  ];
+  document.getElementById('detailGrid').innerHTML = fields.map(([label, value]) => `
+    <div class="detail-field">
+      <div class="detail-label">${esc(label)}</div>
+      <div class="detail-value">${esc(String(value ?? '—'))}</div>
+    </div>
+  `).join('');
+
+  const history = Array.isArray(rec.transferHistory) ? rec.transferHistory.slice().reverse() : [];
+  document.getElementById('detailHistoryList').innerHTML = history.length
+    ? history.map(entry => `
+      <div class="history-row">
+        <strong>${esc(entry.type || 'MOVE')} • Qty ${esc(String(entry.qty || 0))}</strong>
+        <span>${esc(entry.fromEngineer || '—')} -> ${esc(entry.toEngineer || '—')}</span>
+        <span>${esc(entry.note || 'No note')} • ${entry.createdAt ? new Date(entry.createdAt).toLocaleString('en-IN') : ''}</span>
+      </div>
+    `).join('')
+    : `<div class="activity-empty">Abhi transfer history available nahi hai.</div>`;
+  openModal('detailModal');
+}
+
+function openTransferModal(id) {
+  const rec = allData.find(r => r._id === id);
+  if (!rec) return;
+  selectedTransferRecord = rec;
+  document.getElementById('transferRecordId').value = rec._id;
+  document.getElementById('transferMaterialLabel').value = `${rec.itemCode} • ${rec.itemName} • ${rec.engineerName}`;
+  document.getElementById('transferAvailableQty').value = rec.qty;
+  document.getElementById('transferQty').value = '';
+  document.getElementById('transferNote').value = '';
+  const sel = document.getElementById('transferToEngineer');
+  Array.from(sel.options).forEach((opt, index) => {
+    if (index === 0) return;
+    opt.disabled = opt.value === rec.engineerName;
+  });
+  sel.value = '';
+  openModal('transferModal');
+}
+
+function openTransferModalFromSelection() {
+  if (!allData.length) {
+    showToast('Pehle material records load hone dijiye', 'info');
+    return;
+  }
+  openTransferModal(allData[0]._id);
 }
 
 async function saveMaterial() {
@@ -1006,6 +1247,41 @@ async function saveMaterial() {
   finally {
     btn.disabled = false;
     btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> ' + (editId ? 'Update' : 'Save');
+  }
+}
+
+async function submitTransfer() {
+  const id = document.getElementById('transferRecordId').value;
+  const qty = Number(document.getElementById('transferQty').value);
+  const toEngineer = document.getElementById('transferToEngineer').value;
+  const note = v('transferNote');
+  if (!id || !toEngineer || !qty) {
+    showToast('Transfer ke liye engineer aur qty dono chahiye', 'error');
+    return;
+  }
+  const btn = document.getElementById('transferSaveBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Transferring…';
+  try {
+    const r = await fetch(`${API}/${id}/transfer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${TOKEN()}` },
+      body: JSON.stringify({ qty, toEngineer, note }),
+    });
+    const j = await r.json();
+    if (!r.ok) {
+      showToast(j.message || 'Transfer failed', 'error');
+      return;
+    }
+    showToast(j.message || 'Transfer complete', 'success');
+    closeModal('transferModal');
+    loadData(curPage);
+    loadStats();
+  } catch(e) {
+    showToast('Network error', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-right-left"></i> Transfer';
   }
 }
 
@@ -1160,6 +1436,7 @@ function updateStatusKpis() {
   document.getElementById('kpiCardAll')?.classList.toggle('active-filter', !activeStatus);
   document.getElementById('kpiCardOk')?.classList.toggle('active-filter', activeStatus === 'ok');
   document.getElementById('kpiCardFaulty')?.classList.toggle('active-filter', activeStatus === 'faulty');
+  document.getElementById('kpiCardLowStock')?.classList.toggle('active-filter', document.getElementById('stockFilter')?.value === 'low');
 }
 
 function renderTypeTabs(byType = [], total = 0) {
@@ -1206,6 +1483,44 @@ function setLastSyncTime() {
       minute: '2-digit'
     });
   }
+}
+
+function renderActivityFeed() {
+  const wrap = document.getElementById('activityList');
+  if (!wrap) return;
+  if (!recentTransfers.length) {
+    wrap.innerHTML = `<div class="activity-empty">Abhi tak koi transfer activity nahi mili. Naya transfer karte hi yahan history dikhegi.</div>`;
+    return;
+  }
+  wrap.innerHTML = recentTransfers.map(item => {
+    const entry = item.transfer || {};
+    return `
+      <div class="activity-item">
+        <div class="activity-head">
+          <span class="activity-pill"><i class="fa-solid fa-right-left"></i> ${esc(entry.type || 'MOVE')}</span>
+          <span class="activity-meta">${entry.createdAt ? new Date(entry.createdAt).toLocaleString('en-IN') : ''}</span>
+        </div>
+        <div class="activity-text">
+          <strong>${esc(item.itemCode || '')}</strong> ${esc(item.itemName || '')}<br/>
+          ${esc(entry.fromEngineer || '—')} -> ${esc(entry.toEngineer || item.engineerName || '—')} • Qty ${esc(String(entry.qty || 0))}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function populateTransferEngineers(engineers = []) {
+  const sel = document.getElementById('transferToEngineer');
+  if (!sel) return;
+  const previous = sel.value;
+  sel.innerHTML = '<option value="" disabled selected>Select engineer</option>';
+  engineers.filter(Boolean).forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    sel.appendChild(opt);
+  });
+  if (previous) sel.value = previous;
 }
 
 // Close modals on overlay click

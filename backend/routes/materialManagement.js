@@ -21,6 +21,8 @@ const upload = multer({
 
 // ── Helper ────────────────────────────────────────────────────────────────────
 const VALID_STATUSES = ["OK", "Not Ok (Faulty)", "Under Repair", "Scrapped"];
+const actorName = (req) => req.user?.name || req.user?.email || "System";
+const buildSerial = (prefix = "MAT") => `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
 function validateRow(row) {
   const errors = [];
@@ -36,6 +38,19 @@ function validateRow(row) {
   return errors;
 }
 
+function buildTransferEntry({ type, qty, fromEngineer = "", toEngineer = "", note = "", referenceSerial = "", createdBy = "" }) {
+  return {
+    type,
+    qty: Number(qty),
+    fromEngineer,
+    toEngineer,
+    note,
+    referenceSerial,
+    createdBy,
+    createdAt: new Date(),
+  };
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // GET /materialManagement — list with filters & pagination
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -46,6 +61,7 @@ router.get("/", verifyToken, async (req, res) => {
       engineerName,
       itemType,
       itemStatus,        // ← NEW filter
+      lowStock,
       customerName,
       page = 1,
       limit = 50,
@@ -69,6 +85,7 @@ router.get("/", verifyToken, async (req, res) => {
     if (engineerName) query.engineerName = new RegExp(engineerName, "i");
     if (itemType)     query.itemType     = new RegExp(itemType, "i");    // free-text itemType
     if (itemStatus)   query.itemStatus   = itemStatus;                   // ← NEW
+    if (String(lowStock).toLowerCase() === "true") query.qty = { $lte: 1 };
     if (customerName) query.customerName = new RegExp(customerName, "i");
 
     // UI status filter: "ok" → "OK", "faulty" → "Not Ok (Faulty)"
@@ -121,11 +138,138 @@ router.get("/stats", verifyToken, async (req, res) => {
     // UI ke stat cards: statOk, statFaulty
     const okCount     = byStatus.find(s => s._id === "OK")?.count || 0;
     const faultyCount = byStatus.find(s => s._id === "Not Ok (Faulty)")?.count || 0;
+    const lowStockCount = await MaterialManagement.countDocuments({ isActive: true, qty: { $lte: 1 } });
+    const recentTransfers = await MaterialManagement.aggregate([
+      { $match: { isActive: true, transferHistory: { $exists: true, $ne: [] } } },
+      { $unwind: "$transferHistory" },
+      { $sort: { "transferHistory.createdAt": -1 } },
+      { $limit: 8 },
+      {
+        $project: {
+          _id: 1,
+          itemCode: 1,
+          itemName: 1,
+          engineerName: 1,
+          serialNumber: 1,
+          itemType: 1,
+          transfer: "$transferHistory",
+        },
+      },
+    ]);
 
-    res.json({ success: true, total, okCount, faultyCount, byStatus, byType, byEngineer });
+    res.json({ success: true, total, okCount, faultyCount, lowStockCount, byStatus, byType, byEngineer, recentTransfers });
   } catch (err) {
     console.error("[MaterialMgmt] GET /stats:", err);
     res.status(500).json({ success: false, message: "Server error", error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// POST /materialManagement/:id/transfer — move qty from one engineer to another
+// ═══════════════════════════════════════════════════════════════════════════════
+router.post("/:id/transfer", verifyToken, requireRole(["Admin", "Manager"]), async (req, res) => {
+  try {
+    const { toEngineer, qty, note = "" } = req.body;
+    const transferQty = Number(qty);
+
+    if (!toEngineer || !toEngineer.trim()) {
+      return res.status(400).json({ success: false, message: "Target engineer is required" });
+    }
+    if (!Number.isFinite(transferQty) || transferQty <= 0) {
+      return res.status(400).json({ success: false, message: "Transfer qty must be greater than 0" });
+    }
+
+    const source = await MaterialManagement.findById(req.params.id);
+    if (!source || !source.isActive) {
+      return res.status(404).json({ success: false, message: "Source material not found" });
+    }
+    if (transferQty > source.qty) {
+      return res.status(400).json({ success: false, message: "Transfer qty exceeds available stock" });
+    }
+    if (source.engineerName.trim().toLowerCase() === toEngineer.trim().toLowerCase()) {
+      return res.status(400).json({ success: false, message: "Source and target engineer cannot be same" });
+    }
+
+    const createdBy = actorName(req);
+    const normalizedToEngineer = toEngineer.trim();
+    const normalizedItemType = source.itemType.toUpperCase();
+    const sourceEntry = buildTransferEntry({
+      type: "OUT",
+      qty: transferQty,
+      fromEngineer: source.engineerName,
+      toEngineer: normalizedToEngineer,
+      note,
+      referenceSerial: source.serialNumber,
+      createdBy,
+    });
+
+    let target = await MaterialManagement.findOne({
+      isActive: true,
+      itemCode: source.itemCode,
+      itemType: normalizedItemType,
+      itemStatus: source.itemStatus,
+      engineerName: new RegExp(`^${normalizedToEngineer.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i"),
+    });
+
+    if (target) {
+      target.qty += transferQty;
+      target.lastTransferredAt = new Date();
+      target.transferHistory.push(buildTransferEntry({
+        type: "IN",
+        qty: transferQty,
+        fromEngineer: source.engineerName,
+        toEngineer: normalizedToEngineer,
+        note,
+        referenceSerial: source.serialNumber,
+        createdBy,
+      }));
+      await target.save();
+    } else {
+      target = await MaterialManagement.create({
+        serialNumber: buildSerial("TRF"),
+        itemCode: source.itemCode,
+        itemName: source.itemName,
+        qty: transferQty,
+        itemType: normalizedItemType,
+        itemStatus: source.itemStatus,
+        engineerName: normalizedToEngineer,
+        customerName: source.customerName || "",
+        remarks: source.remarks || "",
+        uploadedBy: createdBy,
+        lastTransferredAt: new Date(),
+        transferHistory: [
+          buildTransferEntry({
+            type: "IN",
+            qty: transferQty,
+            fromEngineer: source.engineerName,
+            toEngineer: normalizedToEngineer,
+            note,
+            referenceSerial: source.serialNumber,
+            createdBy,
+          }),
+        ],
+      });
+    }
+
+    source.qty -= transferQty;
+    source.lastTransferredAt = new Date();
+    source.transferHistory.push(sourceEntry);
+    if (source.qty === 0) {
+      source.remarks = [source.remarks, `Transferred out to ${normalizedToEngineer}`].filter(Boolean).join(" | ");
+    }
+    await source.save();
+
+    res.json({
+      success: true,
+      message: `Transferred ${transferQty} item(s) to ${normalizedToEngineer}`,
+      data: {
+        source,
+        target,
+      },
+    });
+  } catch (err) {
+    console.error("[MaterialMgmt] POST /:id/transfer:", err);
+    res.status(500).json({ success: false, message: "Transfer failed", error: err.message });
   }
 });
 

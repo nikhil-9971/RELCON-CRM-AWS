@@ -1,5 +1,50 @@
 const mongoose = require("mongoose");
 
+const transferHistorySchema = new mongoose.Schema(
+  {
+    type: {
+      type: String,
+      enum: ["IN", "OUT", "ADJUSTMENT"],
+      required: true,
+    },
+    qty: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+    fromEngineer: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    toEngineer: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    note: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    referenceSerial: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    createdBy: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: false }
+);
+
 const materialManagementSchema = new mongoose.Schema(
   {
     serialNumber: {
@@ -58,6 +103,14 @@ const materialManagementSchema = new mongoose.Schema(
     uploadedBy: {
       type: String,
       trim: true,
+    },
+    transferHistory: {
+      type: [transferHistorySchema],
+      default: [],
+    },
+    lastTransferredAt: {
+      type: Date,
+      default: null,
     },
     isActive: {
       type: Boolean,
