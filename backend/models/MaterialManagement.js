@@ -27,19 +27,29 @@ const materialManagementSchema = new mongoose.Schema(
     itemType: {
       type: String,
       required: true,
-      enum: ["HPCL", "RBML", "BPCL", "OTHER"],
+      trim: true,
+      uppercase: true,
+      // UI mein free-text datalist use hota hai, isliye enum hata diya
+      // Agar strict chahiye: enum: ["HPCL", "RBML", "BPCL", "OTHER"]
     },
-    customerName: {
+    itemStatus: {
       type: String,
       required: true,
       trim: true,
+      enum: ["OK", "Not Ok (Faulty)", "Under Repair", "Scrapped"],
+      default: "OK",
     },
     engineerName: {
       type: String,
       required: true,
       trim: true,
     },
-    // Optional extra fields
+    customerName: {
+      type: String,
+      trim: true,
+      default: "",
+      // UI mein yeh field nahi hai, isliye required: false
+    },
     remarks: {
       type: String,
       trim: true,
@@ -55,14 +65,14 @@ const materialManagementSchema = new mongoose.Schema(
     },
   },
   {
-    timestamps: true, // createdAt, updatedAt
+    timestamps: true,
   }
 );
 
-// Index for fast search
+// Fast search ke liye indexes
 materialManagementSchema.index({ itemCode: 1 });
 materialManagementSchema.index({ engineerName: 1 });
-materialManagementSchema.index({ customerName: 1 });
-//materialManagementSchema.index({ serialNumber: 1 }, { unique: true });
+materialManagementSchema.index({ itemType: 1 });
+materialManagementSchema.index({ itemStatus: 1 });
 
 module.exports = mongoose.model("MaterialManagement", materialManagementSchema);
