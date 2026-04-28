@@ -7,236 +7,120 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
 <style>
-/* ================================================================
-   RELCON CRM — Material Management
-   CSV Columns: Item Code, Item Name, Item Type, Qty, Item Status, Engineer
-================================================================ */
-:root {
-  --brand:#2563EB; --brand-dk:#1D4ED8; --brand-lt:#EFF6FF;
-  --brand-glow:rgba(37,99,235,.14);
-  --success:#059669; --warn:#D97706; --danger:#DC2626; --purple:#7C3AED;
-  --orange:#EA580C; --teal:#0D9488;
-  --page-bg:#F1F5F9; --surface:#FFFFFF; --surface2:#F8FAFC;
-  --border:#E2E8F0; --border-lt:#F1F5F9;
-  --txt:#0F172A; --txt2:#1E293B; --txt3:#64748B; --txt4:#94A3B8;
-  --r-sm:4px; --r:8px; --r-lg:12px; --r-xl:16px; --r-full:9999px;
-  --sh-xs:0 1px 2px rgba(15,23,42,.05);
-  --sh-sm:0 1px 4px rgba(15,23,42,.08);
-  --sh:0 4px 12px rgba(15,23,42,.10);
-  --sh-lg:0 8px 24px rgba(15,23,42,.12);
-  --font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+/* Task Manager aligned UI */
+:root{
+  --sf-blue:#0176d3; --sf-blue-dk:#014486; --sf-blue-lt:#e8f4fd; --sf-blue-hover:#0b5faa;
+  --sf-navy:#1a2e4a;
+  --sf-green:#2e844a; --sf-green-lt:#eaf5ea;
+  --sf-red:#ba0517; --sf-red-lt:#fef1ee;
+  --sf-orange:#dd5a0c; --sf-orange-lt:#fff3e0;
+  --sf-yellow:#b8860b; --sf-yellow-lt:#fff8e6;
+  --sf-purple:#6b3fa0; --sf-purple-lt:#f5f0ff;
+  --sf-teal:#0e7490; --sf-teal-lt:#ecfeff;
+  --bg:#f3f2f2; --surface:#fff; --surface2:#f9f9f9;
+  --border:#dddbda; --border-lt:#f3f2f2;
+  --txt:#080707; --txt2:#3e3e3c; --txt3:#706e6b; --txt4:#aeaeac;
+  --r-sm:4px; --r:6px; --r-lg:8px; --r-xl:12px;
+  --sh-sm:0 2px 4px rgba(0,0,0,0.09); --sh-md:0 8px 24px rgba(0,0,0,0.12); --sh-lg:0 12px 30px rgba(0,0,0,0.14);
 }
-
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);background:var(--page-bg);-webkit-font-smoothing:antialiased;}
+html{font-size:13px;-webkit-font-smoothing:antialiased;}
+body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-thumb{background:#c8c6c4;border-radius:3px;}
 
-/* ── PAGE HEADER ── */
-.page-header{
-  background:var(--surface);
-  border-bottom:1px solid var(--border);
-  padding:18px 24px 0;
-  position:sticky;top:0;z-index:30;
-  box-shadow:var(--sh-xs);
-}
-.ph-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:14px;}
-.ph-left{display:flex;align-items:center;gap:14px;}
-.ph-icon{
-  width:44px;height:44px;border-radius:var(--r-lg);flex-shrink:0;
-  background:linear-gradient(135deg,#0D9488 0%,#0891B2 100%);
-  display:flex;align-items:center;justify-content:center;
-  font-size:20px;color:#fff;
-  box-shadow:0 0 0 1px rgba(13,148,136,.2),0 4px 16px rgba(13,148,136,.25);
-}
-.ph-title{font-size:18px;font-weight:800;color:var(--txt);letter-spacing:-.4px;line-height:1.2;}
-.ph-sub{font-size:11.5px;color:var(--txt3);margin-top:2px;}
-.ph-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.dv-strip{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:52px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:200;box-shadow:0 1px 3px rgba(15,23,42,0.07);}
+.dv-strip-icon{width:28px;height:28px;background:var(--sf-teal-lt);border-radius:5px;display:flex;align-items:center;justify-content:center;color:var(--sf-teal);font-size:13px;}
+.dv-strip-title{font-size:14px;font-weight:700;color:var(--txt);letter-spacing:-0.2px;}
+.dv-strip-sep{width:1px;height:18px;background:var(--border);}
+.dv-strip-meta{font-size:10px;font-weight:500;color:var(--txt4);background:var(--surface2);border:1px solid var(--border);padding:2px 9px;border-radius:9999px;}
+.dv-strip-spacer{flex:1;}
 
-/* ── TABS — Item Type ke liye ── */
-.ph-tabs{display:flex;gap:2px;align-items:center;}
-.ph-tab{
-  padding:8px 14px 10px;font-size:12.5px;font-weight:500;
-  color:var(--txt3);border:none;background:none;cursor:pointer;
-  border-bottom:2px solid transparent;transition:all .15s;
-  white-space:nowrap;
-}
-.ph-tab:hover{color:var(--txt2);}
-.ph-tab.active{color:var(--brand);border-bottom-color:var(--brand);font-weight:600;}
+.sf-body{padding:16px 20px;}
+.sf-bc{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--txt3);margin-bottom:10px;}
+.sf-bc a{color:var(--sf-blue);text-decoration:none;}
+.sf-bc a:hover{text-decoration:underline;}
 
-/* ── MAIN CONTENT ── */
-.page-body{padding:20px 24px;display:flex;flex-direction:column;gap:16px;}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:14px;}
+.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 16px;box-shadow:var(--sh-sm);display:flex;flex-direction:column;gap:4px;border-left:3px solid transparent;cursor:pointer;transition:box-shadow 0.15s,transform 0.15s;}
+.kpi-card:hover{box-shadow:var(--sh-md);transform:translateY(-1px);}
+.kpi-card.active-filter{box-shadow:0 0 0 2px var(--sf-blue);border-left-color:var(--sf-blue)!important;}
+.kpi-card.blue{border-left-color:var(--sf-blue);}
+.kpi-card.green{border-left-color:var(--sf-green);}
+.kpi-card.red{border-left-color:var(--sf-red);}
+.kpi-num{font-size:24px;font-weight:700;line-height:1;}
+.kpi-num.blue{color:var(--sf-blue);}
+.kpi-num.green{color:var(--sf-green);}
+.kpi-num.red{color:var(--sf-red);}
+.kpi-label{font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:0.5px;}
+.kpi-sub{font-size:10px;color:var(--txt4);}
 
-/* ── STAT CARDS ── */
-.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
-.stat-card{
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--r-xl);padding:16px 18px;
-  display:flex;align-items:center;gap:14px;
-  box-shadow:var(--sh-xs);transition:box-shadow .15s,transform .15s;
-  position:relative;overflow:hidden;
-}
-.stat-card:hover{box-shadow:var(--sh);transform:translateY(-1px);}
-.stat-card::before{
-  content:'';position:absolute;top:0;left:0;right:0;height:3px;
-  border-radius:var(--r-xl) var(--r-xl) 0 0;
-}
-.stat-card.blue::before{background:linear-gradient(90deg,#2563EB,#3B82F6);}
-.stat-card.teal::before{background:linear-gradient(90deg,#0D9488,#06B6D4);}
-.stat-card.green::before{background:linear-gradient(90deg,#059669,#10B981);}
-.stat-card.orange::before{background:linear-gradient(90deg,#DC2626,#EF4444);}
-.stat-icon{
-  width:40px;height:40px;border-radius:var(--r-lg);flex-shrink:0;
-  display:flex;align-items:center;justify-content:center;font-size:16px;
-}
-.stat-icon.blue{background:#EFF6FF;color:#2563EB;}
-.stat-icon.teal{background:#F0FDFA;color:#0D9488;}
-.stat-icon.green{background:#ECFDF5;color:#059669;}
-.stat-icon.orange{background:#FFF7ED;color:#EA580C;}
-.stat-num{font-size:24px;font-weight:800;color:var(--txt);line-height:1;}
-.stat-lbl{font-size:11px;color:var(--txt3);margin-top:3px;font-weight:500;}
-.stat-delta{font-size:10px;font-weight:600;margin-top:2px;}
-.stat-delta.up{color:var(--success);}
-.stat-delta.warn{color:var(--warn);}
-.stat-delta.neutral{color:var(--txt4);}
+.sf-page-header{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 20px;margin-bottom:12px;display:flex;align-items:center;gap:14px;box-shadow:var(--sh-sm);flex-wrap:wrap;}
+.sf-page-icon{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#18a999,#0e7490);display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;box-shadow:0 2px 8px rgba(14,116,144,0.35);flex-shrink:0;}
+.sf-page-title{font-size:18px;font-weight:700;color:var(--txt);letter-spacing:-0.3px;}
+.sf-page-meta{font-size:12px;color:var(--txt3);margin-top:2px;}
+.sf-page-actions{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
 
-/* ── TOOLBAR ── */
-.toolbar{
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--r-xl);padding:12px 16px;
-  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
-  box-shadow:var(--sh-xs);
-}
-.search-wrap{position:relative;flex:1;min-width:200px;max-width:320px;}
-.search-wrap input{
-  width:100%;height:34px;
-  background:var(--surface2);border:1px solid var(--border);
-  border-radius:var(--r-full);padding:0 12px 0 32px;
-  font-size:12.5px;color:var(--txt);outline:none;font-family:var(--font);
-  transition:border-color .15s,box-shadow .15s;
-}
-.search-wrap input:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-glow);}
-.search-wrap input::placeholder{color:var(--txt4);}
-.search-wrap i{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--txt4);font-size:11px;}
+.sf-tabs{display:flex;gap:2px;padding:0 20px;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto;}
+.sf-tab{font-family:'Inter',sans-serif;font-size:12px;font-weight:500;padding:10px 16px;cursor:pointer;border:none;background:transparent;color:var(--txt3);border-bottom:3px solid transparent;transition:all 0.15s;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
+.sf-tab:hover{color:var(--txt);background:var(--surface2);}
+.sf-tab.active{color:var(--sf-blue);border-bottom-color:var(--sf-blue);font-weight:600;}
+.sf-tab-badge{background:var(--sf-red-lt);color:var(--sf-red);font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;min-width:18px;text-align:center;}
+.sf-tab.active .sf-tab-badge{background:var(--sf-blue-lt);color:var(--sf-blue);}
 
-/* Item Type Filter — main filter */
-.type-filter-wrap{display:flex;align-items:center;gap:6px;}
-.type-filter-label{font-size:11.5px;font-weight:600;color:var(--txt3);white-space:nowrap;}
-.tb-filter{
-  height:34px;padding:0 12px;background:var(--surface2);
-  border:1px solid var(--border);border-radius:var(--r);
-  font-size:12px;color:var(--txt2);font-family:var(--font);
-  outline:none;cursor:pointer;transition:border-color .15s;
-}
-.tb-filter:focus{border-color:var(--brand);}
-.tb-filter.active-filter{
-  border-color:var(--brand);background:var(--brand-lt);color:var(--brand);font-weight:600;
-}
+.sf-toolbar{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);padding:12px 20px;margin-bottom:0;display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;}
+.sf-filter-group{display:flex;flex-direction:column;gap:4px;}
+.sf-filter-label{font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:0.5px;}
+.sf-input,.sf-select{font-family:'Inter',sans-serif;font-size:12px;color:var(--txt);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:5px 9px;height:32px;outline:none;transition:border-color 0.15s,box-shadow 0.15s;}
+.sf-input:focus,.sf-select:focus{border-color:var(--sf-blue);box-shadow:0 0 0 3px rgba(1,118,211,0.12);}
+.sf-input::placeholder{color:var(--txt4);}
+.sf-search-wrap{position:relative;}
+.sf-search-wrap i{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--txt4);font-size:11px;pointer-events:none;}
+.sf-search-input{padding-left:28px;width:240px;}
+.sf-select{-webkit-appearance:none;appearance:none;padding-right:26px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath fill='%23aeaeac' d='M0 0l5 7 5-7z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;cursor:pointer;}
+.sf-toolbar-spacer{flex:1;}
 
-/* Status Filter */
-.status-filter-wrap{display:flex;align-items:center;gap:6px;}
+.sf-btn{font-family:'Inter',sans-serif;font-size:12px;font-weight:500;padding:0 14px;height:32px;border-radius:var(--r-sm);cursor:pointer;border:none;display:inline-flex;align-items:center;gap:6px;transition:all 0.15s;white-space:nowrap;}
+.sf-btn-primary{background:var(--sf-blue);color:#fff;box-shadow:0 1px 3px rgba(1,118,211,0.3);}
+.sf-btn-primary:hover{background:var(--sf-blue-hover);transform:translateY(-1px);}
+.sf-btn-neutral{background:var(--surface);color:var(--txt);border:1px solid var(--border);}
+.sf-btn-neutral:hover{background:var(--bg);}
+.sf-btn-success{background:var(--sf-green);color:#fff;}
+.sf-btn-success:hover{background:#1d5e31;transform:translateY(-1px);}
+.sf-btn-danger{background:var(--sf-red);color:#fff;}
+.sf-btn-danger:hover{background:#920210;}
 
-.tb-spacer{flex:1;}
+.sf-table-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);overflow:hidden;}
+.sf-table-header{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--surface2);flex-wrap:wrap;}
+.sf-table-title{font-size:12px;font-weight:700;color:var(--txt);text-transform:uppercase;letter-spacing:0.4px;display:flex;align-items:center;gap:6px;}
+.sf-record-count{background:var(--sf-blue-lt);color:var(--sf-blue);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;}
+.sf-table-wrap{overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 360px);}
+table{width:100%;border-collapse:collapse;font-size:11px;min-width:980px;}
+thead th{background:var(--sf-navy)!important;color:#e8f4fd!important;font-size:10px!important;font-weight:600!important;text-transform:uppercase!important;letter-spacing:0.6px!important;padding:9px 12px!important;text-align:left!important;white-space:nowrap!important;border:none!important;border-right:1px solid #253d5b!important;position:sticky;top:0;z-index:10;}
+thead th:last-child{border-right:none!important;}
+tbody tr{border-bottom:1px solid var(--border-lt);transition:background 0.1s;}
+tbody tr:hover{background:#f0f8ff;}
+tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!important;vertical-align:middle!important;border:none!important;border-bottom:1px solid var(--border-lt)!important;white-space:nowrap;}
 
-/* ── BUTTONS ── */
-.btn{
-  display:inline-flex;align-items:center;gap:6px;
-  height:34px;padding:0 14px;border-radius:var(--r);
-  font-size:12.5px;font-weight:600;cursor:pointer;
-  border:none;font-family:var(--font);transition:all .13s;
-  white-space:nowrap;
-}
-.btn-primary{background:var(--brand);color:#fff;}
-.btn-primary:hover{background:var(--brand-dk);box-shadow:0 4px 12px rgba(37,99,235,.28);}
-.btn-secondary{background:var(--surface2);color:var(--txt2);border:1px solid var(--border);}
-.btn-secondary:hover{background:var(--brand-lt);border-color:var(--brand);color:var(--brand);}
-.btn-danger{background:#FEF2F2;color:var(--danger);border:1px solid #FECACA;}
-.btn-danger:hover{background:#DC2626;color:#fff;border-color:#DC2626;}
-.btn-success{background:#ECFDF5;color:var(--success);border:1px solid #A7F3D0;}
-.btn-success:hover{background:var(--success);color:#fff;border-color:var(--success);}
-.btn-sm{height:28px;padding:0 10px;font-size:11.5px;}
-.btn-icon{width:34px;height:34px;padding:0;display:inline-flex;align-items:center;justify-content:center;}
+.sf-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;white-space:nowrap;}
+.badge-type-HPCL{background:var(--sf-blue-lt);color:var(--sf-blue);}
+.badge-type-RBML{background:var(--sf-orange-lt);color:var(--sf-orange);}
+.badge-type-BPCL{background:var(--sf-purple-lt);color:var(--sf-purple);}
+.badge-type-OTHER,.badge-type-default{background:#f4f6f9;color:var(--txt3);}
+.badge-type-FCC{background:var(--sf-green-lt);color:var(--sf-green);}
+.badge-type-SMPS{background:#f7eefc;color:#8e44ad;}
+.badge-status-ok{background:var(--sf-green-lt);color:var(--sf-green);}
+.badge-status-faulty{background:var(--sf-red-lt);color:var(--sf-red);}
+.badge-status-other{background:var(--sf-yellow-lt);color:var(--sf-yellow);}
 
-/* ── TABLE CARD ── */
-.table-card{
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--r-xl);overflow:hidden;
-  box-shadow:var(--sh-xs);
-}
-.table-card-header{
-  padding:14px 18px;border-bottom:1px solid var(--border);
-  display:flex;align-items:center;justify-content:space-between;gap:10px;
-}
-.table-card-title{font-size:13.5px;font-weight:700;color:var(--txt);}
-.table-count{
-  font-size:11px;font-weight:700;
-  background:var(--brand-lt);color:var(--brand);
-  padding:2px 8px;border-radius:var(--r-full);
-}
-.table-wrap{overflow-x:auto;}
-table{width:100%;border-collapse:collapse;font-size:12.5px;}
-thead th{
-  padding:10px 14px;
-  background:var(--surface2);
-  border-bottom:1px solid var(--border);
-  font-size:11px;font-weight:700;
-  color:var(--txt3);text-transform:uppercase;letter-spacing:.6px;
-  white-space:nowrap;text-align:left;
-  position:sticky;top:0;z-index:2;
-}
-thead th:first-child{padding-left:18px;}
-tbody tr{border-bottom:1px solid var(--border-lt);transition:background .1s;}
-tbody tr:last-child{border-bottom:none;}
-tbody tr:hover{background:var(--brand-lt);}
-td{padding:11px 14px;color:var(--txt2);vertical-align:middle;}
-td:first-child{padding-left:18px;}
-
-/* ── ITEM TYPE BADGES ── */
-.badge{
-  display:inline-flex;align-items:center;gap:4px;
-  padding:2px 9px;border-radius:var(--r-full);
-  font-size:11px;font-weight:600;white-space:nowrap;
-}
-/* Item Type badges */
-.badge-type-HPCL    {background:#EFF6FF;color:#2563EB;border:1px solid #BFDBFE;}
-.badge-type-RBML    {background:#FFF7ED;color:#EA580C;border:1px solid #FED7AA;}
-.badge-type-BPCL    {background:#F5F3FF;color:#7C3AED;border:1px solid #DDD6FE;}
-.badge-type-OTHER   {background:#F8FAFC;color:#64748B;border:1px solid #E2E8F0;}
-.badge-type-FCC     {background:#F0FDF4;color:#16A34A;border:1px solid #BBF7D0;}
-.badge-type-SMPS    {background:#FDF4FF;color:#A21CAF;border:1px solid #F5D0FE;}
-.badge-type-default {background:#F8FAFC;color:#64748B;border:1px solid #E2E8F0;}
-
-/* Item Status badges */
-.badge-status-ok     {background:#ECFDF5;color:#059669;border:1px solid #A7F3D0;}
-.badge-status-faulty {background:#FEF2F2;color:#DC2626;border:1px solid #FECACA;}
-.badge-status-other  {background:#FFFBEB;color:#D97706;border:1px solid #FDE68A;}
-
-/* ── Item Code chip ── */
-.code-chip{
-  font-size:11px;font-weight:700;font-family:monospace;
-  background:var(--surface2);border:1px solid var(--border);
-  padding:2px 8px;border-radius:var(--r-sm);color:var(--brand);
-  letter-spacing:.3px;
-}
-
-/* ── QTY ── */
-.qty-pill{
-  display:inline-flex;align-items:center;justify-content:center;
-  min-width:36px;height:22px;padding:0 8px;
-  background:linear-gradient(135deg,#0D9488,#0891B2);
-  color:#fff;border-radius:var(--r-full);
-  font-size:11.5px;font-weight:700;
-}
-
-/* ── Action buttons ── */
-.action-group{display:flex;align-items:center;gap:6px;}
-.act-btn{
-  width:28px;height:28px;border-radius:var(--r-sm);
-  border:1px solid var(--border);background:var(--surface2);
-  color:var(--txt3);cursor:pointer;font-size:11px;
-  display:inline-flex;align-items:center;justify-content:center;
-  transition:all .12s;
-}
-.act-btn.edit:hover{background:var(--brand-lt);border-color:var(--brand);color:var(--brand);}
-.act-btn.del:hover{background:#FEF2F2;border-color:#FECACA;color:var(--danger);}
+.code-chip{font-size:11px;font-weight:700;font-family:'SFMono-Regular','Consolas',monospace;background:var(--surface2);border:1px solid var(--border);padding:2px 8px;border-radius:var(--r-sm);color:var(--sf-blue);letter-spacing:.3px;}
+.qty-pill{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:22px;padding:0 8px;background:linear-gradient(135deg,#18a999,#0e7490);color:#fff;border-radius:999px;font-size:11px;font-weight:700;}
+.action-group{display:flex;gap:3px;align-items:center;}
+.act-btn{font-size:10px;font-weight:500;height:24px;width:24px;border-radius:var(--r-sm);cursor:pointer;border:none;display:inline-flex;align-items:center;justify-content:center;transition:all 0.12s;font-family:'Inter',sans-serif;background:var(--surface);}
+.act-btn.edit{background:var(--sf-blue-lt);color:var(--sf-blue);border:1px solid #c5dff5;}
+.act-btn.edit:hover{background:#cce8f7;}
+.act-btn.del{background:var(--sf-red-lt);color:var(--sf-red);border:1px solid #f5c6c3;}
+.act-btn.del:hover{background:#fbd5d0;}
 
 /* ── EMPTY STATE ── */
 .empty-state{
@@ -249,82 +133,71 @@ td:first-child{padding-left:18px;}
 .empty-sub{font-size:12.5px;color:var(--txt4);max-width:300px;}
 
 /* ── PAGINATION ── */
-.pagination{
-  padding:12px 18px;border-top:1px solid var(--border);
-  display:flex;align-items:center;gap:8px;
-}
-.pag-info{font-size:12px;color:var(--txt3);flex:1;}
-.pag-btn{
-  width:30px;height:30px;border-radius:var(--r-sm);
-  border:1px solid var(--border);background:var(--surface2);
-  color:var(--txt3);font-size:12px;cursor:pointer;
-  display:inline-flex;align-items:center;justify-content:center;
-  transition:all .12s;font-family:var(--font);
-}
-.pag-btn:hover{background:var(--brand-lt);border-color:var(--brand);color:var(--brand);}
-.pag-btn.active{background:var(--brand);border-color:var(--brand);color:#fff;}
+.pagination{padding:10px 16px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--surface2);flex-wrap:wrap;}
+.pag-info{font-size:11px;color:var(--txt3);flex:1;}
+.pag-btn{width:30px;height:30px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--surface);color:var(--txt2);font-size:12px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .12s;font-family:'Inter',sans-serif;}
+.pag-btn:hover{background:var(--sf-blue-lt);border-color:var(--sf-blue);color:var(--sf-blue);}
+.pag-btn.active{background:var(--sf-blue);border-color:var(--sf-blue);color:#fff;}
 .pag-btn:disabled{opacity:.4;cursor:not-allowed;}
 
 /* ── MODAL ── */
 .modal-overlay{
-  position:fixed;inset:0;background:rgba(15,23,42,.45);
-  backdrop-filter:blur(4px);z-index:200;
+  position:fixed;inset:0;background:rgba(0,0,0,.45);
+  z-index:500;
   display:none;align-items:center;justify-content:center;padding:16px;
 }
 .modal-overlay.open{display:flex;}
 .modal{
-  background:var(--surface);border-radius:var(--r-xl);
+  background:var(--surface);border-radius:12px;
   width:100%;max-width:640px;
-  box-shadow:0 20px 60px rgba(15,23,42,.20);
+  box-shadow:0 20px 60px rgba(0,0,0,.25);
   animation:modalIn .22s cubic-bezier(.34,1.56,.64,1);
   display:flex;flex-direction:column;
   max-height:90vh;
 }
 @keyframes modalIn{from{transform:scale(.9) translateY(20px);opacity:0;}to{transform:none;opacity:1;}}
 .modal-header{
-  padding:18px 22px;border-bottom:1px solid var(--border);
-  display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0;
+  padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0;background:var(--surface2);
 }
 .modal-title{font-size:15px;font-weight:700;color:var(--txt);display:flex;align-items:center;gap:8px;}
-.modal-title i{color:var(--brand);}
+.modal-title i{color:var(--sf-blue);}
 .modal-close{
   width:30px;height:30px;border-radius:var(--r-sm);
-  border:1px solid var(--border);background:var(--surface2);
+  border:1px solid var(--border);background:var(--surface);
   color:var(--txt3);cursor:pointer;font-size:12px;
   display:flex;align-items:center;justify-content:center;transition:all .12s;
 }
-.modal-close:hover{background:#FEF2F2;border-color:#FECACA;color:var(--danger);}
-.modal-body{padding:20px 22px;overflow-y:auto;flex:1;}
+.modal-close:hover{background:var(--sf-red-lt);border-color:#FECACA;color:var(--sf-red);}
+.modal-body{padding:20px;overflow-y:auto;flex:1;}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
 .form-field{display:flex;flex-direction:column;gap:5px;}
 .form-field.full{grid-column:1/-1;}
 .form-field label{font-size:11.5px;font-weight:600;color:var(--txt2);}
-.form-field label span{color:var(--danger);}
+.form-field label span{color:var(--sf-red);}
 .form-field input,.form-field select,.form-field textarea{
   height:36px;padding:0 12px;
-  border:1px solid var(--border);border-radius:var(--r);
-  font-size:12.5px;color:var(--txt);font-family:var(--font);
-  background:var(--surface2);outline:none;
+  border:1px solid var(--border);border-radius:var(--r-sm);
+  font-size:12.5px;color:var(--txt);font-family:'Inter',sans-serif;
+  background:var(--surface);outline:none;
   transition:border-color .15s,box-shadow .15s;
 }
 .form-field textarea{height:70px;padding:10px 12px;resize:vertical;}
 .form-field input:focus,.form-field select:focus,.form-field textarea:focus{
-  border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-glow);background:#fff;
+  border-color:var(--sf-blue);box-shadow:0 0 0 3px rgba(1,118,211,0.12);background:#fff;
 }
-.form-field input.error,.form-field select.error{border-color:var(--danger);}
+.form-field input.error,.form-field select.error{border-color:var(--sf-red);}
 .modal-footer{
-  padding:14px 22px;border-top:1px solid var(--border);
-  display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-shrink:0;
+  padding:12px 20px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-shrink:0;background:var(--surface2);
 }
 
 /* ── UPLOAD ZONE ── */
 .upload-zone{
-  border:2px dashed var(--border);border-radius:var(--r-xl);
+  border:2px dashed var(--border);border-radius:var(--r-lg);
   padding:32px 20px;text-align:center;cursor:pointer;
   transition:border-color .15s,background .15s;
   background:var(--surface2);
 }
-.upload-zone:hover,.upload-zone.drag{border-color:var(--brand);background:var(--brand-lt);}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--sf-blue);background:var(--sf-blue-lt);}
 .upload-icon{font-size:32px;color:var(--txt4);margin-bottom:10px;}
 .upload-title{font-size:14px;font-weight:600;color:var(--txt2);}
 .upload-sub{font-size:12px;color:var(--txt3);margin-top:4px;}
@@ -347,12 +220,12 @@ td:first-child{padding-left:18px;}
   background:#fff;border:1px solid var(--border);
   padding:2px 8px;border-radius:var(--r-sm);color:var(--txt2);
 }
-.csv-col-tag.required{border-color:#93C5FD;background:#EFF6FF;color:#1D4ED8;}
+.csv-col-tag.required{border-color:#c5dff5;background:var(--sf-blue-lt);color:var(--sf-blue);}
 
 /* ── PROGRESS BAR ── */
 #pageLoader{
   position:fixed;top:0;left:0;height:3px;width:0%;z-index:999;
-  background:linear-gradient(90deg,#0D9488,#2563EB);
+  background:linear-gradient(90deg,#18a999,#0176d3);
   transition:width .3s ease;border-radius:0 3px 3px 0;
 }
 
@@ -369,22 +242,21 @@ td:first-child{padding-left:18px;}
   animation:toastIn .25s cubic-bezier(.34,1.56,.64,1);
   pointer-events:all;
 }
-.toast.success{border-left:3px solid var(--success);}
-.toast.error  {border-left:3px solid var(--danger);}
-.toast.info   {border-left:3px solid var(--brand);}
+.toast.success{border-left:3px solid var(--sf-green);}
+.toast.error  {border-left:3px solid var(--sf-red);}
+.toast.info   {border-left:3px solid var(--sf-blue);}
 @keyframes toastIn{from{transform:translateX(60px) scale(.92);opacity:0;}to{transform:none;opacity:1;}}
 
 /* ── CONFIRM DIALOG ── */
 #confirmBox{
-  position:fixed;inset:0;background:rgba(15,23,42,.5);
-  backdrop-filter:blur(4px);z-index:400;
+  position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:400;
   display:none;align-items:center;justify-content:center;padding:16px;
 }
 #confirmBox.open{display:flex;}
 .confirm-card{
-  background:var(--surface);border-radius:var(--r-xl);
+  background:var(--surface);border-radius:12px;
   width:100%;max-width:380px;padding:24px;
-  box-shadow:0 20px 60px rgba(15,23,42,.20);text-align:center;
+  box-shadow:0 20px 60px rgba(0,0,0,.20);text-align:center;
   animation:modalIn .2s ease;
 }
 .confirm-icon{font-size:36px;margin-bottom:12px;}
@@ -397,16 +269,53 @@ td:first-child{padding-left:18px;}
 @keyframes shimmer{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
 
 /* ── RESPONSIVE ── */
-@media(max-width:1024px){.stats-row{grid-template-columns:repeat(3,1fr);}}
+@media(max-width:1024px){
+  .sf-body{padding:12px 14px;}
+  .kpi-row{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;}
+  .sf-toolbar{gap:8px;padding:10px 14px;}
+  .sf-page-header{padding:12px 16px;}
+}
 @media(max-width:768px){
-  .page-body{padding:14px 12px;}
-  .stats-row{grid-template-columns:repeat(3,1fr);}
-  .ph-right{display:none;}
+  .dv-strip{padding:0 12px;gap:8px;height:48px;}
+  .dv-strip-sep,.dv-strip-meta{display:none;}
+  .sf-bc{display:none;}
+  .sf-body{padding:10px 12px;}
+  .kpi-row{grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:10px;}
+  .kpi-card{padding:12px;}
+  .kpi-num{font-size:20px!important;}
+  .kpi-label,.kpi-sub{font-size:9px!important;}
+  .sf-page-header{padding:10px 14px;gap:10px;}
+  .sf-page-icon{width:36px;height:36px;font-size:15px;}
+  .sf-page-title{font-size:15px;}
+  .sf-page-meta{font-size:10px;}
+  .sf-page-actions{margin-left:0;width:100%;justify-content:flex-end;}
+  .sf-toolbar{flex-direction:column;align-items:stretch;padding:10px 12px;gap:8px;}
+  .sf-filter-group{width:100%;}
+  .sf-filter-group .sf-input,.sf-filter-group .sf-select{width:100%;height:36px;}
+  .sf-search-input{width:100%!important;}
+  .sf-toolbar-spacer{display:none;}
+  .sf-tabs{padding:0 12px;}
+  .sf-table-wrap{max-height:50vh;}
+  table{font-size:11px;min-width:880px;}
+  thead th{padding:7px 8px!important;font-size:9px!important;}
+  tbody td{padding:6px 8px!important;font-size:11px!important;}
+  .pagination{flex-direction:column;align-items:center;gap:6px;padding:8px 12px;}
+  .pag-info{font-size:10px;}
+  .modal-overlay{align-items:flex-end;padding-bottom:0;}
+  .modal{width:100%!important;max-width:100%!important;border-radius:16px 16px 0 0;max-height:90vh;}
   .form-grid{grid-template-columns:1fr;}
+  #toastWrap{right:10px;left:10px;top:auto;bottom:16px;}
 }
 @media(max-width:480px){
-  .stats-row{grid-template-columns:1fr 1fr;}
-  .stat-num{font-size:20px;}
+  .kpi-row{grid-template-columns:repeat(2,1fr);gap:6px;}
+  .kpi-card{padding:10px;}
+  .kpi-num{font-size:18px!important;}
+  .dv-strip{height:44px;}
+  .dv-strip-title{font-size:12px;}
+  .dv-strip-icon{width:24px;height:24px;font-size:11px;}
+  .sf-body{padding:8px 10px;}
+  .sf-page-title{font-size:13px;}
+  .sf-page-icon{width:32px;height:32px;font-size:13px;}
 }
 </style>
   <script src="config.js"></script>
@@ -416,126 +325,130 @@ td:first-child{padding-left:18px;}
 <div id="pageLoader"></div>
 <div id="toastWrap"></div>
 
-<!-- ═══════════════════════════════ PAGE HEADER ═══════════════════════════════ -->
-<div class="page-header">
-  <div class="ph-top">
-    <div class="ph-left">
-      <div class="ph-icon"><i class="fa-solid fa-boxes-stacked"></i></div>
-      <div>
-        <div class="ph-title">Material Management</div>
-        <div class="ph-sub">Item Type ke basis pe material track karein — Engineer wise allocation</div>
-      </div>
+<div class="dv-strip">
+  <div class="dv-strip-icon"><i class="fa-solid fa-boxes-stacked"></i></div>
+  <span class="dv-strip-title">Material Management</span>
+  <div class="dv-strip-sep"></div>
+  <span class="dv-strip-meta" id="dateBadge"></span>
+  <div class="dv-strip-spacer"></div>
+  <div style="display:flex;align-items:center;gap:6px;">
+    <span style="font-size:10px;color:var(--txt4);">Last sync:</span>
+    <span id="lastSyncTime" style="font-size:10px;color:var(--txt3);font-weight:500;">—</span>
+  </div>
+</div>
+
+<main class="sf-body">
+  <div class="sf-bc">
+    <a href="#">Home</a><span>/</span>
+    <a href="#">Records</a><span>/</span>
+    <span>Material Management</span>
+  </div>
+
+  <div class="kpi-row" id="statsRow">
+    <div class="kpi-card blue active-filter" id="kpiCardAll" onclick="filterByStatus('')">
+      <div class="kpi-num blue" id="statTotal">—</div>
+      <div class="kpi-label"><i class="fa-solid fa-layer-group" style="font-size:9px;"></i> Total Items</div>
+      <div class="kpi-sub" id="statTotalSub">Loading…</div>
     </div>
-    <div class="ph-right">
-      <button class="btn btn-secondary" onclick="openUploadModal()">
+    <div class="kpi-card green" id="kpiCardOk" onclick="filterByStatus('ok')">
+      <div class="kpi-num green" id="statOk">—</div>
+      <div class="kpi-label"><i class="fa-solid fa-circle-check" style="font-size:9px;"></i> OK Items</div>
+      <div class="kpi-sub" id="statOkSub"></div>
+    </div>
+    <div class="kpi-card red" id="kpiCardFaulty" onclick="filterByStatus('faulty')">
+      <div class="kpi-num red" id="statFaulty">—</div>
+      <div class="kpi-label"><i class="fa-solid fa-circle-xmark" style="font-size:9px;"></i> Faulty Items</div>
+      <div class="kpi-sub" id="statFaultySub"></div>
+    </div>
+  </div>
+
+  <div class="sf-page-header">
+    <div class="sf-page-icon"><i class="fa-solid fa-boxes-stacked"></i></div>
+    <div>
+      <div class="sf-page-title">Material Command Center</div>
+      <div class="sf-page-meta">Item type, status aur engineer allocation ko task manager style mein track karein</div>
+    </div>
+    <div class="sf-page-actions">
+      <button class="sf-btn sf-btn-neutral" onclick="openUploadModal()">
         <i class="fa-solid fa-file-arrow-up"></i> Bulk Upload
       </button>
-      <button class="btn btn-success" onclick="exportExcel()">
+      <button class="sf-btn sf-btn-neutral" onclick="exportExcel()">
         <i class="fa-solid fa-file-excel"></i> Export
       </button>
-      <button class="btn btn-primary" onclick="openAddModal()">
+      <button class="sf-btn sf-btn-success" onclick="openAddModal()">
         <i class="fa-solid fa-plus"></i> Add Material
       </button>
     </div>
   </div>
 
-  <!-- Item Type Tabs — Primary Filter (All only) -->
-  <div class="ph-tabs">
-    <button class="ph-tab active" data-type="all" onclick="switchTab('all',this)">
-      <i class="fa-solid fa-layer-group" style="font-size:10px;margin-right:4px;"></i>All Items
-    </button>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════ BODY ═══════════════════════════════ -->
-<div class="page-body">
-
-  <!-- Stat Cards -->
-  <div class="stats-row" id="statsRow">
-    <div class="stat-card blue">
-      <div class="stat-icon blue"><i class="fa-solid fa-layer-group"></i></div>
-      <div>
-        <div class="stat-num" id="statTotal">—</div>
-        <div class="stat-lbl">Total Items</div>
-        <div class="stat-delta neutral" id="statTotalSub">Loading…</div>
-      </div>
-    </div>
-    <div class="stat-card green">
-      <div class="stat-icon green"><i class="fa-solid fa-circle-check"></i></div>
-      <div>
-        <div class="stat-num" id="statOk">—</div>
-        <div class="stat-lbl">OK Items</div>
-        <div class="stat-delta up" id="statOkSub"></div>
-      </div>
-    </div>
-    <div class="stat-card orange" style="--border-top-color:#DC2626;">
-      <div class="stat-icon orange" style="background:#FEF2F2;color:#DC2626;"><i class="fa-solid fa-circle-xmark"></i></div>
-      <div>
-        <div class="stat-num" id="statFaulty">—</div>
-        <div class="stat-lbl">Not OK (Faulty)</div>
-        <div class="stat-delta warn" id="statFaultySub"></div>
-      </div>
+  <div class="sf-table-card" style="border-radius:var(--r-lg) var(--r-lg) 0 0;overflow:visible;border-bottom:none;">
+    <div class="sf-tabs" id="typeTabs">
+      <button class="sf-tab active" data-type="all" onclick="switchTab('all',this)">
+        <i class="fa-solid fa-layer-group"></i> All Items
+        <span class="sf-tab-badge" id="badgeAll">0</span>
+      </button>
     </div>
   </div>
 
-  <!-- Toolbar -->
-  <div class="toolbar">
-    <div class="search-wrap">
-      <i class="fa-solid fa-magnifying-glass"></i>
-      <input type="text" id="searchInput" placeholder="Item code, name, engineer se search karein…" oninput="onSearch()"/>
+  <div class="sf-toolbar" style="border-radius:0;border-top:none;border-bottom:none;">
+    <div class="sf-filter-group">
+      <label class="sf-filter-label">Search</label>
+      <div class="sf-search-wrap">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="searchInput" class="sf-input sf-search-input" placeholder="Search item code, item name, engineer..." oninput="onSearch()"/>
+      </div>
     </div>
 
-    <!-- Item Type Filter (toolbar mein bhi — dynamically populated) -->
-    <div class="type-filter-wrap">
-      <span class="type-filter-label"><i class="fa-solid fa-tag" style="margin-right:3px;"></i>Item Type:</span>
-      <select class="tb-filter" id="typeFilter" onchange="onTypeFilterChange()">
+    <div class="sf-filter-group">
+      <label class="sf-filter-label">Item Type</label>
+      <select class="sf-input sf-select" id="typeFilter" style="width:150px;" onchange="onTypeFilterChange()">
         <option value="">All Types</option>
       </select>
     </div>
 
-    <!-- Item Status Filter -->
-    <div class="status-filter-wrap">
-      <span class="type-filter-label"><i class="fa-solid fa-circle-dot" style="margin-right:3px;"></i>Status:</span>
-      <select class="tb-filter" id="statusFilter" onchange="onFilter()">
+    <div class="sf-filter-group">
+      <label class="sf-filter-label">Status</label>
+      <select class="sf-input sf-select" id="statusFilter" style="width:150px;" onchange="onFilter()">
         <option value="">All Status</option>
         <option value="ok">OK</option>
         <option value="faulty">Not OK / Faulty</option>
       </select>
     </div>
 
-    <!-- Engineer Filter -->
-    <select class="tb-filter" id="engineerFilter" onchange="onFilter()">
-      <option value="">All Engineers</option>
-    </select>
+    <div class="sf-filter-group">
+      <label class="sf-filter-label">Engineer</label>
+      <select class="sf-input sf-select" id="engineerFilter" style="width:170px;" onchange="onFilter()">
+        <option value="">All Engineers</option>
+      </select>
+    </div>
 
-    <div class="tb-spacer"></div>
-    <span id="countChip" class="table-count">0 records</span>
-    <button class="btn btn-secondary btn-sm" onclick="clearAllFilters()" id="clearFilterBtn" style="display:none;">
-      <i class="fa-solid fa-xmark"></i> Clear Filters
+    <button class="sf-btn sf-btn-neutral" onclick="clearAllFilters()" id="clearFilterBtn" style="display:none;align-self:flex-end;">
+      <i class="fa-solid fa-rotate-left"></i> Clear
     </button>
-    <!-- Mobile buttons -->
-    <button class="btn btn-secondary btn-sm" onclick="openUploadModal()" style="display:none;" id="mobileUploadBtn">
+
+    <div class="sf-toolbar-spacer"></div>
+    <button class="sf-btn sf-btn-neutral" onclick="openUploadModal()" style="display:none;" id="mobileUploadBtn">
       <i class="fa-solid fa-upload"></i>
     </button>
-    <button class="btn btn-primary btn-sm" onclick="openAddModal()" id="mobileAddBtn" style="display:none;">
+    <button class="sf-btn sf-btn-success" onclick="openAddModal()" id="mobileAddBtn" style="display:none;">
       <i class="fa-solid fa-plus"></i>
     </button>
   </div>
 
-  <!-- Table -->
-  <div class="table-card">
-    <div class="table-card-header">
-      <span class="table-card-title">
-        <i class="fa-solid fa-table" style="color:var(--brand);margin-right:6px;"></i>Material Records
-        <span id="activeTypeLabel" style="font-size:11px;font-weight:500;color:var(--txt3);margin-left:8px;"></span>
-      </span>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <button class="btn btn-secondary btn-sm" onclick="loadData()" title="Refresh">
-          <i class="fa-solid fa-rotate-right"></i> Refresh
-        </button>
+  <div class="sf-table-card" style="border-radius:0 0 var(--r-lg) var(--r-lg);border-top:none;">
+    <div class="sf-table-header">
+      <div class="sf-table-title">
+        <i class="fa-solid fa-table-cells-large" style="color:var(--sf-blue);"></i>
+        Material Records
       </div>
+      <span class="sf-record-count" id="countChip">0 records</span>
+      <span id="activeTypeLabel" style="font-size:11px;color:var(--txt3);"></span>
+      <div style="flex:1;"></div>
+      <button class="sf-btn sf-btn-neutral" onclick="loadData()" title="Refresh">
+        <i class="fa-solid fa-rotate-right"></i> Refresh
+      </button>
     </div>
-    <div class="table-wrap">
+    <div class="sf-table-wrap">
       <table>
         <thead>
           <tr>
@@ -564,7 +477,7 @@ td:first-child{padding-left:18px;}
       <button class="pag-btn" id="nextBtn" onclick="changePage(1)"><i class="fa-solid fa-chevron-right"></i></button>
     </div>
   </div>
-</div>
+</main>
 
 <!-- ═══════════════════════════════ ADD/EDIT MODAL ═══════════════════════════════ -->
 <div class="modal-overlay" id="materialModal">
@@ -627,8 +540,8 @@ td:first-child{padding-left:18px;}
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('materialModal')">Cancel</button>
-      <button class="btn btn-primary" id="modalSaveBtn" onclick="saveMaterial()">
+      <button class="sf-btn sf-btn-neutral" onclick="closeModal('materialModal')">Cancel</button>
+      <button class="sf-btn sf-btn-primary" id="modalSaveBtn" onclick="saveMaterial()">
         <i class="fa-solid fa-floppy-disk"></i> Save
       </button>
     </div>
@@ -646,7 +559,7 @@ td:first-child{padding-left:18px;}
 
       <!-- CSV Column Info -->
       <div class="csv-columns-info">
-        <div class="col-title"><i class="fa-solid fa-table-columns" style="margin-right:6px;color:var(--brand);"></i>Expected CSV Columns</div>
+        <div class="col-title"><i class="fa-solid fa-table-columns" style="margin-right:6px;color:var(--sf-blue);"></i>Expected CSV Columns</div>
         <div class="csv-cols">
           <span class="csv-col-tag required">Item Code</span>
           <span class="csv-col-tag required">Item Name</span>
@@ -656,12 +569,12 @@ td:first-child{padding-left:18px;}
           <span class="csv-col-tag required">Engineer</span>
         </div>
         <div style="margin-top:8px;font-size:11.5px;color:var(--txt3);">
-          <i class="fa-solid fa-circle-info" style="color:var(--brand);"></i>
+          <i class="fa-solid fa-circle-info" style="color:var(--sf-blue);"></i>
           Item Status: <strong>OK, Not Ok (Faulty)</strong> etc.
         </div>
       </div>
 
-      <div style="background:var(--brand-lt);border:1px solid #BFDBFE;border-radius:var(--r-lg);padding:12px 14px;font-size:12.5px;color:#1E40AF;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px;">
+      <div style="background:var(--sf-blue-lt);border:1px solid #BFDBFE;border-radius:var(--r-lg);padding:12px 14px;font-size:12.5px;color:#1E40AF;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px;">
         <i class="fa-solid fa-circle-info" style="margin-top:2px;flex-shrink:0;"></i>
         <div>
           <span style="color:#2563EB;cursor:pointer;font-weight:600;" onclick="downloadTemplate()">
@@ -679,15 +592,15 @@ td:first-child{padding-left:18px;}
         <div class="upload-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
         <div class="upload-title">Drop your file here or click to browse</div>
         <div class="upload-sub">Supports .xlsx, .xls, .csv — max 10 MB</div>
-        <div id="selectedFileName" style="margin-top:8px;font-size:12px;font-weight:600;color:var(--brand);display:none;"></div>
+        <div id="selectedFileName" style="margin-top:8px;font-size:12px;font-weight:600;color:var(--sf-blue);display:none;"></div>
       </div>
       <input type="file" id="fileInput" class="upload-input" accept=".xlsx,.xls,.csv" onchange="onFileSelect(event)"/>
 
       <div class="upload-result" id="uploadResult"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('uploadModal')">Close</button>
-      <button class="btn btn-primary" id="uploadBtn" onclick="doUpload()" disabled>
+      <button class="sf-btn sf-btn-neutral" onclick="closeModal('uploadModal')">Close</button>
+      <button class="sf-btn sf-btn-primary" id="uploadBtn" onclick="doUpload()" disabled>
         <i class="fa-solid fa-upload"></i> Upload &amp; Import
       </button>
     </div>
@@ -701,8 +614,8 @@ td:first-child{padding-left:18px;}
     <div class="confirm-title">Delete Material Record?</div>
     <div class="confirm-msg" id="confirmMsg">This action cannot be undone.</div>
     <div class="confirm-btns">
-      <button class="btn btn-secondary" onclick="closeConfirm()">Cancel</button>
-      <button class="btn btn-danger" id="confirmOkBtn">Delete</button>
+      <button class="sf-btn sf-btn-neutral" onclick="closeConfirm()">Cancel</button>
+      <button class="sf-btn sf-btn-danger" id="confirmOkBtn">Delete</button>
     </div>
   </div>
 </div>
@@ -737,6 +650,7 @@ let totalRecs = 0;
 let activeTab = 'all';
 let searchDebounce;
 const PAGE_SIZE = 20;
+const lastStatsSnapshot = { total: 0, byType: [] };
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  INIT
@@ -751,6 +665,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   loadStats();
   loadData();
+  setDateBadge();
   if (window.innerWidth < 768) {
     document.getElementById('mobileUploadBtn').style.display = 'flex';
     document.getElementById('mobileAddBtn').style.display = 'flex';
@@ -765,9 +680,12 @@ async function loadStats() {
     const r = await fetch(`${API}/stats`, { headers: { Authorization: `Bearer ${TOKEN()}` } });
     if (!r.ok) return;
     const { total, byType, byEngineer } = await r.json();
+    lastStatsSnapshot.total = total || 0;
+    lastStatsSnapshot.byType = Array.isArray(byType) ? byType : [];
 
     document.getElementById('statTotal').textContent = total;
     document.getElementById('statTotalSub').textContent = `Across ${byType.length} item type(s)`;
+    renderTypeTabs(byType, total);
 
     // Fetch all data for OK and Faulty count
     const custR = await fetch(`${API}?limit=5000`, { headers: { Authorization: `Bearer ${TOKEN()}` } });
@@ -787,6 +705,7 @@ async function loadStats() {
 
       document.getElementById('statFaulty').textContent = faultyCount || 0;
       document.getElementById('statFaultySub').textContent = total && faultyCount ? `${Math.round(faultyCount/total*100)}% items faulty` : 'No faulty items';
+      updateStatusKpis();
     }
 
     // Populate engineer filter dropdown
@@ -850,6 +769,7 @@ async function loadData(page = 1) {
   // Show/hide clear button
   const hasFilter = type || eng || status || search;
   document.getElementById('clearFilterBtn').style.display = hasFilter ? 'flex' : 'none';
+  updateStatusKpis();
 
   try {
     const r = await fetch(`${API}?${params}`, { headers: { Authorization: `Bearer ${TOKEN()}` } });
@@ -860,6 +780,7 @@ async function loadData(page = 1) {
     renderTable(data);
     renderPagination(total, page);
     document.getElementById('countChip').textContent = `${total} record${total !== 1 ? 's' : ''}`;
+    setLastSyncTime();
   } catch(e) {
     showToast('Network error', 'error');
     renderTable([]);
@@ -974,10 +895,17 @@ function onSearch() {
 
 function onFilter() { loadData(1); }
 
+function filterByStatus(status) {
+  document.getElementById('statusFilter').value = status;
+  updateStatusKpis();
+  loadData(1);
+}
+
 // Item Type dropdown change
 function onTypeFilterChange() {
   const val = document.getElementById('typeFilter').value;
   activeTab = val || 'all';
+  syncActiveTab();
   loadData(1);
 }
 
@@ -985,7 +913,7 @@ function onTypeFilterChange() {
 // Tab click — dropdown bhi sync karo
 function switchTab(tab, el) {
   activeTab = tab;
-  document.querySelectorAll('.ph-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.sf-tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
   // Sync dropdown
   document.getElementById('typeFilter').value = tab === 'all' ? '' : tab;
@@ -998,7 +926,8 @@ function clearAllFilters() {
   document.getElementById('typeFilter').value = '';
   document.getElementById('statusFilter').value = '';
   document.getElementById('engineerFilter').value = '';
-  document.querySelectorAll('.ph-tab').forEach(t => t.classList.toggle('active', t.dataset.type === 'all'));
+  syncActiveTab();
+  updateStatusKpis();
   loadData(1);
 }
 
@@ -1220,9 +1149,63 @@ function showToast(msg, type='info') {
   const wrap = document.getElementById('toastWrap');
   const t = document.createElement('div'); t.className = `toast ${type}`;
   const icon = type==='success'?'fa-circle-check':type==='error'?'fa-circle-xmark':'fa-circle-info';
-  t.innerHTML = `<i class="fa-solid ${icon}" style="color:var(--${type==='success'?'success':type==='error'?'danger':'brand'})"></i>${esc(msg)}`;
+  const color = type==='success' ? 'var(--sf-green)' : type==='error' ? 'var(--sf-red)' : 'var(--sf-blue)';
+  t.innerHTML = `<i class="fa-solid ${icon}" style="color:${color}"></i>${esc(msg)}`;
   wrap.appendChild(t);
   setTimeout(() => t.remove(), 3500);
+}
+
+function updateStatusKpis() {
+  const activeStatus = document.getElementById('statusFilter')?.value || '';
+  document.getElementById('kpiCardAll')?.classList.toggle('active-filter', !activeStatus);
+  document.getElementById('kpiCardOk')?.classList.toggle('active-filter', activeStatus === 'ok');
+  document.getElementById('kpiCardFaulty')?.classList.toggle('active-filter', activeStatus === 'faulty');
+}
+
+function renderTypeTabs(byType = [], total = 0) {
+  const tabWrap = document.getElementById('typeTabs');
+  const tabs = [
+    `<button class="sf-tab${activeTab === 'all' ? ' active' : ''}" data-type="all" onclick="switchTab('all',this)">
+      <i class="fa-solid fa-layer-group"></i> All Items
+      <span class="sf-tab-badge" id="badgeAll">${total}</span>
+    </button>`
+  ];
+  byType.forEach(t => {
+    const type = t?._id;
+    if (!type) return;
+    tabs.push(`<button class="sf-tab${activeTab === type ? ' active' : ''}" data-type="${esc(type)}" onclick="switchTab(this.dataset.type,this)">
+      <i class="fa-solid fa-tag"></i> ${esc(type)}
+      <span class="sf-tab-badge">${t.count || 0}</span>
+    </button>`);
+  });
+  tabWrap.innerHTML = tabs.join('');
+}
+
+function syncActiveTab() {
+  document.querySelectorAll('.sf-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.type === activeTab);
+  });
+}
+
+function setDateBadge() {
+  const el = document.getElementById('dateBadge');
+  if (el) {
+    el.textContent = new Date().toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+  }
+}
+
+function setLastSyncTime() {
+  const el = document.getElementById('lastSyncTime');
+  if (el) {
+    el.textContent = new Date().toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
 }
 
 // Close modals on overlay click
