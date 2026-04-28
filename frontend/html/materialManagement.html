@@ -399,7 +399,7 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
     <div class="kpi-card" style="border-left-color:var(--sf-yellow);" id="kpiCardLowStock" onclick="filterLowStock()">
       <div class="kpi-num" style="color:var(--sf-yellow);" id="statLowStock">—</div>
       <div class="kpi-label"><i class="fa-solid fa-bell" style="font-size:9px;"></i> Low Stock</div>
-      <div class="kpi-sub" id="statLowStockSub">Qty 1 ya usse kam</div>
+      <div class="kpi-sub" id="statLowStockSub">Qty 1 or below</div>
     </div>
   </div>
 
@@ -407,7 +407,7 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
     <div class="sf-page-icon"><i class="fa-solid fa-boxes-stacked"></i></div>
     <div>
       <div class="sf-page-title">Material Command Center</div>
-      <div class="sf-page-meta">Item type, status aur engineer allocation ko task manager style mein track karein</div>
+      <div class="sf-page-meta">Track item types, status, and engineer allocation in a task manager style</div>
     </div>
     <div class="sf-page-actions">
       <button class="sf-btn sf-btn-neutral" onclick="openModal('opsModal')">
@@ -549,22 +549,22 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
               <button class="ops-action" onclick="closeModal('opsModal');openTransferModalFromSelection()">
                 <i class="fa-solid fa-right-left"></i>
                 <strong>Transfer Material</strong>
-                <span>Loaded record ko dusre engineer ke naam pe move karein.</span>
+                <span>Move the selected record to another engineer.</span>
               </button>
               <button class="ops-action" onclick="closeModal('opsModal');filterLowStock()">
                 <i class="fa-solid fa-triangle-exclamation" style="color:var(--sf-yellow);"></i>
                 <strong>Low Stock Watch</strong>
-                <span>Critical qty waale records ko ek click mein filter karein.</span>
+                <span>Filter critical quantity records in one click.</span>
               </button>
               <button class="ops-action" onclick="closeModal('opsModal');openUploadModal()">
                 <i class="fa-solid fa-file-arrow-up" style="color:var(--sf-green);"></i>
                 <strong>Bulk Intake</strong>
-                <span>Excel/CSV se fresh stock ingest karein.</span>
+                <span>Import fresh stock from Excel or CSV.</span>
               </button>
               <button class="ops-action" onclick="closeModal('opsModal');exportExcel()">
                 <i class="fa-solid fa-file-excel" style="color:var(--sf-green);"></i>
                 <strong>Ops Export</strong>
-                <span>Current stock ka Excel snapshot download karein.</span>
+                <span>Download an Excel snapshot of current stock.</span>
               </button>
             </div>
           </div>
@@ -576,7 +576,7 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
           </div>
           <div class="ops-card-body">
             <div class="activity-list" id="activityList">
-              <div class="activity-empty">Activity load ho rahi hai…</div>
+              <div class="activity-empty">Loading activity…</div>
             </div>
           </div>
         </div>
@@ -859,7 +859,7 @@ async function loadStats() {
     document.getElementById('statTotal').textContent = total;
     document.getElementById('statTotalSub').textContent = `Across ${byType.length} item type(s)`;
     document.getElementById('statLowStock').textContent = lowStockCount || 0;
-    document.getElementById('statLowStockSub').textContent = lowStockCount ? `${lowStockCount} record(s) need attention` : 'Stock looks stable';
+    document.getElementById('statLowStockSub').textContent = lowStockCount ? `${lowStockCount} record(s) need attention` : 'Stock levels look stable';
     renderTypeTabs(byType, total);
     renderActivityFeed();
 
@@ -877,7 +877,7 @@ async function loadStats() {
       }).length;
 
       document.getElementById('statOk').textContent = okCount || 0;
-      document.getElementById('statOkSub').textContent = total ? `${Math.round(okCount/total*100)}% items healthy` : '';
+      document.getElementById('statOkSub').textContent = total ? `${Math.round(okCount/total*100)}% items in good condition` : '';
 
       document.getElementById('statFaulty').textContent = faultyCount || 0;
       document.getElementById('statFaultySub').textContent = total && faultyCount ? `${Math.round(faultyCount/total*100)}% items faulty` : 'No faulty items';
@@ -983,7 +983,7 @@ function renderTable(data) {
       <div class="empty-state">
         <div class="empty-icon"><i class="fa-solid fa-box-open"></i></div>
         <div class="empty-title">No records found</div>
-        <div class="empty-sub">Filter change karein ya nayi material entry add karein</div>
+        <div class="empty-sub">Change filters or add a new material entry</div>
       </div>
     </td></tr>`;
     return;
@@ -1181,7 +1181,7 @@ function openDetailModal(id) {
         <span>${esc(entry.note || 'No note')} • ${entry.createdAt ? new Date(entry.createdAt).toLocaleString('en-IN') : ''}</span>
       </div>
     `).join('')
-    : `<div class="activity-empty">Abhi transfer history available nahi hai.</div>`;
+    : `<div class="activity-empty">No transfer history available yet.</div>`;
   openModal('detailModal');
 }
 
@@ -1204,7 +1204,7 @@ function openTransferModal(id) {
 
 function openTransferModalFromSelection() {
   if (!allData.length) {
-    showToast('Pehle material records load hone dijiye', 'info');
+    showToast('Please load material records first', 'info');
     return;
   }
   openTransferModal(allData[0]._id);
@@ -1236,7 +1236,7 @@ async function saveMaterial() {
     if (!body[k] && body[k] !== 0) { if(el) el.classList.add('error'); valid = false; }
     else if(el) el.classList.remove('error');
   });
-  if (!valid) { showToast('Sabhi required fields fill karein', 'error'); return; }
+  if (!valid) { showToast('Please fill in all required fields', 'error'); return; }
 
   const btn = document.getElementById('modalSaveBtn');
   btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving…';
@@ -1267,7 +1267,7 @@ async function submitTransfer() {
   const toEngineer = document.getElementById('transferToEngineer').value;
   const note = v('transferNote');
   if (!id || !toEngineer) {
-    showToast('Transfer ke liye target engineer chahiye', 'error');
+    showToast('A target engineer is required for transfer', 'error');
     return;
   }
   const btn = document.getElementById('transferSaveBtn');
@@ -1300,7 +1300,7 @@ async function submitTransfer() {
 //  DELETE
 // ═══════════════════════════════════════════════════════════════════════════
 function confirmDelete(id, name) {
-  document.getElementById('confirmMsg').textContent = `"${name}" delete karein? Yeh action undo nahi hoga.`;
+  document.getElementById('confirmMsg').textContent = `Delete "${name}"? This action cannot be undone.`;
   document.getElementById('confirmOkBtn').onclick = () => doDelete(id);
   document.getElementById('confirmBox').classList.add('open');
 }
@@ -1360,11 +1360,11 @@ async function doUpload() {
     const res = document.getElementById('uploadResult');
     if (r.ok) {
       res.innerHTML = `
-        <div class="result-row success"><i class="fa-solid fa-circle-check"></i> ${j.inserted} records successfully insert hue</div>
-        ${j.skipped ? `<div class="result-row warn"><i class="fa-solid fa-triangle-exclamation"></i> ${j.skipped} duplicates skip kiye gaye</div>` : ''}
-        ${j.errorRows?.length ? `<div class="result-row error"><i class="fa-solid fa-circle-xmark"></i> ${j.errorRows.length} invalid rows — column names check karein</div>` : ''}
+        <div class="result-row success"><i class="fa-solid fa-circle-check"></i> ${j.inserted} records inserted successfully</div>
+        ${j.skipped ? `<div class="result-row warn"><i class="fa-solid fa-triangle-exclamation"></i> ${j.skipped} duplicates were skipped</div>` : ''}
+        ${j.errorRows?.length ? `<div class="result-row error"><i class="fa-solid fa-circle-xmark"></i> ${j.errorRows.length} invalid rows — please check the column names</div>` : ''}
       `;
-      showToast(`${j.inserted} records import ho gaye!`, 'success');
+      showToast(`${j.inserted} records imported successfully`, 'success');
       loadData(1); loadStats();
     } else {
       res.innerHTML = `<div class="result-row error"><i class="fa-solid fa-circle-xmark"></i> ${j.message || 'Upload failed'}</div>`;
@@ -1393,7 +1393,7 @@ function downloadTemplate() {
 //  EXPORT
 // ═══════════════════════════════════════════════════════════════════════════
 async function exportExcel() {
-  showToast('Export prepare ho raha hai…', 'info');
+  showToast('Preparing export…', 'info');
   try {
     const r = await fetch(`${API}/export/excel`, { headers: { Authorization: `Bearer ${TOKEN()}` } });
     if (!r.ok) {
@@ -1408,7 +1408,7 @@ async function exportExcel() {
     a.download = `materials_${new Date().toISOString().slice(0,10)}.xlsx`;
     a.click();
     URL.revokeObjectURL(url);
-    showToast('Export download ho gaya ✓', 'success');
+    showToast('Export downloaded successfully', 'success');
   } catch(e) {
     showToast('Network error during export', 'error');
   }
@@ -1500,7 +1500,7 @@ function renderActivityFeed() {
   const wrap = document.getElementById('activityList');
   if (!wrap) return;
   if (!recentTransfers.length) {
-    wrap.innerHTML = `<div class="activity-empty">Abhi tak koi transfer activity nahi mili. Naya transfer karte hi yahan history dikhegi.</div>`;
+    wrap.innerHTML = `<div class="activity-empty">No transfer activity yet. New transfers will appear here.</div>`;
     return;
   }
   wrap.innerHTML = recentTransfers.map(item => {
