@@ -126,7 +126,7 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
 .act-btn.del{background:var(--sf-red-lt);color:var(--sf-red);border:1px solid #f5c6c3;}
 .act-btn.del:hover{background:#fbd5d0;}
 
-.ops-grid{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(280px,1fr);gap:12px;margin:12px 0;}
+.ops-grid{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(280px,1fr);gap:12px;}
 .ops-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);overflow:hidden;}
 .ops-card-head{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;background:var(--surface2);}
 .ops-card-title{font-size:12px;font-weight:700;color:var(--txt);text-transform:uppercase;letter-spacing:.4px;}
@@ -188,6 +188,7 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
   display:flex;flex-direction:column;
   max-height:90vh;
 }
+.modal-wide{max-width:1100px;}
 @keyframes modalIn{from{transform:scale(.9) translateY(20px);opacity:0;}to{transform:none;opacity:1;}}
 .modal-header{
   padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0;background:var(--surface2);
@@ -409,6 +410,9 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
       <div class="sf-page-meta">Item type, status aur engineer allocation ko task manager style mein track karein</div>
     </div>
     <div class="sf-page-actions">
+      <button class="sf-btn sf-btn-neutral" onclick="openModal('opsModal')">
+        <i class="fa-solid fa-bolt"></i> Quick Ops
+      </button>
       <button class="sf-btn sf-btn-neutral" onclick="openUploadModal()">
         <i class="fa-solid fa-file-arrow-up"></i> Bulk Upload
       </button>
@@ -483,50 +487,6 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
     </button>
   </div>
 
-  <div class="ops-grid">
-    <div class="ops-card">
-      <div class="ops-card-head">
-        <i class="fa-solid fa-bolt" style="color:var(--sf-blue);"></i>
-        <div class="ops-card-title">Quick Operations</div>
-      </div>
-      <div class="ops-card-body">
-        <div class="ops-actions">
-          <button class="ops-action" onclick="openTransferModalFromSelection()">
-            <i class="fa-solid fa-right-left"></i>
-            <strong>Transfer Material</strong>
-            <span>Selected ya opened record ko dusre engineer ko move karein.</span>
-          </button>
-          <button class="ops-action" onclick="filterLowStock()">
-            <i class="fa-solid fa-triangle-exclamation" style="color:var(--sf-yellow);"></i>
-            <strong>Low Stock Watch</strong>
-            <span>Critical qty records ko ek click mein isolate karein.</span>
-          </button>
-          <button class="ops-action" onclick="openUploadModal()">
-            <i class="fa-solid fa-file-arrow-up" style="color:var(--sf-green);"></i>
-            <strong>Bulk Intake</strong>
-            <span>Excel/CSV se fresh stock ingest karein.</span>
-          </button>
-          <button class="ops-action" onclick="exportExcel()">
-            <i class="fa-solid fa-file-excel" style="color:var(--sf-green);"></i>
-            <strong>Ops Export</strong>
-            <span>Current stock ka Excel snapshot download karein.</span>
-          </button>
-        </div>
-      </div>
-    </div>
-    <div class="ops-card">
-      <div class="ops-card-head">
-        <i class="fa-solid fa-clock-rotate-left" style="color:var(--sf-yellow);"></i>
-        <div class="ops-card-title">Recent Activity</div>
-      </div>
-      <div class="ops-card-body">
-        <div class="activity-list" id="activityList">
-          <div class="activity-empty">Activity load ho rahi hai…</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <div class="sf-table-card" style="border-radius:0 0 var(--r-lg) var(--r-lg);border-top:none;">
     <div class="sf-table-header">
       <div class="sf-table-title">
@@ -570,6 +530,63 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
     </div>
   </div>
 </main>
+
+<div class="modal-overlay" id="opsModal">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <span class="modal-title"><i class="fa-solid fa-bolt"></i> Quick Operations</span>
+      <button class="modal-close" onclick="closeModal('opsModal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="ops-grid">
+        <div class="ops-card">
+          <div class="ops-card-head">
+            <i class="fa-solid fa-bolt" style="color:var(--sf-blue);"></i>
+            <div class="ops-card-title">Operations Desk</div>
+          </div>
+          <div class="ops-card-body">
+            <div class="ops-actions">
+              <button class="ops-action" onclick="closeModal('opsModal');openTransferModalFromSelection()">
+                <i class="fa-solid fa-right-left"></i>
+                <strong>Transfer Material</strong>
+                <span>Loaded record ko dusre engineer ke naam pe move karein.</span>
+              </button>
+              <button class="ops-action" onclick="closeModal('opsModal');filterLowStock()">
+                <i class="fa-solid fa-triangle-exclamation" style="color:var(--sf-yellow);"></i>
+                <strong>Low Stock Watch</strong>
+                <span>Critical qty waale records ko ek click mein filter karein.</span>
+              </button>
+              <button class="ops-action" onclick="closeModal('opsModal');openUploadModal()">
+                <i class="fa-solid fa-file-arrow-up" style="color:var(--sf-green);"></i>
+                <strong>Bulk Intake</strong>
+                <span>Excel/CSV se fresh stock ingest karein.</span>
+              </button>
+              <button class="ops-action" onclick="closeModal('opsModal');exportExcel()">
+                <i class="fa-solid fa-file-excel" style="color:var(--sf-green);"></i>
+                <strong>Ops Export</strong>
+                <span>Current stock ka Excel snapshot download karein.</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="ops-card">
+          <div class="ops-card-head">
+            <i class="fa-solid fa-clock-rotate-left" style="color:var(--sf-yellow);"></i>
+            <div class="ops-card-title">Recent Activity</div>
+          </div>
+          <div class="ops-card-body">
+            <div class="activity-list" id="activityList">
+              <div class="activity-empty">Activity load ho rahi hai…</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="sf-btn sf-btn-neutral" onclick="closeModal('opsModal')">Close</button>
+    </div>
+  </div>
+</div>
 
 <!-- ═══════════════════════════════ ADD/EDIT MODAL ═══════════════════════════════ -->
 <div class="modal-overlay" id="materialModal">
