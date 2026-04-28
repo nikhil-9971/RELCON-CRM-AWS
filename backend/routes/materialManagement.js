@@ -5,12 +5,12 @@ const XLSX = require("xlsx");
 const path = require("path");
 
 const MaterialManagement = require("../models/MaterialManagement");
-const { verifyToken, requireRole } = require("./auth"); // reuse existing auth middleware
+const { verifyToken, requireRole } = require("./auth");
 
-// ── Multer config (memory storage for Excel parsing) ──────────────────────────
+// ── Multer config ─────────────────────────────────────────────────────────────
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+  limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowed = [".xlsx", ".xls", ".csv"];
     const ext = path.extname(file.originalname).toLowerCase();
@@ -20,22 +20,24 @@ const upload = multer({
 });
 
 // ── Helper ────────────────────────────────────────────────────────────────────
-const VALID_TYPES = ["HPCL", "RBML", "BPCL", "OTHER"];
+const VALID_STATUSES = ["OK", "Not Ok (Faulty)", "Under Repair", "Scrapped"];
 
 function validateRow(row) {
   const errors = [];
-  if (!row.serialNumber) errors.push("serialNumber is required");
   if (!row.itemCode)     errors.push("itemCode is required");
   if (!row.itemName)     errors.push("itemName is required");
-  if (row.qty === undefined || row.qty === null || isNaN(Number(row.qty))) errors.push("qty must be a number");
-  if (!row.itemType || !VALID_TYPES.includes(row.itemType)) errors.push(`itemType must be one of: ${VALID_TYPES.join(", ")}`);
-  if (!row.customerName) errors.push("customerName is required");
+  if (row.qty === undefined || row.qty === null || isNaN(Number(row.qty)))
+    errors.push("qty must be a number");
+  if (!row.itemType)     errors.push("itemType is required");
+  if (!row.itemStatus || !VALID_STATUSES.includes(row.itemStatus))
+    errors.push(`itemStatus must be one of: ${VALID_STATUSES.join(", ")}`);
   if (!row.engineerName) errors.push("engineerName is required");
+  // customerName optional hai — UI mein field nahi hai
   return errors;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// GET /materialManagement — list all (with optional filters & search)
+// GET /materialManagement — list with filters & pagination
 // ═══════════════════════════════════════════════════════════════════════════════
 router.get("/", verifyToken, async (req, res) => {
   try {
@@ -43,6 +45,7 @@ router.get("/", verifyToken, async (req, res) => {
       search = "",
       engineerName,
       itemType,
+      itemStatus,        // ← NEW filter
       customerName,
       page = 1,
       limit = 50,
@@ -58,13 +61,19 @@ router.get("/", verifyToken, async (req, res) => {
         { serialNumber: re },
         { itemCode: re },
         { itemName: re },
-        { customerName: re },
         { engineerName: re },
+        { customerName: re },
       ];
     }
+
     if (engineerName) query.engineerName = new RegExp(engineerName, "i");
-    if (itemType)     query.itemType = itemType;
+    if (itemType)     query.itemType     = new RegExp(itemType, "i");    // free-text itemType
+    if (itemStatus)   query.itemStatus   = itemStatus;                   // ← NEW
     if (customerName) query.customerName = new RegExp(customerName, "i");
+
+    // UI status filter: "ok" → "OK", "faulty" → "Not Ok (Faulty)"
+    if (req.query.status === "ok")     query.itemStatus = "OK";
+    if (req.query.status === "faulty") query.itemStatus = "Not Ok (Faulty)";
 
     const sort = { [sortBy]: sortOrder === "asc" ? 1 : -1 };
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -82,17 +91,25 @@ router.get("/", verifyToken, async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// GET /materialManagement/stats — summary stats
+// GET /materialManagement/stats — UI stat cards ke liye
 // ═══════════════════════════════════════════════════════════════════════════════
 router.get("/stats", verifyToken, async (req, res) => {
   try {
-    const [total, byType, byEngineer] = await Promise.all([
+    const [total, byStatus, byType, byEngineer] = await Promise.all([
       MaterialManagement.countDocuments({ isActive: true }),
+
+      // UI mein "OK Items" aur "Not OK (Faulty)" stat cards hain
+      MaterialManagement.aggregate([
+        { $match: { isActive: true } },
+        { $group: { _id: "$itemStatus", count: { $sum: 1 } } },
+      ]),
+
       MaterialManagement.aggregate([
         { $match: { isActive: true } },
         { $group: { _id: "$itemType", count: { $sum: 1 }, totalQty: { $sum: "$qty" } } },
         { $sort: { count: -1 } },
       ]),
+
       MaterialManagement.aggregate([
         { $match: { isActive: true } },
         { $group: { _id: "$engineerName", count: { $sum: 1 }, totalQty: { $sum: "$qty" } } },
@@ -101,7 +118,11 @@ router.get("/stats", verifyToken, async (req, res) => {
       ]),
     ]);
 
-    res.json({ success: true, total, byType, byEngineer });
+    // UI ke stat cards: statOk, statFaulty
+    const okCount     = byStatus.find(s => s._id === "OK")?.count || 0;
+    const faultyCount = byStatus.find(s => s._id === "Not Ok (Faulty)")?.count || 0;
+
+    res.json({ success: true, total, okCount, faultyCount, byStatus, byType, byEngineer });
   } catch (err) {
     console.error("[MaterialMgmt] GET /stats:", err);
     res.status(500).json({ success: false, message: "Server error", error: err.message });
@@ -122,69 +143,96 @@ router.get("/:id", verifyToken, async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// POST /materialManagement — create single record (Admin only)
+// POST /materialManagement — create single record
 // ═══════════════════════════════════════════════════════════════════════════════
 router.post("/", verifyToken, requireRole(["Admin"]), async (req, res) => {
   try {
-    const { serialNumber, itemCode, itemName, qty, itemType, customerName, engineerName, remarks } = req.body;
+    const {
+      serialNumber,
+      itemCode,
+      itemName,
+      qty,
+      itemType,
+      itemStatus,      // ← NEW
+      engineerName,
 
-    const errors = validateRow({ serialNumber, itemCode, itemName, qty, itemType, customerName, engineerName });
-    if (errors.length) return res.status(400).json({ success: false, message: "Validation failed", errors });
+    } = req.body;
 
-    // Auto-generate serial number if not provided
-    const finalSerial = serialNumber || `MAT-${Date.now()}`;
+    const errors = validateRow({ itemCode, itemName, qty, itemType, itemStatus, engineerName });
+    if (errors.length)
+      return res.status(400).json({ success: false, message: "Validation failed", errors });
+
+    // Serial number auto-generate if not provided
+    const finalSerial = (serialNumber || "").trim() || `MAT-${Date.now()}`;
 
     const existing = await MaterialManagement.findOne({ serialNumber: finalSerial });
-    if (existing) return res.status(409).json({ success: false, message: `Serial number '${finalSerial}' already exists` });
+    if (existing)
+      return res.status(409).json({ success: false, message: `Serial number '${finalSerial}' already exists` });
 
     const record = await MaterialManagement.create({
       serialNumber: finalSerial,
       itemCode: itemCode.toUpperCase(),
       itemName,
       qty: Number(qty),
-      itemType,
-      customerName,
+      itemType: itemType.toUpperCase(),
+      itemStatus,                                   // ← NEW
       engineerName,
-      remarks: remarks || "",
+      
       uploadedBy: req.user?.name || req.user?.email || "Admin",
     });
 
     res.status(201).json({ success: true, message: "Material record created", data: record });
   } catch (err) {
-    if (err.code === 11000) return res.status(409).json({ success: false, message: "Duplicate serial number" });
+    if (err.code === 11000)
+      return res.status(409).json({ success: false, message: "Duplicate serial number" });
     console.error("[MaterialMgmt] POST /:", err);
     res.status(500).json({ success: false, message: "Server error", error: err.message });
   }
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// PUT /materialManagement/:id — update record (Admin only)
+// PUT /materialManagement/:id — update record
 // ═══════════════════════════════════════════════════════════════════════════════
 router.put("/:id", verifyToken, requireRole(["Admin", "Manager"]), async (req, res) => {
   try {
-    const { serialNumber, itemCode, itemName, qty, itemType, customerName, engineerName, remarks } = req.body;
+    const {
+      serialNumber,
+      itemCode,
+      itemName,
+      qty,
+      itemType,
+      itemStatus,      // ← NEW
+      engineerName,
+
+    } = req.body;
 
     const existing = await MaterialManagement.findById(req.params.id);
-    if (!existing || !existing.isActive) return res.status(404).json({ success: false, message: "Record not found" });
+    if (!existing || !existing.isActive)
+      return res.status(404).json({ success: false, message: "Record not found" });
 
-    // Check duplicate serial (if changed)
+    // itemStatus validate karein agar diya gaya ho
+    if (itemStatus && !VALID_STATUSES.includes(itemStatus))
+      return res.status(400).json({ success: false, message: `itemStatus must be one of: ${VALID_STATUSES.join(", ")}` });
+
+    // Duplicate serial check (agar serial change ho raha hai)
     if (serialNumber && serialNumber !== existing.serialNumber) {
       const dup = await MaterialManagement.findOne({ serialNumber, _id: { $ne: req.params.id } });
-      if (dup) return res.status(409).json({ success: false, message: `Serial number '${serialNumber}' already exists` });
+      if (dup)
+        return res.status(409).json({ success: false, message: `Serial number '${serialNumber}' already exists` });
     }
 
     const updated = await MaterialManagement.findByIdAndUpdate(
       req.params.id,
       {
         $set: {
-          ...(serialNumber  && { serialNumber }),
-          ...(itemCode      && { itemCode: itemCode.toUpperCase() }),
-          ...(itemName      && { itemName }),
-          ...(qty !== undefined && { qty: Number(qty) }),
-          ...(itemType      && { itemType }),
-          ...(customerName  && { customerName }),
-          ...(engineerName  && { engineerName }),
-          ...(remarks !== undefined && { remarks }),
+          ...(serialNumber               && { serialNumber }),
+          ...(itemCode                   && { itemCode: itemCode.toUpperCase() }),
+          ...(itemName                   && { itemName }),
+          ...(qty !== undefined          && { qty: Number(qty) }),
+          ...(itemType                   && { itemType: itemType.toUpperCase() }),
+          ...(itemStatus                 && { itemStatus }),          // ← NEW
+          ...(engineerName               && { engineerName }),
+         
         },
       },
       { new: true, runValidators: true }
@@ -198,12 +246,13 @@ router.put("/:id", verifyToken, requireRole(["Admin", "Manager"]), async (req, r
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// DELETE /materialManagement/:id — soft delete (Admin only)
+// DELETE /materialManagement/:id — soft delete
 // ═══════════════════════════════════════════════════════════════════════════════
 router.delete("/:id", verifyToken, requireRole(["Admin"]), async (req, res) => {
   try {
     const item = await MaterialManagement.findById(req.params.id);
-    if (!item || !item.isActive) return res.status(404).json({ success: false, message: "Record not found" });
+    if (!item || !item.isActive)
+      return res.status(404).json({ success: false, message: "Record not found" });
 
     await MaterialManagement.findByIdAndUpdate(req.params.id, { $set: { isActive: false } });
     res.json({ success: true, message: "Record deleted successfully" });
@@ -214,29 +263,29 @@ router.delete("/:id", verifyToken, requireRole(["Admin"]), async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// POST /materialManagement/bulk-upload — Admin uploads Excel/CSV sheet
+// POST /materialManagement/bulk-upload — Excel/CSV import
 // ═══════════════════════════════════════════════════════════════════════════════
 router.post("/bulk-upload", verifyToken, requireRole(["Admin"]), upload.single("file"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded" });
 
-    const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+    const workbook  = XLSX.read(req.file.buffer, { type: "buffer" });
     const sheetName = workbook.SheetNames[0];
-    const sheet = workbook.Sheets[sheetName];
-    const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+    const sheet     = workbook.Sheets[sheetName];
+    const rows      = XLSX.utils.sheet_to_json(sheet, { defval: "" });
 
     if (!rows.length) return res.status(400).json({ success: false, message: "Sheet is empty" });
 
-    // Normalize column names (handle different cases)
+    // CSV column names normalize — UI template ke exact column names match
     const normalize = (row) => ({
-      serialNumber: (row["Serial Number"] || row["serialNumber"] || row["SNo"] || row["S.No"] || "").toString().trim(),
-      itemCode:     (row["Item Code"]     || row["itemCode"]     || row["Code"]  || "").toString().trim(),
-      itemName:     (row["Item Name"]     || row["itemName"]     || row["Name"]  || "").toString().trim(),
-      qty:          row["Qty"] ?? row["qty"] ?? row["Quantity"] ?? row["quantity"] ?? 0,
-      itemType:     (row["Item Type"]     || row["itemType"]     || row["Type"]  || "Other").toString().trim(),
-      customerName: (row["Customer"]      || row["customerName"] || row["Customer Name"] || "").toString().trim(),
+      serialNumber: (row["Serial Number"] || row["serialNumber"] || row["SNo"] || "").toString().trim(),
+      itemCode:     (row["Item Code"]     || row["itemCode"]     || "").toString().trim(),
+      itemName:     (row["Item Name"]     || row["itemName"]     || "").toString().trim(),
+      qty:           row["Qty"] ?? row["qty"] ?? row["Quantity"] ?? 0,
+      itemType:     (row["Item Type"]     || row["itemType"]     || "").toString().trim(),
+      itemStatus:   (row["Item Status"]   || row["itemStatus"]   || "OK").toString().trim(), // ← NEW
       engineerName: (row["Engineer"]      || row["engineerName"] || row["Engineer Name"] || "").toString().trim(),
-      remarks:      (row["Remarks"]       || row["remarks"]      || "").toString().trim(),
+      
     });
 
     const validRows = [];
@@ -246,14 +295,20 @@ router.post("/bulk-upload", verifyToken, requireRole(["Admin"]), upload.single("
       const row = normalize(rawRow);
       const errors = validateRow(row);
       if (errors.length) {
-        errorRows.push({ row: index + 2, data: rawRow, errors }); // +2 for header row + 1-indexed
+        errorRows.push({ row: index + 2, data: rawRow, errors });
       } else {
-        validRows.push({ ...row, qty: Number(row.qty), itemCode: row.itemCode.toUpperCase(), uploadedBy: req.user?.name || "Admin" });
+        validRows.push({
+          ...row,
+          qty:          Number(row.qty),
+          itemCode:     row.itemCode.toUpperCase(),
+          itemType:     row.itemType.toUpperCase(),
+          serialNumber: row.serialNumber || `MAT-${Date.now()}-${index}`,
+          uploadedBy:   req.user?.name || "Admin",
+        });
       }
     });
 
-    let inserted = 0;
-    let skipped = 0;
+    let inserted = 0, skipped = 0;
     const skipList = [];
 
     for (const row of validRows) {
@@ -261,16 +316,13 @@ router.post("/bulk-upload", verifyToken, requireRole(["Admin"]), upload.single("
         await MaterialManagement.create(row);
         inserted++;
       } catch (e) {
-        if (e.code === 11000) {
-          skipped++;
-          skipList.push(row.serialNumber);
-        }
+        if (e.code === 11000) { skipped++; skipList.push(row.serialNumber); }
       }
     }
 
     res.json({
       success: true,
-      message: `Upload complete: ${inserted} inserted, ${skipped} skipped (duplicates), ${errorRows.length} invalid rows`,
+      message: `Upload complete: ${inserted} inserted, ${skipped} skipped, ${errorRows.length} invalid`,
       inserted,
       skipped,
       skipList,
@@ -283,23 +335,22 @@ router.post("/bulk-upload", verifyToken, requireRole(["Admin"]), upload.single("
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// GET /materialManagement/export/excel — export all as Excel
+// GET /materialManagement/export/excel — Excel export
 // ═══════════════════════════════════════════════════════════════════════════════
 router.get("/export/excel", verifyToken, requireRole(["Admin", "Manager"]), async (req, res) => {
   try {
     const data = await MaterialManagement.find({ isActive: true }).lean();
 
     const rows = data.map((d, i) => ({
-      "S.No": i + 1,
+      "S.No":          i + 1,
       "Serial Number": d.serialNumber,
-      "Item Code": d.itemCode,
-      "Item Name": d.itemName,
-      "Qty": d.qty,
-      "Item Type": d.itemType,
-      "Customer": d.customerName,
-      "Engineer": d.engineerName,
-      "Remarks": d.remarks || "",
-      "Created At": new Date(d.createdAt).toLocaleDateString("en-IN"),
+      "Item Code":     d.itemCode,
+      "Item Name":     d.itemName,
+      "Qty":           d.qty,
+      "Item Type":     d.itemType,
+      "Item Status":   d.itemStatus,               // ← NEW column
+      "Engineer":      d.engineerName,
+      "Created At":    new Date(d.createdAt).toLocaleDateString("en-IN"),
     }));
 
     const wb = XLSX.utils.book_new();
