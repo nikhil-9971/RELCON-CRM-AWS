@@ -485,15 +485,11 @@ td:first-child{padding-left:18px;}
       <input type="text" id="searchInput" placeholder="Item code, name, engineer se search karein…" oninput="onSearch()"/>
     </div>
 
-    <!-- Item Type Filter (toolbar mein bhi — tab se sync) -->
+    <!-- Item Type Filter (toolbar mein bhi — dynamically populated) -->
     <div class="type-filter-wrap">
       <span class="type-filter-label"><i class="fa-solid fa-tag" style="margin-right:3px;"></i>Item Type:</span>
       <select class="tb-filter" id="typeFilter" onchange="onTypeFilterChange()">
         <option value="">All Types</option>
-        <option value="HPCL">HPCL</option>
-        <option value="RBML">RBML</option>
-        <option value="BPCL">BPCL</option>
-        <option value="OTHER">OTHER</option>
       </select>
     </div>
 
@@ -585,13 +581,8 @@ td:first-child{padding-left:18px;}
         </div>
         <div class="form-field">
           <label>Item Type <span>*</span></label>
-          <select id="fItemType">
-            <option value="" disabled selected>Select type</option>
-            <option>HPCL</option>
-            <option>RBML</option>
-            <option>BPCL</option>
-            <option>OTHER</option>
-          </select>
+          <input type="text" id="fItemType" list="itemTypeList" placeholder="e.g. HPCL, BOS CARD, SMPS…" autocomplete="off"/>
+          <datalist id="itemTypeList"></datalist>
         </div>
         <div class="form-field full">
           <label>Item Name <span>*</span></label>
@@ -807,6 +798,27 @@ async function loadStats() {
       o.textContent = e._id;
       engSel.appendChild(o);
     });
+
+    // Populate Item Type filter dropdown dynamically from DB
+    const typeSel = document.getElementById('typeFilter');
+    const currentTypeVal = typeSel.value;
+    while (typeSel.options.length > 1) typeSel.remove(1);
+    byType.forEach(t => {
+      const o = document.createElement('option');
+      o.value = t._id;
+      o.textContent = t._id;
+      typeSel.appendChild(o);
+    });
+    typeSel.value = currentTypeVal; // restore selection if any
+
+    // Populate datalist for modal free-text input suggestions
+    const dl = document.getElementById('itemTypeList');
+    dl.innerHTML = '';
+    byType.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t._id;
+      dl.appendChild(opt);
+    });
   } catch(e) { console.warn('Stats load failed', e); }
 }
 
@@ -962,16 +974,13 @@ function onSearch() {
 
 function onFilter() { loadData(1); }
 
-// Item Type dropdown change — tab bhi sync karo
+// Item Type dropdown change
 function onTypeFilterChange() {
   const val = document.getElementById('typeFilter').value;
   activeTab = val || 'all';
-  // Sync tabs
-  document.querySelectorAll('.ph-tab').forEach(t => {
-    t.classList.toggle('active', t.dataset.type === activeTab);
-  });
   loadData(1);
 }
+
 
 // Tab click — dropdown bhi sync karo
 function switchTab(tab, el) {
