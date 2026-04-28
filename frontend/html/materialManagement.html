@@ -66,7 +66,7 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
 .page-body{padding:20px 24px;display:flex;flex-direction:column;gap:16px;}
 
 /* ── STAT CARDS ── */
-.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
 .stat-card{
   background:var(--surface);border:1px solid var(--border);
   border-radius:var(--r-xl);padding:16px 18px;
@@ -82,7 +82,7 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
 .stat-card.blue::before{background:linear-gradient(90deg,#2563EB,#3B82F6);}
 .stat-card.teal::before{background:linear-gradient(90deg,#0D9488,#06B6D4);}
 .stat-card.green::before{background:linear-gradient(90deg,#059669,#10B981);}
-.stat-card.orange::before{background:linear-gradient(90deg,#EA580C,#F97316);}
+.stat-card.orange::before{background:linear-gradient(90deg,#DC2626,#EF4444);}
 .stat-icon{
   width:40px;height:40px;border-radius:var(--r-lg);flex-shrink:0;
   display:flex;align-items:center;justify-content:center;font-size:16px;
@@ -397,10 +397,10 @@ td:first-child{padding-left:18px;}
 @keyframes shimmer{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
 
 /* ── RESPONSIVE ── */
-@media(max-width:1024px){.stats-row{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:1024px){.stats-row{grid-template-columns:repeat(3,1fr);}}
 @media(max-width:768px){
   .page-body{padding:14px 12px;}
-  .stats-row{grid-template-columns:repeat(2,1fr);}
+  .stats-row{grid-template-columns:repeat(3,1fr);}
   .ph-right{display:none;}
   .form-grid{grid-template-columns:1fr;}
 }
@@ -439,15 +439,11 @@ td:first-child{padding-left:18px;}
     </div>
   </div>
 
-  <!-- Item Type Tabs — Primary Filter -->
+  <!-- Item Type Tabs — Primary Filter (All only) -->
   <div class="ph-tabs">
     <button class="ph-tab active" data-type="all" onclick="switchTab('all',this)">
-      <i class="fa-solid fa-layer-group" style="font-size:10px;margin-right:4px;"></i>All Types
+      <i class="fa-solid fa-layer-group" style="font-size:10px;margin-right:4px;"></i>All Items
     </button>
-    <button class="ph-tab" data-type="HPCL" onclick="switchTab('HPCL',this)">HPCL</button>
-    <button class="ph-tab" data-type="RBML" onclick="switchTab('RBML',this)">RBML</button>
-    <button class="ph-tab" data-type="BPCL" onclick="switchTab('BPCL',this)">BPCL</button>
-    <button class="ph-tab" data-type="OTHER" onclick="switchTab('OTHER',this)">OTHER</button>
   </div>
 </div>
 
@@ -464,14 +460,6 @@ td:first-child{padding-left:18px;}
         <div class="stat-delta neutral" id="statTotalSub">Loading…</div>
       </div>
     </div>
-    <div class="stat-card teal">
-      <div class="stat-icon teal"><i class="fa-solid fa-cubes"></i></div>
-      <div>
-        <div class="stat-num" id="statQty">—</div>
-        <div class="stat-lbl">Total Quantity</div>
-        <div class="stat-delta neutral" id="statQtySub"></div>
-      </div>
-    </div>
     <div class="stat-card green">
       <div class="stat-icon green"><i class="fa-solid fa-circle-check"></i></div>
       <div>
@@ -480,12 +468,12 @@ td:first-child{padding-left:18px;}
         <div class="stat-delta up" id="statOkSub"></div>
       </div>
     </div>
-    <div class="stat-card orange">
-      <div class="stat-icon orange"><i class="fa-solid fa-hard-hat"></i></div>
+    <div class="stat-card orange" style="--border-top-color:#DC2626;">
+      <div class="stat-icon orange" style="background:#FEF2F2;color:#DC2626;"><i class="fa-solid fa-circle-xmark"></i></div>
       <div>
-        <div class="stat-num" id="statEngineers">—</div>
-        <div class="stat-lbl">Engineers Assigned</div>
-        <div class="stat-delta neutral" id="statEngSub"></div>
+        <div class="stat-num" id="statFaulty">—</div>
+        <div class="stat-lbl">Not OK (Faulty)</div>
+        <div class="stat-delta warn" id="statFaultySub"></div>
       </div>
     </div>
   </div>
@@ -645,14 +633,6 @@ td:first-child{padding-left:18px;}
             <option>Vinit Kumar</option>
           </select>
         </div>
-        <div class="form-field full">
-          <label>Customer / Site</label>
-          <input type="text" id="fCustomer" placeholder="e.g. HPCL Patna RO (optional)"/>
-        </div>
-        <div class="form-field full">
-          <label>Remarks</label>
-          <textarea id="fRemarks" placeholder="Optional notes…"></textarea>
-        </div>
       </div>
     </div>
     <div class="modal-footer">
@@ -683,12 +663,9 @@ td:first-child{padding-left:18px;}
           <span class="csv-col-tag required">Qty</span>
           <span class="csv-col-tag required">Item Status</span>
           <span class="csv-col-tag required">Engineer</span>
-          <span class="csv-col-tag" style="background:#FFF;color:#64748B;">Customer (optional)</span>
-          <span class="csv-col-tag" style="background:#FFF;color:#64748B;">Remarks (optional)</span>
         </div>
         <div style="margin-top:8px;font-size:11.5px;color:var(--txt3);">
           <i class="fa-solid fa-circle-info" style="color:var(--brand);"></i>
-          Item Type values: <strong>HPCL, RBML, BPCL, OTHER</strong> &nbsp;|&nbsp;
           Item Status: <strong>OK, Not Ok (Faulty)</strong> etc.
         </div>
       </div>
@@ -799,17 +776,30 @@ async function loadStats() {
     const { total, byType, byEngineer } = await r.json();
 
     document.getElementById('statTotal').textContent = total;
-    document.getElementById('statTotalSub').textContent = `${byType.length} item type(s)`;
+    document.getElementById('statTotalSub').textContent = `Across ${byType.length} item type(s)`;
 
-    const totalQty = byType.reduce((s, t) => s + t.totalQty, 0);
-    document.getElementById('statQty').textContent = totalQty.toLocaleString();
+    // Fetch all data for OK and Faulty count
+    const custR = await fetch(`${API}?limit=5000`, { headers: { Authorization: `Bearer ${TOKEN()}` } });
+    if (custR.ok) {
+      const { data } = await custR.json();
+      const okCount = data.filter(d => {
+        const s = (d.itemStatus || '').toLowerCase();
+        return s === 'ok';
+      }).length;
+      const faultyCount = data.filter(d => {
+        const s = (d.itemStatus || '').toLowerCase();
+        return s.includes('faulty') || s.includes('not ok');
+      }).length;
 
-    document.getElementById('statEngineers').textContent = byEngineer.length;
-    document.getElementById('statEngSub').textContent = byEngineer[0]?._id || '';
+      document.getElementById('statOk').textContent = okCount || 0;
+      document.getElementById('statOkSub').textContent = total ? `${Math.round(okCount/total*100)}% items healthy` : '';
+
+      document.getElementById('statFaulty').textContent = faultyCount || 0;
+      document.getElementById('statFaultySub').textContent = total && faultyCount ? `${Math.round(faultyCount/total*100)}% items faulty` : 'No faulty items';
+    }
 
     // Populate engineer filter dropdown
     const engSel = document.getElementById('engineerFilter');
-    // Clear existing options except first
     while (engSel.options.length > 1) engSel.remove(1);
     byEngineer.forEach(e => {
       const o = document.createElement('option');
@@ -817,15 +807,6 @@ async function loadStats() {
       o.textContent = e._id;
       engSel.appendChild(o);
     });
-
-    // OK items count (fetch separately)
-    const custR = await fetch(`${API}?limit=5000`, { headers: { Authorization: `Bearer ${TOKEN()}` } });
-    if (custR.ok) {
-      const { data } = await custR.json();
-      const okCount = data.filter(d => (d.itemStatus || d.remarks || '').toLowerCase().includes('ok') && !(d.itemStatus || '').toLowerCase().includes('not')).length;
-      document.getElementById('statOk').textContent = okCount || '—';
-      document.getElementById('statOkSub').textContent = okCount ? `${Math.round(okCount/total*100)}% items healthy` : '';
-    }
   } catch(e) { console.warn('Stats load failed', e); }
 }
 
@@ -1035,8 +1016,6 @@ function openEditModal(id) {
   document.getElementById('fQty').value        = rec.qty;
   document.getElementById('fItemStatus').value = rec.itemStatus || '';
   document.getElementById('fEngineer').value   = rec.engineerName;
-  document.getElementById('fCustomer').value   = rec.customerName || '';
-  document.getElementById('fRemarks').value    = rec.remarks || '';
   openModal('materialModal');
 }
 
@@ -1048,8 +1027,6 @@ async function saveMaterial() {
     qty:          v('fQty'),
     itemStatus:   v('fItemStatus'),
     engineerName: v('fEngineer'),
-    customerName: v('fCustomer'),
-    remarks:      v('fRemarks'),
   };
 
   // Auto serial number
@@ -1175,10 +1152,10 @@ async function doUpload() {
 // CSV Template Download — CSV ke exact columns ke sath
 function downloadTemplate() {
   const rows = [
-    ['Item Code','Item Name','Item Type','Qty','Item Status','Engineer','Customer','Remarks'],
-    ['G1j22405125','BOS CARD','HPCL','1','OK','Amit Kumar','HPCL Patna RO',''],
-    ['9ZJ33379402','5V SMPS','RBML','1','Not Ok (Faulty)','Rajan Pandey','BPCL Site','Repair needed'],
-    ['G1j22405125','12V SMPS','BPCL','1','OK','Amit Kumar','',''],
+    ['Item Code','Item Name','Item Type','Qty','Item Status','Engineer'],
+    ['G1j22405125','BOS CARD','HPCL','1','OK','Amit Kumar'],
+    ['9ZJ33379402','5V SMPS','RBML','1','Not Ok (Faulty)','Rajan Pandey'],
+    ['G1j22405125','12V SMPS','BPCL','1','OK','Amit Kumar'],
   ];
   const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
   const a = document.createElement('a');
@@ -1218,7 +1195,7 @@ async function exportExcel() {
 function v(id) { return (document.getElementById(id)?.value || '').trim(); }
 function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function clearForm() {
-  ['fItemCode','fItemName','fItemType','fQty','fItemStatus','fEngineer','fCustomer','fRemarks']
+  ['fItemCode','fItemName','fItemType','fQty','fItemStatus','fEngineer']
     .forEach(id => { const el = document.getElementById(id); if(el){ el.value=''; el.classList.remove('error'); } });
 }
 function openModal(id)  { document.getElementById(id).classList.add('open'); }
