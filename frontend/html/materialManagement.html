@@ -9,7 +9,7 @@
 <style>
 /* ================================================================
    RELCON CRM — Material Management
-   Matches existing Salesforce-inspired dashboard design
+   CSV Columns: Item Code, Item Name, Item Type, Qty, Item Status, Engineer
 ================================================================ */
 :root {
   --brand:#2563EB; --brand-dk:#1D4ED8; --brand-lt:#EFF6FF;
@@ -51,7 +51,7 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
 .ph-sub{font-size:11.5px;color:var(--txt3);margin-top:2px;}
 .ph-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 
-/* ── TABS ── */
+/* ── TABS — Item Type ke liye ── */
 .ph-tabs{display:flex;gap:2px;align-items:center;}
 .ph-tab{
   padding:8px 14px 10px;font-size:12.5px;font-weight:500;
@@ -81,7 +81,7 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
 }
 .stat-card.blue::before{background:linear-gradient(90deg,#2563EB,#3B82F6);}
 .stat-card.teal::before{background:linear-gradient(90deg,#0D9488,#06B6D4);}
-.stat-card.purple::before{background:linear-gradient(90deg,#7C3AED,#A78BFA);}
+.stat-card.green::before{background:linear-gradient(90deg,#059669,#10B981);}
 .stat-card.orange::before{background:linear-gradient(90deg,#EA580C,#F97316);}
 .stat-icon{
   width:40px;height:40px;border-radius:var(--r-lg);flex-shrink:0;
@@ -89,12 +89,13 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
 }
 .stat-icon.blue{background:#EFF6FF;color:#2563EB;}
 .stat-icon.teal{background:#F0FDFA;color:#0D9488;}
-.stat-icon.purple{background:#F5F3FF;color:#7C3AED;}
+.stat-icon.green{background:#ECFDF5;color:#059669;}
 .stat-icon.orange{background:#FFF7ED;color:#EA580C;}
 .stat-num{font-size:24px;font-weight:800;color:var(--txt);line-height:1;}
 .stat-lbl{font-size:11px;color:var(--txt3);margin-top:3px;font-weight:500;}
 .stat-delta{font-size:10px;font-weight:600;margin-top:2px;}
 .stat-delta.up{color:var(--success);}
+.stat-delta.warn{color:var(--warn);}
 .stat-delta.neutral{color:var(--txt4);}
 
 /* ── TOOLBAR ── */
@@ -115,6 +116,10 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
 .search-wrap input:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-glow);}
 .search-wrap input::placeholder{color:var(--txt4);}
 .search-wrap i{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--txt4);font-size:11px;}
+
+/* Item Type Filter — main filter */
+.type-filter-wrap{display:flex;align-items:center;gap:6px;}
+.type-filter-label{font-size:11.5px;font-weight:600;color:var(--txt3);white-space:nowrap;}
 .tb-filter{
   height:34px;padding:0 12px;background:var(--surface2);
   border:1px solid var(--border);border-radius:var(--r);
@@ -122,6 +127,13 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
   outline:none;cursor:pointer;transition:border-color .15s;
 }
 .tb-filter:focus{border-color:var(--brand);}
+.tb-filter.active-filter{
+  border-color:var(--brand);background:var(--brand-lt);color:var(--brand);font-weight:600;
+}
+
+/* Status Filter */
+.status-filter-wrap{display:flex;align-items:center;gap:6px;}
+
 .tb-spacer{flex:1;}
 
 /* ── BUTTONS ── */
@@ -177,26 +189,31 @@ tbody tr:hover{background:var(--brand-lt);}
 td{padding:11px 14px;color:var(--txt2);vertical-align:middle;}
 td:first-child{padding-left:18px;}
 
-/* ── BADGES ── */
+/* ── ITEM TYPE BADGES ── */
 .badge{
   display:inline-flex;align-items:center;gap:4px;
   padding:2px 9px;border-radius:var(--r-full);
   font-size:11px;font-weight:600;white-space:nowrap;
 }
-.badge-Electrical  {background:#EFF6FF;color:#2563EB;}
-.badge-Mechanical  {background:#FFF7ED;color:#EA580C;}
-.badge-Electronic  {background:#F5F3FF;color:#7C3AED;}
-.badge-Civil       {background:#F0FDF4;color:#16A34A;}
-.badge-Consumable  {background:#FEF9C3;color:#CA8A04;}
-.badge-Spare       {background:#F0FDFA;color:#0D9488;}
-.badge-Tool        {background:#FDF4FF;color:#A21CAF;}
-.badge-Other       {background:#F8FAFC;color:#64748B;}
+/* Item Type badges */
+.badge-type-HPCL    {background:#EFF6FF;color:#2563EB;border:1px solid #BFDBFE;}
+.badge-type-RBML    {background:#FFF7ED;color:#EA580C;border:1px solid #FED7AA;}
+.badge-type-BPCL    {background:#F5F3FF;color:#7C3AED;border:1px solid #DDD6FE;}
+.badge-type-OTHER   {background:#F8FAFC;color:#64748B;border:1px solid #E2E8F0;}
+.badge-type-FCC     {background:#F0FDF4;color:#16A34A;border:1px solid #BBF7D0;}
+.badge-type-SMPS    {background:#FDF4FF;color:#A21CAF;border:1px solid #F5D0FE;}
+.badge-type-default {background:#F8FAFC;color:#64748B;border:1px solid #E2E8F0;}
 
-/* ── SN chip ── */
-.sn-chip{
+/* Item Status badges */
+.badge-status-ok     {background:#ECFDF5;color:#059669;border:1px solid #A7F3D0;}
+.badge-status-faulty {background:#FEF2F2;color:#DC2626;border:1px solid #FECACA;}
+.badge-status-other  {background:#FFFBEB;color:#D97706;border:1px solid #FDE68A;}
+
+/* ── Item Code chip ── */
+.code-chip{
   font-size:11px;font-weight:700;font-family:monospace;
   background:var(--surface2);border:1px solid var(--border);
-  padding:2px 8px;border-radius:var(--r-sm);color:var(--txt3);
+  padding:2px 8px;border-radius:var(--r-sm);color:var(--brand);
   letter-spacing:.3px;
 }
 
@@ -258,7 +275,7 @@ td:first-child{padding-left:18px;}
 .modal{
   background:var(--surface);border-radius:var(--r-xl);
   width:100%;max-width:640px;
-  box-shadow:var(--sh-xl);
+  box-shadow:0 20px 60px rgba(15,23,42,.20);
   animation:modalIn .22s cubic-bezier(.34,1.56,.64,1);
   display:flex;flex-direction:column;
   max-height:90vh;
@@ -318,6 +335,20 @@ td:first-child{padding-left:18px;}
 .result-row.error{background:#FEF2F2;color:#B91C1C;border:1px solid #FECACA;}
 .result-row.warn{background:#FFFBEB;color:#92400E;border:1px solid #FDE68A;}
 
+/* ── CSV INFO BOX ── */
+.csv-columns-info{
+  background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-lg);
+  padding:12px 14px;margin-bottom:16px;
+}
+.csv-columns-info .col-title{font-size:11.5px;font-weight:700;color:var(--txt2);margin-bottom:8px;}
+.csv-cols{display:flex;flex-wrap:wrap;gap:6px;}
+.csv-col-tag{
+  font-size:11px;font-weight:600;font-family:monospace;
+  background:#fff;border:1px solid var(--border);
+  padding:2px 8px;border-radius:var(--r-sm);color:var(--txt2);
+}
+.csv-col-tag.required{border-color:#93C5FD;background:#EFF6FF;color:#1D4ED8;}
+
 /* ── PROGRESS BAR ── */
 #pageLoader{
   position:fixed;top:0;left:0;height:3px;width:0%;z-index:999;
@@ -353,7 +384,7 @@ td:first-child{padding-left:18px;}
 .confirm-card{
   background:var(--surface);border-radius:var(--r-xl);
   width:100%;max-width:380px;padding:24px;
-  box-shadow:var(--sh-xl);text-align:center;
+  box-shadow:0 20px 60px rgba(15,23,42,.20);text-align:center;
   animation:modalIn .2s ease;
 }
 .confirm-icon{font-size:36px;margin-bottom:12px;}
@@ -361,7 +392,7 @@ td:first-child{padding-left:18px;}
 .confirm-msg{font-size:12.5px;color:var(--txt3);margin-bottom:20px;}
 .confirm-btns{display:flex;gap:10px;justify-content:center;}
 
-/* ── ROW skeleton ── */
+/* ── skeleton ── */
 .skeleton{background:linear-gradient(90deg,#F1F5F9 25%,#E2E8F0 50%,#F1F5F9 75%);background-size:200%;animation:shimmer 1.4s infinite;border-radius:4px;}
 @keyframes shimmer{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
 
@@ -392,7 +423,7 @@ td:first-child{padding-left:18px;}
       <div class="ph-icon"><i class="fa-solid fa-boxes-stacked"></i></div>
       <div>
         <div class="ph-title">Material Management</div>
-        <div class="ph-sub">Track inventory, assignments &amp; engineer material allocation</div>
+        <div class="ph-sub">Item Type ke basis pe material track karein — Engineer wise allocation</div>
       </div>
     </div>
     <div class="ph-right">
@@ -408,13 +439,15 @@ td:first-child{padding-left:18px;}
     </div>
   </div>
 
-  <!-- Tabs -->
+  <!-- Item Type Tabs — Primary Filter -->
   <div class="ph-tabs">
-    <button class="ph-tab active" onclick="switchTab('all',this)">All Materials</button>
-    <button class="ph-tab" onclick="switchTab('HPCL',this)">HPCL</button>
-    <button class="ph-tab" onclick="switchTab('RBML',this)">RBML</button>
-    <button class="ph-tab" onclick="switchTab('BPCL',this)">BPCL</button>
-    <button class="ph-tab" onclick="switchTab('OTHER',this)">OTHER</button>
+    <button class="ph-tab active" data-type="all" onclick="switchTab('all',this)">
+      <i class="fa-solid fa-layer-group" style="font-size:10px;margin-right:4px;"></i>All Types
+    </button>
+    <button class="ph-tab" data-type="HPCL" onclick="switchTab('HPCL',this)">HPCL</button>
+    <button class="ph-tab" data-type="RBML" onclick="switchTab('RBML',this)">RBML</button>
+    <button class="ph-tab" data-type="BPCL" onclick="switchTab('BPCL',this)">BPCL</button>
+    <button class="ph-tab" data-type="OTHER" onclick="switchTab('OTHER',this)">OTHER</button>
   </div>
 </div>
 
@@ -436,23 +469,23 @@ td:first-child{padding-left:18px;}
       <div>
         <div class="stat-num" id="statQty">—</div>
         <div class="stat-lbl">Total Quantity</div>
-        <div class="stat-delta up" id="statQtySub"></div>
+        <div class="stat-delta neutral" id="statQtySub"></div>
       </div>
     </div>
-    <div class="stat-card purple">
-      <div class="stat-icon purple"><i class="fa-solid fa-hard-hat"></i></div>
+    <div class="stat-card green">
+      <div class="stat-icon green"><i class="fa-solid fa-circle-check"></i></div>
+      <div>
+        <div class="stat-num" id="statOk">—</div>
+        <div class="stat-lbl">OK Items</div>
+        <div class="stat-delta up" id="statOkSub"></div>
+      </div>
+    </div>
+    <div class="stat-card orange">
+      <div class="stat-icon orange"><i class="fa-solid fa-hard-hat"></i></div>
       <div>
         <div class="stat-num" id="statEngineers">—</div>
         <div class="stat-lbl">Engineers Assigned</div>
         <div class="stat-delta neutral" id="statEngSub"></div>
-      </div>
-    </div>
-    <div class="stat-card orange">
-      <div class="stat-icon orange"><i class="fa-solid fa-building"></i></div>
-      <div>
-        <div class="stat-num" id="statCustomers">—</div>
-        <div class="stat-lbl">Customers</div>
-        <div class="stat-delta neutral" id="statCustSub"></div>
       </div>
     </div>
   </div>
@@ -461,20 +494,41 @@ td:first-child{padding-left:18px;}
   <div class="toolbar">
     <div class="search-wrap">
       <i class="fa-solid fa-magnifying-glass"></i>
-      <input type="text" id="searchInput" placeholder="Search by name, code, engineer…" oninput="onSearch()"/>
+      <input type="text" id="searchInput" placeholder="Item code, name, engineer se search karein…" oninput="onSearch()"/>
     </div>
-    <select class="tb-filter" id="typeFilter" onchange="onFilter()">
-      <option value="">All Types</option>
-      <option>HPCL</option>
-      <option>RBML</option>
-      <option>BPCL</option>
-      <option>OTHER</option>
-    </select>
+
+    <!-- Item Type Filter (toolbar mein bhi — tab se sync) -->
+    <div class="type-filter-wrap">
+      <span class="type-filter-label"><i class="fa-solid fa-tag" style="margin-right:3px;"></i>Item Type:</span>
+      <select class="tb-filter" id="typeFilter" onchange="onTypeFilterChange()">
+        <option value="">All Types</option>
+        <option value="HPCL">HPCL</option>
+        <option value="RBML">RBML</option>
+        <option value="BPCL">BPCL</option>
+        <option value="OTHER">OTHER</option>
+      </select>
+    </div>
+
+    <!-- Item Status Filter -->
+    <div class="status-filter-wrap">
+      <span class="type-filter-label"><i class="fa-solid fa-circle-dot" style="margin-right:3px;"></i>Status:</span>
+      <select class="tb-filter" id="statusFilter" onchange="onFilter()">
+        <option value="">All Status</option>
+        <option value="ok">OK</option>
+        <option value="faulty">Not OK / Faulty</option>
+      </select>
+    </div>
+
+    <!-- Engineer Filter -->
     <select class="tb-filter" id="engineerFilter" onchange="onFilter()">
       <option value="">All Engineers</option>
     </select>
+
     <div class="tb-spacer"></div>
     <span id="countChip" class="table-count">0 records</span>
+    <button class="btn btn-secondary btn-sm" onclick="clearAllFilters()" id="clearFilterBtn" style="display:none;">
+      <i class="fa-solid fa-xmark"></i> Clear Filters
+    </button>
     <!-- Mobile buttons -->
     <button class="btn btn-secondary btn-sm" onclick="openUploadModal()" style="display:none;" id="mobileUploadBtn">
       <i class="fa-solid fa-upload"></i>
@@ -487,7 +541,10 @@ td:first-child{padding-left:18px;}
   <!-- Table -->
   <div class="table-card">
     <div class="table-card-header">
-      <span class="table-card-title"><i class="fa-solid fa-table" style="color:var(--brand);margin-right:6px;"></i>Material Records</span>
+      <span class="table-card-title">
+        <i class="fa-solid fa-table" style="color:var(--brand);margin-right:6px;"></i>Material Records
+        <span id="activeTypeLabel" style="font-size:11px;font-weight:500;color:var(--txt3);margin-left:8px;"></span>
+      </span>
       <div style="display:flex;gap:8px;align-items:center;">
         <button class="btn btn-secondary btn-sm" onclick="loadData()" title="Refresh">
           <i class="fa-solid fa-rotate-right"></i> Refresh
@@ -499,21 +556,20 @@ td:first-child{padding-left:18px;}
         <thead>
           <tr>
             <th style="width:44px;">#</th>
-            <th>Serial No.</th>
             <th>Item Code</th>
             <th>Item Name</th>
-            <th>Qty</th>
-            <th>Type</th>
-            <th>Customer</th>
+            <th style="width:110px;">Item Type</th>
+            <th style="width:70px;">Qty</th>
+            <th style="width:130px;">Item Status</th>
             <th>Engineer</th>
             <th style="width:90px;">Actions</th>
           </tr>
         </thead>
         <tbody id="tableBody">
           <!-- skeleton rows -->
-          <tr><td colspan="9"><div class="skeleton" style="height:32px;margin:6px;border-radius:6px;"></div></td></tr>
-          <tr><td colspan="9"><div class="skeleton" style="height:32px;margin:6px;border-radius:6px;opacity:.7;"></div></td></tr>
-          <tr><td colspan="9"><div class="skeleton" style="height:32px;margin:6px;border-radius:6px;opacity:.4;"></div></td></tr>
+          <tr><td colspan="8"><div class="skeleton" style="height:32px;margin:6px;border-radius:6px;"></div></td></tr>
+          <tr><td colspan="8"><div class="skeleton" style="height:32px;margin:6px;border-radius:6px;opacity:.7;"></div></td></tr>
+          <tr><td colspan="8"><div class="skeleton" style="height:32px;margin:6px;border-radius:6px;opacity:.4;"></div></td></tr>
         </tbody>
       </table>
     </div>
@@ -536,20 +592,8 @@ td:first-child{padding-left:18px;}
     <div class="modal-body">
       <div class="form-grid">
         <div class="form-field">
-          <label>Serial Number <span>*</span></label>
-          <input type="text" id="fSerial" placeholder="e.g. MAT-001"/>
-        </div>
-        <div class="form-field">
           <label>Item Code <span>*</span></label>
-          <input type="text" id="fItemCode" placeholder="e.g. ELEC-WIRE-001"/>
-        </div>
-        <div class="form-field full">
-          <label>Item Name <span>*</span></label>
-          <input type="text" id="fItemName" placeholder="e.g. 4-Core Armoured Cable"/>
-        </div>
-        <div class="form-field">
-          <label>Quantity <span>*</span></label>
-          <input type="number" id="fQty" placeholder="0" min="0"/>
+          <input type="text" id="fItemCode" placeholder="e.g. G1j22405125"/>
         </div>
         <div class="form-field">
           <label>Item Type <span>*</span></label>
@@ -559,12 +603,25 @@ td:first-child{padding-left:18px;}
             <option>RBML</option>
             <option>BPCL</option>
             <option>OTHER</option>
-            <option>Other</option>
           </select>
         </div>
+        <div class="form-field full">
+          <label>Item Name <span>*</span></label>
+          <input type="text" id="fItemName" placeholder="e.g. BOS CARD, 5V SMPS"/>
+        </div>
         <div class="form-field">
-          <label>Customer / Site <span>*</span></label>
-          <input type="text" id="fCustomer" placeholder="e.g. HPCL Patna RO"/>
+          <label>Quantity <span>*</span></label>
+          <input type="number" id="fQty" placeholder="0" min="0"/>
+        </div>
+        <div class="form-field">
+          <label>Item Status <span>*</span></label>
+          <select id="fItemStatus">
+            <option value="" disabled selected>Select status</option>
+            <option value="OK">OK</option>
+            <option value="Not Ok (Faulty)">Not Ok (Faulty)</option>
+            <option value="Under Repair">Under Repair</option>
+            <option value="Scrapped">Scrapped</option>
+          </select>
         </div>
         <div class="form-field">
           <label>Engineer Name <span>*</span></label>
@@ -589,6 +646,10 @@ td:first-child{padding-left:18px;}
           </select>
         </div>
         <div class="form-field full">
+          <label>Customer / Site</label>
+          <input type="text" id="fCustomer" placeholder="e.g. HPCL Patna RO (optional)"/>
+        </div>
+        <div class="form-field full">
           <label>Remarks</label>
           <textarea id="fRemarks" placeholder="Optional notes…"></textarea>
         </div>
@@ -611,12 +672,33 @@ td:first-child{padding-left:18px;}
       <button class="modal-close" onclick="closeModal('uploadModal')"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div class="modal-body">
-      <!-- Template note -->
+
+      <!-- CSV Column Info -->
+      <div class="csv-columns-info">
+        <div class="col-title"><i class="fa-solid fa-table-columns" style="margin-right:6px;color:var(--brand);"></i>Expected CSV Columns</div>
+        <div class="csv-cols">
+          <span class="csv-col-tag required">Item Code</span>
+          <span class="csv-col-tag required">Item Name</span>
+          <span class="csv-col-tag required">Item Type</span>
+          <span class="csv-col-tag required">Qty</span>
+          <span class="csv-col-tag required">Item Status</span>
+          <span class="csv-col-tag required">Engineer</span>
+          <span class="csv-col-tag" style="background:#FFF;color:#64748B;">Customer (optional)</span>
+          <span class="csv-col-tag" style="background:#FFF;color:#64748B;">Remarks (optional)</span>
+        </div>
+        <div style="margin-top:8px;font-size:11.5px;color:var(--txt3);">
+          <i class="fa-solid fa-circle-info" style="color:var(--brand);"></i>
+          Item Type values: <strong>HPCL, RBML, BPCL, OTHER</strong> &nbsp;|&nbsp;
+          Item Status: <strong>OK, Not Ok (Faulty)</strong> etc.
+        </div>
+      </div>
+
       <div style="background:var(--brand-lt);border:1px solid #BFDBFE;border-radius:var(--r-lg);padding:12px 14px;font-size:12.5px;color:#1E40AF;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px;">
         <i class="fa-solid fa-circle-info" style="margin-top:2px;flex-shrink:0;"></i>
         <div>
-          <strong>Expected columns:</strong> Serial Number, Item Code, Item Name, Qty, Item Type, Customer, Engineer, Remarks<br/>
-          <span style="color:#2563EB;cursor:pointer;font-weight:600;" onclick="downloadTemplate()"><i class="fa-solid fa-download"></i> Download Template</span>
+          <span style="color:#2563EB;cursor:pointer;font-weight:600;" onclick="downloadTemplate()">
+            <i class="fa-solid fa-download"></i> Download CSV Template
+          </span> — ready-to-fill format with correct column names
         </div>
       </div>
 
@@ -661,27 +743,20 @@ td:first-child{padding-left:18px;}
 // ═══════════════════════════════════════════════════════════════════════════
 //  CONFIG
 // ═══════════════════════════════════════════════════════════════════════════
-
 const API = "/api/materialManagement";
 
-
 const TOKEN = () => {
-  // 1. Try current window localStorage
   let t = localStorage.getItem("token");
   if (t) return t;
-  // 2. Try parent window localStorage (when embedded as iframe in dashboard - same origin)
   try { t = window.parent.localStorage.getItem("token"); if (t) return t; } catch(e) {}
-  // 3. Try sessionStorage
   t = sessionStorage.getItem("token");
   if (t) return t;
-  // 4. Try URL query param ?token=... (passed by parent loadPage)
   try { t = new URLSearchParams(window.location.search).get("token"); if (t) return t; } catch(e) {}
-  // 5. Try top-level window localStorage
   try { t = window.top.localStorage.getItem("token"); if (t) return t; } catch(e) {}
   return "";
 };
 const isAdmin = () => {
-  try { return JSON.parse(atob(TOKEN().split('.')[1]))?.role?.toLowerCase() === 'admin' ; } catch { return false; }
+  try { return JSON.parse(atob(TOKEN().split('.')[1]))?.role?.toLowerCase() === 'admin'; } catch { return false; }
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -699,7 +774,6 @@ const PAGE_SIZE = 20;
 //  INIT
 // ═══════════════════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
-  // Guard: redirect to login if no token available
   if (!TOKEN()) {
     showToast('Session expired. Please log in again.', 'error');
     setTimeout(() => {
@@ -709,7 +783,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   loadStats();
   loadData();
-  // Show mobile buttons
   if (window.innerWidth < 768) {
     document.getElementById('mobileUploadBtn').style.display = 'flex';
     document.getElementById('mobileAddBtn').style.display = 'flex';
@@ -726,7 +799,7 @@ async function loadStats() {
     const { total, byType, byEngineer } = await r.json();
 
     document.getElementById('statTotal').textContent = total;
-    document.getElementById('statTotalSub').textContent = `${byType.length} item types`;
+    document.getElementById('statTotalSub').textContent = `${byType.length} item type(s)`;
 
     const totalQty = byType.reduce((s, t) => s + t.totalQty, 0);
     document.getElementById('statQty').textContent = totalQty.toLocaleString();
@@ -734,18 +807,24 @@ async function loadStats() {
     document.getElementById('statEngineers').textContent = byEngineer.length;
     document.getElementById('statEngSub').textContent = byEngineer[0]?._id || '';
 
-    // Populate engineer filter
+    // Populate engineer filter dropdown
     const engSel = document.getElementById('engineerFilter');
+    // Clear existing options except first
+    while (engSel.options.length > 1) engSel.remove(1);
     byEngineer.forEach(e => {
-      const o = document.createElement('option'); o.value = e._id; o.textContent = e._id; engSel.appendChild(o);
+      const o = document.createElement('option');
+      o.value = e._id;
+      o.textContent = e._id;
+      engSel.appendChild(o);
     });
 
-    // Customer count
-    const custR = await fetch(`${API}?limit=1000`, { headers: { Authorization: `Bearer ${TOKEN()}` } });
+    // OK items count (fetch separately)
+    const custR = await fetch(`${API}?limit=5000`, { headers: { Authorization: `Bearer ${TOKEN()}` } });
     if (custR.ok) {
       const { data } = await custR.json();
-      const custSet = new Set(data.map(d => d.customerName));
-      document.getElementById('statCustomers').textContent = custSet.size;
+      const okCount = data.filter(d => (d.itemStatus || d.remarks || '').toLowerCase().includes('ok') && !(d.itemStatus || '').toLowerCase().includes('not')).length;
+      document.getElementById('statOk').textContent = okCount || '—';
+      document.getElementById('statOkSub').textContent = okCount ? `${Math.round(okCount/total*100)}% items healthy` : '';
     }
   } catch(e) { console.warn('Stats load failed', e); }
 }
@@ -757,15 +836,27 @@ async function loadData(page = 1) {
   curPage = page;
   setLoader(true);
   const search = document.getElementById('searchInput').value.trim();
+  // Item Type: tab takes priority, then dropdown
   const type   = activeTab !== 'all' ? activeTab : document.getElementById('typeFilter').value;
   const eng    = document.getElementById('engineerFilter').value;
+  const status = document.getElementById('statusFilter').value;
 
   const params = new URLSearchParams({
     page, limit: PAGE_SIZE,
     ...(search && { search }),
     ...(type   && { itemType: type }),
     ...(eng    && { engineerName: eng }),
+    // itemStatus filter — pass if backend supports it
+    ...(status && { itemStatus: status }),
   });
+
+  // Update active type label
+  const lbl = document.getElementById('activeTypeLabel');
+  lbl.textContent = type ? `— Filtered: ${type}` : '';
+
+  // Show/hide clear button
+  const hasFilter = type || eng || status || search;
+  document.getElementById('clearFilterBtn').style.display = hasFilter ? 'flex' : 'none';
 
   try {
     const r = await fetch(`${API}?${params}`, { headers: { Authorization: `Bearer ${TOKEN()}` } });
@@ -785,34 +876,54 @@ async function loadData(page = 1) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  RENDER TABLE
+//  RENDER TABLE — CSV columns: Item Code | Item Name | Item Type | Qty | Item Status | Engineer
 // ═══════════════════════════════════════════════════════════════════════════
 function renderTable(data) {
   const tbody = document.getElementById('tableBody');
   if (!data.length) {
-    tbody.innerHTML = `<tr><td colspan="9">
+    tbody.innerHTML = `<tr><td colspan="8">
       <div class="empty-state">
         <div class="empty-icon"><i class="fa-solid fa-box-open"></i></div>
         <div class="empty-title">No records found</div>
-        <div class="empty-sub">Try changing filters or add a new material record</div>
+        <div class="empty-sub">Filter change karein ya nayi material entry add karein</div>
       </div>
     </td></tr>`;
     return;
   }
   const admin = isAdmin();
   const offset = (curPage - 1) * PAGE_SIZE;
-  tbody.innerHTML = data.map((r, i) => `
+  tbody.innerHTML = data.map((r, i) => {
+    // Item Type badge class
+    const typeKey = (r.itemType || '').toUpperCase().replace(/\s+/g,'');
+    const typeClass = ['HPCL','RBML','BPCL','OTHER','FCC','SMPS'].includes(typeKey)
+      ? `badge-type-${typeKey}` : 'badge-type-default';
+
+    // Item Status badge
+    const rawStatus = r.itemStatus || r.remarks || '';
+    const statusLower = rawStatus.toLowerCase();
+    let statusClass = 'badge-status-other';
+    let statusIcon = 'fa-circle-question';
+    if (statusLower === 'ok') { statusClass = 'badge-status-ok'; statusIcon = 'fa-circle-check'; }
+    else if (statusLower.includes('faulty') || statusLower.includes('not ok')) { statusClass = 'badge-status-faulty'; statusIcon = 'fa-circle-xmark'; }
+
+    const displayStatus = rawStatus || '—';
+
+    return `
     <tr>
       <td style="color:var(--txt4);font-size:11px;">${offset + i + 1}</td>
-      <td><span class="sn-chip">${esc(r.serialNumber)}</span></td>
-      <td style="font-weight:600;color:var(--brand);font-size:11.5px;">${esc(r.itemCode)}</td>
+      <td><span class="code-chip">${esc(r.itemCode)}</span></td>
       <td style="font-weight:500;">${esc(r.itemName)}</td>
+      <td><span class="badge ${typeClass}">${esc(r.itemType)}</span></td>
       <td><span class="qty-pill">${r.qty}</span></td>
-      <td><span class="badge badge-${r.itemType.replace(' ','')}">${esc(r.itemType)}</span></td>
-      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(r.customerName)}">${esc(r.customerName)}</td>
+      <td>
+        <span class="badge ${statusClass}">
+          <i class="fa-solid ${statusIcon}" style="font-size:9px;"></i>
+          ${esc(displayStatus)}
+        </span>
+      </td>
       <td>
         <div style="display:flex;align-items:center;gap:6px;">
-          <div style="width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#2563EB,#7C3AED);display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:700;flex-shrink:0;">${r.engineerName[0].toUpperCase()}</div>
+          <div style="width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#2563EB,#7C3AED);display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:700;flex-shrink:0;">${(r.engineerName||'?')[0].toUpperCase()}</div>
           <span style="font-size:12px;">${esc(r.engineerName)}</span>
         </div>
       </td>
@@ -825,7 +936,7 @@ function renderTable(data) {
         </div>
       </td>
     </tr>
-  `).join('');
+  `}).join('');
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -842,8 +953,7 @@ function renderPagination(total, page) {
 
   const nums = document.getElementById('pagNums');
   nums.innerHTML = '';
-  const range = pages(page, totalPages);
-  range.forEach(p => {
+  pages(page, totalPages).forEach(p => {
     const btn = document.createElement('button');
     btn.className = `pag-btn${p === page ? ' active' : ''}`;
     btn.textContent = p === '…' ? '…' : p;
@@ -862,18 +972,43 @@ function pages(cur, total) {
 function changePage(dir) { loadData(curPage + dir); }
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  FILTERS
+//  FILTERS — Item Type main filter hai
 // ═══════════════════════════════════════════════════════════════════════════
 function onSearch() {
   clearTimeout(searchDebounce);
   searchDebounce = setTimeout(() => loadData(1), 350);
 }
+
 function onFilter() { loadData(1); }
+
+// Item Type dropdown change — tab bhi sync karo
+function onTypeFilterChange() {
+  const val = document.getElementById('typeFilter').value;
+  activeTab = val || 'all';
+  // Sync tabs
+  document.querySelectorAll('.ph-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.type === activeTab);
+  });
+  loadData(1);
+}
+
+// Tab click — dropdown bhi sync karo
 function switchTab(tab, el) {
   activeTab = tab;
   document.querySelectorAll('.ph-tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
+  // Sync dropdown
+  document.getElementById('typeFilter').value = tab === 'all' ? '' : tab;
+  loadData(1);
+}
+
+function clearAllFilters() {
+  activeTab = 'all';
+  document.getElementById('searchInput').value = '';
   document.getElementById('typeFilter').value = '';
+  document.getElementById('statusFilter').value = '';
+  document.getElementById('engineerFilter').value = '';
+  document.querySelectorAll('.ph-tab').forEach(t => t.classList.toggle('active', t.dataset.type === 'all'));
   loadData(1);
 }
 
@@ -894,44 +1029,56 @@ function openEditModal(id) {
   editId = id;
   document.getElementById('modalTitle').innerHTML = '<i class="fa-solid fa-pen"></i> Edit Material';
   document.getElementById('modalSaveBtn').innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Update';
-  document.getElementById('fSerial').value   = rec.serialNumber;
-  document.getElementById('fItemCode').value = rec.itemCode;
-  document.getElementById('fItemName').value = rec.itemName;
-  document.getElementById('fQty').value      = rec.qty;
-  document.getElementById('fItemType').value = rec.itemType;
-  document.getElementById('fCustomer').value = rec.customerName;
-  document.getElementById('fEngineer').value = rec.engineerName;
-  document.getElementById('fRemarks').value  = rec.remarks || '';
+  document.getElementById('fItemCode').value   = rec.itemCode;
+  document.getElementById('fItemName').value   = rec.itemName;
+  document.getElementById('fItemType').value   = rec.itemType;
+  document.getElementById('fQty').value        = rec.qty;
+  document.getElementById('fItemStatus').value = rec.itemStatus || '';
+  document.getElementById('fEngineer').value   = rec.engineerName;
+  document.getElementById('fCustomer').value   = rec.customerName || '';
+  document.getElementById('fRemarks').value    = rec.remarks || '';
   openModal('materialModal');
 }
 
 async function saveMaterial() {
   const body = {
-    serialNumber: v('fSerial'), itemCode: v('fItemCode'), itemName: v('fItemName'),
-    qty: v('fQty'), itemType: v('fItemType'), customerName: v('fCustomer'),
-    engineerName: v('fEngineer'), remarks: v('fRemarks'),
+    itemCode:     v('fItemCode'),
+    itemName:     v('fItemName'),
+    itemType:     v('fItemType'),
+    qty:          v('fQty'),
+    itemStatus:   v('fItemStatus'),
+    engineerName: v('fEngineer'),
+    customerName: v('fCustomer'),
+    remarks:      v('fRemarks'),
   };
 
-  // Validate
-  const required = ['serialNumber','itemCode','itemName','qty','itemType','customerName','engineerName'];
+  // Auto serial number
+  if (!editId) {
+    body.serialNumber = `MAT-${Date.now()}`;
+  }
+
+  const required = ['itemCode','itemName','itemType','qty','itemStatus','engineerName'];
+  const fieldMap = {
+    itemCode:'fItemCode', itemName:'fItemName', itemType:'fItemType',
+    qty:'fQty', itemStatus:'fItemStatus', engineerName:'fEngineer'
+  };
   let valid = true;
   required.forEach(k => {
-    const el = document.getElementById('f'+k[0].toUpperCase()+k.slice(1)) || document.getElementById('f'+k.charAt(0).toUpperCase()+k.slice(1));
-    const fid = {serialNumber:'fSerial',itemCode:'fItemCode',itemName:'fItemName',qty:'fQty',itemType:'fItemType',customerName:'fCustomer',engineerName:'fEngineer'}[k];
-    const el2 = document.getElementById(fid);
-    if (!body[k] && body[k] !== 0) { if(el2) el2.classList.add('error'); valid = false; }
-    else if(el2) el2.classList.remove('error');
+    const el = document.getElementById(fieldMap[k]);
+    if (!body[k] && body[k] !== 0) { if(el) el.classList.add('error'); valid = false; }
+    else if(el) el.classList.remove('error');
   });
-  if (!valid) { showToast('Please fill all required fields', 'error'); return; }
+  if (!valid) { showToast('Sabhi required fields fill karein', 'error'); return; }
 
   const btn = document.getElementById('modalSaveBtn');
   btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving…';
 
   try {
-    const url = editId ? `${API}/${editId}` : API;
+    const url    = editId ? `${API}/${editId}` : API;
     const method = editId ? 'PUT' : 'POST';
     const r = await fetch(url, {
-      method, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${TOKEN()}` },
+      method,
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${TOKEN()}` },
       body: JSON.stringify(body),
     });
     const json = await r.json();
@@ -941,14 +1088,17 @@ async function saveMaterial() {
     loadData(curPage);
     loadStats();
   } catch(e) { showToast('Network error', 'error'); }
-  finally { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> ' + (editId ? 'Update' : 'Save'); }
+  finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> ' + (editId ? 'Update' : 'Save');
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  DELETE
 // ═══════════════════════════════════════════════════════════════════════════
 function confirmDelete(id, name) {
-  document.getElementById('confirmMsg').textContent = `Delete "${name}"? This cannot be undone.`;
+  document.getElementById('confirmMsg').textContent = `"${name}" delete karein? Yeh action undo nahi hoga.`;
   document.getElementById('confirmOkBtn').onclick = () => doDelete(id);
   document.getElementById('confirmBox').classList.add('open');
 }
@@ -999,7 +1149,6 @@ async function doUpload() {
   if (!selectedFile) return;
   const btn = document.getElementById('uploadBtn');
   btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading…';
-
   const fd = new FormData(); fd.append('file', selectedFile);
   try {
     const r = await fetch(`${API}/bulk-upload`, {
@@ -1009,11 +1158,11 @@ async function doUpload() {
     const res = document.getElementById('uploadResult');
     if (r.ok) {
       res.innerHTML = `
-        <div class="result-row success"><i class="fa-solid fa-circle-check"></i> ${j.inserted} records inserted successfully</div>
-        ${j.skipped ? `<div class="result-row warn"><i class="fa-solid fa-triangle-exclamation"></i> ${j.skipped} duplicates skipped</div>` : ''}
-        ${j.errorRows?.length ? `<div class="result-row error"><i class="fa-solid fa-circle-xmark"></i> ${j.errorRows.length} invalid rows — check column names</div>` : ''}
+        <div class="result-row success"><i class="fa-solid fa-circle-check"></i> ${j.inserted} records successfully insert hue</div>
+        ${j.skipped ? `<div class="result-row warn"><i class="fa-solid fa-triangle-exclamation"></i> ${j.skipped} duplicates skip kiye gaye</div>` : ''}
+        ${j.errorRows?.length ? `<div class="result-row error"><i class="fa-solid fa-circle-xmark"></i> ${j.errorRows.length} invalid rows — column names check karein</div>` : ''}
       `;
-      showToast(`${j.inserted} records imported!`, 'success');
+      showToast(`${j.inserted} records import ho gaye!`, 'success');
       loadData(1); loadStats();
     } else {
       res.innerHTML = `<div class="result-row error"><i class="fa-solid fa-circle-xmark"></i> ${j.message || 'Upload failed'}</div>`;
@@ -1023,29 +1172,28 @@ async function doUpload() {
   finally { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-upload"></i> Upload & Import'; }
 }
 
+// CSV Template Download — CSV ke exact columns ke sath
 function downloadTemplate() {
   const rows = [
-    ['Serial Number','Item Code','Item Name','Qty','Item Uses','Customer','Engineer','Remarks'],
-    ['MAT-001','ELEC-001','4-Core Armoured Cable',10,'Electrical','HPCL Patna RO','Amit Kumar','For Phase-X'],
-    ['MAT-002','MECH-001','Pressure Gauge',5,'Mechanical','BPCL Ranchi','Rajan Pandey',''],
+    ['Item Code','Item Name','Item Type','Qty','Item Status','Engineer','Customer','Remarks'],
+    ['G1j22405125','BOS CARD','HPCL','1','OK','Amit Kumar','HPCL Patna RO',''],
+    ['9ZJ33379402','5V SMPS','RBML','1','Not Ok (Faulty)','Rajan Pandey','BPCL Site','Repair needed'],
+    ['G1j22405125','12V SMPS','BPCL','1','OK','Amit Kumar','',''],
   ];
-  const wb = { SheetNames:['Template'], Sheets:{} };
-  // Just trigger a CSV download as fallback (full XLSX requires sheetjs)
-  const csv = rows.map(r => r.join(',')).join('\n');
+  const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
   const a = document.createElement('a');
-  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-  a.download = 'material_upload_template.csv'; a.click();
+  a.href = 'data:text/csv;charset=utf-8,\uFEFF' + encodeURIComponent(csv);
+  a.download = 'material_upload_template.csv';
+  a.click();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  EXPORT
 // ═══════════════════════════════════════════════════════════════════════════
 async function exportExcel() {
-  showToast('Preparing export…', 'info');
+  showToast('Export prepare ho raha hai…', 'info');
   try {
-    const r = await fetch(`${API}/export/excel`, {
-      headers: { Authorization: `Bearer ${TOKEN()}` }
-    });
+    const r = await fetch(`${API}/export/excel`, { headers: { Authorization: `Bearer ${TOKEN()}` } });
     if (!r.ok) {
       const j = await r.json().catch(() => ({}));
       showToast(j.message || `Export failed (${r.status})`, 'error');
@@ -1058,7 +1206,7 @@ async function exportExcel() {
     a.download = `materials_${new Date().toISOString().slice(0,10)}.xlsx`;
     a.click();
     URL.revokeObjectURL(url);
-    showToast('Export downloaded ✓', 'success');
+    showToast('Export download ho gaya ✓', 'success');
   } catch(e) {
     showToast('Network error during export', 'error');
   }
@@ -1070,8 +1218,8 @@ async function exportExcel() {
 function v(id) { return (document.getElementById(id)?.value || '').trim(); }
 function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function clearForm() {
-  ['fSerial','fItemCode','fItemName','fQty','fItemType','fCustomer','fEngineer','fRemarks']
-    .forEach(id => { const el = document.getElementById(id); if(el){el.value='';el.classList.remove('error');} });
+  ['fItemCode','fItemName','fItemType','fQty','fItemStatus','fEngineer','fCustomer','fRemarks']
+    .forEach(id => { const el = document.getElementById(id); if(el){ el.value=''; el.classList.remove('error'); } });
 }
 function openModal(id)  { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
