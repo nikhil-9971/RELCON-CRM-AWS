@@ -673,12 +673,8 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
           <input type="text" id="transferMaterialLabel" readonly/>
         </div>
         <div class="form-field">
-          <label>Available Qty</label>
+          <label>Transfer Qty</label>
           <input type="text" id="transferAvailableQty" readonly/>
-        </div>
-        <div class="form-field">
-          <label>Transfer Qty <span>*</span></label>
-          <input type="number" id="transferQty" min="1" placeholder="0"/>
         </div>
         <div class="form-field full">
           <label>Transfer To Engineer <span>*</span></label>
@@ -1178,8 +1174,7 @@ function openTransferModal(id) {
   selectedTransferRecord = rec;
   document.getElementById('transferRecordId').value = rec._id;
   document.getElementById('transferMaterialLabel').value = `${rec.itemCode} • ${rec.itemName} • ${rec.engineerName}`;
-  document.getElementById('transferAvailableQty').value = rec.qty;
-  document.getElementById('transferQty').value = '';
+  document.getElementById('transferAvailableQty').value = `${rec.qty} item(s)`;
   document.getElementById('transferNote').value = '';
   const sel = document.getElementById('transferToEngineer');
   Array.from(sel.options).forEach((opt, index) => {
@@ -1252,11 +1247,10 @@ async function saveMaterial() {
 
 async function submitTransfer() {
   const id = document.getElementById('transferRecordId').value;
-  const qty = Number(document.getElementById('transferQty').value);
   const toEngineer = document.getElementById('transferToEngineer').value;
   const note = v('transferNote');
-  if (!id || !toEngineer || !qty) {
-    showToast('Transfer ke liye engineer aur qty dono chahiye', 'error');
+  if (!id || !toEngineer) {
+    showToast('Transfer ke liye target engineer chahiye', 'error');
     return;
   }
   const btn = document.getElementById('transferSaveBtn');
@@ -1266,7 +1260,7 @@ async function submitTransfer() {
     const r = await fetch(`${API}/${id}/transfer`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${TOKEN()}` },
-      body: JSON.stringify({ qty, toEngineer, note }),
+      body: JSON.stringify({ toEngineer, note }),
     });
     const j = await r.json();
     if (!r.ok) {

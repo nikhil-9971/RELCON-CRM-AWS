@@ -165,26 +165,19 @@ router.get("/stats", verifyToken, async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// POST /materialManagement/:id/transfer — move qty from one engineer to another
+// POST /materialManagement/:id/transfer — transfer ownership to another engineer
 // ═══════════════════════════════════════════════════════════════════════════════
 router.post("/:id/transfer", verifyToken, requireRole(["Admin", "Manager"]), async (req, res) => {
   try {
-    const { toEngineer, qty, note = "" } = req.body;
-    const transferQty = Number(qty);
+    const { toEngineer, note = "" } = req.body;
 
     if (!toEngineer || !toEngineer.trim()) {
       return res.status(400).json({ success: false, message: "Target engineer is required" });
-    }
-    if (!Number.isFinite(transferQty) || transferQty <= 0) {
-      return res.status(400).json({ success: false, message: "Transfer qty must be greater than 0" });
     }
 
     const source = await MaterialManagement.findById(req.params.id);
     if (!source || !source.isActive) {
       return res.status(404).json({ success: false, message: "Source material not found" });
-    }
-    if (transferQty > source.qty) {
-      return res.status(400).json({ success: false, message: "Transfer qty exceeds available stock" });
     }
     if (source.engineerName.trim().toLowerCase() === toEngineer.trim().toLowerCase()) {
       return res.status(400).json({ success: false, message: "Source and target engineer cannot be same" });
@@ -192,79 +185,25 @@ router.post("/:id/transfer", verifyToken, requireRole(["Admin", "Manager"]), asy
 
     const createdBy = actorName(req);
     const normalizedToEngineer = toEngineer.trim();
-    const normalizedItemType = source.itemType.toUpperCase();
-    const sourceEntry = buildTransferEntry({
+    const previousEngineer = source.engineerName;
+    source.engineerName = normalizedToEngineer;
+    source.lastTransferredAt = new Date();
+    source.transferHistory.push(buildTransferEntry({
       type: "OUT",
-      qty: transferQty,
-      fromEngineer: source.engineerName,
+      qty: source.qty,
+      fromEngineer: previousEngineer,
       toEngineer: normalizedToEngineer,
       note,
       referenceSerial: source.serialNumber,
       createdBy,
-    });
-
-    let target = await MaterialManagement.findOne({
-      isActive: true,
-      itemCode: source.itemCode,
-      itemType: normalizedItemType,
-      itemStatus: source.itemStatus,
-      engineerName: new RegExp(`^${normalizedToEngineer.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i"),
-    });
-
-    if (target) {
-      target.qty += transferQty;
-      target.lastTransferredAt = new Date();
-      target.transferHistory.push(buildTransferEntry({
-        type: "IN",
-        qty: transferQty,
-        fromEngineer: source.engineerName,
-        toEngineer: normalizedToEngineer,
-        note,
-        referenceSerial: source.serialNumber,
-        createdBy,
-      }));
-      await target.save();
-    } else {
-      target = await MaterialManagement.create({
-        serialNumber: buildSerial("TRF"),
-        itemCode: source.itemCode,
-        itemName: source.itemName,
-        qty: transferQty,
-        itemType: normalizedItemType,
-        itemStatus: source.itemStatus,
-        engineerName: normalizedToEngineer,
-        customerName: source.customerName || "",
-        remarks: source.remarks || "",
-        uploadedBy: createdBy,
-        lastTransferredAt: new Date(),
-        transferHistory: [
-          buildTransferEntry({
-            type: "IN",
-            qty: transferQty,
-            fromEngineer: source.engineerName,
-            toEngineer: normalizedToEngineer,
-            note,
-            referenceSerial: source.serialNumber,
-            createdBy,
-          }),
-        ],
-      });
-    }
-
-    source.qty -= transferQty;
-    source.lastTransferredAt = new Date();
-    source.transferHistory.push(sourceEntry);
-    if (source.qty === 0) {
-      source.remarks = [source.remarks, `Transferred out to ${normalizedToEngineer}`].filter(Boolean).join(" | ");
-    }
+    }));
     await source.save();
 
     res.json({
       success: true,
-      message: `Transferred ${transferQty} item(s) to ${normalizedToEngineer}`,
+      message: `${source.itemCode} transferred to ${normalizedToEngineer}`,
       data: {
         source,
-        target,
       },
     });
   } catch (err) {
