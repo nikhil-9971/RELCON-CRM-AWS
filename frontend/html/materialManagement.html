@@ -410,6 +410,9 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
       <div class="sf-page-meta">Track item types, status, and engineer allocation in a task manager style</div>
     </div>
     <div class="sf-page-actions">
+      <button class="sf-btn sf-btn-danger" id="clearAllDataBtn" onclick="confirmClearAllData()" style="display:none;">
+        <i class="fa-solid fa-trash-can"></i> Clear All Data
+      </button>
       <button class="sf-btn sf-btn-neutral" onclick="openModal('opsModal')">
         <i class="fa-solid fa-bolt"></i> Quick Ops
       </button>
@@ -476,7 +479,7 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
       </select>
     </div>
 
-    <button class="sf-btn sf-btn-neutral" onclick="clearAllFilters()" id="clearFilterBtn" style="display:none;align-self:flex-end;">
+    <button class="sf-btn sf-btn-neutral" onclick="clearAllFilters()" id="clearFilterBtn" style="align-self:flex-end;">
       <i class="fa-solid fa-rotate-left"></i> Clear
     </button>
 
@@ -840,6 +843,9 @@ document.addEventListener('DOMContentLoaded', () => {
   loadStats();
   loadData();
   setDateBadge();
+  if (isAdmin()) {
+    document.getElementById('clearAllDataBtn').style.display = 'inline-flex';
+  }
   if (window.innerWidth < 768) {
     document.getElementById('mobileUploadBtn').style.display = 'flex';
     document.getElementById('mobileAddBtn').style.display = 'flex';
@@ -951,8 +957,6 @@ async function loadData(page = 1) {
   lbl.textContent = labelBits.length ? `Filtered: ${labelBits.join(' | ')}` : '';
 
   // Show/hide clear button
-  const hasFilter = type || eng || status || search || lowStockOnly;
-  document.getElementById('clearFilterBtn').style.display = hasFilter ? 'flex' : 'none';
   updateStatusKpis();
 
   try {
@@ -1125,6 +1129,12 @@ function clearAllFilters() {
   syncActiveTab();
   updateStatusKpis();
   loadData(1);
+}
+
+function confirmClearAllData() {
+  document.getElementById('confirmMsg').textContent = 'Delete all material records permanently? This will fully clear the table so fresh data can be added.';
+  document.getElementById('confirmOkBtn').onclick = doClearAllData;
+  document.getElementById('confirmBox').classList.add('open');
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1314,6 +1324,35 @@ async function doDelete(id) {
   const j = await r.json();
   showToast(r.ok ? 'Record deleted' : (j.message || 'Delete failed'), r.ok ? 'success' : 'error');
   if (r.ok) { loadData(curPage); loadStats(); }
+}
+
+async function doClearAllData() {
+  closeConfirm();
+  const btn = document.getElementById('clearAllDataBtn');
+  const oldHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Clearing…';
+  }
+  try {
+    const r = await fetch(`${API}/admin/clear-all`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${TOKEN()}` },
+    });
+    const j = await r.json();
+    showToast(r.ok ? (j.message || 'All data cleared') : (j.message || 'Clear-all failed'), r.ok ? 'success' : 'error');
+    if (r.ok) {
+      clearAllFilters();
+      loadStats();
+    }
+  } catch (e) {
+    showToast('Network error', 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = oldHtml || '<i class="fa-solid fa-trash-can"></i> Clear All Data';
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

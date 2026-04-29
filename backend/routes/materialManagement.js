@@ -222,6 +222,24 @@ router.post("/:id/transfer", verifyToken, requireRole(["Admin", "Manager"]), asy
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// DELETE /materialManagement/admin/clear-all — permanently remove all records
+// ═══════════════════════════════════════════════════════════════════════════════
+router.delete("/admin/clear-all", verifyToken, requireRole(["Admin"]), async (req, res) => {
+  try {
+    const result = await MaterialManagement.deleteMany({});
+    res.json({
+      success: true,
+      message: `Cleared ${result.deletedCount || 0} material record(s) permanently`,
+      deletedCount: result.deletedCount || 0,
+      clearedBy: actorName(req),
+    });
+  } catch (err) {
+    console.error("[MaterialMgmt] DELETE /admin/clear-all:", err);
+    res.status(500).json({ success: false, message: "Failed to clear material data", error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // GET /materialManagement/:id — single record
 // ═══════════════════════════════════════════════════════════════════════════════
 router.get("/:id", verifyToken, async (req, res) => {
