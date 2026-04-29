@@ -763,7 +763,7 @@ async function sendFaultyMaterialDispatchAlerts() {
             <div style="padding:18px 22px;background:linear-gradient(135deg,#0f172a,#1d4ed8);color:#ffffff">
               <p style="margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.85">Relcon CRM • Automated Material Alert</p>
               <h2 style="margin:0;font-size:22px;font-weight:700">Material Dispatch Required</h2>
-              <p style="margin:8px 0 0;font-size:13px;opacity:.95">Faulty material threshold reached for <strong>${htmlEscape(engineerName)}</strong>.</p>
+              <p style="margin:8px 0 0;font-size:13px;opacity:.95">Dispatch threshold has been reached for faulty materials mapped to <strong>${htmlEscape(engineerName)}</strong>.</p>
             </div>
 
             <div style="padding:22px">
@@ -771,10 +771,10 @@ async function sendFaultyMaterialDispatchAlerts() {
                 Dear <strong>${htmlEscape(engineerName)}</strong>,
               </p>
               <p style="margin:0 0 14px;font-size:13px;color:#475569">
-                This is to inform you that the count of faulty materials currently mapped against your name has reached the dispatch threshold in Relcon CRM. Kindly arrange dispatch of the faulty materials listed below at the earliest and ensure the relevant handover or courier details are updated with the admin team.
+                This is to formally notify you that the quantity of faulty materials currently assigned to your name in Relcon CRM has reached the dispatch threshold. You are requested to arrange dispatch of the below materials at the earliest possible opportunity.
               </p>
               <p style="margin:0 0 16px;font-size:13px;color:#475569">
-                Please review the material details carefully and take necessary action today to avoid delay in replacement, repair, or stock reconciliation.
+                Please review the material details carefully and coordinate the dispatch process with the admin team, including handover confirmation, courier reference, or any other supporting dispatch details required for proper tracking and reconciliation.
               </p>
 
               <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">
@@ -791,8 +791,17 @@ async function sendFaultyMaterialDispatchAlerts() {
               ${buildMaterialDispatchTable(materialRows)}
 
               <div style="margin-top:18px;padding:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;color:#475569;font-size:13px">
-                <strong style="color:#0f172a">Required action:</strong> Please dispatch the above faulty materials and coordinate with the admin team for acknowledgement and further processing.
+                <strong style="color:#0f172a">Action required:</strong> Please ensure dispatch of the above faulty materials on priority and share the dispatch confirmation with the admin team for further processing.
               </div>
+
+              <p style="margin:18px 0 0;font-size:13px;color:#475569">
+                Your prompt action will help us maintain material availability, repair turnaround, and inventory accuracy across operations.
+              </p>
+
+              <p style="margin:14px 0 0;font-size:13px;color:#475569">
+                Regards,<br>
+                <strong style="color:#0f172a">Relcon CRM System</strong>
+              </p>
 
               <div style="margin-top:18px;padding-top:12px;border-top:1px solid #e2e8f0;color:#64748b;font-size:12px">
                 Generated on ${generatedAt} IST. This is a system-generated notification from Relcon CRM.
@@ -802,7 +811,7 @@ async function sendFaultyMaterialDispatchAlerts() {
         </div>
       `;
 
-      const subject = `Material Dispatch Required | ${engineerName} | Faulty Qty ${faultyQty}`;
+      const subject = `Action Required: Faulty Material Dispatch | ${engineerName} | Qty ${faultyQty}`;
       const mailOptions = {
         from: MAIL_FROM,
         to: engineerEmails.join(", "),
