@@ -16,9 +16,11 @@ require("dotenv").config();
 const axios = require("axios");
 const nodemailer = require("nodemailer");
 const cron = require("node-cron");
+const XLSX = require("xlsx");
 const { EmailLog } = require("../models/AuditLog");
 const MaterialManagement = require("../models/MaterialManagement");
 const User = require("../models/User");
+const Attendance = require("../models/Attendance");
 
 const {
   SMTP_HOST,
@@ -163,6 +165,125 @@ function buildMaterialDispatchTable(rows = []) {
     columns,
     "Faulty Material Details"
   );
+}
+
+function getMonthRange(targetDate = new Date()) {
+  const year = targetDate.getFullYear();
+  const month = targetDate.getMonth();
+  const from = new Date(year, month, 1);
+  const to = new Date(year, month + 1, 0);
+  return {
+    fromDateISO: from.toISOString().slice(0, 10),
+    toDateISO: to.toISOString().slice(0, 10),
+    label: from.toLocaleDateString("en-IN", { month: "long", year: "numeric", timeZone: "Asia/Kolkata" }),
+  };
+}
+
+function getPreviousMonthRange(baseDate = new Date()) {
+  return getMonthRange(new Date(baseDate.getFullYear(), baseDate.getMonth() - 1, 1));
+}
+
+function getDateRangeISO(fromDateISO, toDateISO) {
+  const dates = [];
+  const cursor = new Date(`${fromDateISO}T00:00:00`);
+  const end = new Date(`${toDateISO}T00:00:00`);
+  while (cursor <= end) {
+    dates.push(cursor.toISOString().slice(0, 10));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return dates;
+}
+
+function getDayShort(dateISO) {
+  return new Date(`${dateISO}T00:00:00`).toLocaleDateString("en-IN", { weekday: "short", timeZone: "Asia/Kolkata" });
+}
+
+function isSundayISO(dateISO) {
+  return new Date(`${dateISO}T00:00:00`).getDay() === 0;
+}
+
+function buildAttendanceWorkbookBuffer({ engineerNames, records, fromDateISO, toDateISO }) {
+  const SHORT = { Present: "P", Absent: "A", "Half Day": "H", Holiday: "HOL", "Week Off": "WO" };
+  const dates = getDateRangeISO(fromDateISO, toDateISO);
+  const pivot = {};
+
+  for (const record of records) {
+    const engineerName = String(record.engineerName || record.username || "").trim();
+    const dateISO = String(record.date || "").slice(0, 10);
+    if (!engineerName || !dateISO) continue;
+    if (!pivot[engineerName]) pivot[engineerName] = {};
+    pivot[engineerName][dateISO] = SHORT[record.status] || record.status || "";
+  }
+
+  for (const engineerName of engineerNames) {
+    if (!pivot[engineerName]) pivot[engineerName] = {};
+    for (const dateISO of dates) {
+      if (isSundayISO(dateISO) && !pivot[engineerName][dateISO]) {
+        pivot[engineerName][dateISO] = "WO";
+      }
+    }
+  }
+
+  const headerRow = ["Engineer", ...dates];
+  const dataRows = engineerNames.map((engineerName) => [
+    engineerName,
+    ...dates.map((dateISO) => pivot[engineerName]?.[dateISO] || ""),
+  ]);
+  const detailRows = records
+    .map((record) => ({
+      engineerName: record.engineerName || record.username || "",
+      date: String(record.date || "").slice(0, 10),
+      day: getDayShort(String(record.date || "").slice(0, 10)),
+      status: record.status || "",
+      remarks: record.remarks || "",
+      markedBy: record.markedBy || "",
+      submittedAt: record.createdAt ? formatDateTimeIST(record.createdAt) : "",
+    }))
+    .sort((a, b) => (a.engineerName || "").localeCompare(b.engineerName || "") || (a.date || "").localeCompare(b.date || ""));
+
+  const summaryRows = engineerNames.map((engineerName) => {
+    const values = dates.map((dateISO) => pivot[engineerName]?.[dateISO] || "");
+    const present = values.filter((value) => value === "P").length;
+    const absent = values.filter((value) => value === "A").length;
+    const halfDay = values.filter((value) => value === "H").length;
+    const holiday = values.filter((value) => value === "HOL").length;
+    const weekOff = values.filter((value) => value === "WO").length;
+    const workingDays = values.length - weekOff;
+    const attendancePct = workingDays > 0 ? Math.round((present / workingDays) * 100) : 0;
+    return {
+      Engineer: engineerName,
+      Present: present,
+      Absent: absent,
+      HalfDay: halfDay,
+      Holiday: holiday,
+      WeekOff: weekOff,
+      TotalDays: values.length,
+      WorkingDays: workingDays,
+      AttendancePct: `${attendancePct}%`,
+    };
+  });
+
+  const wb = XLSX.utils.book_new();
+
+  const pivotSheet = XLSX.utils.aoa_to_sheet([headerRow, ...dataRows]);
+  pivotSheet["!cols"] = [{ wch: 24 }, ...dates.map(() => ({ wch: 12 }))];
+  XLSX.utils.book_append_sheet(wb, pivotSheet, "Attendance Sheet");
+
+  const summarySheet = XLSX.utils.json_to_sheet(summaryRows);
+  summarySheet["!cols"] = [
+    { wch: 24 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 },
+    { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 14 },
+  ];
+  XLSX.utils.book_append_sheet(wb, summarySheet, "Summary");
+
+  const detailSheet = XLSX.utils.json_to_sheet(detailRows);
+  detailSheet["!cols"] = [
+    { wch: 24 }, { wch: 12 }, { wch: 10 }, { wch: 14 },
+    { wch: 28 }, { wch: 18 }, { wch: 22 },
+  ];
+  XLSX.utils.book_append_sheet(wb, detailSheet, "Detailed Records");
+
+  return Buffer.from(XLSX.write(wb, { type: "buffer", bookType: "xlsx" }));
 }
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -863,6 +984,169 @@ async function sendFaultyMaterialDispatchAlerts() {
     return { ok: false, error: err };
   }
 }
+
+async function sendMonthlyAttendanceSheet({ baseDate = new Date() } = {}) {
+  const reportType = "Monthly Attendance Sheet";
+
+  try {
+    const { fromDateISO, toDateISO, label } = getPreviousMonthRange(baseDate);
+
+    const [users, attendanceRecords] = await Promise.all([
+      User.find({}, "username email role engineerName").lean(),
+      Attendance.find({ date: { $gte: fromDateISO, $lte: toDateISO } }).sort({ engineerName: 1, date: 1 }).lean(),
+    ]);
+
+    const adminEmails = [...new Set(
+      users
+        .filter((user) => String(user.role || "").trim().toLowerCase() === "admin")
+        .map((user) => normalizeEmail(user.email))
+        .filter(Boolean)
+    )];
+
+    if (!adminEmails.length) {
+      await EmailLog.create({
+        type: reportType,
+        subject: `Skipped: admin emails missing for ${label}`,
+        to: "",
+        status: "failure",
+        sentAt: new Date(),
+        meta: {
+          fromDateISO,
+          toDateISO,
+          reason: "No admin email found in users collection",
+        },
+      });
+      return { ok: false, reason: "missing_admin_emails" };
+    }
+
+    const engineerNames = [...new Set([
+      ...users
+        .filter((user) => String(user.role || "").trim().toLowerCase() === "engineer")
+        .map((user) => String(user.engineerName || user.username || "").trim())
+        .filter(Boolean),
+      ...attendanceRecords
+        .map((record) => String(record.engineerName || record.username || "").trim())
+        .filter(Boolean),
+    ])].sort((a, b) => a.localeCompare(b));
+
+    const workbookBuffer = buildAttendanceWorkbookBuffer({
+      engineerNames,
+      records: attendanceRecords,
+      fromDateISO,
+      toDateISO,
+    });
+
+    const monthDates = getDateRangeISO(fromDateISO, toDateISO);
+    const sundayCount = monthDates.filter(isSundayISO).length;
+    const generatedAt = formatDateTimeIST(new Date());
+
+    const htmlBody = `
+      <div style="margin:0;padding:20px 12px;background:#f1f5f9;font:14px/1.6 Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a">
+        <div style="max-width:980px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(15,23,42,.05)">
+          <div style="padding:18px 22px;background:linear-gradient(135deg,#0f172a,#1e3a8a);color:#ffffff">
+            <p style="margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.85">Relcon CRM • Monthly HR Report</p>
+            <h2 style="margin:0;font-size:22px;font-weight:700">Monthly Attendance Sheet</h2>
+            <p style="margin:8px 0 0;font-size:13px;opacity:.95">Attendance report for <strong>${htmlEscape(label)}</strong> is attached for review.</p>
+          </div>
+
+          <div style="padding:22px">
+            <p style="margin:0 0 14px;font-size:13px;color:#334155">
+              Dear Admin Team,
+            </p>
+            <p style="margin:0 0 14px;font-size:13px;color:#475569">
+              Please find attached the consolidated attendance sheet for <strong>${htmlEscape(label)}</strong>. The workbook includes an attendance matrix, an engineer-wise summary, and detailed attendance records for the full month.
+            </p>
+            <p style="margin:0 0 18px;font-size:13px;color:#475569">
+              Sundays have been marked as <strong>WO (Week Off)</strong> in the report for each engineer wherever no manual attendance record existed for those dates.
+            </p>
+
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+              <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 12px;min-width:180px">
+                <div style="font-size:11px;color:#1d4ed8;text-transform:uppercase;letter-spacing:.05em">Engineers Covered</div>
+                <div style="font-size:24px;line-height:1.2;font-weight:800;color:#1e40af">${engineerNames.length}</div>
+              </div>
+              <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;padding:10px 12px;min-width:180px">
+                <div style="font-size:11px;color:#047857;text-transform:uppercase;letter-spacing:.05em">Attendance Entries</div>
+                <div style="font-size:24px;line-height:1.2;font-weight:800;color:#065f46">${attendanceRecords.length}</div>
+              </div>
+              <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;min-width:180px">
+                <div style="font-size:11px;color:#475569;text-transform:uppercase;letter-spacing:.05em">Sundays Marked WO</div>
+                <div style="font-size:24px;line-height:1.2;font-weight:800;color:#0f172a">${sundayCount}</div>
+              </div>
+            </div>
+
+            <div style="padding:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;color:#475569;font-size:13px">
+              <strong style="color:#0f172a">Attachment includes:</strong> Attendance Sheet, Summary, and Detailed Records.
+            </div>
+
+            <p style="margin:18px 0 0;font-size:13px;color:#475569">
+              Regards,<br>
+              <strong style="color:#0f172a">Relcon CRM System</strong>
+            </p>
+
+            <div style="margin-top:18px;padding-top:12px;border-top:1px solid #e2e8f0;color:#64748b;font-size:12px">
+              Generated on ${generatedAt} IST. This is a system-generated email from Relcon CRM.
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const subject = `Monthly Attendance Sheet | ${label} | ${fromDateISO} to ${toDateISO}`;
+    const attachmentName = `attendance_sheet_${fromDateISO}_to_${toDateISO}.xlsx`;
+    const info = await transporter.sendMail({
+      from: MAIL_FROM,
+      to: adminEmails.join(", "),
+      subject,
+      html: htmlBody,
+      attachments: [
+        {
+          filename: attachmentName,
+          content: workbookBuffer,
+          contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        },
+      ],
+    });
+
+    await EmailLog.create({
+      type: reportType,
+      subject,
+      to: adminEmails.join(", "),
+      status: "success",
+      sentAt: new Date(),
+      meta: {
+        fromDateISO,
+        toDateISO,
+        month: label,
+        engineerCount: engineerNames.length,
+        attendanceRecordCount: attendanceRecords.length,
+        messageId: info?.messageId || "",
+      },
+    });
+
+    console.log("✅ Monthly attendance sheet sent:", info?.messageId || info);
+    return { ok: true, month: label, adminCount: adminEmails.length, engineerCount: engineerNames.length };
+  } catch (err) {
+    console.error("❌ Monthly attendance sheet error:", err.message);
+
+    try {
+      await EmailLog.create({
+        type: reportType,
+        subject: "Monthly attendance sheet - failure",
+        to: "",
+        status: "failure",
+        sentAt: new Date(),
+        meta: {
+          error: err.message || String(err),
+        },
+      });
+    } catch (logErr) {
+      console.error("Failed to write EmailLog for monthly attendance sheet:", logErr?.message || logErr);
+    }
+
+    return { ok: false, error: err };
+  }
+}
 // ─── Scheduler: daily 10:50 IST ───────────────────────────────────────────────
 
 cron.schedule(
@@ -896,6 +1180,17 @@ cron.schedule(
   { timezone: "Asia/Kolkata" }
 );
 
+// ─── Scheduler: monthly attendance sheet on 1st day, 08:00 IST ──────────────
+
+cron.schedule(
+  "0 8 1 * *",
+  () => {
+    console.log("🔔 Monthly attendance sheet CRON TRIGGERED:", new Date().toISOString());
+    sendMonthlyAttendanceSheet().catch((e) => console.error("Monthly attendance sheet job error:", e));
+  },
+  { timezone: "Asia/Kolkata" }
+);
+
 // ─── Manual run ───────────────────────────────────────────────────────────────
 
 // if (require.main === module) {
@@ -919,6 +1214,11 @@ if (require.main === module) {
       .then((r) => { console.log("Faulty material dispatch alert done:", r); process.exit(r.ok ? 0 : 1); })
       .catch((e) => { console.error("❌ error:", e); process.exit(1); });
 
+  } else if (type === "attendance-monthly") {
+    sendMonthlyAttendanceSheet()
+      .then((r) => { console.log("Monthly attendance sheet done:", r); process.exit(r.ok ? 0 : 1); })
+      .catch((e) => { console.error("❌ error:", e); process.exit(1); });
+
   } else {
     // default = pending
     sendPendingStatusEmail({ forDateISO: dateArg })
@@ -927,4 +1227,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { sendPendingStatusEmail, sendUnverifiedStatusEmail, sendFaultyMaterialDispatchAlerts };
+module.exports = { sendPendingStatusEmail, sendUnverifiedStatusEmail, sendFaultyMaterialDispatchAlerts, sendMonthlyAttendanceSheet };
