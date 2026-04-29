@@ -44,11 +44,19 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--txt);}
 .btn-neutral{background:var(--surface);border:1px solid var(--border);color:var(--txt);}
 .btn-danger{background:var(--sf-red);color:#fff;}
 .notice{padding:12px 14px;margin-bottom:12px;background:var(--sf-yellow-lt);border:1px solid #f3df9b;border-radius:var(--r-lg);font-size:12px;color:#7c5d00;display:flex;gap:10px;align-items:flex-start;}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:12px;}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);padding:14px 16px;border-left:3px solid transparent;}
+.kpi.blue{border-left-color:var(--sf-blue);}
+.kpi.green{border-left-color:var(--sf-green);}
+.kpi.yellow{border-left-color:var(--sf-yellow);}
+.kpi-num{font-size:24px;font-weight:800;line-height:1;}
+.kpi-label{font-size:10px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-top:4px;}
+.kpi-sub{font-size:11px;color:var(--txt4);margin-top:3px;}
 .card-head{padding:10px 16px;border-bottom:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
 .card-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;}
 .count{background:var(--sf-blue-lt);color:var(--sf-blue);font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;}
-.table-wrap{overflow:auto;max-height:calc(100vh - 290px);}
-table{width:100%;border-collapse:collapse;min-width:900px;font-size:11px;}
+.table-wrap{overflow:auto;max-height:calc(100vh - 350px);}
+table{width:100%;border-collapse:collapse;min-width:1080px;font-size:11px;}
 thead th{position:sticky;top:0;background:var(--sf-navy);color:#e8f4fd;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;padding:9px 12px;text-align:left;border-right:1px solid #253d5b;}
 thead th:last-child{border-right:none;}
 tbody td{padding:9px 12px;border-bottom:1px solid var(--border-lt);color:var(--txt2);white-space:nowrap;}
@@ -77,6 +85,7 @@ tbody tr:hover{background:#f0f8ff;}
 .field input,.field select{height:36px;border:1px solid var(--border);border-radius:var(--r-sm);padding:0 12px;font:inherit;}
 .field input:focus,.field select:focus{outline:none;border-color:var(--sf-blue);box-shadow:0 0 0 3px rgba(1,118,211,.12);}
 .muted{font-size:11px;color:var(--txt4);}
+.hint-card{margin-left:auto;font-size:11px;color:var(--txt3);padding:6px 10px;border:1px solid var(--border);border-radius:999px;background:#fff;}
 .toast{position:fixed;top:16px;right:16px;min-width:240px;max-width:360px;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:var(--sh-md);padding:12px 14px;display:flex;gap:8px;z-index:300;transform:translateX(120%);transition:transform .25s ease;}
 .toast.show{transform:translateX(0);}
 .toast.success{border-left:3px solid var(--sf-green);}
@@ -108,6 +117,7 @@ tbody tr:hover{background:#f0f8ff;}
       <div class="hero-sub">Restricted to admin account `nikhil.trivedi`</div>
     </div>
     <div class="hero-actions">
+      <button class="btn btn-primary" onclick="openCreate()"><i class="fa-solid fa-user-plus"></i> Add User</button>
       <button class="btn btn-neutral" onclick="loadUsers()"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
     </div>
   </section>
@@ -117,12 +127,30 @@ tbody tr:hover{background:#f0f8ff;}
     <div>Passwords are stored securely and cannot be displayed in plain text. This screen supports viewing account details, editing user fields, and setting a new password when needed.</div>
   </div>
 
+  <section class="kpi-row">
+    <div class="kpi blue">
+      <div class="kpi-num" id="kpiTotal">0</div>
+      <div class="kpi-label">Total Users</div>
+      <div class="kpi-sub">Accounts in the users collection</div>
+    </div>
+    <div class="kpi green">
+      <div class="kpi-num" id="kpiEngineers">0</div>
+      <div class="kpi-label">Engineers</div>
+      <div class="kpi-sub">Field or standard user accounts</div>
+    </div>
+    <div class="kpi yellow">
+      <div class="kpi-num" id="kpiAdmins">0</div>
+      <div class="kpi-label">Admins</div>
+      <div class="kpi-sub">Administrative accounts</div>
+    </div>
+  </section>
+
   <section class="toolbar">
     <div class="fg">
       <label class="fl">Search</label>
       <div class="search">
         <i class="fa-solid fa-magnifying-glass"></i>
-        <input class="input" id="searchInput" placeholder="Search username, engineer name, emp ID..." oninput="renderTable()"/>
+        <input class="input" id="searchInput" placeholder="Search username, engineer name, email, employee ID..." oninput="renderTable()"/>
       </div>
     </div>
     <div class="fg">
@@ -130,11 +158,12 @@ tbody tr:hover{background:#f0f8ff;}
       <select class="select" id="roleFilter" onchange="renderTable()">
         <option value="">All Roles</option>
         <option value="admin">Admin</option>
-        <option value="user">User</option>
+        <option value="engineer">Engineer</option>
       </select>
     </div>
     <button class="btn btn-neutral" onclick="clearFilters()"><i class="fa-solid fa-rotate-left"></i> Clear</button>
     <div class="spacer"></div>
+    <div class="hint-card">Passwords can be reset, not viewed</div>
     <span class="count" id="recordCount">0 users</span>
   </section>
 
@@ -148,6 +177,7 @@ tbody tr:hover{background:#f0f8ff;}
           <tr>
             <th>#</th>
             <th>Username</th>
+            <th>Email</th>
             <th>Engineer Name</th>
             <th>Role</th>
             <th>Employee ID</th>
@@ -156,7 +186,7 @@ tbody tr:hover{background:#f0f8ff;}
           </tr>
         </thead>
         <tbody id="tableBody">
-          <tr><td colspan="7" class="empty">Loading users...</td></tr>
+          <tr><td colspan="8" class="empty">Loading users...</td></tr>
         </tbody>
       </table>
     </div>
@@ -166,7 +196,7 @@ tbody tr:hover{background:#f0f8ff;}
 <div class="overlay" id="editModal">
   <div class="modal">
     <div class="modal-head">
-      <div class="modal-title"><i class="fa-solid fa-user-pen" style="color:var(--sf-blue);"></i> Edit User</div>
+      <div class="modal-title" id="modalTitle"><i class="fa-solid fa-user-pen" style="color:var(--sf-blue);"></i> Edit User</div>
       <button class="btn btn-neutral" onclick="closeModal('editModal')"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div class="modal-body">
@@ -177,6 +207,10 @@ tbody tr:hover{background:#f0f8ff;}
           <input id="fUsername"/>
         </div>
         <div class="field">
+          <label>Email</label>
+          <input id="fEmail" type="email" placeholder="name@example.com"/>
+        </div>
+        <div class="field">
           <label>Engineer Name</label>
           <input id="fEngineerName"/>
         </div>
@@ -184,7 +218,7 @@ tbody tr:hover{background:#f0f8ff;}
           <label>Role</label>
           <select id="fRole">
             <option value="admin">admin</option>
-            <option value="user">user</option>
+            <option value="engineer">engineer</option>
           </select>
         </div>
         <div class="field">
@@ -192,9 +226,9 @@ tbody tr:hover{background:#f0f8ff;}
           <input id="fEmpId"/>
         </div>
         <div class="field full">
-          <label>Set New Password</label>
+          <label id="passwordLabel">Set New Password</label>
           <input id="fPassword" type="password" placeholder="Leave blank to keep the current password"/>
-          <div class="muted">The current password cannot be viewed. You can only replace it with a new one.</div>
+          <div class="muted" id="passwordHelp">The current password cannot be viewed. You can only replace it with a new one.</div>
         </div>
       </div>
     </div>
@@ -224,6 +258,7 @@ tbody tr:hover{background:#f0f8ff;}
 <script>
 const API = "/api/user-management/users";
 let allUsers = [];
+let modalMode = "edit";
 
 function token() {
   return localStorage.getItem("token")
@@ -272,18 +307,28 @@ async function loadUsers() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Failed to load users");
     allUsers = Array.isArray(data) ? data : [];
+    updateKpis();
     renderTable();
   } catch (err) {
-    document.getElementById("tableBody").innerHTML = `<tr><td colspan="7" class="empty">${esc(err.message)}</td></tr>`;
+    document.getElementById("tableBody").innerHTML = `<tr><td colspan="8" class="empty">${esc(err.message)}</td></tr>`;
     toast(err.message, "error");
   }
+}
+
+function updateKpis() {
+  const total = allUsers.length;
+  const admins = allUsers.filter(u => String(u.role || "").toLowerCase() === "admin").length;
+  const engineers = allUsers.filter(u => String(u.role || "").toLowerCase() === "engineer").length;
+  document.getElementById("kpiTotal").textContent = total;
+  document.getElementById("kpiAdmins").textContent = admins;
+  document.getElementById("kpiEngineers").textContent = engineers;
 }
 
 function filteredUsers() {
   const q = document.getElementById("searchInput").value.trim().toLowerCase();
   const role = document.getElementById("roleFilter").value.trim().toLowerCase();
   return allUsers.filter(u => {
-    const matchesQ = !q || [u.username, u.engineerName, u.empId, u.role].some(v => String(v || "").toLowerCase().includes(q));
+    const matchesQ = !q || [u.username, u.email, u.engineerName, u.empId, u.role].some(v => String(v || "").toLowerCase().includes(q));
     const matchesRole = !role || String(u.role || "").toLowerCase() === role;
     return matchesQ && matchesRole;
   });
@@ -294,15 +339,16 @@ function renderTable() {
   document.getElementById("recordCount").textContent = `${rows.length} user${rows.length === 1 ? "" : "s"}`;
   const tbody = document.getElementById("tableBody");
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="7" class="empty">No users found.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="empty">No users found.</td></tr>`;
     return;
   }
   tbody.innerHTML = rows.map((u, i) => `
     <tr>
       <td>${i + 1}</td>
       <td><strong>${esc(u.username)}</strong></td>
+      <td>${esc(u.email || "—")}</td>
       <td>${esc(u.engineerName)}</td>
-      <td><span class="badge ${String(u.role).toLowerCase()==="admin"?"badge-admin":"badge-user"}">${esc(u.role)}</span></td>
+      <td><span class="badge ${String(u.role).toLowerCase()==="admin"?"badge-admin":"badge-user"}">${esc(String(u.role || "").toLowerCase()==="admin"?"admin":"engineer")}</span></td>
       <td>${esc(u.empId || "—")}</td>
       <td><div class="status-note">${esc(u.passwordNote || "Stored securely")}</div></td>
       <td>
@@ -316,15 +362,35 @@ function renderTable() {
   `).join("");
 }
 
+function openCreate() {
+  modalMode = "create";
+  document.getElementById("modalTitle").innerHTML = `<i class="fa-solid fa-user-plus" style="color:var(--sf-blue);"></i> Add User`;
+  document.getElementById("editId").value = "";
+  document.getElementById("fUsername").value = "";
+  document.getElementById("fEmail").value = "";
+  document.getElementById("fEngineerName").value = "";
+  document.getElementById("fRole").value = "engineer";
+  document.getElementById("fEmpId").value = "";
+  document.getElementById("fPassword").value = "";
+  document.getElementById("passwordLabel").textContent = "Password";
+  document.getElementById("passwordHelp").textContent = "A password is required when creating a new user.";
+  openModal("editModal");
+}
+
 function openEdit(id, focusPassword = false) {
   const user = allUsers.find(u => u._id === id);
   if (!user) return;
+  modalMode = "edit";
+  document.getElementById("modalTitle").innerHTML = `<i class="fa-solid fa-user-pen" style="color:var(--sf-blue);"></i> Edit User`;
   document.getElementById("editId").value = user._id;
   document.getElementById("fUsername").value = user.username || "";
+  document.getElementById("fEmail").value = user.email || "";
   document.getElementById("fEngineerName").value = user.engineerName || "";
-  document.getElementById("fRole").value = String(user.role || "user").toLowerCase();
+  document.getElementById("fRole").value = String(user.role || "engineer").toLowerCase() === "admin" ? "admin" : "engineer";
   document.getElementById("fEmpId").value = user.empId || "";
   document.getElementById("fPassword").value = "";
+  document.getElementById("passwordLabel").textContent = "Set New Password";
+  document.getElementById("passwordHelp").textContent = "The current password cannot be viewed. You can only replace it with a new one.";
   openModal("editModal");
   if (focusPassword) setTimeout(() => document.getElementById("fPassword").focus(), 60);
 }
@@ -333,24 +399,29 @@ async function saveUser() {
   const id = document.getElementById("editId").value;
   const body = {
     username: document.getElementById("fUsername").value.trim(),
+    email: document.getElementById("fEmail").value.trim(),
     engineerName: document.getElementById("fEngineerName").value.trim(),
     role: document.getElementById("fRole").value.trim(),
     empId: document.getElementById("fEmpId").value.trim(),
   };
   const password = document.getElementById("fPassword").value;
   if (password) body.password = password;
+  if (!body.username || !body.engineerName || (modalMode === "create" && !body.password)) {
+    return toast("Username, engineer name, and password are required for a new user", "error");
+  }
   const btn = document.getElementById("saveBtn");
   btn.disabled = true;
   btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving`;
   try {
-    const res = await fetch(`${API}/${id}`, {
-      method: "PUT",
+    const isCreate = modalMode === "create";
+    const res = await fetch(isCreate ? API : `${API}/${id}`, {
+      method: isCreate ? "POST" : "PUT",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
       body: JSON.stringify(body),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Failed to update user");
-    toast(data.message || "User updated");
+    if (!res.ok) throw new Error(data.error || `Failed to ${isCreate ? "create" : "update"} user`);
+    toast(data.message || `User ${isCreate ? "created" : "updated"}`);
     closeModal("editModal");
     await loadUsers();
   } catch (err) {

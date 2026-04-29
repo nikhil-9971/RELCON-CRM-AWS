@@ -84,6 +84,13 @@ function isNikhilAdmin(user) {
   return user?.role === "admin" && String(user?.username || "").toLowerCase() === NIKHIL_ADMIN_USERNAME;
 }
 
+function normalizeUserRole(role = "") {
+  const value = String(role || "").trim().toLowerCase();
+  if (value === "admin") return "admin";
+  if (value === "engineer" || value === "user") return "engineer";
+  return value || "engineer";
+}
+
 // 🔍 Logged-in user info
 router.get("/user", verifyToken, (req, res) => {
   res.json(req.user);
@@ -113,11 +120,12 @@ router.get("/user-management/users", verifyToken, async (req, res) => {
     if (!isNikhilAdmin(req.user)) {
       return res.status(403).json({ error: "Access denied. Nikhil admin only." });
     }
-    const users = await User.find({}, "username role engineerName empId").sort({ username: 1 }).lean();
+    const users = await User.find({}, "username email role engineerName empId").sort({ username: 1 }).lean();
     res.json(users.map(u => ({
       _id: u._id,
       username: u.username || "",
-      role: u.role || "",
+      email: u.email || "",
+      role: normalizeUserRole(u.role),
       engineerName: u.engineerName || "",
       empId: u.empId || "",
       passwordVisible: false,
@@ -128,26 +136,68 @@ router.get("/user-management/users", verifyToken, async (req, res) => {
   }
 });
 
+router.post("/user-management/users", verifyToken, async (req, res) => {
+  try {
+    if (!isNikhilAdmin(req.user)) {
+      return res.status(403).json({ error: "Access denied. Nikhil admin only." });
+    }
+    const { username, email, engineerName, role, empId, password } = req.body;
+    if (!username || !engineerName || !password) {
+      return res.status(400).json({ error: "Username, engineer name, and password are required" });
+    }
+    const existing = await User.findOne({ username: String(username).trim() });
+    if (existing) {
+      return res.status(409).json({ error: "Username already exists" });
+    }
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const created = await User.create({
+      username: String(username).trim(),
+      email: String(email || "").trim(),
+      engineerName: String(engineerName).trim(),
+      role: normalizeUserRole(role),
+      empId: String(empId || "").trim(),
+      password: hashedPassword,
+    });
+    res.status(201).json({
+      message: "User created successfully",
+      user: {
+        _id: created._id,
+        username: created.username || "",
+        email: created.email || "",
+        role: normalizeUserRole(created.role),
+        engineerName: created.engineerName || "",
+        empId: created.empId || "",
+        passwordVisible: false,
+        passwordNote: "Stored securely and not retrievable",
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to create user", details: err.message });
+  }
+});
+
 router.put("/user-management/users/:id", verifyToken, async (req, res) => {
   try {
     if (!isNikhilAdmin(req.user)) {
       return res.status(403).json({ error: "Access denied. Nikhil admin only." });
     }
-    const { username, engineerName, role, empId, password } = req.body;
+    const { username, email, engineerName, role, empId, password } = req.body;
     const updates = {};
     if (username !== undefined) updates.username = String(username).trim();
+    if (email !== undefined) updates.email = String(email).trim();
     if (engineerName !== undefined) updates.engineerName = String(engineerName).trim();
-    if (role !== undefined) updates.role = String(role).trim();
+    if (role !== undefined) updates.role = normalizeUserRole(role);
     if (empId !== undefined) updates.empId = String(empId).trim();
     if (password) updates.password = await bcrypt.hash(password, 10);
-    const updated = await User.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true, select: "username role engineerName empId" });
+    const updated = await User.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true, select: "username email role engineerName empId" });
     if (!updated) return res.status(404).json({ error: "User not found" });
     res.json({
       message: "User updated successfully",
       user: {
         _id: updated._id,
         username: updated.username || "",
-        role: updated.role || "",
+        email: updated.email || "",
+        role: normalizeUserRole(updated.role),
         engineerName: updated.engineerName || "",
         empId: updated.empId || "",
         passwordVisible: false,
