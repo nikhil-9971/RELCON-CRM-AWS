@@ -17,6 +17,8 @@ const axios = require("axios");
 const nodemailer = require("nodemailer");
 const cron = require("node-cron");
 const { EmailLog } = require("../models/AuditLog");
+const MaterialManagement = require("../models/MaterialManagement");
+const User = require("../models/User");
 
 const {
   SMTP_HOST,
@@ -121,6 +123,46 @@ function toCSV(rows, keys, headerMap = {}) {
   const header = keys.map((k) => esc(headerMap[k] || k)).join(",");
   const lines = rows.map((r) => keys.map((k) => esc(r[k])).join(","));
   return [header, ...lines].join("\n");
+}
+
+function normalizeEmail(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function formatDateTimeIST(value = new Date()) {
+  return new Date(value).toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function buildMaterialDispatchTable(rows = []) {
+  if (!rows.length) return "";
+
+  const columns = [
+    { key: "serialNumber", label: "Serial No." },
+    { key: "itemCode", label: "Item Code" },
+    { key: "itemName", label: "Material Name" },
+    { key: "qty", label: "Qty" },
+    { key: "itemType", label: "Material Type" },
+    { key: "itemStatus", label: "Status" },
+    { key: "remarks", label: "Remarks" },
+    { key: "updatedAt", label: "Last Updated" },
+  ];
+
+  return buildTable(
+    rows.map((row) => ({
+      ...row,
+      updatedAt: formatDateTimeIST(row.updatedAt || row.createdAt || new Date()),
+      remarks: row.remarks || "—",
+    })),
+    columns,
+    "Faulty Material Details"
+  );
 }
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -606,6 +648,212 @@ async function sendUnverifiedStatusEmail() {
     console.error("❌ Unverified mail error:", err.message);
   }
 }
+
+async function sendFaultyMaterialDispatchAlerts() {
+  const alertType = "Faulty Material Dispatch Alert";
+
+  try {
+    const [faultyMaterials, users] = await Promise.all([
+      MaterialManagement.find({
+        isActive: true,
+        itemStatus: "Not Ok (Faulty)",
+        qty: { $gt: 0 },
+      })
+        .sort({ engineerName: 1, updatedAt: -1, createdAt: -1 })
+        .lean(),
+      User.find({}, "username email role engineerName").lean(),
+    ]);
+
+    const adminEmails = [...new Set(
+      users
+        .filter((user) => String(user.role || "").trim().toLowerCase() === "admin")
+        .map((user) => normalizeEmail(user.email))
+        .filter(Boolean)
+    )];
+
+    const engineerMap = new Map();
+    for (const user of users) {
+      const key = String(user.engineerName || "").trim().toLowerCase();
+      if (!key) continue;
+      if (!engineerMap.has(key)) engineerMap.set(key, []);
+      engineerMap.get(key).push(user);
+    }
+
+    const grouped = new Map();
+    for (const item of faultyMaterials) {
+      const key = String(item.engineerName || "").trim().toLowerCase();
+      if (!key) continue;
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key).push(item);
+    }
+
+    const summary = {
+      sent: 0,
+      skippedNoEngineerEmail: 0,
+      skippedBelowThreshold: 0,
+      skippedNoAdminEmail: 0,
+      totalEngineersReviewed: grouped.size,
+    };
+
+    for (const [engineerKey, materials] of grouped.entries()) {
+      const faultyQty = materials.reduce((sum, row) => sum + Number(row.qty || 0), 0);
+      if (faultyQty < 4) {
+        summary.skippedBelowThreshold += 1;
+        continue;
+      }
+
+      const engineerUsers = engineerMap.get(engineerKey) || [];
+      const engineerEmails = [...new Set(
+        engineerUsers.map((user) => normalizeEmail(user.email)).filter(Boolean)
+      )];
+      const engineerName = materials[0]?.engineerName || engineerUsers[0]?.engineerName || "Engineer";
+
+      if (!engineerEmails.length) {
+        summary.skippedNoEngineerEmail += 1;
+        await EmailLog.create({
+          type: alertType,
+          subject: `Skipped: missing engineer email for ${engineerName}`,
+          to: "",
+          status: "failure",
+          sentAt: new Date(),
+          meta: {
+            engineerName,
+            faultyQty,
+            materialRows: materials.length,
+            reason: "Engineer email not found in users collection",
+          },
+        });
+        continue;
+      }
+
+      if (!adminEmails.length) {
+        summary.skippedNoAdminEmail += 1;
+        await EmailLog.create({
+          type: alertType,
+          subject: `Skipped: missing admin CC for ${engineerName}`,
+          to: engineerEmails.join(", "),
+          status: "failure",
+          sentAt: new Date(),
+          meta: {
+            engineerName,
+            faultyQty,
+            materialRows: materials.length,
+            reason: "No admin email found in users collection",
+          },
+        });
+        continue;
+      }
+
+      const materialRows = materials.map((row) => ({
+        serialNumber: row.serialNumber || "—",
+        itemCode: row.itemCode || "—",
+        itemName: row.itemName || "—",
+        qty: Number(row.qty || 0),
+        itemType: row.itemType || "—",
+        itemStatus: row.itemStatus || "—",
+        remarks: row.remarks || "",
+        updatedAt: row.updatedAt || row.createdAt || new Date(),
+      }));
+
+      const uniqueItemCount = materialRows.length;
+      const generatedAt = formatDateTimeIST(new Date());
+      const htmlBody = `
+        <div style="margin:0;padding:20px 12px;background:#f1f5f9;font:14px/1.6 Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a">
+          <div style="max-width:1080px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(15,23,42,.05)">
+            <div style="padding:18px 22px;background:linear-gradient(135deg,#0f172a,#1d4ed8);color:#ffffff">
+              <p style="margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.85">Relcon CRM • Automated Material Alert</p>
+              <h2 style="margin:0;font-size:22px;font-weight:700">Material Dispatch Required</h2>
+              <p style="margin:8px 0 0;font-size:13px;opacity:.95">Faulty material threshold reached for <strong>${htmlEscape(engineerName)}</strong>.</p>
+            </div>
+
+            <div style="padding:22px">
+              <p style="margin:0 0 14px;font-size:13px;color:#334155">
+                Dear <strong>${htmlEscape(engineerName)}</strong>,
+              </p>
+              <p style="margin:0 0 14px;font-size:13px;color:#475569">
+                This is to inform you that the count of faulty materials currently mapped against your name has reached the dispatch threshold in Relcon CRM. Kindly arrange dispatch of the faulty materials listed below at the earliest and ensure the relevant handover or courier details are updated with the admin team.
+              </p>
+              <p style="margin:0 0 16px;font-size:13px;color:#475569">
+                Please review the material details carefully and take necessary action today to avoid delay in replacement, repair, or stock reconciliation.
+              </p>
+
+              <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+                <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:10px 12px;min-width:180px">
+                  <div style="font-size:11px;color:#9a3412;text-transform:uppercase;letter-spacing:.05em">Faulty Quantity</div>
+                  <div style="font-size:24px;line-height:1.2;font-weight:800;color:#c2410c">${faultyQty}</div>
+                </div>
+                <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 12px;min-width:180px">
+                  <div style="font-size:11px;color:#1d4ed8;text-transform:uppercase;letter-spacing:.05em">Faulty Entries</div>
+                  <div style="font-size:24px;line-height:1.2;font-weight:800;color:#1e40af">${uniqueItemCount}</div>
+                </div>
+              </div>
+
+              ${buildMaterialDispatchTable(materialRows)}
+
+              <div style="margin-top:18px;padding:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;color:#475569;font-size:13px">
+                <strong style="color:#0f172a">Required action:</strong> Please dispatch the above faulty materials and coordinate with the admin team for acknowledgement and further processing.
+              </div>
+
+              <div style="margin-top:18px;padding-top:12px;border-top:1px solid #e2e8f0;color:#64748b;font-size:12px">
+                Generated on ${generatedAt} IST. This is a system-generated notification from Relcon CRM.
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const subject = `Material Dispatch Required | ${engineerName} | Faulty Qty ${faultyQty}`;
+      const mailOptions = {
+        from: MAIL_FROM,
+        to: engineerEmails.join(", "),
+        cc: adminEmails.join(", "),
+        subject,
+        html: htmlBody,
+      };
+
+      const info = await transporter.sendMail(mailOptions);
+
+      await EmailLog.create({
+        type: alertType,
+        subject,
+        to: engineerEmails.join(", "),
+        status: "success",
+        sentAt: new Date(),
+        meta: {
+          cc: adminEmails.join(", "),
+          engineerName,
+          faultyQty,
+          materialRows: uniqueItemCount,
+          messageId: info?.messageId || "",
+        },
+      });
+
+      summary.sent += 1;
+    }
+
+    console.log("✅ Faulty material dispatch alert summary:", summary);
+    return { ok: true, summary };
+  } catch (err) {
+    console.error("❌ Faulty material dispatch alert error:", err.message);
+
+    try {
+      await EmailLog.create({
+        type: alertType,
+        subject: "Faulty material dispatch alert - failure",
+        to: "",
+        status: "failure",
+        sentAt: new Date(),
+        meta: {
+          error: err.message || String(err),
+        },
+      });
+    } catch (logErr) {
+      console.error("Failed to write EmailLog for faulty material alert:", logErr?.message || logErr);
+    }
+
+    return { ok: false, error: err };
+  }
+}
 // ─── Scheduler: daily 10:50 IST ───────────────────────────────────────────────
 
 cron.schedule(
@@ -628,6 +876,17 @@ cron.schedule(
   { timezone: "Asia/Kolkata" }
 );
 
+// ─── Scheduler: daily 11:00 IST for faulty material dispatch alerts ──────────
+
+cron.schedule(
+  "0 11 * * *",
+  () => {
+    console.log("🔔 Faulty material dispatch alert CRON TRIGGERED:", new Date().toISOString());
+    sendFaultyMaterialDispatchAlerts().catch((e) => console.error("Faulty material dispatch alert job error:", e));
+  },
+  { timezone: "Asia/Kolkata" }
+);
+
 // ─── Manual run ───────────────────────────────────────────────────────────────
 
 // if (require.main === module) {
@@ -646,6 +905,11 @@ if (require.main === module) {
       .then(() => { console.log("Unverified Done"); process.exit(0); })
       .catch((e) => { console.error("❌ error:", e); process.exit(1); });
 
+  } else if (type === "faulty-material") {
+    sendFaultyMaterialDispatchAlerts()
+      .then((r) => { console.log("Faulty material dispatch alert done:", r); process.exit(r.ok ? 0 : 1); })
+      .catch((e) => { console.error("❌ error:", e); process.exit(1); });
+
   } else {
     // default = pending
     sendPendingStatusEmail({ forDateISO: dateArg })
@@ -654,4 +918,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { sendPendingStatusEmail, sendUnverifiedStatusEmail };
+module.exports = { sendPendingStatusEmail, sendUnverifiedStatusEmail, sendFaultyMaterialDispatchAlerts };
