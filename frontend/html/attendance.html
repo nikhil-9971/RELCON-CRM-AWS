@@ -138,6 +138,7 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
 .badge-half{background:var(--sf-orange-lt);color:var(--sf-orange);}
 .badge-leave{background:var(--sf-purple-lt);color:var(--sf-purple);}
 .badge-holiday{background:var(--sf-teal-lt);color:var(--sf-teal);}
+.badge-workoff{background:#f3f4f6;color:#4b5563;}
 
 /* ── PAGINATION ── */
 .sf-pagination{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--border);background:var(--surface2);flex-wrap:wrap;gap:8px;}
@@ -182,6 +183,7 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
 .cal-day.half{background:var(--sf-orange-lt);color:var(--sf-orange);font-weight:700;}
 .cal-day.leave{background:var(--sf-purple-lt);color:var(--sf-purple);font-weight:700;}
 .cal-day.holiday{background:var(--sf-teal-lt);color:var(--sf-teal);}
+.cal-day.workoff{background:#f3f4f6;color:#4b5563;font-weight:700;}
 .cal-day.empty{border:none;background:none;}
 .cal-day .day-num{font-size:13px;font-weight:700;line-height:1;}
 .cal-day .day-status{font-size:8px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;margin-top:2px;opacity:0.8;}
@@ -470,7 +472,7 @@ document.querySelectorAll(".sf-overlay").forEach(o=>{
    STATUS BADGE
 ───────────────────────────────────────────────── */
 function statusBadge(status){
-  const map = { "Present":"badge-present","Absent":"badge-absent","Half Day":"badge-half","Holiday":"badge-holiday" };
+  const map = { "Present":"badge-present","Absent":"badge-absent","Half Day":"badge-half","Holiday":"badge-holiday","Week Off":"badge-workoff" };
   return `<span class="sf-badge ${map[status]||"badge-present"}">${status}</span>`;
 }
 
@@ -485,6 +487,59 @@ function todayISO(){ return new Date().toISOString().split("T")[0]; }
 function getDayName(dateStr){
   if(!dateStr) return "—";
   return new Date(dateStr).toLocaleDateString("en-IN",{weekday:"short"});
+}
+
+function isSunday(dateStr){
+  if(!dateStr) return false;
+  return new Date(`${dateStr}T00:00:00`).getDay() === 0;
+}
+
+function getSundayDatesInRange(fromDate, toDate){
+  if(!fromDate || !toDate || fromDate > toDate) return [];
+  const dates = [];
+  const cursor = new Date(`${fromDate}T00:00:00`);
+  const end = new Date(`${toDate}T00:00:00`);
+  while(cursor <= end){
+    if(cursor.getDay() === 0){
+      dates.push(cursor.toISOString().split("T")[0]);
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return dates;
+}
+
+function createWeekOffRecord(engineerName, dateStr){
+  return {
+    _id: `wo-${engineerName}-${dateStr}`,
+    engineerName,
+    username: engineerName,
+    date: dateStr,
+    status: "Week Off",
+    remarks: "Sunday week off",
+    createdAt: null,
+    isWeekOff: true,
+  };
+}
+
+function addWeekOffRecords(records, engineers, fromDate, toDate){
+  if(!fromDate || !toDate || fromDate > toDate) return [...records];
+  const sundayDates = getSundayDatesInRange(fromDate, toDate);
+  if(!sundayDates.length || !engineers.length) return [...records];
+
+  const result = [...records];
+  const existing = new Set(
+    records.map(r => `${r.engineerName||r.username||""}__${(r.date||"").split("T")[0]}`)
+  );
+
+  engineers.forEach(engineerName=>{
+    sundayDates.forEach(dateStr=>{
+      const key = `${engineerName}__${dateStr}`;
+      if(existing.has(key)) return;
+      result.push(createWeekOffRecord(engineerName, dateStr));
+    });
+  });
+
+  return result;
 }
 
 /* ─────────────────────────────────────────────────
@@ -612,7 +667,7 @@ function renderAdminMain(){
         <select class="sf-input sf-select" id="filterStatus" onchange="applyAdminFilters()" style="width:130px;">
           <option value="">All Status</option>
           <option>Present</option><option>Absent</option>
-          <option>Half Day</option><option>Holiday</option>
+          <option>Half Day</option><option>Holiday</option><option>Week Off</option>
         </select>
       </div>
       <button class="sf-btn sf-btn-neutral" onclick="clearAdminFilters()" style="align-self:flex-end;">
@@ -651,14 +706,21 @@ function getAdminFiltered(){
   const to     = document.getElementById("filterTo")?.value || "";
   const eng    = (document.getElementById("filterEngineer")?.value || "").toLowerCase().trim();
   const status = document.getElementById("filterStatus")?.value || "";
-  return allAttendance.filter(r=>{
+  const baseRecords = allAttendance.filter(r=>{
     const d = (r.date||"").split("T")[0];
     if(from && d < from) return false;
     if(to && d > to) return false;
     if(eng && !(r.engineerName||r.username||"").toLowerCase().includes(eng)) return false;
-    if(status && r.status !== status) return false;
     return true;
   });
+
+  const engineers = [...new Set(baseRecords.map(r=>r.engineerName||r.username||""))].filter(Boolean).sort();
+  const recordDates = [...new Set(baseRecords.map(r=>(r.date||"").split("T")[0]))].filter(Boolean).sort();
+  const rangeFrom = from || recordDates[0];
+  const rangeTo = to || recordDates[recordDates.length - 1];
+  const recordsWithWO = addWeekOffRecords(baseRecords, engineers, rangeFrom, rangeTo);
+
+  return recordsWithWO.filter(r => !status || r.status === status);
 }
 
 function applyAdminFilters(){
@@ -699,8 +761,9 @@ function renderAdminTable(){
         <td>
           <div class="sf-ab">
             <button class="sf-action-btn sf-ab-view" onclick='openViewModal(${JSON.stringify(r)})' title="View"><i class="fa-solid fa-eye"></i></button>
+            ${r.isWeekOff ? `<span style="font-size:10px;color:var(--txt4);padding:0 4px;">WO</span>` : `
             <button class="sf-action-btn sf-ab-edit" onclick='openEditModalFn(${JSON.stringify(r)})' title="Edit"><i class="fa-solid fa-pen"></i></button>
-            <button class="sf-action-btn sf-ab-delete" onclick="promptDelete('${r._id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
+            <button class="sf-action-btn sf-ab-delete" onclick="promptDelete('${r._id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>`}
           </div>
         </td>
       </tr>`).join("");
@@ -754,7 +817,7 @@ function renderSummaryTable(records){
   const byEng = {};
   records.forEach(r=>{
     const name = r.engineerName || r.username || "Unknown";
-    if(!byEng[name]) byEng[name] = {Present:0,Absent:0,"Half Day":0,"Holiday":0,total:0};
+    if(!byEng[name]) byEng[name] = {Present:0,Absent:0,"Half Day":0,"Holiday":0,"Week Off":0,total:0};
     byEng[name][r.status] = (byEng[name][r.status]||0)+1;
     byEng[name].total++;
   });
@@ -771,14 +834,15 @@ function renderSummaryTable(records){
           <thead>
             <tr>
               <th>#</th><th>Engineer</th><th>Total</th>
-              <th>Present</th><th>Absent</th><th>Half Day</th><th>Holiday</th>
+              <th>Present</th><th>Absent</th><th>Half Day</th><th>Holiday</th><th>WO</th>
               <th>Attendance %</th>
             </tr>
           </thead>
           <tbody>
-            ${rows.length===0 ? `<tr><td colspan="8"><div class="sf-empty"><i class="fa-regular fa-chart-bar"></i><p>No data available.</p></div></td></tr>` :
+            ${rows.length===0 ? `<tr><td colspan="9"><div class="sf-empty"><i class="fa-regular fa-chart-bar"></i><p>No data available.</p></div></td></tr>` :
               rows.map(([name, d], i)=>{
-                const pct = d.total>0 ? Math.round((d.Present/d.total)*100) : 0;
+                const workingDays = d.total - (d["Week Off"]||0);
+                const pct = workingDays>0 ? Math.round((d.Present/workingDays)*100) : 0;
                 const color = pct>=80?"var(--sf-green)":pct>=60?"var(--sf-orange)":"var(--sf-red)";
                 return `<tr>
                   <td style="color:var(--txt4);">${i+1}</td>
@@ -788,6 +852,7 @@ function renderSummaryTable(records){
                   <td><span class="sf-badge badge-absent">${d.Absent||0}</span></td>
                   <td><span class="sf-badge badge-half">${d["Half Day"]||0}</span></td>
                   <td><span class="sf-badge badge-holiday">${d["Holiday"]||0}</span></td>
+                  <td><span class="sf-badge badge-workoff">${d["Week Off"]||0}</span></td>
                   <td>
                     <div class="progress-bar-wrap">
                       <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${pct}%;background:${color};"></div></div>
@@ -920,15 +985,27 @@ function exportPivotExcel(){
   const filtered = getAdminFiltered();
   if(!filtered.length){ showToast("No records to export", "info"); return; }
   const SHORT = {"Present":"P","Absent":"A","Half Day":"H","Holiday":"HOL"};
-  const BG = {"P":"d3f5d3","A":"fef1ee","H":"fff3e0","HOL":"ecfeff"};
-  const FG = {"P":"1d5e31","A":"ba0517","H":"dd5a0c","HOL":"0e7490"};
+  const BG = {"P":"d3f5d3","A":"fef1ee","H":"fff3e0","HOL":"ecfeff","WO":"f3f4f6"};
+  const FG = {"P":"1d5e31","A":"ba0517","H":"dd5a0c","HOL":"0e7490","WO":"4b5563"};
   const engineers = [...new Set(filtered.map(r=>r.engineerName||r.username||""))].filter(Boolean).sort();
-  const dates = [...new Set(filtered.map(r=>(r.date||"").split("T")[0]))].filter(Boolean).sort();
+  const filterFrom = document.getElementById("filterFrom")?.value || "";
+  const filterTo = document.getElementById("filterTo")?.value || "";
+  const recordDates = [...new Set(filtered.map(r=>(r.date||"").split("T")[0]))].filter(Boolean).sort();
+  const rangeFrom = filterFrom || recordDates[0];
+  const rangeTo = filterTo || recordDates[recordDates.length - 1];
+  const sundayDates = getSundayDatesInRange(rangeFrom, rangeTo);
+  const dates = [...new Set([...recordDates, ...sundayDates])].filter(Boolean).sort();
   const pivot = {};
   filtered.forEach(r=>{
     const e=r.engineerName||r.username||""; const d=(r.date||"").split("T")[0];
     if(!pivot[e]) pivot[e]={};
     pivot[e][d]=SHORT[r.status]||r.status||"";
+  });
+  engineers.forEach(e=>{
+    if(!pivot[e]) pivot[e]={};
+    sundayDates.forEach(d=>{
+      pivot[e][d] = "WO";
+    });
   });
   const headerRow = ["Engineer",...dates];
   const dataRows = engineers.map(e=>[e,...dates.map(d=>pivot[e]?.[d]||"")]);
@@ -1202,10 +1279,15 @@ function switchEngTab(tab){
 
 function filterMyRecords(){
   const month = document.getElementById("engMonth")?.value || todayISO().substring(0,7);
-  const recs  = myAttendance.filter(r=>(r.date||"").startsWith(month));
+  const monthRecords = myAttendance.filter(r=>(r.date||"").startsWith(month));
+  const engineerName = currentUser?.engineerName || currentUser?.username || "";
+  const monthStart = `${month}-01`;
+  const monthEnd = new Date(Number(month.split("-")[0]), Number(month.split("-")[1]), 0).toISOString().split("T")[0];
+  const recs  = addWeekOffRecords(monthRecords, engineerName ? [engineerName] : [], monthStart, monthEnd)
+    .sort((a,b)=>new Date(a.date)-new Date(b.date));
   const p = recs.filter(r=>r.status==="Present").length;
   const s = document.getElementById("myMonthStats");
-  if(s) s.textContent = `${recs.length} records · ${p} Present · ${recs.filter(r=>r.status==="Absent").length} Absent`;
+  if(s) s.textContent = `${recs.length} records · ${p} Present · ${recs.filter(r=>r.status==="Absent").length} Absent · ${recs.filter(r=>r.status==="Week Off").length} WO`;
   if(engActiveTab==="calendar") renderMyCalendar(month, recs);
   else renderMyList(recs);
 }
@@ -1217,8 +1299,8 @@ function renderMyCalendar(month, recs){
   const today     = new Date();
   const byDate    = {};
   recs.forEach(r=>{ byDate[(r.date||"").split("T")[0]] = r.status; });
-  const statusCls = {"Present":"present","Absent":"absent","Half Day":"half","Holiday":"holiday"};
-  const statusShort= {"Present":"P","Absent":"A","Half Day":"½","Holiday":"H"};
+  const statusCls = {"Present":"present","Absent":"absent","Half Day":"half","Holiday":"holiday","Week Off":"workoff"};
+  const statusShort= {"Present":"P","Absent":"A","Half Day":"½","Holiday":"H","Week Off":"WO"};
 
   let cells = "";
   for(let i=0;i<firstDay;i++) cells += `<div class="cal-day empty"></div>`;
@@ -1230,7 +1312,7 @@ function renderMyCalendar(month, recs){
     const cls     = status ? (statusCls[status]||"") : (isSun?"sunday":"");
     cells += `<div class="cal-day ${cls} ${isToday?"today":""}">
       <div class="day-num">${d}</div>
-      ${status ? `<div class="day-status">${statusShort[status]||""}</div>` : ""}
+      ${status ? `<div class="day-status">${statusShort[status]||""}</div>` : (isSun ? `<div class="day-status">WO</div>` : "")}
     </div>`;
   }
 
@@ -1244,6 +1326,7 @@ function renderMyCalendar(month, recs){
           <span class="sf-badge badge-absent">Absent</span>
           <span class="sf-badge badge-half">Half Day</span>
           <span class="sf-badge badge-holiday">Holiday</span>
+          <span class="sf-badge badge-workoff">Week Off</span>
         </div>
       </div>
       <div class="cal-wrapper">
