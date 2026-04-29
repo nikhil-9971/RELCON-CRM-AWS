@@ -24,6 +24,16 @@ const VALID_STATUSES = ["OK", "Not Ok (Faulty)", "Under Repair", "Scrapped"];
 const actorName = (req) => req.user?.name || req.user?.email || "System";
 const buildSerial = (prefix = "MAT") => `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
+function normalizeItemStatus(status = "") {
+  const value = String(status).trim().toLowerCase();
+  if (!value) return "";
+  if (value === "ok") return "OK";
+  if (value === "faulty" || value === "not ok / faulty" || value === "not ok (faulty)") return "Not Ok (Faulty)";
+  if (value === "under repair") return "Under Repair";
+  if (value === "scrapped") return "Scrapped";
+  return status;
+}
+
 function validateRow(row) {
   const errors = [];
   if (!row.itemCode)     errors.push("itemCode is required");
@@ -84,13 +94,12 @@ router.get("/", verifyToken, async (req, res) => {
 
     if (engineerName) query.engineerName = new RegExp(engineerName, "i");
     if (itemType)     query.itemType     = new RegExp(itemType, "i");    // free-text itemType
-    if (itemStatus)   query.itemStatus   = itemStatus;                   // ← NEW
+    if (itemStatus)   query.itemStatus   = normalizeItemStatus(itemStatus);
     if (String(lowStock).toLowerCase() === "true") query.qty = { $lte: 1 };
     if (customerName) query.customerName = new RegExp(customerName, "i");
 
     // UI status filter: "ok" → "OK", "faulty" → "Not Ok (Faulty)"
-    if (req.query.status === "ok")     query.itemStatus = "OK";
-    if (req.query.status === "faulty") query.itemStatus = "Not Ok (Faulty)";
+    if (req.query.status) query.itemStatus = normalizeItemStatus(req.query.status);
 
     const sort = { [sortBy]: sortOrder === "asc" ? 1 : -1 };
     const skip = (parseInt(page) - 1) * parseInt(limit);

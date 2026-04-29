@@ -454,8 +454,10 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
       <label class="sf-filter-label">Status</label>
       <select class="sf-input sf-select" id="statusFilter" style="width:150px;" onchange="onFilter()">
         <option value="">All Status</option>
-        <option value="ok">OK</option>
-        <option value="faulty">Not OK / Faulty</option>
+        <option value="OK">OK</option>
+        <option value="Not Ok (Faulty)">Not OK / Faulty</option>
+        <option value="Under Repair">Under Repair</option>
+        <option value="Scrapped">Scrapped</option>
       </select>
     </div>
 
@@ -1445,8 +1447,8 @@ function showToast(msg, type='info') {
 function updateStatusKpis() {
   const activeStatus = document.getElementById('statusFilter')?.value || '';
   document.getElementById('kpiCardAll')?.classList.toggle('active-filter', !activeStatus);
-  document.getElementById('kpiCardOk')?.classList.toggle('active-filter', activeStatus === 'ok');
-  document.getElementById('kpiCardFaulty')?.classList.toggle('active-filter', activeStatus === 'faulty');
+  document.getElementById('kpiCardOk')?.classList.toggle('active-filter', activeStatus === 'OK' || activeStatus === 'ok');
+  document.getElementById('kpiCardFaulty')?.classList.toggle('active-filter', activeStatus === 'Not Ok (Faulty)' || activeStatus === 'faulty');
   document.getElementById('kpiCardLowStock')?.classList.toggle('active-filter', document.getElementById('stockFilter')?.value === 'low');
 }
 
