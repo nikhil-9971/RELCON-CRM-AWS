@@ -78,6 +78,11 @@ router.post("/login", async (req, res) => {
 });
 
 const verifyToken = require("../middleware/authMiddleware");
+const NIKHIL_ADMIN_USERNAME = "nikhil.trivedi";
+
+function isNikhilAdmin(user) {
+  return user?.role === "admin" && String(user?.username || "").toLowerCase() === NIKHIL_ADMIN_USERNAME;
+}
 
 // 🔍 Logged-in user info
 router.get("/user", verifyToken, (req, res) => {
@@ -99,6 +104,71 @@ router.get("/getUsers", verifyToken, async (req, res) => {
     res.json(users);
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch users", details: err.message });
+  }
+});
+
+// Safe user management view for Nikhil only
+router.get("/user-management/users", verifyToken, async (req, res) => {
+  try {
+    if (!isNikhilAdmin(req.user)) {
+      return res.status(403).json({ error: "Access denied. Nikhil admin only." });
+    }
+    const users = await User.find({}, "username role engineerName empId").sort({ username: 1 }).lean();
+    res.json(users.map(u => ({
+      _id: u._id,
+      username: u.username || "",
+      role: u.role || "",
+      engineerName: u.engineerName || "",
+      empId: u.empId || "",
+      passwordVisible: false,
+      passwordNote: "Stored securely and not retrievable",
+    })));
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch users", details: err.message });
+  }
+});
+
+router.put("/user-management/users/:id", verifyToken, async (req, res) => {
+  try {
+    if (!isNikhilAdmin(req.user)) {
+      return res.status(403).json({ error: "Access denied. Nikhil admin only." });
+    }
+    const { username, engineerName, role, empId, password } = req.body;
+    const updates = {};
+    if (username !== undefined) updates.username = String(username).trim();
+    if (engineerName !== undefined) updates.engineerName = String(engineerName).trim();
+    if (role !== undefined) updates.role = String(role).trim();
+    if (empId !== undefined) updates.empId = String(empId).trim();
+    if (password) updates.password = await bcrypt.hash(password, 10);
+    const updated = await User.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true, select: "username role engineerName empId" });
+    if (!updated) return res.status(404).json({ error: "User not found" });
+    res.json({
+      message: "User updated successfully",
+      user: {
+        _id: updated._id,
+        username: updated.username || "",
+        role: updated.role || "",
+        engineerName: updated.engineerName || "",
+        empId: updated.empId || "",
+        passwordVisible: false,
+        passwordNote: password ? "Password updated successfully" : "Stored securely and not retrievable",
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to update user", details: err.message });
+  }
+});
+
+router.delete("/user-management/users/:id", verifyToken, async (req, res) => {
+  try {
+    if (!isNikhilAdmin(req.user)) {
+      return res.status(403).json({ error: "Access denied. Nikhil admin only." });
+    }
+    const deleted = await User.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).json({ error: "User not found" });
+    res.json({ message: "User deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to delete user", details: err.message });
   }
 });
 

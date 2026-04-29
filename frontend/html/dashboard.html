@@ -750,6 +750,7 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
       <button id="auditLink" class="nav-item" style="display:none" onclick="loadPage('auditReport.html', this)"><i class="fa-solid fa-shield-halved"></i><span class="nav-txt">Audit Report</span></button>
       <button id="logsViewerLink" class="nav-item" style="display:none" onclick="loadPage('logsViewer.html', this)"><i class="fa-solid fa-scroll"></i><span class="nav-txt">Logs Viewer</span></button>
       <button id="mongoExplorerLink" class="nav-item" style="display:none" onclick="loadPage('mongoExplorer.html', this)"><i class="fa-solid fa-server"></i><span class="nav-txt">DB Explorer</span></button>
+      <button id="userManagementLink" class="nav-item" style="display:none" onclick="loadPage('userManagement.html', this)"><i class="fa-solid fa-users-gear"></i><span class="nav-txt">User Management</span></button>
     </div>
 
     <button class="nav-collapse-btn" onclick="toggleNavCollapse()" id="navCollapseBtn">
@@ -1036,6 +1037,7 @@ const pageNames = {
   'materialrequirement.html':'Material Requirement','incident.html':'Incident Manager',
   'romaster.html':'RO Master','activeVsFaulty.html':'Active vs Faulty',
   'logsViewer.html':'Logs Viewer','materialManagement.html':'Material Management',
+  'userManagement.html':'User Management',
   'attendance.html':'Attendance'
 };
 
@@ -1061,6 +1063,7 @@ const pageSlugs = {
   'romaster.html':'ro-master',
   'activeVsFaulty.html':'active-vs-faulty',
   'logsViewer.html':'logs-viewer',
+  'userManagement.html':'user-management',
   'attendance.html':'attendance'
 };
 
@@ -1209,6 +1212,7 @@ async function fetchUser(){
       document.getElementById("auditLink").style.display="block";
       document.getElementById("logsViewerLink").style.display="block";
       document.getElementById("mongoExplorerLink").style.display="block";
+      document.getElementById("userManagementLink").style.display="block";
     }
   }catch(err){
     // Network failure — logout mat karo, sirf console mein log karo
