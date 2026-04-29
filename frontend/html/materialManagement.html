@@ -828,6 +828,7 @@ const PAGE_SIZE = 20;
 const lastStatsSnapshot = { total: 0, byType: [] };
 let recentTransfers = [];
 let selectedTransferRecord = null;
+let transferEngineerDirectory = [];
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  INIT
@@ -841,6 +842,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
   loadStats();
+  loadTransferEngineerDirectory();
   loadData();
   setDateBadge();
   if (isAdmin()) {
@@ -901,7 +903,9 @@ async function loadStats() {
       o.textContent = e._id;
       engSel.appendChild(o);
     });
-    populateTransferEngineers(byEngineer.map(e => e._id));
+    if (!transferEngineerDirectory.length) {
+      populateTransferEngineers(byEngineer.map(e => e._id));
+    }
 
     // Populate Item Type filter dropdown dynamically from DB
     const typeSel = document.getElementById('typeFilter');
@@ -924,6 +928,19 @@ async function loadStats() {
       dl.appendChild(opt);
     });
   } catch(e) { console.warn('Stats load failed', e); }
+}
+
+async function loadTransferEngineerDirectory() {
+  if (!canManageMaterials()) return;
+  try {
+    const r = await fetch(`${API}/engineers`, { headers: { Authorization: `Bearer ${TOKEN()}` } });
+    if (!r.ok) throw new Error('Failed to load engineer users');
+    const data = await r.json();
+    transferEngineerDirectory = Array.isArray(data.engineers) ? data.engineers : [];
+    populateTransferEngineers(transferEngineerDirectory);
+  } catch (e) {
+    console.warn('Transfer engineer directory load failed', e);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

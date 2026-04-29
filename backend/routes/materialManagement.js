@@ -5,6 +5,7 @@ const XLSX = require("xlsx");
 const path = require("path");
 
 const MaterialManagement = require("../models/MaterialManagement");
+const User = require("../models/User");
 const { verifyToken, requireRole } = require("./auth");
 
 // ── Multer config ─────────────────────────────────────────────────────────────
@@ -60,6 +61,26 @@ function buildTransferEntry({ type, qty, fromEngineer = "", toEngineer = "", not
     createdAt: new Date(),
   };
 }
+
+router.get("/engineers", verifyToken, requireRole(["Admin", "Manager"]), async (req, res) => {
+  try {
+    const users = await User.find(
+      { role: { $in: ["engineer", "Engineer", "user", "User"] } },
+      "engineerName username"
+    ).lean();
+
+    const engineers = [...new Set(
+      users
+        .map((user) => String(user.engineerName || user.username || "").trim())
+        .filter(Boolean)
+    )].sort((a, b) => a.localeCompare(b));
+
+    res.json({ success: true, engineers });
+  } catch (err) {
+    console.error("[MaterialMgmt] GET /engineers:", err);
+    res.status(500).json({ success: false, message: "Failed to fetch engineer users", error: err.message });
+  }
+});
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // GET /materialManagement — list with filters & pagination
