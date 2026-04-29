@@ -61,6 +61,13 @@ function safe(val) {
   return (val ?? "").toString();
 }
 
+function toLocalISODate(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 function htmlEscape(str) {
   return safe(str).replace(
     /[&<>"']/g,
@@ -77,7 +84,7 @@ function getLast15Days(endDateISO, days = 15) {
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(end);
     d.setDate(d.getDate() - i);
-    result.push(d.toISOString().slice(0, 10));
+    result.push(toLocalISODate(d));
   }
   return result;
 }
@@ -173,8 +180,8 @@ function getMonthRange(targetDate = new Date()) {
   const from = new Date(year, month, 1);
   const to = new Date(year, month + 1, 0);
   return {
-    fromDateISO: from.toISOString().slice(0, 10),
-    toDateISO: to.toISOString().slice(0, 10),
+    fromDateISO: toLocalISODate(from),
+    toDateISO: toLocalISODate(to),
     label: from.toLocaleDateString("en-IN", { month: "long", year: "numeric", timeZone: "Asia/Kolkata" }),
   };
 }
@@ -188,7 +195,7 @@ function getDateRangeISO(fromDateISO, toDateISO) {
   const cursor = new Date(`${fromDateISO}T00:00:00`);
   const end = new Date(`${toDateISO}T00:00:00`);
   while (cursor <= end) {
-    dates.push(cursor.toISOString().slice(0, 10));
+    dates.push(toLocalISODate(cursor));
     cursor.setDate(cursor.getDate() + 1);
   }
   return dates;

@@ -483,7 +483,13 @@ function fmtDate(dateStr){
   if(!dateStr) return "—";
   return new Date(dateStr).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric",weekday:"short"});
 }
-function todayISO(){ return new Date().toISOString().split("T")[0]; }
+function toLocalISODate(date){
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2,"0");
+  const d = String(date.getDate()).padStart(2,"0");
+  return `${y}-${m}-${d}`;
+}
+function todayISO(){ return toLocalISODate(new Date()); }
 function getDayName(dateStr){
   if(!dateStr) return "—";
   return new Date(dateStr).toLocaleDateString("en-IN",{weekday:"short"});
@@ -501,7 +507,7 @@ function getSundayDatesInRange(fromDate, toDate){
   const end = new Date(`${toDate}T00:00:00`);
   while(cursor <= end){
     if(cursor.getDay() === 0){
-      dates.push(cursor.toISOString().split("T")[0]);
+      dates.push(toLocalISODate(cursor));
     }
     cursor.setDate(cursor.getDate() + 1);
   }
@@ -1282,7 +1288,7 @@ function filterMyRecords(){
   const monthRecords = myAttendance.filter(r=>(r.date||"").startsWith(month));
   const engineerName = currentUser?.engineerName || currentUser?.username || "";
   const monthStart = `${month}-01`;
-  const monthEnd = new Date(Number(month.split("-")[0]), Number(month.split("-")[1]), 0).toISOString().split("T")[0];
+  const monthEnd = toLocalISODate(new Date(Number(month.split("-")[0]), Number(month.split("-")[1]), 0));
   const recs  = addWeekOffRecords(monthRecords, engineerName ? [engineerName] : [], monthStart, monthEnd)
     .sort((a,b)=>new Date(a.date)-new Date(b.date));
   const p = recs.filter(r=>r.status==="Present").length;
