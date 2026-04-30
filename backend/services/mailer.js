@@ -211,6 +211,18 @@ function getPlanCreatedAt(plan) {
   return null;
 }
 
+const PENDING_STATUS_REMINDER_PLAN_DATE_CUTOFF = "2026-03-01";
+
+function getPlanVisitDateISO(plan) {
+  return String(plan?.date || "").trim().slice(0, 10);
+}
+
+function isPlanAfterReminderCutoff(plan) {
+  const visitDateISO = getPlanVisitDateISO(plan);
+  if (!visitDateISO) return false;
+  return visitDateISO > PENDING_STATUS_REMINDER_PLAN_DATE_CUTOFF;
+}
+
 function getPlanStatusCategory(plan) {
   const phase = String(plan?.phase || "").trim().toUpperCase();
   if (phase.startsWith("BPCL")) return "BPCL";
@@ -246,51 +258,35 @@ function getPendingStatusMailBody({
   const isWarning = severity === "warning";
   const title = isWarning ? "Final Warning: Status Still Pending" : "Reminder: Status Submission Pending";
   const intro = isWarning
-    ? `The status for the below plan remains pending even after ${ageHours}+ hours from plan creation. This delay now requires immediate closure.`
-    : `The status for the below plan is pending for more than ${ageHours} hours from plan creation and needs to be submitted without further delay.`;
+    ? `The status for the below plan is still pending even after ${ageHours}+ hours from plan creation. Immediate action is required.`
+    : `The status for the below plan is pending for more than ${ageHours} hours from plan creation. Please submit it at the earliest.`;
   const actionText = isWarning
-    ? "Submit the pending status immediately. Continued delay may impact reporting discipline, escalation tracking, and operational review."
-    : "Please complete the pending status submission at the earliest so that reporting timelines and verification flow remain on track.";
+    ? "Please submit the pending status immediately. Continued delay may impact reporting and escalation tracking."
+    : "Please complete the pending status submission so that reporting timelines remain on track.";
   const escalationNote = isWarning
     ? "This mail is being treated as an escalation alert because the expected status update is still not available after the 48-hour threshold."
-    : "This is a standard reminder alert issued after the 24-hour threshold for pending status submission.";
+    : "This is a reminder alert issued after the 24-hour threshold for pending status submission.";
 
-  return `
-    <div style="margin:0;padding:20px 12px;background:#f1f5f9;font:14px/1.6 Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a">
-      <div style="max-width:980px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(15,23,42,.05)">
-        <div style="padding:18px 22px;background:linear-gradient(135deg,${isWarning ? "#7f1d1d,#b91c1c" : "#0f172a,#1e3a8a"});color:#ffffff">
-          <p style="margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.85">Relcon CRM • Status Alert</p>
-          <h2 style="margin:0;font-size:22px;font-weight:700">${title}</h2>
-          <p style="margin:8px 0 0;font-size:13px;opacity:.95">${htmlEscape(intro)}</p>
-        </div>
-        <div style="padding:22px">
-          <p style="margin:0 0 14px;font-size:13px;color:#334155">Dear <strong>${htmlEscape(engineerName)}</strong>,</p>
-          <div style="margin-bottom:16px;border:1px solid #dbeafe;border-radius:12px;overflow:hidden;background:#f8fbff;">
-            <div style="padding:10px 14px;background:#eff6ff;border-bottom:1px solid #dbeafe;font-size:11px;font-weight:700;color:#1d4ed8;letter-spacing:.06em;text-transform:uppercase;">
-              Plan Reference
-            </div>
-            <div style="padding:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;">
-              <div><div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;">Site Name</div><div style="font-size:16px;font-weight:700;color:#0f172a;margin-top:3px;">${htmlEscape(roName || "—")}</div></div>
-              <div><div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;">RO Code</div><div style="font-size:16px;font-weight:700;color:#0f172a;margin-top:3px;">${htmlEscape(roCode || "—")}</div></div>
-              <div><div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;">Visit Date</div><div style="font-size:16px;font-weight:700;color:#0f172a;margin-top:3px;">${htmlEscape(visitDate || "—")}</div></div>
-              <div><div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;">Phase</div><div style="font-size:16px;font-weight:700;color:#0f172a;margin-top:3px;">${htmlEscape(phase || "—")}</div></div>
-            </div>
-          </div>
-          <div style="margin-bottom:16px;padding:14px;background:${isWarning ? "#fff1f2" : "#eff6ff"};border:1px solid ${isWarning ? "#fecdd3" : "#bfdbfe"};border-radius:10px;color:${isWarning ? "#9f1239" : "#1d4ed8"};font-size:13px">
-            <strong>${isWarning ? "Warning:" : "Reminder:"}</strong> ${htmlEscape(actionText)}
-          </div>
-          <div style="margin-bottom:16px;padding:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;color:#475569;font-size:13px">
-            <strong style="color:#0f172a">${isWarning ? "Escalation Note:" : "Advisory Note:"}</strong><br>
-            ${htmlEscape(escalationNote)}
-          </div>
-          <p style="margin:0;font-size:13px;color:#475569">
-            Regards,<br>
-            <strong style="color:#0f172a">Relcon CRM System</strong>
-          </p>
-        </div>
-      </div>
-    </div>
-  `;
+  return [
+    `Subject: ${title}`,
+    "",
+    `Dear ${engineerName || "Engineer"},`,
+    "",
+    intro,
+    "",
+    "Plan Details:",
+    `RO Code: ${roCode || "-"}`,
+    `Site Name: ${roName || "-"}`,
+    `Visit Date: ${visitDate || "-"}`,
+    `Phase: ${phase || "-"}`,
+    "",
+    `${isWarning ? "Warning" : "Reminder"}: ${actionText}`,
+    "",
+    escalationNote,
+    "",
+    "Regards,",
+    "Relcon CRM System",
+  ].join("\n");
 }
 
 function getMonthRange(targetDate = new Date()) {
@@ -1421,7 +1417,7 @@ async function sendPendingStatusReminderAlerts() {
 
   try {
     const [plans, users, hpclStatuses, rbmlStatuses, bpclStatuses] = await Promise.all([
-      DailyPlan.find({}).lean(),
+      DailyPlan.find({ date: { $gt: PENDING_STATUS_REMINDER_PLAN_DATE_CUTOFF } }).lean(),
       User.find({}, "email role engineerName username").lean(),
       Status.find({}, "planId").lean(),
       JioBPStatus.find({}, "planId").lean(),
@@ -1440,11 +1436,20 @@ async function sendPendingStatusReminderAlerts() {
     )];
 
     const now = new Date();
-    const summary = { reminders24: 0, warnings48: 0, skippedNoEngineerEmail: 0 };
+    const summary = {
+      reminders24: 0,
+      warnings48: 0,
+      skippedNoEngineerEmail: 0,
+      skippedBeforeCutoff: 0,
+    };
 
     for (const plan of plans) {
       const createdAt = getPlanCreatedAt(plan);
       if (!createdAt) continue;
+      if (!isPlanAfterReminderCutoff(plan)) {
+        summary.skippedBeforeCutoff += 1;
+        continue;
+      }
       const purpose = String(plan.purpose || "").trim().toUpperCase();
       if (purpose === "NO PLAN" || purpose === "IN LEAVE") continue;
       if (isOfficePlan(plan)) continue;
@@ -1486,7 +1491,7 @@ async function sendPendingStatusReminderAlerts() {
         ? `Escalation Warning: ${category} Status Pending Beyond 48 Hours | ${plan.roCode || "RO"} | ${plan.roName || engineerName}`
         : `Reminder: ${category} Status Pending Beyond 24 Hours | ${plan.roCode || "RO"} | ${plan.roName || engineerName}`;
 
-      const html = getPendingStatusMailBody({
+      const text = getPendingStatusMailBody({
         severity,
         engineerName,
         roCode: plan.roCode || "",
@@ -1501,7 +1506,7 @@ async function sendPendingStatusReminderAlerts() {
         to: engineerEmails.join(", "),
         cc: adminEmails.join(", "),
         subject,
-        html,
+        text,
       });
 
       const updateFields = shouldSend48
@@ -1523,7 +1528,7 @@ async function sendPendingStatusReminderAlerts() {
           engineerName,
           roCode: plan.roCode || "",
           roName: plan.roName || "",
-          visitDate: plan.date || "",
+          visitDate: getPlanVisitDateISO(plan),
           ageHours,
           messageId: info?.messageId || "",
         },
