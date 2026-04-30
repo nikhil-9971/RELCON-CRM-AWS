@@ -301,8 +301,7 @@ function getPendingStatusMailBody({
   const escalationNote = isWarning
     ? "This mail is being treated as an escalation alert because the expected status update is still not available after the 48-hour threshold."
     : "This is a reminder alert issued after the 24-hour threshold for pending status submission.";
-
-  return [
+  const text = [
     `Subject: ${title}`,
     "",
     `Dear ${engineerName || "Engineer"},`,
@@ -322,6 +321,38 @@ function getPendingStatusMailBody({
     "Regards,",
     "Relcon CRM System",
   ].join("\n");
+
+  const html = `
+    <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:#111;">
+      <p>Dear <b>${htmlEscape(engineerName || "Engineer")}</b>,</p>
+      <p>${htmlEscape(intro)}</p>
+      <p style="margin:16px 0 8px;"><b>Plan Details</b></p>
+      <table style="border-collapse:collapse;width:100%;font-size:13px;">
+        <tbody>
+          <tr>
+            <td style="border:1px solid #000;padding:8px;width:25%;"><b>RO Code</b></td>
+            <td style="border:1px solid #000;padding:8px;">${htmlEscape(roCode || "-")}</td>
+            <td style="border:1px solid #000;padding:8px;width:25%;"><b>Site Name</b></td>
+            <td style="border:1px solid #000;padding:8px;">${htmlEscape(roName || "-")}</td>
+          </tr>
+          <tr>
+            <td style="border:1px solid #000;padding:8px;"><b>Visit Date</b></td>
+            <td style="border:1px solid #000;padding:8px;">${htmlEscape(visitDate || "-")}</td>
+            <td style="border:1px solid #000;padding:8px;"><b>Phase</b></td>
+            <td style="border:1px solid #000;padding:8px;">${htmlEscape(phase || "-")}</td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="margin-top:16px;"><b>${isWarning ? "Warning" : "Reminder"}:</b> ${htmlEscape(actionText)}</p>
+      <p><b>${isWarning ? "Escalation Note" : "Note"}:</b> ${htmlEscape(escalationNote)}</p>
+      <p style="margin-top:16px;">
+        Regards,<br>
+        <b>Relcon CRM System</b>
+      </p>
+    </div>
+  `;
+
+  return { html, text };
 }
 
 function getMonthRange(targetDate = new Date()) {
@@ -1534,7 +1565,7 @@ async function sendPendingStatusReminderAlerts() {
         ? `Escalation Warning: ${category} Status Pending Beyond 48 Hours | ${plan.roCode || "RO"} | ${plan.roName || engineerName}`
         : `Reminder: ${category} Status Pending Beyond 24 Hours | ${plan.roCode || "RO"} | ${plan.roName || engineerName}`;
 
-      const text = getPendingStatusMailBody({
+      const { html, text } = getPendingStatusMailBody({
         severity,
         engineerName,
         roCode: plan.roCode || "",
@@ -1549,6 +1580,7 @@ async function sendPendingStatusReminderAlerts() {
         to: engineerEmails.join(", "),
         cc: adminEmails.join(", "),
         subject,
+        html,
         text,
       });
 
