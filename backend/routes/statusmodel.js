@@ -8,6 +8,7 @@ const jwt = require("jsonwebtoken");
 // models required at top
 const Task = require("../models/Task");
 const DailyPlan = require("../models/DailyPlan"); // if not already imported
+const { sendVerificationCorrectionEmail } = require("../services/mailer");
 
 const verifyToken = require("../middleware/authMiddleware");
 
@@ -315,6 +316,17 @@ function getChangedFields(oldDoc, newDoc) {
   return { before, after };
 }
 
+function buildVerificationChanges(before = {}, after = {}) {
+  return Object.keys(after)
+    .filter((field) => !["_id", "__v", "planId", "createdAt", "verificationEditLog"].includes(field))
+    .map((field) => ({
+      field,
+      before: before[field] == null ? "" : String(before[field]),
+      after: after[field] == null ? "" : String(after[field]),
+    }))
+    .filter((change) => change.before !== change.after);
+}
+
 router.put("/updateStatus/:id", verifyToken, async (req, res) => {
   const { id } = req.params;
 
@@ -412,6 +424,20 @@ router.put("/updateStatus/:id", verifyToken, async (req, res) => {
       engineerName,
     });
 
+    if (!oldData?.isVerified && req.user?.role === "admin") {
+      const verificationChanges = buildVerificationChanges(before, after);
+      if (verificationChanges.length) {
+        await Status.findByIdAndUpdate(id, {
+          verificationEditLog: {
+            editedBy: req.user?.username || "unknown",
+            editedAt: new Date(),
+            changes: verificationChanges,
+            notificationSentAt: null,
+          },
+        });
+      }
+    }
+
     res.send("Status updated");
   } catch (err) {
     console.error("Update error:", err);
@@ -503,6 +529,23 @@ router.put("/verifyStatus/:id", verifyToken, async (req, res) => {
       visitDate,
       engineerName,
     });
+
+    const correctionLog = updated.verificationEditLog || {};
+    if (Array.isArray(correctionLog.changes) && correctionLog.changes.length && !correctionLog.notificationSentAt) {
+      await sendVerificationCorrectionEmail({
+        category: "HPCL",
+        engineerName,
+        roCode,
+        roName,
+        visitDate,
+        correctedBy: correctionLog.editedBy || req.user?.username || "admin",
+        changes: correctionLog.changes,
+      });
+
+      await Status.findByIdAndUpdate(id, {
+        "verificationEditLog.notificationSentAt": new Date(),
+      });
+    }
 
     // ✅ Task Generation — only if admin + anurag.mishra
     const {

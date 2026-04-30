@@ -4,6 +4,18 @@ const router = express.Router();
 const JioBPStatus = require("../models/jioBPStatus");
 const DailyPlan = require("../models/DailyPlan");
 const authMiddleware = require("../middleware/authMiddleware");
+const { sendVerificationCorrectionEmail } = require("../services/mailer");
+
+function buildVerificationChanges(oldDoc = {}, newDoc = {}) {
+  return Object.keys(newDoc)
+    .filter((field) => !["_id", "__v", "planId", "createdAt", "updatedAt", "verificationEditLog"].includes(field))
+    .map((field) => ({
+      field,
+      before: oldDoc[field] == null ? "" : String(oldDoc[field]),
+      after: newDoc[field] == null ? "" : String(newDoc[field]),
+    }))
+    .filter((change) => change.before !== change.after);
+}
 
 // ✅ SAVE or UPDATE Jio BP Status
 router.post("/saveJioBPStatus", authMiddleware, async (req, res) => {
@@ -142,6 +154,20 @@ router.put("/updateJioBPStatus/:id", authMiddleware, async (req, res) => {
       new: true,
     });
 
+    if (!oldData?.isVerified && req.user?.role === "admin") {
+      const verificationChanges = buildVerificationChanges(oldData.toObject(), updated.toObject());
+      if (verificationChanges.length) {
+        await JioBPStatus.findByIdAndUpdate(id, {
+          verificationEditLog: {
+            editedBy: req.user?.username || "unknown",
+            editedAt: new Date(),
+            changes: verificationChanges,
+            notificationSentAt: null,
+          },
+        });
+      }
+    }
+
     res.status(200).json({ success: true, data: updated });
   } catch (err) {
     console.error("❌ Error updating Jio BP status:", err);
@@ -185,11 +211,29 @@ router.put("/verifyStatus/:id", authMiddleware, async (req, res) => {
       req.params.id,
       { isVerified: true },
       { new: true }
-    );
+    ).populate("planId");
     if (!updated) {
       return res
         .status(404)
         .json({ success: false, message: "Record not found" });
+    }
+
+    const plan = updated.planId || {};
+    const correctionLog = updated.verificationEditLog || {};
+    if (Array.isArray(correctionLog.changes) && correctionLog.changes.length && !correctionLog.notificationSentAt) {
+      await sendVerificationCorrectionEmail({
+        category: "RBML",
+        engineerName: plan.engineer || "",
+        roCode: plan.roCode || "",
+        roName: plan.roName || "",
+        visitDate: plan.date || "",
+        correctedBy: correctionLog.editedBy || req.user?.username || "admin",
+        changes: correctionLog.changes,
+      });
+
+      await JioBPStatus.findByIdAndUpdate(req.params.id, {
+        "verificationEditLog.notificationSentAt": new Date(),
+      });
     }
 
     res

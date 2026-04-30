@@ -1,5 +1,24 @@
 const mongoose = require("mongoose");
 
+const verificationEditLogSchema = new mongoose.Schema(
+  {
+    editedBy: { type: String, default: "" },
+    editedAt: { type: Date, default: null },
+    changes: {
+      type: [
+        {
+          field: { type: String, default: "" },
+          before: { type: String, default: "" },
+          after: { type: String, default: "" },
+        },
+      ],
+      default: [],
+    },
+    notificationSentAt: { type: Date, default: null },
+  },
+  { _id: false }
+);
+
 const BPCLStatusSchema = new mongoose.Schema(
   {
     // 🔗 One BPCL Status per Daily Plan
@@ -95,6 +114,10 @@ const BPCLStatusSchema = new mongoose.Schema(
     },
     verifiedAt: {
       type: Date,
+    },
+    verificationEditLog: {
+      type: verificationEditLogSchema,
+      default: () => ({ changes: [] }),
     },
   },
   { timestamps: true }

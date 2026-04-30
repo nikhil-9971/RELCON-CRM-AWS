@@ -5,6 +5,18 @@ const router = express.Router();
 const BPCLStatus = require("../models/BPCLStatus");
 const DailyPlan = require("../models/DailyPlan");
 const authMiddleware = require("../middleware/authMiddleware");
+const { sendVerificationCorrectionEmail } = require("../services/mailer");
+
+function buildVerificationChanges(oldDoc = {}, newDoc = {}) {
+  return Object.keys(newDoc)
+    .filter((field) => !["_id", "__v", "planId", "createdAt", "updatedAt", "verificationEditLog"].includes(field))
+    .map((field) => ({
+      field,
+      before: oldDoc[field] == null ? "" : Array.isArray(oldDoc[field]) ? oldDoc[field].join(", ") : String(oldDoc[field]),
+      after: newDoc[field] == null ? "" : Array.isArray(newDoc[field]) ? newDoc[field].join(", ") : String(newDoc[field]),
+    }))
+    .filter((change) => change.before !== change.after);
+}
 
 /* -------------------------------------------------
    CREATE / UPDATE BPCL STATUS
@@ -142,6 +154,20 @@ router.put("/updateBPCLStatus/:id", authMiddleware, async (req, res) => {
       new: true,
     });
 
+    if (!oldData?.isVerified && req.user?.role === "admin") {
+      const verificationChanges = buildVerificationChanges(oldData.toObject(), updated.toObject());
+      if (verificationChanges.length) {
+        await BPCLStatus.findByIdAndUpdate(id, {
+          verificationEditLog: {
+            editedBy: req.user?.username || "unknown",
+            editedAt: new Date(),
+            changes: verificationChanges,
+            notificationSentAt: null,
+          },
+        });
+      }
+    }
+
     res.status(200).json({
       success: true,
       message: "BPCL Status updated",
@@ -176,12 +202,30 @@ router.put("/verifyBPCLStatus/:id", authMiddleware, async (req, res) => {
         verifiedAt: new Date(),
       },
       { new: true },
-    );
+    ).populate("planId");
 
     if (!updated) {
       return res.status(404).json({
         success: false,
         message: "Record not found",
+      });
+    }
+
+    const plan = updated.planId || {};
+    const correctionLog = updated.verificationEditLog || {};
+    if (Array.isArray(correctionLog.changes) && correctionLog.changes.length && !correctionLog.notificationSentAt) {
+      await sendVerificationCorrectionEmail({
+        category: "BPCL",
+        engineerName: plan.engineer || "",
+        roCode: plan.roCode || "",
+        roName: plan.roName || "",
+        visitDate: plan.date || "",
+        correctedBy: correctionLog.editedBy || req.user?.username || "admin",
+        changes: correctionLog.changes,
+      });
+
+      await BPCLStatus.findByIdAndUpdate(req.params.id, {
+        "verificationEditLog.notificationSentAt": new Date(),
       });
     }
 

@@ -1,5 +1,24 @@
 const mongoose = require("mongoose");
 
+const verificationEditLogSchema = new mongoose.Schema(
+  {
+    editedBy: { type: String, default: "" },
+    editedAt: { type: Date, default: null },
+    changes: {
+      type: [
+        {
+          field: { type: String, default: "" },
+          before: { type: String, default: "" },
+          after: { type: String, default: "" },
+        },
+      ],
+      default: [],
+    },
+    notificationSentAt: { type: Date, default: null },
+  },
+  { _id: false }
+);
+
 const StatusSchema = new mongoose.Schema({
   planId: { type: mongoose.Schema.Types.ObjectId, ref: "DailyPlan" },
   createdAt: { type: Date, default: Date.now },
@@ -48,6 +67,10 @@ const StatusSchema = new mongoose.Schema({
     default: false,
   },
   taskGenerated: { type: Boolean, default: false },
+  verificationEditLog: {
+    type: verificationEditLogSchema,
+    default: () => ({ changes: [] }),
+  },
 });
 
 module.exports =
