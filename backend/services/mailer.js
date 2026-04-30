@@ -265,6 +265,11 @@ function getPlanStatusCategory(plan) {
   return "HPCL";
 }
 
+function isNayaraPlan(plan) {
+  const phase = String(plan?.phase || "").trim().toUpperCase();
+  return phase.includes("NAYARA");
+}
+
 function isOfficePlan(plan) {
   const category = getPlanStatusCategory(plan);
   if (!["HPCL", "BPCL"].includes(category)) return false;
@@ -1526,6 +1531,7 @@ async function sendPendingStatusReminderAlerts() {
       }
       const purpose = String(plan.purpose || "").trim().toUpperCase();
       if (purpose === "NO PLAN" || purpose === "IN LEAVE") continue;
+      if (isNayaraPlan(plan)) continue;
       if (isOfficePlan(plan)) continue;
 
       const category = getPlanStatusCategory(plan);
