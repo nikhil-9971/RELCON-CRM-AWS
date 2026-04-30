@@ -187,22 +187,21 @@ function prettifyFieldName(field = "") {
     .replace(/\b\w/g, (ch) => ch.toUpperCase());
 }
 
-function buildCorrectionTable(changes = []) {
-  if (!changes.length) return "";
+function buildCorrectionSummaryText(changes = []) {
+  if (!changes.length) return "No field-level corrections were captured.";
 
-  return buildTable(
-    changes.map((change) => ({
-      field: prettifyFieldName(change.field),
-      before: change.before || "—",
-      after: change.after || "—",
-    })),
-    [
-      { key: "field", label: "Field" },
-      { key: "before", label: "Submitted By Engineer" },
-      { key: "after", label: "Corrected By Admin" },
-    ],
-    "Correction Summary"
-  );
+  return changes
+    .map((change, index) => {
+      const field = prettifyFieldName(change.field) || "Field";
+      const before = String(change.before || "—").trim() || "—";
+      const after = String(change.after || "—").trim() || "—";
+      return [
+        `${index + 1}. ${field}`,
+        `   Submitted: ${before}`,
+        `   Corrected: ${after}`,
+      ].join("\n");
+    })
+    .join("\n\n");
 }
 
 function getPlanCreatedAt(plan) {
@@ -1318,65 +1317,32 @@ async function sendVerificationCorrectionEmail({
     }
 
     const generatedAt = formatDateTimeIST(new Date());
-    const correctionReason = `The record required correction during admin verification because one or more submitted values did not match the expected reporting standard or final site observations.`;
-    const htmlBody = `
-      <div style="margin:0;padding:20px 12px;background:#f1f5f9;font:14px/1.6 Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a">
-        <div style="max-width:1040px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(15,23,42,.05)">
-          <div style="padding:18px 22px;background:linear-gradient(135deg,#0f172a,#1e3a8a);color:#ffffff">
-            <p style="margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.85">Relcon CRM • Verification Update</p>
-            <h2 style="margin:0;font-size:22px;font-weight:700">Correction Intimation For Verified Record</h2>
-            <p style="margin:8px 0 0;font-size:13px;opacity:.95">${htmlEscape(category)} record has been corrected by admin before final verification.</p>
-          </div>
-          <div style="padding:22px">
-            <p style="margin:0 0 14px;font-size:13px;color:#334155">Dear <strong>${htmlEscape(engineerName)}</strong>,</p>
-            <p style="margin:0 0 14px;font-size:13px;color:#475569">
-              This is to formally inform you that the submitted ${htmlEscape(category)} record was reviewed during verification and certain entries were corrected by the admin team before approval.
-            </p>
-            <p style="margin:0 0 16px;font-size:13px;color:#475569">
-              Please review the corrected details mentioned below carefully and ensure that future submissions are entered accurately in the first instance.
-            </p>
-            <div style="margin-bottom:16px;border:1px solid #dbeafe;border-radius:12px;overflow:hidden;background:#f8fbff;">
-              <div style="padding:10px 14px;background:#eff6ff;border-bottom:1px solid #dbeafe;font-size:11px;font-weight:700;color:#1d4ed8;letter-spacing:.06em;text-transform:uppercase;">
-                Record Reference
-              </div>
-              <div style="padding:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;">
-                <div>
-                  <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;">Site Name</div>
-                  <div style="font-size:16px;font-weight:700;color:#0f172a;margin-top:3px;">${htmlEscape(roName || "—")}</div>
-                </div>
-                <div>
-                  <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;">RO Code</div>
-                  <div style="font-size:16px;font-weight:700;color:#0f172a;margin-top:3px;">${htmlEscape(roCode || "—")}</div>
-                </div>
-                <div>
-                  <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;">Visit Date</div>
-                  <div style="font-size:16px;font-weight:700;color:#0f172a;margin-top:3px;">${htmlEscape(visitDate || "—")}</div>
-                </div>
-                <div>
-                  <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;">Corrected By</div>
-                  <div style="font-size:16px;font-weight:700;color:#0f172a;margin-top:3px;">${htmlEscape(correctedBy || "Admin")}</div>
-                </div>
-              </div>
-            </div>
-            <div style="margin-bottom:16px;padding:14px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;color:#7c2d12;font-size:13px">
-              <strong style="color:#9a3412">Correction Reason:</strong><br>
-              ${htmlEscape(correctionReason)}
-            </div>
-            ${buildCorrectionTable(changes)}
-            <div style="margin-top:18px;padding:14px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;color:#7c2d12;font-size:13px">
-              <strong>Action required:</strong> Please ensure future records are submitted accurately to avoid verification delays and rework.
-            </div>
-            <p style="margin:18px 0 0;font-size:13px;color:#475569">
-              Regards,<br>
-              <strong style="color:#0f172a">Relcon CRM System</strong>
-            </p>
-            <div style="margin-top:18px;padding-top:12px;border-top:1px solid #e2e8f0;color:#64748b;font-size:12px">
-              Generated on ${generatedAt} IST. This is a system-generated email from Relcon CRM.
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
+    const correctionReason = "The record was corrected during admin verification because one or more submitted values did not match the required reporting standard or final site observations.";
+    const textBody = [
+      `Dear ${engineerName},`,
+      "",
+      `This is to inform you that your submitted ${category} record has been reviewed during verification, and certain entries were corrected by the admin team before final approval.`,
+      "",
+      "Please review the corrected details below and ensure future submissions are entered accurately at the time of reporting.",
+      "",
+      "Record Details:",
+      `RO Code: ${roCode || "-"}`,
+      `Site Name: ${roName || "-"}`,
+      `Visit Date: ${visitDate || "-"}`,
+      `Corrected By: ${correctedBy || "Admin"}`,
+      "",
+      `Reason for Correction: ${correctionReason}`,
+      "",
+      "Correction Summary:",
+      buildCorrectionSummaryText(changes),
+      "",
+      "Please take care to submit future records correctly to avoid verification delays and rework.",
+      "",
+      "Regards,",
+      "Relcon CRM Team",
+      "",
+      `Generated on ${generatedAt} IST`,
+    ].join("\n");
 
     const subject = `Correction Notice | ${category} Verified | ${roCode || "RO"} | ${roName || engineerName}`;
     const info = await transporter.sendMail({
@@ -1384,7 +1350,7 @@ async function sendVerificationCorrectionEmail({
       to: engineerEmails.join(", "),
       cc: adminEmails.join(", "),
       subject,
-      html: htmlBody,
+      text: textBody,
     });
 
     await EmailLog.create({
