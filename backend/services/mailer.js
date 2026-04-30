@@ -204,6 +204,42 @@ function buildCorrectionSummaryText(changes = []) {
     .join("\n\n");
 }
 
+function buildCorrectionSummaryHtml(changes = []) {
+  if (!changes.length) {
+    return "<p style=\"margin:8px 0 0;\">No field-level corrections were captured.</p>";
+  }
+
+  const rows = changes
+    .map((change, index) => {
+      const field = prettifyFieldName(change.field) || "Field";
+      const before = String(change.before || "—").trim() || "—";
+      const after = String(change.after || "—").trim() || "—";
+      return `
+        <tr>
+          <td style="border:1px solid #000;padding:8px;vertical-align:top;">${index + 1}</td>
+          <td style="border:1px solid #000;padding:8px;vertical-align:top;">${htmlEscape(field)}</td>
+          <td style="border:1px solid #000;padding:8px;vertical-align:top;">${htmlEscape(before)}</td>
+          <td style="border:1px solid #000;padding:8px;vertical-align:top;">${htmlEscape(after)}</td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  return `
+    <table style="border-collapse:collapse;width:100%;margin-top:8px;font-size:13px;">
+      <thead>
+        <tr>
+          <th style="border:1px solid #000;padding:8px;text-align:left;"><b>S. No.</b></th>
+          <th style="border:1px solid #000;padding:8px;text-align:left;"><b>Field</b></th>
+          <th style="border:1px solid #000;padding:8px;text-align:left;"><b>Submitted By Engineer</b></th>
+          <th style="border:1px solid #000;padding:8px;text-align:left;"><b>Corrected By Admin</b></th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
 function getPlanCreatedAt(plan) {
   if (plan?.createdAt) return new Date(plan.createdAt);
   if (plan?._id?.getTimestamp) return plan._id.getTimestamp();
@@ -1343,6 +1379,46 @@ async function sendVerificationCorrectionEmail({
       "",
       `Generated on ${generatedAt} IST`,
     ].join("\n");
+    const htmlBody = `
+      <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:#111;">
+        <p>Dear <b>${htmlEscape(engineerName)}</b>,</p>
+        <p>
+          This is to inform you that your submitted <b>${htmlEscape(category)}</b> record has been reviewed during verification,
+          and certain entries were corrected by the admin team before final approval.
+        </p>
+        <p>
+          Please review the corrected details below and ensure future submissions are entered accurately at the time of reporting.
+        </p>
+        <p style="margin:16px 0 8px;"><b>Record Details</b></p>
+        <table style="border-collapse:collapse;width:100%;font-size:13px;">
+          <tbody>
+            <tr>
+              <td style="border:1px solid #000;padding:8px;width:25%;"><b>RO Code</b></td>
+              <td style="border:1px solid #000;padding:8px;">${htmlEscape(roCode || "-")}</td>
+              <td style="border:1px solid #000;padding:8px;width:25%;"><b>Site Name</b></td>
+              <td style="border:1px solid #000;padding:8px;">${htmlEscape(roName || "-")}</td>
+            </tr>
+            <tr>
+              <td style="border:1px solid #000;padding:8px;"><b>Visit Date</b></td>
+              <td style="border:1px solid #000;padding:8px;">${htmlEscape(visitDate || "-")}</td>
+              <td style="border:1px solid #000;padding:8px;"><b>Corrected By</b></td>
+              <td style="border:1px solid #000;padding:8px;">${htmlEscape(correctedBy || "Admin")}</td>
+            </tr>
+          </tbody>
+        </table>
+        <p style="margin:16px 0 0;"><b>Reason for Correction:</b> ${htmlEscape(correctionReason)}</p>
+        <p style="margin:16px 0 8px;"><b>Correction Summary</b></p>
+        ${buildCorrectionSummaryHtml(changes)}
+        <p style="margin-top:16px;">
+          Please take care to submit future records correctly to avoid verification delays and rework.
+        </p>
+        <p style="margin-top:16px;">
+          Regards,<br>
+          <b>Relcon CRM Team</b>
+        </p>
+        <p style="margin-top:16px;">Generated on ${htmlEscape(generatedAt)} IST</p>
+      </div>
+    `;
 
     const subject = `Correction Notice | ${category} Verified | ${roCode || "RO"} | ${roName || engineerName}`;
     const info = await transporter.sendMail({
@@ -1350,6 +1426,7 @@ async function sendVerificationCorrectionEmail({
       to: engineerEmails.join(", "),
       cc: adminEmails.join(", "),
       subject,
+      html: htmlBody,
       text: textBody,
     });
 
