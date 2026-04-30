@@ -30,7 +30,9 @@ const PlanSchema = new mongoose.Schema({
   // statusSaved: { type: Boolean, default: false }, // HPCL
   // jioBPStatusSaved: { type: Boolean, default: false }, // JIO
   bpclStatusSaved: { type: Boolean, default: false }, // ✅ BPCL
-});
+  reminder24SentAt: { type: Date, default: null },
+  warning48SentAt: { type: Date, default: null },
+}, { timestamps: true });
 
 module.exports =
   mongoose.models.DailyPlan || mongoose.model("DailyPlan", PlanSchema);

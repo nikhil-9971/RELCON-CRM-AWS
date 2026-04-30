@@ -21,6 +21,10 @@ const { EmailLog } = require("../models/AuditLog");
 const MaterialManagement = require("../models/MaterialManagement");
 const User = require("../models/User");
 const Attendance = require("../models/Attendance");
+const DailyPlan = require("../models/DailyPlan");
+const Status = require("../models/Status");
+const JioBPStatus = require("../models/jioBPStatus");
+const BPCLStatus = require("../models/BPCLStatus");
 
 const {
   SMTP_HOST,
@@ -199,6 +203,94 @@ function buildCorrectionTable(changes = []) {
     ],
     "Correction Summary"
   );
+}
+
+function getPlanCreatedAt(plan) {
+  if (plan?.createdAt) return new Date(plan.createdAt);
+  if (plan?._id?.getTimestamp) return plan._id.getTimestamp();
+  return null;
+}
+
+function getPlanStatusCategory(plan) {
+  const phase = String(plan?.phase || "").trim().toUpperCase();
+  if (phase.startsWith("BPCL")) return "BPCL";
+  if (phase.includes("RBML") || phase.includes("JIO")) return "RBML";
+  return "HPCL";
+}
+
+function isOfficePlan(plan) {
+  const category = getPlanStatusCategory(plan);
+  if (!["HPCL", "BPCL"].includes(category)) return false;
+
+  const haystack = [
+    plan?.roName,
+    plan?.purpose,
+    plan?.phase,
+    plan?.roCode,
+  ]
+    .map((value) => String(value || "").trim().toUpperCase())
+    .join(" ");
+
+  return haystack.includes("OFFICE");
+}
+
+function getPendingStatusMailBody({
+  severity = "reminder",
+  engineerName = "",
+  roCode = "",
+  roName = "",
+  visitDate = "",
+  phase = "",
+  ageHours = 0,
+} = {}) {
+  const isWarning = severity === "warning";
+  const title = isWarning ? "Final Warning: Status Still Pending" : "Reminder: Status Submission Pending";
+  const intro = isWarning
+    ? `The status for the below plan remains pending even after ${ageHours}+ hours from plan creation. This delay now requires immediate closure.`
+    : `The status for the below plan is pending for more than ${ageHours} hours from plan creation and needs to be submitted without further delay.`;
+  const actionText = isWarning
+    ? "Submit the pending status immediately. Continued delay may impact reporting discipline, escalation tracking, and operational review."
+    : "Please complete the pending status submission at the earliest so that reporting timelines and verification flow remain on track.";
+  const escalationNote = isWarning
+    ? "This mail is being treated as an escalation alert because the expected status update is still not available after the 48-hour threshold."
+    : "This is a standard reminder alert issued after the 24-hour threshold for pending status submission.";
+
+  return `
+    <div style="margin:0;padding:20px 12px;background:#f1f5f9;font:14px/1.6 Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a">
+      <div style="max-width:980px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(15,23,42,.05)">
+        <div style="padding:18px 22px;background:linear-gradient(135deg,${isWarning ? "#7f1d1d,#b91c1c" : "#0f172a,#1e3a8a"});color:#ffffff">
+          <p style="margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.85">Relcon CRM • Status Alert</p>
+          <h2 style="margin:0;font-size:22px;font-weight:700">${title}</h2>
+          <p style="margin:8px 0 0;font-size:13px;opacity:.95">${htmlEscape(intro)}</p>
+        </div>
+        <div style="padding:22px">
+          <p style="margin:0 0 14px;font-size:13px;color:#334155">Dear <strong>${htmlEscape(engineerName)}</strong>,</p>
+          <div style="margin-bottom:16px;border:1px solid #dbeafe;border-radius:12px;overflow:hidden;background:#f8fbff;">
+            <div style="padding:10px 14px;background:#eff6ff;border-bottom:1px solid #dbeafe;font-size:11px;font-weight:700;color:#1d4ed8;letter-spacing:.06em;text-transform:uppercase;">
+              Plan Reference
+            </div>
+            <div style="padding:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;">
+              <div><div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;">Site Name</div><div style="font-size:16px;font-weight:700;color:#0f172a;margin-top:3px;">${htmlEscape(roName || "—")}</div></div>
+              <div><div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;">RO Code</div><div style="font-size:16px;font-weight:700;color:#0f172a;margin-top:3px;">${htmlEscape(roCode || "—")}</div></div>
+              <div><div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;">Visit Date</div><div style="font-size:16px;font-weight:700;color:#0f172a;margin-top:3px;">${htmlEscape(visitDate || "—")}</div></div>
+              <div><div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;">Phase</div><div style="font-size:16px;font-weight:700;color:#0f172a;margin-top:3px;">${htmlEscape(phase || "—")}</div></div>
+            </div>
+          </div>
+          <div style="margin-bottom:16px;padding:14px;background:${isWarning ? "#fff1f2" : "#eff6ff"};border:1px solid ${isWarning ? "#fecdd3" : "#bfdbfe"};border-radius:10px;color:${isWarning ? "#9f1239" : "#1d4ed8"};font-size:13px">
+            <strong>${isWarning ? "Warning:" : "Reminder:"}</strong> ${htmlEscape(actionText)}
+          </div>
+          <div style="margin-bottom:16px;padding:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;color:#475569;font-size:13px">
+            <strong style="color:#0f172a">${isWarning ? "Escalation Note:" : "Advisory Note:"}</strong><br>
+            ${htmlEscape(escalationNote)}
+          </div>
+          <p style="margin:0;font-size:13px;color:#475569">
+            Regards,<br>
+            <strong style="color:#0f172a">Relcon CRM System</strong>
+          </p>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 function getMonthRange(targetDate = new Date()) {
@@ -1323,6 +1415,131 @@ async function sendVerificationCorrectionEmail({
     return { ok: false, error: err };
   }
 }
+
+async function sendPendingStatusReminderAlerts() {
+  const reportType = "Pending Status Reminder Alert";
+
+  try {
+    const [plans, users, hpclStatuses, rbmlStatuses, bpclStatuses] = await Promise.all([
+      DailyPlan.find({}).lean(),
+      User.find({}, "email role engineerName username").lean(),
+      Status.find({}, "planId").lean(),
+      JioBPStatus.find({}, "planId").lean(),
+      BPCLStatus.find({}, "planId").lean(),
+    ]);
+
+    const hpclPlanIds = new Set(hpclStatuses.map((row) => String(row.planId || "")));
+    const rbmlPlanIds = new Set(rbmlStatuses.map((row) => String(row.planId || "")));
+    const bpclPlanIds = new Set(bpclStatuses.map((row) => String(row.planId || "")));
+
+    const adminEmails = [...new Set(
+      users
+        .filter((user) => String(user.role || "").trim().toLowerCase() === "admin")
+        .map((user) => normalizeEmail(user.email))
+        .filter(Boolean)
+    )];
+
+    const now = new Date();
+    const summary = { reminders24: 0, warnings48: 0, skippedNoEngineerEmail: 0 };
+
+    for (const plan of plans) {
+      const createdAt = getPlanCreatedAt(plan);
+      if (!createdAt) continue;
+      const purpose = String(plan.purpose || "").trim().toUpperCase();
+      if (purpose === "NO PLAN" || purpose === "IN LEAVE") continue;
+      if (isOfficePlan(plan)) continue;
+
+      const category = getPlanStatusCategory(plan);
+      if (!["HPCL", "RBML", "BPCL"].includes(category)) continue;
+      const planId = String(plan._id || "");
+      const statusExists =
+        category === "BPCL" ? bpclPlanIds.has(planId)
+        : category === "RBML" ? rbmlPlanIds.has(planId)
+        : hpclPlanIds.has(planId);
+
+      if (statusExists) continue;
+
+      const ageHours = Math.floor((now - createdAt) / (1000 * 60 * 60));
+      const shouldSend48 = ageHours >= 48 && !plan.warning48SentAt;
+      const shouldSend24 = ageHours >= 24 && !plan.reminder24SentAt && !shouldSend48;
+      if (!shouldSend24 && !shouldSend48) continue;
+
+      const engineerName = String(plan.engineer || "").trim();
+      const engineerEmails = [...new Set(
+        users
+          .filter((user) => {
+            const role = String(user.role || "").trim().toLowerCase();
+            const name = String(user.engineerName || user.username || "").trim().toLowerCase();
+            return role === "engineer" && name === engineerName.toLowerCase();
+          })
+          .map((user) => normalizeEmail(user.email))
+          .filter(Boolean)
+      )];
+
+      if (!engineerEmails.length) {
+        summary.skippedNoEngineerEmail += 1;
+        continue;
+      }
+
+      const severity = shouldSend48 ? "warning" : "reminder";
+      const subject = shouldSend48
+        ? `Escalation Warning: ${category} Status Pending Beyond 48 Hours | ${plan.roCode || "RO"} | ${plan.roName || engineerName}`
+        : `Reminder: ${category} Status Pending Beyond 24 Hours | ${plan.roCode || "RO"} | ${plan.roName || engineerName}`;
+
+      const html = getPendingStatusMailBody({
+        severity,
+        engineerName,
+        roCode: plan.roCode || "",
+        roName: plan.roName || "",
+        visitDate: plan.date || "",
+        phase: plan.phase || "",
+        ageHours,
+      });
+
+      const info = await transporter.sendMail({
+        from: MAIL_FROM,
+        to: engineerEmails.join(", "),
+        cc: adminEmails.join(", "),
+        subject,
+        html,
+      });
+
+      const updateFields = shouldSend48
+        ? { warning48SentAt: new Date() }
+        : { reminder24SentAt: new Date() };
+      await DailyPlan.findByIdAndUpdate(plan._id, updateFields);
+
+      await EmailLog.create({
+        type: reportType,
+        subject,
+        to: engineerEmails.join(", "),
+        status: "success",
+        sentAt: new Date(),
+        meta: {
+          cc: adminEmails.join(", "),
+          category,
+          severity,
+          planId,
+          engineerName,
+          roCode: plan.roCode || "",
+          roName: plan.roName || "",
+          visitDate: plan.date || "",
+          ageHours,
+          messageId: info?.messageId || "",
+        },
+      });
+
+      if (shouldSend48) summary.warnings48 += 1;
+      else summary.reminders24 += 1;
+    }
+
+    console.log("✅ Pending status reminder summary:", summary);
+    return { ok: true, summary };
+  } catch (err) {
+    console.error("❌ Pending status reminder alert error:", err.message);
+    return { ok: false, error: err };
+  }
+}
 // ─── Scheduler: daily 10:50 IST ───────────────────────────────────────────────
 
 cron.schedule(
@@ -1367,6 +1584,17 @@ cron.schedule(
   { timezone: "Asia/Kolkata" }
 );
 
+// ─── Scheduler: hourly pending status reminder/warning checks ────────────────
+
+cron.schedule(
+  "15 * * * *",
+  () => {
+    console.log("🔔 Pending status reminder CRON TRIGGERED:", new Date().toISOString());
+    sendPendingStatusReminderAlerts().catch((e) => console.error("Pending status reminder job error:", e));
+  },
+  { timezone: "Asia/Kolkata" }
+);
+
 // ─── Manual run ───────────────────────────────────────────────────────────────
 
 // if (require.main === module) {
@@ -1395,6 +1623,11 @@ if (require.main === module) {
       .then((r) => { console.log("Monthly attendance sheet done:", r); process.exit(r.ok ? 0 : 1); })
       .catch((e) => { console.error("❌ error:", e); process.exit(1); });
 
+  } else if (type === "status-reminder") {
+    sendPendingStatusReminderAlerts()
+      .then((r) => { console.log("Pending status reminder done:", r); process.exit(r.ok ? 0 : 1); })
+      .catch((e) => { console.error("❌ error:", e); process.exit(1); });
+
   } else {
     // default = pending
     sendPendingStatusEmail({ forDateISO: dateArg })
@@ -1409,4 +1642,5 @@ module.exports = {
   sendFaultyMaterialDispatchAlerts,
   sendMonthlyAttendanceSheet,
   sendVerificationCorrectionEmail,
+  sendPendingStatusReminderAlerts,
 };
