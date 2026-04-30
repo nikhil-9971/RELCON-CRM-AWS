@@ -218,8 +218,8 @@ function buildCorrectionSummaryHtml(changes = []) {
         <tr>
           <td style="border:1px solid #000;padding:8px;vertical-align:top;">${index + 1}</td>
           <td style="border:1px solid #000;padding:8px;vertical-align:top;">${htmlEscape(field)}</td>
-          <td style="border:1px solid #000;padding:8px;vertical-align:top;">${htmlEscape(before)}</td>
-          <td style="border:1px solid #000;padding:8px;vertical-align:top;">${htmlEscape(after)}</td>
+          <td style="border:1px solid #000;padding:8px;vertical-align:top;color:#b91c1c;font-weight:600;">${htmlEscape(before)}</td>
+          <td style="border:1px solid #000;padding:8px;vertical-align:top;color:#15803d;font-weight:600;">${htmlEscape(after)}</td>
         </tr>
       `;
     })
@@ -231,8 +231,8 @@ function buildCorrectionSummaryHtml(changes = []) {
         <tr>
           <th style="border:1px solid #000;padding:8px;text-align:left;"><b>S. No.</b></th>
           <th style="border:1px solid #000;padding:8px;text-align:left;"><b>Field</b></th>
-          <th style="border:1px solid #000;padding:8px;text-align:left;"><b>Submitted By Engineer</b></th>
-          <th style="border:1px solid #000;padding:8px;text-align:left;"><b>Corrected By Admin</b></th>
+          <th style="border:1px solid #000;padding:8px;text-align:left;color:#b91c1c;"><b>Submitted By Engineer</b></th>
+          <th style="border:1px solid #000;padding:8px;text-align:left;color:#15803d;"><b>Corrected By Admin</b></th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>
