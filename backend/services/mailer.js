@@ -283,6 +283,11 @@ function isNayaraPlan(plan) {
   return phase.includes("NAYARA");
 }
 
+function isRemotelyAmcPlan(plan) {
+  const purpose = String(plan?.purpose || "").trim().toUpperCase().replace(/\s+/g, " ");
+  return purpose === "REMOTELY AMC";
+}
+
 function isOfficePlan(plan) {
   const category = getPlanStatusCategory(plan);
   if (!["HPCL", "BPCL"].includes(category)) return false;
@@ -1547,6 +1552,7 @@ async function sendPendingStatusReminderAlerts() {
       const purpose = String(plan.purpose || "").trim().toUpperCase();
       if (purpose === "NO PLAN" || purpose === "IN LEAVE") continue;
       if (isNayaraPlan(plan)) continue;
+      if (isRemotelyAmcPlan(plan)) continue;
       if (isOfficePlan(plan)) continue;
 
       const recordKey = getPendingStatusRecordKey(plan);
