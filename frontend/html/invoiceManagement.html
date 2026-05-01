@@ -142,9 +142,11 @@
     .sf-modal-field{display:flex;flex-direction:column;gap:4px;}
     .sf-modal-field.full{grid-column:1/-1;}
     .sf-modal-label{font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:0.5px;}
-    .sf-modal-input,.sf-modal-textarea{font-family:'Inter',sans-serif;font-size:12px;color:var(--txt);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:6px 10px;height:34px;outline:none;width:100%;transition:border-color 0.15s,box-shadow 0.15s;}
-    .sf-modal-input:focus,.sf-modal-textarea:focus{border-color:var(--sf-blue);box-shadow:0 0 0 3px rgba(1,118,211,0.12);}
+    .sf-modal-input,.sf-modal-select,.sf-modal-textarea{font-family:'Inter',sans-serif;font-size:12px;color:var(--txt);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:6px 10px;height:34px;outline:none;width:100%;transition:border-color 0.15s,box-shadow 0.15s;}
+    .sf-modal-input:focus,.sf-modal-select:focus,.sf-modal-textarea:focus{border-color:var(--sf-blue);box-shadow:0 0 0 3px rgba(1,118,211,0.12);}
     .sf-modal-textarea{height:auto;min-height:72px;resize:vertical;}
+    .sf-modal-select{-webkit-appearance:none;appearance:none;padding-right:28px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath fill='%23aeaeac' d='M0 0l5 7 5-7z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center;}
+    .auto-field{background:#f3f4f6 !important;color:#6b7280 !important;border-color:#d1d5db !important;cursor:not-allowed;}
     .empty-state,.access-state{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);padding:36px 20px;text-align:center;}
     .empty-state i,.access-state i{font-size:28px;color:var(--txt4);margin-bottom:12px;}
     .empty-state h3,.access-state h3{font-size:17px;margin-bottom:6px;}
@@ -326,24 +328,24 @@
           <div class="sf-modal-field"><div class="sf-modal-label">Region</div><input id="fRegion" class="sf-modal-input"/></div>
           <div class="sf-modal-field"><div class="sf-modal-label">Callup No</div><input id="fCallupNo" class="sf-modal-input"/></div>
           <div class="sf-modal-field"><div class="sf-modal-label">Callup Date</div><input id="fCallupDate" class="sf-modal-input" type="date"/></div>
-          <div class="sf-modal-field"><div class="sf-modal-label">Phase</div><input id="fPhase" class="sf-modal-input"/></div>
+          <div class="sf-modal-field"><div class="sf-modal-label">Phase</div><select id="fPhase" class="sf-modal-select"><option value="">Select Phase</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="AGSTAKEOVER">AGSTAKEOVER</option><option value="13">13</option></select></div>
           <div class="sf-modal-field"><div class="sf-modal-label">No of Site</div><input id="fNoOfSite" class="sf-modal-input" type="number" step="0.01"/></div>
           <div class="sf-modal-field"><div class="sf-modal-label">Available Qty</div><input id="fAvailableQty" class="sf-modal-input" type="number" step="0.01"/></div>
-          <div class="sf-modal-field"><div class="sf-modal-label">Final Qty</div><input id="fFinalQty" class="sf-modal-input" type="number" step="0.01"/></div>
+          <div class="sf-modal-field"><div class="sf-modal-label">Final Qty</div><input id="fFinalQty" class="sf-modal-input auto-field" type="number" step="0.01" readonly/></div>
           <div class="sf-modal-field"><div class="sf-modal-label">Per Qty Rate</div><input id="fPerQtyRate" class="sf-modal-input" type="number" step="0.01"/></div>
-          <div class="sf-modal-field"><div class="sf-modal-label">Amount</div><input id="fAmount" class="sf-modal-input" type="number" step="0.01" readonly/></div>
-          <div class="sf-modal-field"><div class="sf-modal-label">Tax (CGST)</div><input id="fTaxCgst" class="sf-modal-input" type="number" step="0.01" readonly/></div>
-          <div class="sf-modal-field"><div class="sf-modal-label">Final Amount</div><input id="fFinalAmount" class="sf-modal-input" type="number" step="0.01" readonly/></div>
+          <div class="sf-modal-field"><div class="sf-modal-label">Amount</div><input id="fAmount" class="sf-modal-input auto-field" type="number" step="0.01" readonly/></div>
+          <div class="sf-modal-field"><div class="sf-modal-label">Tax (CGST)</div><input id="fTaxCgst" class="sf-modal-input auto-field" type="number" step="0.01" readonly/></div>
+          <div class="sf-modal-field"><div class="sf-modal-label">Final Amount</div><input id="fFinalAmount" class="sf-modal-input auto-field" type="number" step="0.01" readonly/></div>
           <div class="sf-modal-field"><div class="sf-modal-label">Year</div><input id="fYearLabel" class="sf-modal-input"/></div>
           <div class="sf-modal-field"><div class="sf-modal-label">Quarter</div><input id="fQuarter" class="sf-modal-input"/></div>
           <div class="sf-modal-field"><div class="sf-modal-label">Month</div><input id="fMonthLabel" class="sf-modal-input"/></div>
           <div class="sf-modal-field"><div class="sf-modal-label">Total Billing Month</div><input id="fTotalBillingMonth" class="sf-modal-input" type="number" step="0.01"/></div>
-          <div class="sf-modal-field"><div class="sf-modal-label">Billing Type</div><input id="fBillingType" class="sf-modal-input"/></div>
+          <div class="sf-modal-field"><div class="sf-modal-label">Billing Type</div><select id="fBillingType" class="sf-modal-select"><option value="">Select Billing Type</option><option value="AMC">AMC</option><option value="Connectivity">Connectivity</option></select></div>
           <div class="sf-modal-field"><div class="sf-modal-label">Invoice Submission Date To Account Department</div><input id="fInvoiceSubmissionDateToAccountDepartment" class="sf-modal-input" type="date"/></div>
           <div class="sf-modal-field"><div class="sf-modal-label">Invoice Number</div><input id="fInvoiceNumber" class="sf-modal-input"/></div>
           <div class="sf-modal-field"><div class="sf-modal-label">Invoice Date</div><input id="fInvoiceDate" class="sf-modal-input" type="date"/></div>
           <div class="sf-modal-field"><div class="sf-modal-label">Invoice Submission Date To Region</div><input id="fInvoiceSubmissionDateToRegion" class="sf-modal-input" type="date"/></div>
-          <div class="sf-modal-field full"><div class="sf-modal-label">Remark</div><textarea id="fRemark" class="sf-modal-textarea"></textarea></div>
+          <div class="sf-modal-field full"><div class="sf-modal-label">Remark</div><textarea id="fRemark" class="sf-modal-textarea auto-field" readonly></textarea></div>
         </div>
         <div id="formNote" class="sf-note"></div>
       </div>
@@ -374,6 +376,14 @@
     }
 
     function money(v) { return INR.format(Number(v || 0)); }
+    function compactAmount(v) {
+      const num = Number(v || 0);
+      if (!Number.isFinite(num)) return "0";
+      if (Math.abs(num) >= 10000000) return `${round2(num / 10000000)} crore`;
+      if (Math.abs(num) >= 100000) return `${round2(num / 100000)} lakh`;
+      if (Math.abs(num) >= 1000) return `${round2(num / 1000)}k`;
+      return `${round2(num)}`;
+    }
     function round2(v) { return Math.round((Number(v || 0) + Number.EPSILON) * 100) / 100; }
     function formatDisplayDate(value) {
       const raw = String(value || "").trim();
@@ -441,8 +451,8 @@
       const totals = json.totals || {};
       document.getElementById("statRecords").textContent = money(totals.recordCount || 0);
       document.getElementById("statSites").textContent = money(totals.noOfSite || 0);
-      document.getElementById("statAmount").textContent = money(totals.amount || 0);
-      document.getElementById("statFinalAmount").textContent = money(totals.finalAmount || 0);
+      document.getElementById("statAmount").textContent = compactAmount(totals.amount || 0);
+      document.getElementById("statFinalAmount").textContent = compactAmount(totals.finalAmount || 0);
       fillSelect("regionFilter", json.filters?.regions || [], "All Regions");
       fillSelect("monthFilter", json.filters?.months || [], "All Months");
       fillSelect("billingTypeFilter", json.filters?.billingTypes || [], "All Types");
@@ -597,11 +607,14 @@
     }
 
     function syncCalculatedFields() {
-      const finalQty = Number(document.getElementById("fFinalQty").value || 0);
+      const noOfSite = Number(document.getElementById("fNoOfSite").value || 0);
+      const availableQty = Number(document.getElementById("fAvailableQty").value || 0);
+      const finalQty = round2(noOfSite * availableQty);
       const perQtyRate = Number(document.getElementById("fPerQtyRate").value || 0);
       const amount = round2(finalQty * perQtyRate);
       const tax = round2(amount * 0.18);
       const finalAmount = round2(amount + tax);
+      document.getElementById("fFinalQty").value = finalQty.toFixed(2);
       document.getElementById("fAmount").value = amount.toFixed(2);
       document.getElementById("fTaxCgst").value = tax.toFixed(2);
       document.getElementById("fFinalAmount").value = finalAmount.toFixed(2);
@@ -733,7 +746,7 @@
     document.getElementById("nextBtn").addEventListener("click", () => currentPage * pageSize < totalRecords && refreshAll(currentPage + 1));
     document.getElementById("searchInput").addEventListener("keydown", (e) => { if (e.key === "Enter") refreshAll(1); });
     document.getElementById("invoiceModalOverlay").addEventListener("click", (e) => { if (e.target.id === "invoiceModalOverlay") closeModal(); });
-    ["fNoOfSite","fAvailableQty","fFinalQty","fPerQtyRate","fTotalBillingMonth"].forEach((id) => {
+    ["fNoOfSite","fAvailableQty","fPerQtyRate","fTotalBillingMonth"].forEach((id) => {
       document.getElementById(id).addEventListener("input", syncCalculatedFields);
     });
   </script>

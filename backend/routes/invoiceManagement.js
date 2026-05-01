@@ -143,13 +143,13 @@ function validateInvoiceRow(row) {
 }
 
 function normalizeInvoicePayload(body = {}, fallbackSno = 0) {
-  const finalQty = toNumber(body.finalQty);
+  const noOfSite = toNumber(body.noOfSite);
+  const availableQty = toNumber(body.availableQty);
+  const finalQty = roundMoney(noOfSite * availableQty);
   const perQtyRate = toNumber(body.perQtyRate);
   const amount = roundMoney(finalQty * perQtyRate);
   const taxCgst = roundMoney(amount * 0.18);
   const finalAmount = roundMoney(amount + taxCgst);
-  const noOfSite = toNumber(body.noOfSite);
-  const availableQty = toNumber(body.availableQty);
   const totalBillingMonth = toNumber(body.totalBillingMonth);
   const autoRemark = buildInvoiceRemark({ noOfSite, availableQty, totalBillingMonth, finalQty });
   return {
