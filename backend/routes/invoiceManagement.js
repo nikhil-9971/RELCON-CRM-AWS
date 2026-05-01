@@ -243,6 +243,11 @@ function exportRows(records = []) {
   ]));
 }
 
+async function getNextInvoiceSno() {
+  const latest = await InvoiceManagement.findOne({}, "sno").sort({ sno: -1 }).lean();
+  return Math.max(1, Number(latest?.sno || 0) + 1);
+}
+
 router.get("/", verifyToken, requireRole(["Admin"]), async (req, res) => {
   try {
     const page = Math.max(1, Number(req.query.page) || 1);
@@ -300,7 +305,8 @@ router.get("/stats", verifyToken, requireRole(["Admin"]), async (req, res) => {
 
 router.post("/", verifyToken, requireRole(["Admin"]), async (req, res) => {
   try {
-    const payload = normalizeInvoicePayload(req.body, Date.now());
+    const nextSno = await getNextInvoiceSno();
+    const payload = normalizeInvoicePayload(req.body, nextSno);
     const errors = validateInvoiceRow(payload);
     if (errors.length) {
       return res.status(400).json({ success: false, message: "Validation failed", errors });
@@ -322,7 +328,12 @@ router.post("/", verifyToken, requireRole(["Admin"]), async (req, res) => {
 
 router.put("/:id", verifyToken, requireRole(["Admin"]), async (req, res) => {
   try {
-    const payload = normalizeInvoicePayload(req.body);
+    const existing = await InvoiceManagement.findById(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: "Invoice record not found" });
+    }
+
+    const payload = normalizeInvoicePayload(req.body, existing.sno || 0);
     const errors = validateInvoiceRow(payload);
     if (errors.length) {
       return res.status(400).json({ success: false, message: "Validation failed", errors });
@@ -338,10 +349,6 @@ router.put("/:id", verifyToken, requireRole(["Admin"]), async (req, res) => {
       },
       { new: true, runValidators: true }
     );
-
-    if (!updated) {
-      return res.status(404).json({ success: false, message: "Invoice record not found" });
-    }
 
     res.json({ success: true, message: "Invoice record updated successfully", data: updated });
   } catch (err) {
