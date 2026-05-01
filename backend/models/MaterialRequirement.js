@@ -15,10 +15,6 @@ const MaterialRequirementSchema = new mongoose.Schema(
     materialRequestDate: String,
     materialArrangeFrom: String,
     materialReceivedDate: String,
-    siteMarkStatus: String,
-    siteMarkRemark: String,
-    siteMarkUpdatedAt: String,
-    siteMarkUpdatedBy: String,
   },
   { timestamps: true }
 );

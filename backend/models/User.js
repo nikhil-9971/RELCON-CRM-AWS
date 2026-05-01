@@ -6,6 +6,7 @@ const UserSchema = new mongoose.Schema({
   role: String,
   engineerName: String,
   empId: String,
+  pcbProvidedCount: { type: Number, default: 0 },
 });
 // ✅ Fixed: removed broken `mongoose.model.UserSchema ||` which always returned undefined
 module.exports = mongoose.model("User", UserSchema, "users");

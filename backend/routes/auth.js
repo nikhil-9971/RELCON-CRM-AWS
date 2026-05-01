@@ -96,6 +96,59 @@ router.get("/user", verifyToken, (req, res) => {
   res.json(req.user);
 });
 
+router.get("/pcb-provided-counts", verifyToken, async (req, res) => {
+  try {
+    const role = String(req.user?.role || "").toLowerCase();
+    const engineerName = String(req.user?.engineerName || req.user?.username || "").trim();
+    const query = role === "admin" ? {} : { engineerName };
+    const users = await User.find(query, "engineerName username pcbProvidedCount").lean();
+    const counts = {};
+    users.forEach((user) => {
+      const key = String(user.engineerName || user.username || "").trim();
+      if (!key) return;
+      counts[key] = Number(user.pcbProvidedCount || 0) || 0;
+    });
+    res.json(counts);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch PCB provided counts", details: err.message });
+  }
+});
+
+router.put("/pcb-provided-counts", verifyToken, async (req, res) => {
+  try {
+    if (String(req.user?.role || "").toLowerCase() !== "admin") {
+      return res.status(403).json({ error: "Access denied. Admins only." });
+    }
+    const counts = req.body && typeof req.body === "object" ? req.body : {};
+    const updates = Object.entries(counts)
+      .map(([engineerName, value]) => ({
+        engineerName: String(engineerName || "").trim(),
+        pcbProvidedCount: Math.max(0, Number(value) || 0),
+      }))
+      .filter((item) => item.engineerName);
+
+    await Promise.all(
+      updates.map((item) =>
+        User.updateOne(
+          { engineerName: item.engineerName },
+          { $set: { pcbProvidedCount: item.pcbProvidedCount } }
+        )
+      )
+    );
+
+    const users = await User.find({}, "engineerName username pcbProvidedCount").lean();
+    const savedCounts = {};
+    users.forEach((user) => {
+      const key = String(user.engineerName || user.username || "").trim();
+      if (!key) return;
+      savedCounts[key] = Number(user.pcbProvidedCount || 0) || 0;
+    });
+    res.json({ success: true, counts: savedCounts });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to save PCB provided counts", details: err.message });
+  }
+});
+
 // 🔓 Dummy logout (handled on frontend)
 router.post("/logout", (req, res) => {
   res.status(200).json({ message: "Client should clear token manually" });
