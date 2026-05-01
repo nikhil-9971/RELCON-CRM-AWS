@@ -144,6 +144,45 @@ tbody tr.sf-total-row td{color:var(--txt)!important;font-weight:700!important;}
 .sf-btn-neutral{background:var(--surface);color:var(--txt);border:1px solid var(--border);}
 .sf-btn-neutral:hover{background:var(--bg);}
 .sf-btn-sm{height:26px;font-size:11px;padding:0 10px;}
+.sf-btn-link{background:none;border:none;color:var(--sf-blue);font-size:11px;font-weight:600;cursor:pointer;padding:0;}
+.sf-btn-link:hover{text-decoration:underline;}
+
+.pcb-bypass-cell{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.pcb-bypass-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.pcb-mark-count{font-size:10px;color:var(--sf-orange);font-weight:600;}
+.pcb-help-text{font-size:10px;color:var(--txt3);margin-top:4px;}
+
+.sf-overlay{
+  position:fixed;inset:0;background:rgba(8,7,7,.48);display:none;align-items:center;justify-content:center;
+  padding:18px;z-index:200;
+}
+.sf-overlay.open{display:flex;}
+.sf-modal{
+  width:min(880px,100%);max-height:88vh;background:var(--surface);border-radius:var(--r-xl);
+  box-shadow:var(--sh-md);overflow:hidden;display:flex;flex-direction:column;
+}
+.sf-modal-header,.sf-modal-footer{padding:14px 18px;border-bottom:1px solid var(--border);background:var(--surface2);}
+.sf-modal-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+.sf-modal-footer{border-bottom:none;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;}
+.sf-modal-title{font-size:14px;font-weight:700;color:var(--txt);}
+.sf-modal-subtitle{font-size:11px;color:var(--txt3);margin-top:3px;}
+.sf-modal-body{padding:16px 18px;overflow:auto;}
+.sf-modal-close{background:none;border:none;color:var(--txt3);cursor:pointer;font-size:16px;line-height:1;padding:2px 4px;}
+.sf-modal-close:hover{color:var(--txt);}
+.pcb-mark-list{display:grid;gap:12px;}
+.pcb-mark-card{border:1px solid var(--border);border-radius:var(--r-lg);padding:12px;background:var(--surface2);}
+.pcb-mark-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+.pcb-mark-site{font-size:12px;font-weight:700;color:var(--txt);}
+.pcb-mark-sub{font-size:10px;color:var(--txt3);margin-top:3px;}
+.pcb-mark-controls{display:grid;grid-template-columns:160px 1fr;gap:10px;margin-top:10px;}
+.pcb-mark-controls select,.pcb-mark-controls textarea{
+  width:100%;border:1px solid var(--border);border-radius:var(--r-sm);font:inherit;color:var(--txt);background:var(--surface);padding:8px 10px;
+}
+.pcb-mark-controls textarea{min-height:72px;resize:vertical;}
+.pcb-mark-empty{padding:16px;border:1px dashed var(--border);border-radius:var(--r-lg);text-align:center;color:var(--txt3);font-size:11px;background:var(--surface2);}
+@media(max-width:768px){
+  .pcb-mark-controls{grid-template-columns:1fr;}
+}
 
 /* DATE INPUTS */
 .sf-date-input{font-family:'Inter',sans-serif;font-size:12px;color:var(--txt);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:4px 9px;height:30px;outline:none;transition:border-color .15s;}
@@ -503,9 +542,6 @@ tbody tr.sf-total-row td{color:var(--txt)!important;font-weight:700!important;}
     <div class="sf-section-header">
       <div class="sf-section-title"><i class="fa-solid fa-microchip" style="color:var(--sf-orange);"></i> Power Protection PCB Installation Status (All Time)</div>
       <div style="display:flex;gap:8px;">
-        <button id="savePcbProvidedBtn" onclick="savePcbProvidedCounts()" class="sf-btn sf-btn-primary sf-btn-sm hidden">
-          <i class="fa-solid fa-floppy-disk"></i> Save
-        </button>
         <button onclick="exportPcbInstallationExcel()" class="sf-btn sf-btn-success sf-btn-sm">
           <i class="fa-solid fa-file-excel"></i> Export Excel
         </button>
@@ -521,6 +557,7 @@ tbody tr.sf-total-row td{color:var(--txt)!important;font-weight:700!important;}
               <th>Today PCB Installation</th>
               <th>Total PCB Install (B)</th>
               <th>PCB Installation Pending</th>
+              <th>By Pass PCB</th>
             </tr>
           </thead>
           <tbody id="pcbInstallationBody"></tbody>
@@ -562,11 +599,31 @@ tbody tr.sf-total-row td{color:var(--txt)!important;font-weight:700!important;}
 
 </main>
 
+<div class="sf-overlay" id="pcbMarkOverlay" aria-hidden="true">
+  <div class="sf-modal" role="dialog" aria-modal="true" aria-labelledby="pcbMarkTitle">
+    <div class="sf-modal-header">
+      <div>
+        <div class="sf-modal-title" id="pcbMarkTitle">Mark Bypass Sites</div>
+        <div class="sf-modal-subtitle" id="pcbMarkSubtitle">PCB faulty cases ko site level par mark karke bypass count se alag track karein.</div>
+      </div>
+      <button type="button" class="sf-modal-close" onclick="closePcbMarkModal()" aria-label="Close">&times;</button>
+    </div>
+    <div class="sf-modal-body" id="pcbMarkBody"></div>
+    <div class="sf-modal-footer">
+      <button type="button" class="sf-btn sf-btn-neutral" onclick="closePcbMarkModal()">Close</button>
+      <button type="button" class="sf-btn sf-btn-primary" id="pcbMarkSaveBtn" onclick="savePcbSiteMarks()">Save Marks</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const baseUrl = window.BACKEND_URL || "/api";
 
 function byId(id){ return document.getElementById(id); }
 function getToken(){ return localStorage.getItem("token"); }
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (ch) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#39;" }[ch]));
+}
 
 // Date badge
 document.getElementById('todayBadge').textContent =
@@ -577,13 +634,14 @@ async function loadOverview() {
     const token = getToken();
     const headers = { Authorization: `Bearer ${token}` };
 
-    const [userRes,plansRes,statusRes,jioRes,incidentRes,loginLogsRes] = await Promise.all([
+    const [userRes,plansRes,statusRes,jioRes,incidentRes,loginLogsRes,materialReqRes] = await Promise.all([
       fetch(`${baseUrl}/user`, { headers }),
       fetch(`${baseUrl}/getDailyPlans`, { headers }),
       fetch(`${baseUrl}/getMergedStatusRecords`, { headers }),
       fetch(`${baseUrl}/jioBP/getAllJioBPStatus`, { headers }),
       fetch(`${baseUrl}/getAllIncidents`, { headers }),
       fetch(`${baseUrl}/audit/loginLogs`, { headers }),
+      fetch(`${baseUrl}/materialRequirement`, { headers }),
     ]);
 
     const currentUser = await userRes.json();
@@ -592,6 +650,7 @@ async function loadOverview() {
     const jio = await jioRes.json();
     const incJson = await incidentRes.json();
     const loginLogs = await loginLogsRes.json();
+    const materialRequirements = await materialReqRes.json();
 
     const today = new Date().toLocaleDateString("en-CA");
     const plansToday = (Array.isArray(plans) ? plans : []).filter((p) => {
@@ -721,7 +780,8 @@ async function loadOverview() {
     renderEngineerMonthly(window.__allPlans, sel.value);
     sel.addEventListener("change", () => renderEngineerMonthly(window.__allPlans, sel.value));
     renderRelconConnectivity(window.__statusRecords);
-    renderPcbInstallation(window.__statusRecords);
+    window.__materialRequirements = Array.isArray(materialRequirements) ? materialRequirements : [];
+    renderPcbInstallation(window.__statusRecords, window.__materialRequirements);
 
     // Store for mail copy
     window.__unverifiedHpcl = unverifiedHpcl;
@@ -817,8 +877,137 @@ function renderEngineerMonthly(plans, ym) {
 
 function normalizeText(s) { return String(s || "").trim().toUpperCase(); }
 function isPowerProtectionInstall(purpose) { const t = normalizeText(purpose); return t.includes("POWER PROTECTION PCB") && (t.includes("INSTALL") || t.includes("INSTAL")); }
+function isByPassPcbMaterial(material) { const t = normalizeText(material); return t.includes("BYPASS") && t.includes("PCB"); }
+function isPowerProtectionPcbMaterial(material) { const t = normalizeText(material); return t.includes("POWER PROTECTION PCB") || (t.includes("PCB") && !t.includes("BYPASS")); }
 function isGsmModuleInstall(purpose) { const t = normalizeText(purpose); return (t.includes("GSM MODULE") && (t.includes("INSTALL") || t.includes("INSTAL"))) || t.includes("GSM MODULE INSTALLATION"); }
 function deviceProvidedStorageKey(ym) { return `device_provided_${ym}`; }
+function isPcbFaultyMark(status) { return normalizeText(status) === "PCB_FAULTY"; }
+
+function setPcbMarkSaveState(isSaving) {
+  const btn = byId("pcbMarkSaveBtn");
+  if (!btn) return;
+  btn.disabled = !!isSaving;
+  btn.innerHTML = isSaving ? '<i class="fa-solid fa-spinner fa-spin"></i> Saving...' : 'Save Marks';
+}
+
+function closePcbMarkModal() {
+  const overlay = byId("pcbMarkOverlay");
+  if (overlay) {
+    overlay.classList.remove("open");
+    overlay.setAttribute("aria-hidden", "true");
+  }
+  window.__pcbMarkDraftSites = [];
+  window.__pcbMarkEngineer = "";
+}
+
+function openPcbMarkModal(engineerName) {
+  const overlay = byId("pcbMarkOverlay");
+  const body = byId("pcbMarkBody");
+  const subtitle = byId("pcbMarkSubtitle");
+  const allSites = window.__pcbBypassSitesByEngineer || {};
+  const sites = Array.isArray(allSites[engineerName]) ? allSites[engineerName] : [];
+  window.__pcbMarkEngineer = engineerName;
+  window.__pcbMarkDraftSites = sites.map((site) => ({
+    roCode: site.roCode || "",
+    roName: site.roName || "",
+    region: site.region || "",
+    phase: site.phase || "",
+    materialIds: Array.isArray(site.materialIds) ? [...site.materialIds] : [],
+    markStatus: site.markStatus || "",
+    markRemark: site.markRemark || "",
+    updatedAt: site.updatedAt || "",
+    updatedBy: site.updatedBy || "",
+  }));
+  if (subtitle) subtitle.textContent = `${engineerName} ke bypass sites ko mark karein. PCB faulty cases yahan se separate track honge.`;
+  if (!body || !overlay) return;
+  if (!sites.length) {
+    body.innerHTML = '<div class="pcb-mark-empty">Is engineer ke liye koi bypass site available nahi hai.</div>';
+  } else {
+    body.innerHTML = window.__pcbMarkDraftSites.map((site, index) => {
+      const status = site.markStatus || "";
+      const remark = site.markRemark || "";
+      const updatedText = site.updatedAt ? `Last updated: ${escapeHtml(new Date(site.updatedAt).toLocaleString("en-IN"))}${site.updatedBy ? ` by ${escapeHtml(site.updatedBy)}` : ""}` : "Not marked yet";
+      return `
+        <div class="pcb-mark-card">
+          <div class="pcb-mark-head">
+            <div>
+              <div class="pcb-mark-site">${escapeHtml(site.roCode || "-")} ${site.roName ? `- ${escapeHtml(site.roName)}` : ""}</div>
+              <div class="pcb-mark-sub">${escapeHtml(site.region || "-")} ${site.phase ? `• ${escapeHtml(site.phase)}` : ""}</div>
+            </div>
+            <span class="sf-badge ${isPcbFaultyMark(status) ? "badge-red" : "badge-yellow"}">${isPcbFaultyMark(status) ? "PCB Faulty" : "No Mark"}</span>
+          </div>
+          <div class="pcb-help-text">${updatedText}</div>
+          <div class="pcb-mark-controls">
+            <div>
+              <label class="sf-field-label" for="pcbMarkStatus_${index}">Mark Status</label>
+              <select id="pcbMarkStatus_${index}" onchange="updatePcbMarkDraft(${index}, 'status', this.value)">
+                <option value="" ${status === "" ? "selected" : ""}>No Mark</option>
+                <option value="PCB_FAULTY" ${status === "PCB_FAULTY" ? "selected" : ""}>PCB Faulty</option>
+              </select>
+            </div>
+            <div>
+              <label class="sf-field-label" for="pcbMarkRemark_${index}">Remark</label>
+              <textarea id="pcbMarkRemark_${index}" placeholder="Optional note for this site" oninput="updatePcbMarkDraft(${index}, 'remark', this.value)"></textarea>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+    window.__pcbMarkDraftSites.forEach((site, index) => {
+      const textarea = byId(`pcbMarkRemark_${index}`);
+      if (textarea) textarea.value = site.markRemark || "";
+    });
+  }
+  overlay.classList.add("open");
+  overlay.setAttribute("aria-hidden", "false");
+  setPcbMarkSaveState(false);
+}
+
+function updatePcbMarkDraft(index, field, value) {
+  const draftSites = window.__pcbMarkDraftSites || [];
+  if (!draftSites[index]) return;
+  if (field === "status") draftSites[index].markStatus = value;
+  if (field === "remark") draftSites[index].markRemark = value;
+}
+
+async function savePcbSiteMarks() {
+  const token = getToken();
+  const engineer = window.__pcbMarkEngineer || "";
+  const draftSites = window.__pcbMarkDraftSites || [];
+  if (!token || !engineer || !draftSites.length) return;
+  setPcbMarkSaveState(true);
+  try {
+    const currentUser = window.__currentUser || {};
+    const updatedBy = String(currentUser.engineerName || currentUser.username || "").trim();
+    const headers = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
+    for (const site of draftSites) {
+      for (const materialId of site.materialIds || []) {
+        const res = await fetch(`${baseUrl}/materialRequirement/${encodeURIComponent(materialId)}`, {
+          method: "PUT",
+          headers,
+          body: JSON.stringify({
+            siteMarkStatus: site.markStatus || "",
+            siteMarkRemark: String(site.markRemark || "").trim(),
+            siteMarkUpdatedAt: new Date().toISOString(),
+            siteMarkUpdatedBy: updatedBy,
+          }),
+        });
+        if (!res.ok) throw new Error(`Failed to update material ${materialId}`);
+      }
+    }
+    const materialRes = await fetch(`${baseUrl}/materialRequirement`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!materialRes.ok) throw new Error("Failed to refresh material requirements");
+    window.__materialRequirements = await materialRes.json();
+    renderPcbInstallation(window.__statusRecords, window.__materialRequirements);
+    closePcbMarkModal();
+    alert("Site marks saved successfully.");
+  } catch (err) {
+    console.error("save pcb site marks error", err);
+    alert("Failed to save site marks.");
+  } finally {
+    setPcbMarkSaveState(false);
+  }
+}
 
 function renderRelconConnectivity(statusRecords) {
   const tbody = document.getElementById("relconConnectivityBody");
@@ -848,42 +1037,110 @@ function renderRelconConnectivity(statusRecords) {
   }
 }
 
-function pcbProvidedStorageKey() { return `pcb_provided_alltime`; }
-
-function renderPcbInstallation(statusRecords) {
+function renderPcbInstallation(statusRecords, materialRequirements) {
   const tbody = document.getElementById("pcbInstallationBody");
-  const saveBtn = document.getElementById("savePcbProvidedBtn");
   if (!tbody) return;
   const currentUser = window.__currentUser || {};
   const userRole = currentUser.role || "";
   const currentEngineer = currentUser.engineerName || currentUser.username || "";
-  const isAdmin = userRole === "admin";
-  const providedMap = JSON.parse(localStorage.getItem(pcbProvidedStorageKey()) || "{}");
   const today = new Date().toISOString().slice(0, 10);
-  const isPcbInstall = (purpose) => { const t = String(purpose || "").trim().toUpperCase(); return t.includes("POWER PROTECTION PCB") && (t.includes("INSTALL") || t.includes("INSTAL")); };
   let filteredRecords = statusRecords || [];
   if (userRole === "engineer" && currentEngineer) filteredRecords = filteredRecords.filter((r) => String(r.engineer || r.Engineer || r.engineerName || "").trim().toLowerCase() === currentEngineer.toLowerCase());
+  let filteredMaterials = materialRequirements || [];
+  if (userRole === "engineer" && currentEngineer) filteredMaterials = filteredMaterials.filter((r) => String(r.engineer || "").trim().toLowerCase() === currentEngineer.toLowerCase());
+
+  const installedSiteKeys = new Set();
   const map = new Map();
-  filteredRecords.forEach((r) => { const eng = String(r.engineer || r.Engineer || "").trim() || "-"; if (!map.has(eng)) map.set(eng, { provided: Number(providedMap[eng] || 0) || 0, installed: 0, todayInstalled: 0 }); if (isPcbInstall(r.purpose || r.PurposeOfVisit || r.PURPOSEOFVISIT)) { map.get(eng).installed += 1; const recordDate = String(r.date || r.Date || r.DATE || "").slice(0, 10); if (recordDate === today) map.get(eng).todayInstalled += 1; } });
-  const rows = Array.from(map.entries()).map(([eng, rec]) => ({ eng, provided: rec.provided, todayInstalled: rec.todayInstalled, installed: rec.installed, pending: Math.max(0, rec.provided - rec.installed) })).filter((r) => r.eng.toUpperCase() !== "NAVAL KISHOR PANDEY").sort((a, b) => a.eng.localeCompare(b.eng));
+  const bypassSitesByEngineer = new Map();
+  filteredRecords.forEach((r) => {
+    const eng = String(r.engineer || r.Engineer || "").trim() || "-";
+    if (!map.has(eng)) map.set(eng, { provided: 0, installed: 0, todayInstalled: 0, bypass: 0 });
+    if (isPowerProtectionInstall(r.purpose || r.PurposeOfVisit || r.PURPOSEOFVISIT)) {
+      map.get(eng).installed += 1;
+      const recordDate = String(r.date || r.Date || r.DATE || "").slice(0, 10);
+      const roCode = String(r.roCode || r.ROCode || r.rocode || "").trim().toUpperCase();
+      if (roCode) installedSiteKeys.add(roCode);
+      if (recordDate === today) map.get(eng).todayInstalled += 1;
+    }
+  });
+  filteredMaterials.forEach((r) => {
+    const eng = String(r.engineer || "").trim() || "-";
+    if (!map.has(eng)) map.set(eng, { provided: 0, installed: 0, todayInstalled: 0, bypass: 0 });
+    const material = r.material || "";
+    const roCode = String(r.roCode || "").trim().toUpperCase();
+    if (isPowerProtectionPcbMaterial(material)) map.get(eng).provided += 1;
+    if (isByPassPcbMaterial(material) && roCode && installedSiteKeys.has(roCode)) {
+      map.get(eng).bypass += 1;
+      if (!bypassSitesByEngineer.has(eng)) bypassSitesByEngineer.set(eng, new Map());
+      if (!bypassSitesByEngineer.get(eng).has(roCode)) {
+        bypassSitesByEngineer.get(eng).set(roCode, {
+          roCode,
+          roName: String(r.roName || "").trim(),
+          region: String(r.region || "").trim(),
+          phase: String(r.phase || "").trim(),
+          materialIds: [],
+          markStatus: String(r.siteMarkStatus || "").trim(),
+          markRemark: String(r.siteMarkRemark || "").trim(),
+          updatedAt: String(r.siteMarkUpdatedAt || r.updatedAt || "").trim(),
+          updatedBy: String(r.siteMarkUpdatedBy || "").trim(),
+        });
+      }
+      const site = bypassSitesByEngineer.get(eng).get(roCode);
+      site.materialIds.push(String(r._id || ""));
+      if (!site.roName && r.roName) site.roName = String(r.roName).trim();
+      if (!site.region && r.region) site.region = String(r.region).trim();
+      if (!site.phase && r.phase) site.phase = String(r.phase).trim();
+      if (!site.markStatus && r.siteMarkStatus) site.markStatus = String(r.siteMarkStatus).trim();
+      if (!site.markRemark && r.siteMarkRemark) site.markRemark = String(r.siteMarkRemark).trim();
+      if (!site.updatedAt && (r.siteMarkUpdatedAt || r.updatedAt)) site.updatedAt = String(r.siteMarkUpdatedAt || r.updatedAt).trim();
+      if (!site.updatedBy && r.siteMarkUpdatedBy) site.updatedBy = String(r.siteMarkUpdatedBy).trim();
+    }
+  });
+  window.__pcbBypassSitesByEngineer = Object.fromEntries(
+    Array.from(bypassSitesByEngineer.entries()).map(([eng, siteMap]) => ([
+      eng,
+      Array.from(siteMap.values()).sort((a, b) => a.roCode.localeCompare(b.roCode)),
+    ]))
+  );
+  const rows = Array.from(map.entries()).map(([eng, rec]) => {
+    const sites = window.__pcbBypassSitesByEngineer[eng] || [];
+    const markedFaulty = sites.filter((site) => isPcbFaultyMark(site.markStatus)).length;
+    return {
+      eng,
+      provided: rec.provided,
+      todayInstalled: rec.todayInstalled,
+      installed: rec.installed,
+      pending: Math.max(0, rec.provided - rec.installed),
+      bypass: rec.bypass || 0,
+      bypassSites: sites.length,
+      markedFaulty,
+    };
+  }).filter((r) => r.eng.toUpperCase() !== "NAVAL KISHOR PANDEY").sort((a, b) => a.eng.localeCompare(b.eng));
   const totalProvided = rows.reduce((sum, r) => sum + r.provided, 0);
   const totalInstalled = rows.reduce((sum, r) => sum + r.installed, 0);
   const totalPending = rows.reduce((sum, r) => sum + r.pending, 0);
   const totalTodayInstalled = rows.reduce((sum, r) => sum + r.todayInstalled, 0);
-  tbody.innerHTML = rows.map((r) => { const providedCell = isAdmin ? `<input type="number" min="0" value="${r.provided}" data-eng="${r.eng}" style="width:80px;border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:11px;outline:none;" />` : `<span>${r.provided}</span>`; return `<tr><td>${r.eng}</td><td>${providedCell}</td><td>${r.todayInstalled}</td><td>${r.installed}</td><td style="color:${r.pending>0?'var(--sf-red)':'var(--sf-green)'};font-weight:600;">${r.pending}</td></tr>`; }).join("");
-  if (rows.length > 0) tbody.innerHTML += `<tr class="sf-total-row"><td>Total</td><td>${totalProvided}</td><td>${totalTodayInstalled}</td><td>${totalInstalled}</td><td style="color:var(--sf-red);">${totalPending}</td></tr>`;
-  else tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--txt3);">No data</td></tr>`;
-  if (saveBtn) saveBtn.classList.toggle("hidden", !isAdmin);
-}
-
-function savePcbProvidedCounts() {
-  try {
-    const inputs = document.querySelectorAll("#pcbInstallationBody input[data-eng]");
-    const payload = {};
-    inputs.forEach((inp) => { const eng = inp.getAttribute("data-eng"); payload[eng] = Number(inp.value || 0) || 0; });
-    localStorage.setItem(pcbProvidedStorageKey(), JSON.stringify(payload));
-    renderPcbInstallation(window.__statusRecords);
-  } catch (e) { console.error("save pcb provided error", e); }
+  const totalBypass = rows.reduce((sum, r) => sum + r.bypass, 0);
+  tbody.innerHTML = rows.map((r) => `
+    <tr>
+      <td>${escapeHtml(r.eng)}</td>
+      <td>${r.provided}</td>
+      <td>${r.todayInstalled}</td>
+      <td>${r.installed}</td>
+      <td style="color:${r.pending>0?'var(--sf-red)':'var(--sf-green)'};font-weight:600;">${r.pending}</td>
+      <td>
+        <div class="pcb-bypass-cell">
+          <div class="pcb-bypass-meta">
+            <span>${r.bypass}</span>
+            ${r.markedFaulty > 0 ? `<span class="pcb-mark-count">Marked: ${r.markedFaulty}/${r.bypassSites}</span>` : ""}
+          </div>
+          ${r.bypassSites > 0 ? `<button type="button" class="sf-btn-link" onclick='openPcbMarkModal(${JSON.stringify(r.eng)})'>Mark Sites</button>` : ""}
+        </div>
+      </td>
+    </tr>
+  `).join("");
+  if (rows.length > 0) tbody.innerHTML += `<tr class="sf-total-row"><td>Total</td><td>${totalProvided}</td><td>${totalTodayInstalled}</td><td>${totalInstalled}</td><td style="color:var(--sf-red);">${totalPending}</td><td>${totalBypass}</td></tr>`;
+  else tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--txt3);">No data</td></tr>`;
 }
 
 function exportRelconConnectivityCSV() {
@@ -950,23 +1207,49 @@ function exportRelconConnectivityCSV() {
 function exportPcbInstallationExcel() {
   try {
     let statusRecords = window.__statusRecords || [];
+    let materialRequirements = window.__materialRequirements || [];
     const currentUser = window.__currentUser || {};
     const userRole = currentUser.role || "";
     const currentEngineer = currentUser.engineerName || currentUser.username || "";
     let pcbRecords = statusRecords.filter((r) => { const purpose = String(r.purpose || r.PurposeOfVisit || r.PURPOSEOFVISIT || "").trim().toUpperCase(); return purpose.includes("POWER PROTECTION PCB") && (purpose.includes("INSTALL") || purpose.includes("INSTAL")); });
     if (userRole === "engineer" && currentEngineer) pcbRecords = pcbRecords.filter((r) => String(r.engineer || r.Engineer || r.engineerName || "").trim().toLowerCase() === currentEngineer.toLowerCase());
-    const detailRows = pcbRecords.map((r) => ({ EngineerName: String(r.engineer || r.Engineer || "").trim(), Region: String(r.region || r.Region || "").trim(), ROCode: String(r.roCode || r.ROCode || r.rocode || "").trim(), ROName: String(r.roName || r.ROName || "").trim(), Phase: String(r.phase || "").trim(), Date: String(r.date || r.Date || "").trim(), PurposeOfVisit: String(r.purpose || r.PurposeOfVisit || r.PURPOSEOFVISIT || "").trim() }));
+    if (userRole === "engineer" && currentEngineer) materialRequirements = materialRequirements.filter((r) => String(r.engineer || "").trim().toLowerCase() === currentEngineer.toLowerCase());
+    const installedSiteKeys = new Set(pcbRecords.map((r) => String(r.roCode || r.ROCode || r.rocode || "").trim().toUpperCase()).filter(Boolean));
+    const detailRows = pcbRecords.map((r) => ({ EngineerName: String(r.engineer || r.Engineer || "").trim(), Region: String(r.region || r.Region || "").trim(), ROCode: String(r.roCode || r.ROCode || r.rocode || "").trim(), ROName: String(r.roName || r.ROName || "").trim(), Phase: String(r.phase || "").trim(), Date: String(r.date || r.Date || "").trim(), PurposeOfVisit: String(r.purpose || r.PurposeOfVisit || r.PURPOSEOFVISIT || "").trim(), RecordType: "PCB Installation", SiteMarkStatus: "", SiteMarkRemark: "" }));
+    const bypassRows = materialRequirements
+      .filter((r) => isByPassPcbMaterial(r.material || "") && installedSiteKeys.has(String(r.roCode || "").trim().toUpperCase()))
+      .map((r) => ({ EngineerName: String(r.engineer || "").trim(), Region: String(r.region || "").trim(), ROCode: String(r.roCode || "").trim(), ROName: String(r.roName || "").trim(), Phase: String(r.phase || "").trim(), Date: String(r.date || "").trim(), PurposeOfVisit: String(r.material || "").trim(), RecordType: "By Pass PCB", SiteMarkStatus: String(r.siteMarkStatus || "").trim(), SiteMarkRemark: String(r.siteMarkRemark || "").trim() }));
+    const allDetailRows = [...detailRows, ...bypassRows];
     const summaryMap = {};
-    detailRows.forEach((r) => { const eng = r.EngineerName || "Unknown"; if (!summaryMap[eng]) summaryMap[eng] = { Provided: 0, Today: 0, Total: 0, Pending: 0 }; summaryMap[eng].Total += 1; const today = new Date().toISOString().split("T")[0]; if (r.Date && r.Date.startsWith(today)) summaryMap[eng].Today += 1; });
-    const summaryRows = [["Engineer Name","Total PCB Provided (A)","Today PCB Installation","Total PCB Install (B)","Total PCB Installation Pending"]];
-    Object.entries(summaryMap).forEach(([eng, val]) => summaryRows.push([eng, val.Provided, val.Today, val.Total, (val.Provided || 0) - val.Total]));
+    const todayIso = new Date().toISOString().split("T")[0];
+    const markedFaultySiteMap = new Map();
+    pcbRecords.forEach((r) => { const eng = String(r.engineer || r.Engineer || "").trim() || "Unknown"; if (!summaryMap[eng]) summaryMap[eng] = { Provided: 0, Today: 0, Total: 0, Pending: 0, Bypass: 0, MarkedFaulty: 0 }; summaryMap[eng].Total += 1; const d = String(r.date || r.Date || "").slice(0, 10); if (d === todayIso) summaryMap[eng].Today += 1; });
+    materialRequirements.forEach((r) => {
+      const eng = String(r.engineer || "").trim() || "Unknown";
+      if (!summaryMap[eng]) summaryMap[eng] = { Provided: 0, Today: 0, Total: 0, Pending: 0, Bypass: 0, MarkedFaulty: 0 };
+      if (isPowerProtectionPcbMaterial(r.material || "")) summaryMap[eng].Provided += 1;
+      if (isByPassPcbMaterial(r.material || "") && installedSiteKeys.has(String(r.roCode || "").trim().toUpperCase())) {
+        summaryMap[eng].Bypass += 1;
+        if (isPcbFaultyMark(r.siteMarkStatus)) {
+          if (!markedFaultySiteMap.has(eng)) markedFaultySiteMap.set(eng, new Set());
+          markedFaultySiteMap.get(eng).add(String(r.roCode || "").trim().toUpperCase());
+        }
+      }
+    });
+    markedFaultySiteMap.forEach((siteSet, eng) => {
+      if (summaryMap[eng]) summaryMap[eng].MarkedFaulty = siteSet.size;
+    });
+    const summaryRows = [["Engineer Name","Total PCB Provided (A)","Today PCB Installation","Total PCB Install (B)","Total PCB Installation Pending","By Pass PCB","Marked PCB Faulty"]];
+    Object.entries(summaryMap).forEach(([eng, val]) => summaryRows.push([eng, val.Provided, val.Today, val.Total, Math.max(0, (val.Provided || 0) - val.Total), val.Bypass || 0, val.MarkedFaulty || 0]));
     const totalProvided = Object.values(summaryMap).reduce((sum, v) => sum + (v.Provided || 0), 0);
     const totalToday = Object.values(summaryMap).reduce((sum, v) => sum + v.Today, 0);
     const totalInstall = Object.values(summaryMap).reduce((sum, v) => sum + v.Total, 0);
-    const totalPending = Object.values(summaryMap).reduce((sum, v) => sum + ((v.Provided || 0) - v.Total), 0);
-    summaryRows.push(["Total", totalProvided, totalToday, totalInstall, totalPending]);
+    const totalPending = Object.values(summaryMap).reduce((sum, v) => sum + Math.max(0, (v.Provided || 0) - v.Total), 0);
+    const totalBypass = Object.values(summaryMap).reduce((sum, v) => sum + (v.Bypass || 0), 0);
+    const totalMarkedFaulty = Object.values(summaryMap).reduce((sum, v) => sum + (v.MarkedFaulty || 0), 0);
+    summaryRows.push(["Total", totalProvided, totalToday, totalInstall, totalPending, totalBypass, totalMarkedFaulty]);
     const ws1 = XLSX.utils.aoa_to_sheet(summaryRows);
-    const ws2 = XLSX.utils.json_to_sheet(detailRows);
+    const ws2 = XLSX.utils.json_to_sheet(allDetailRows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws1, "Summary");
     XLSX.utils.book_append_sheet(wb, ws2, "Details");
