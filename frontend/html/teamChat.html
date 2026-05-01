@@ -1560,6 +1560,7 @@ let activeReactTarget = null;
 let mentionSelectedIdx = -1;
 let lastOwnMsgId = null;
 let lastMsgFrom = null, lastMsgDate = null;
+const CHAT_READ_SYNC_KEY = 'relcon_chat_read_at';
 
 const CHANNEL_META = {
   'general':       { desc: 'General team discussions and updates', icon: 'fa-hashtag' },
@@ -1659,6 +1660,18 @@ document.addEventListener('DOMContentLoaded', () => {
   renderDMList();
   loadUserStatus();
   if (localStorage.getItem('relcon-theme') === 'dark') document.body.classList.add('dark-mode');
+  syncChatReadState();
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      syncChatReadState();
+      if (currentChannel.startsWith('dm-')) {
+        const dmUser = currentChannel.replace('dm-', '');
+        markDmAsRead(dmUser);
+        markNotificationsReadBySender(dmUser);
+      }
+    }
+  });
 });
 
 function highlightMention(items) {
@@ -1727,6 +1740,9 @@ function initWS() {
         if (currentChannel === `dm-${msg.from}`) {
           renderMessage(msg);
           if (!isAtBottom) { newMsgCount++; updateScrollFabCount(); }
+          markDmAsRead(msg.from);
+          markNotificationsReadBySender(msg.from);
+          syncChatReadState();
         } else {
           addNotification(msg.from, msg.text, 'dm');
         }
@@ -1739,6 +1755,46 @@ function initWS() {
   };
   ws.onclose = () => { wsReconnectTimer = setTimeout(initWS, 3000); };
   ws.onerror = () => { ws.close(); };
+}
+
+function syncChatReadState() {
+  try { localStorage.setItem(CHAT_READ_SYNC_KEY, String(Date.now())); } catch {}
+}
+
+function refreshNotifDot() {
+  const hasUnread = notifications.some(n => !n.read);
+  document.getElementById('notifDot').classList.toggle('show', hasUnread);
+}
+
+function markNotificationsReadBySender(name) {
+  let changed = false;
+  const target = String(name || '').trim().toLowerCase();
+  notifications.forEach(n => {
+    if (!n.read && String(n.from || '').trim().toLowerCase() === target) {
+      n.read = true;
+      changed = true;
+    }
+  });
+  if (changed) {
+    refreshNotifDot();
+    renderNotifications();
+  }
+}
+
+async function markDmAsRead(name) {
+  if (!name || !token) return;
+  try {
+    await fetch(`${BASE_URL}/chat/mark-read`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ from: name, to: currentUser }),
+    });
+  } catch (err) {
+    console.error('Failed to mark DM as read', err);
+  }
 }
 
 /* ════════════════════════════════════════
@@ -2446,6 +2502,9 @@ async function startDM(name) {
   try {
     const res  = await fetch(`${BASE_URL}/chat/history/${encodeURIComponent(currentUser)}/${encodeURIComponent(name)}`, { headers: { Authorization: `Bearer ${token}` } });
     const data = await res.json();
+    await markDmAsRead(name);
+    markNotificationsReadBySender(name);
+    syncChatReadState();
     document.getElementById('skelLoader').style.display = 'none';
     messages.innerHTML = '';
     const sorted = data.sort((a,b) => new Date(a.createdAt||0) - new Date(b.createdAt||0));

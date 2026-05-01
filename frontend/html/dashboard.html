@@ -1276,6 +1276,7 @@ function parseUser(){
   try{const p=JSON.parse(atob(token.split(".")[1]));return(p.engineerName||p.username||"").trim();}catch{return "";}
 }
 const currentUser=parseUser();
+const CHAT_READ_SYNC_KEY="relcon_chat_read_at";
 
 let unreadsMentionCount=0;
 const badgeEl=document.getElementById("mentionBadge");
@@ -1323,6 +1324,7 @@ function updateMentionBadge(){
 function clearMentionNotifications(){unreadsMentionCount=0;updateMentionBadge();}
 function openChatBox(){document.getElementById("chatBox").style.display="flex";clearMentionNotifications();setTimeout(scrolltoBottom,0);}
 chatInput.addEventListener("focus",()=>clearMentionNotifications());
+window.addEventListener("storage",(e)=>{if(e.key===CHAT_READ_SYNC_KEY) clearMentionNotifications();});
 function scrolltoBottom(){try{chatMessages.scrollTop=chatMessages.scrollHeight;}catch{}}
 
 function sendMessage(){
