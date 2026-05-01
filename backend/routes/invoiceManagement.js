@@ -37,6 +37,10 @@ const EXPORT_HEADERS = [
   "Remark",
   "Total_Billing_Month",
   "Billing Type",
+  "Invoice submission date to Account Department",
+  "Invoice Number",
+  "Invoice Date",
+  "Invoice Submission date to region",
 ];
 
 function normalizeHeader(value = "") {
@@ -73,6 +77,27 @@ function toISODateFromExcel(value) {
   return dt.toISOString().slice(0, 10);
 }
 
+function formatDateDDMMYYYY(value) {
+  const iso = toISODateFromExcel(value);
+  if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
+  const [yyyy, mm, dd] = iso.split("-");
+  return `${dd}-${mm}-${yyyy}`;
+}
+
+function roundMoney(value) {
+  return Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
+}
+
+function buildInvoiceRemark({ noOfSite = 0, availableQty = 0, totalBillingMonth = 0, finalQty = 0 } = {}) {
+  const siteCount = Number(noOfSite || 0);
+  const qty = Number(availableQty || 0);
+  const billingMonth = Number(totalBillingMonth || 0);
+  const billedQty = Number(finalQty || 0);
+  if (!siteCount && !qty && !billingMonth && !billedQty) return "";
+  const monthPart = billingMonth ? ` (${billingMonth})` : "";
+  return `Number of Sites ${siteCount} X Qty ${qty}${monthPart} = Billing Qty ${billedQty}`;
+}
+
 function parseSheetRows(sheet) {
   const rawRows = XLSX.utils.sheet_to_json(sheet, { defval: "", raw: true });
   return rawRows.map((row, index) => {
@@ -98,6 +123,10 @@ function parseSheetRows(sheet) {
       remark: normalizeText(normalized.remark),
       totalBillingMonth: toNumber(normalized.totalbillingmonth),
       billingType: normalizeText(normalized.billingtype),
+      invoiceSubmissionDateToAccountDepartment: toISODateFromExcel(normalized.invoicesubmissiondatetoaccountdepartment),
+      invoiceNumber: normalizeText(normalized.invoicenumber),
+      invoiceDate: toISODateFromExcel(normalized.invoicedate),
+      invoiceSubmissionDateToRegion: toISODateFromExcel(normalized.invoicesubmissiondatetoregion),
     };
 
     return record;
@@ -114,25 +143,38 @@ function validateInvoiceRow(row) {
 }
 
 function normalizeInvoicePayload(body = {}, fallbackSno = 0) {
+  const finalQty = toNumber(body.finalQty);
+  const perQtyRate = toNumber(body.perQtyRate);
+  const amount = roundMoney(finalQty * perQtyRate);
+  const taxCgst = roundMoney(amount * 0.18);
+  const finalAmount = roundMoney(amount + taxCgst);
+  const noOfSite = toNumber(body.noOfSite);
+  const availableQty = toNumber(body.availableQty);
+  const totalBillingMonth = toNumber(body.totalBillingMonth);
+  const autoRemark = buildInvoiceRemark({ noOfSite, availableQty, totalBillingMonth, finalQty });
   return {
     sno: toNumber(body.sno, fallbackSno),
     region: normalizeText(body.region),
     callupNo: normalizeText(body.callupNo),
     callupDate: toISODateFromExcel(body.callupDate),
     phase: normalizeText(body.phase),
-    noOfSite: toNumber(body.noOfSite),
-    availableQty: toNumber(body.availableQty),
-    finalQty: toNumber(body.finalQty),
-    perQtyRate: toNumber(body.perQtyRate),
-    amount: toNumber(body.amount),
-    taxCgst: toNumber(body.taxCgst),
-    finalAmount: toNumber(body.finalAmount),
+    noOfSite,
+    availableQty,
+    finalQty,
+    perQtyRate,
+    amount,
+    taxCgst,
+    finalAmount,
     yearLabel: normalizeText(body.yearLabel),
     quarter: normalizeText(body.quarter),
     monthLabel: normalizeText(body.monthLabel),
-    remark: normalizeText(body.remark),
-    totalBillingMonth: toNumber(body.totalBillingMonth),
+    remark: normalizeText(body.remark) || autoRemark,
+    totalBillingMonth,
     billingType: normalizeText(body.billingType),
+    invoiceSubmissionDateToAccountDepartment: toISODateFromExcel(body.invoiceSubmissionDateToAccountDepartment),
+    invoiceNumber: normalizeText(body.invoiceNumber),
+    invoiceDate: toISODateFromExcel(body.invoiceDate),
+    invoiceSubmissionDateToRegion: toISODateFromExcel(body.invoiceSubmissionDateToRegion),
   };
 }
 
@@ -144,6 +186,10 @@ function buildQuery(queryParams = {}) {
     billingType = "",
     quarter = "",
     yearLabel = "",
+    invoiceNumber = "",
+    invoiceDate = "",
+    invoiceSubmissionDateToAccountDepartment = "",
+    invoiceSubmissionDateToRegion = "",
   } = queryParams;
 
   const query = {};
@@ -155,6 +201,7 @@ function buildQuery(queryParams = {}) {
       { phase: re },
       { remark: re },
       { billingType: re },
+      { invoiceNumber: re },
     ];
   }
   if (region) query.region = new RegExp(`^${region}$`, "i");
@@ -162,6 +209,10 @@ function buildQuery(queryParams = {}) {
   if (billingType) query.billingType = new RegExp(`^${billingType}$`, "i");
   if (quarter) query.quarter = new RegExp(`^${quarter}$`, "i");
   if (yearLabel) query.yearLabel = new RegExp(`^${yearLabel}$`, "i");
+  if (invoiceNumber) query.invoiceNumber = new RegExp(invoiceNumber, "i");
+  if (invoiceDate) query.invoiceDate = toISODateFromExcel(invoiceDate);
+  if (invoiceSubmissionDateToAccountDepartment) query.invoiceSubmissionDateToAccountDepartment = toISODateFromExcel(invoiceSubmissionDateToAccountDepartment);
+  if (invoiceSubmissionDateToRegion) query.invoiceSubmissionDateToRegion = toISODateFromExcel(invoiceSubmissionDateToRegion);
   return query;
 }
 
@@ -170,7 +221,7 @@ function exportRows(records = []) {
     item.sno || index + 1,
     item.region || "",
     item.callupNo || "",
-    item.callupDate || "",
+    formatDateDDMMYYYY(item.callupDate || ""),
     item.phase || "",
     item.noOfSite || 0,
     item.availableQty || 0,
@@ -185,6 +236,10 @@ function exportRows(records = []) {
     item.remark || "",
     item.totalBillingMonth || 0,
     item.billingType || "",
+    formatDateDDMMYYYY(item.invoiceSubmissionDateToAccountDepartment || ""),
+    item.invoiceNumber || "",
+    formatDateDDMMYYYY(item.invoiceDate || ""),
+    formatDateDDMMYYYY(item.invoiceSubmissionDateToRegion || ""),
   ]));
 }
 
@@ -363,6 +418,7 @@ router.get("/export/excel", verifyToken, requireRole(["Admin"]), async (req, res
       { wch: 8 }, { wch: 16 }, { wch: 18 }, { wch: 14 }, { wch: 20 }, { wch: 12 },
       { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 16 }, { wch: 14 }, { wch: 16 },
       { wch: 10 }, { wch: 8 }, { wch: 14 }, { wch: 46 }, { wch: 20 }, { wch: 14 },
+      { wch: 24 }, { wch: 18 }, { wch: 16 }, { wch: 24 },
     ];
     XLSX.utils.book_append_sheet(wb, ws, "Invoices");
 

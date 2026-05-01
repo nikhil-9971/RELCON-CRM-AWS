@@ -220,6 +220,22 @@
             <div class="sf-filter-label">Billing Type</div>
             <select id="billingTypeFilter" class="sf-select"><option value="">All Types</option></select>
           </div>
+          <div class="sf-filter-group">
+            <div class="sf-filter-label">Invoice Number</div>
+            <input id="invoiceNumberFilter" class="sf-input" placeholder="Invoice no"/>
+          </div>
+          <div class="sf-filter-group">
+            <div class="sf-filter-label">Invoice Date</div>
+            <input id="invoiceDateFilter" class="sf-input" type="date"/>
+          </div>
+          <div class="sf-filter-group">
+            <div class="sf-filter-label">Sub. To Account Dept.</div>
+            <input id="accountSubmissionDateFilter" class="sf-input" type="date"/>
+          </div>
+          <div class="sf-filter-group">
+            <div class="sf-filter-label">Sub. To Region</div>
+            <input id="regionSubmissionDateFilter" class="sf-input" type="date"/>
+          </div>
           <div class="sf-toolbar-spacer"></div>
           <button class="sf-btn sf-btn-primary" id="applyFiltersBtn"><i class="fa-solid fa-filter"></i> Apply</button>
           <button class="sf-btn sf-btn-neutral" id="resetFiltersBtn"><i class="fa-solid fa-eraser"></i> Reset</button>
@@ -252,6 +268,10 @@
                   <th>Remark</th>
                   <th>Total Billing Month</th>
                   <th>Billing Type</th>
+                  <th>Invoice Sub. To Account Dept.</th>
+                  <th>Invoice Number</th>
+                  <th>Invoice Date</th>
+                  <th>Invoice Sub. To Region</th>
                   <th>Imported By</th>
                   <th>Action</th>
                 </tr>
@@ -288,7 +308,7 @@
 
         <div class="sf-panel">
           <div class="sf-panel-title"><i class="fa-solid fa-circle-info"></i> Expected Columns</div>
-          <div class="sf-panel-sub">SNO, Region, Callup_No, Callup_Date, Phase, No_of_Site, Available_Qty, Final_Qty, Per_qty_Rate, Amount, Tax(CGST), Final_amount, Year, Qtr, MONTH, Remark, Total_Billing_Month, Billing Type</div>
+          <div class="sf-panel-sub">SNO, Region, Callup_No, Callup_Date, Phase, No_of_Site, Available_Qty, Final_Qty, Per_qty_Rate, Amount, Tax(CGST), Final_amount, Year, Qtr, MONTH, Remark, Total_Billing_Month, Billing Type, Invoice submission date to Account Department, Invoice Number, Invoice Date, Invoice Submission date to region</div>
         </div>
       </div>
     </div>
@@ -311,14 +331,18 @@
           <div class="sf-modal-field"><div class="sf-modal-label">Available Qty</div><input id="fAvailableQty" class="sf-modal-input" type="number" step="0.01"/></div>
           <div class="sf-modal-field"><div class="sf-modal-label">Final Qty</div><input id="fFinalQty" class="sf-modal-input" type="number" step="0.01"/></div>
           <div class="sf-modal-field"><div class="sf-modal-label">Per Qty Rate</div><input id="fPerQtyRate" class="sf-modal-input" type="number" step="0.01"/></div>
-          <div class="sf-modal-field"><div class="sf-modal-label">Amount</div><input id="fAmount" class="sf-modal-input" type="number" step="0.01"/></div>
-          <div class="sf-modal-field"><div class="sf-modal-label">Tax (CGST)</div><input id="fTaxCgst" class="sf-modal-input" type="number" step="0.01"/></div>
-          <div class="sf-modal-field"><div class="sf-modal-label">Final Amount</div><input id="fFinalAmount" class="sf-modal-input" type="number" step="0.01"/></div>
+          <div class="sf-modal-field"><div class="sf-modal-label">Amount</div><input id="fAmount" class="sf-modal-input" type="number" step="0.01" readonly/></div>
+          <div class="sf-modal-field"><div class="sf-modal-label">Tax (CGST)</div><input id="fTaxCgst" class="sf-modal-input" type="number" step="0.01" readonly/></div>
+          <div class="sf-modal-field"><div class="sf-modal-label">Final Amount</div><input id="fFinalAmount" class="sf-modal-input" type="number" step="0.01" readonly/></div>
           <div class="sf-modal-field"><div class="sf-modal-label">Year</div><input id="fYearLabel" class="sf-modal-input"/></div>
           <div class="sf-modal-field"><div class="sf-modal-label">Quarter</div><input id="fQuarter" class="sf-modal-input"/></div>
           <div class="sf-modal-field"><div class="sf-modal-label">Month</div><input id="fMonthLabel" class="sf-modal-input"/></div>
           <div class="sf-modal-field"><div class="sf-modal-label">Total Billing Month</div><input id="fTotalBillingMonth" class="sf-modal-input" type="number" step="0.01"/></div>
           <div class="sf-modal-field"><div class="sf-modal-label">Billing Type</div><input id="fBillingType" class="sf-modal-input"/></div>
+          <div class="sf-modal-field"><div class="sf-modal-label">Invoice Submission Date To Account Department</div><input id="fInvoiceSubmissionDateToAccountDepartment" class="sf-modal-input" type="date"/></div>
+          <div class="sf-modal-field"><div class="sf-modal-label">Invoice Number</div><input id="fInvoiceNumber" class="sf-modal-input"/></div>
+          <div class="sf-modal-field"><div class="sf-modal-label">Invoice Date</div><input id="fInvoiceDate" class="sf-modal-input" type="date"/></div>
+          <div class="sf-modal-field"><div class="sf-modal-label">Invoice Submission Date To Region</div><input id="fInvoiceSubmissionDateToRegion" class="sf-modal-input" type="date"/></div>
           <div class="sf-modal-field full"><div class="sf-modal-label">Remark</div><textarea id="fRemark" class="sf-modal-textarea"></textarea></div>
         </div>
         <div id="formNote" class="sf-note"></div>
@@ -338,7 +362,7 @@
     const INR = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 });
     const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (s) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[s]));
 
-    let currentFilters = { search: "", region: "", monthLabel: "", billingType: "" };
+    let currentFilters = { search: "", region: "", monthLabel: "", billingType: "", invoiceNumber: "", invoiceDate: "", invoiceSubmissionDateToAccountDepartment: "", invoiceSubmissionDateToRegion: "" };
     let currentPage = 1;
     let totalRecords = 0;
     let pageSize = 100;
@@ -350,6 +374,22 @@
     }
 
     function money(v) { return INR.format(Number(v || 0)); }
+    function round2(v) { return Math.round((Number(v || 0) + Number.EPSILON) * 100) / 100; }
+    function formatDisplayDate(value) {
+      const raw = String(value || "").trim();
+      if (!raw) return "-";
+      if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+        const [yyyy, mm, dd] = raw.split("-");
+        return `${dd}-${mm}-${yyyy}`;
+      }
+      if (/^\d{2}-\d{2}-\d{4}$/.test(raw)) return raw;
+      const parsed = new Date(raw);
+      if (Number.isNaN(parsed.getTime())) return raw;
+      const yyyy = parsed.getFullYear();
+      const mm = String(parsed.getMonth() + 1).padStart(2, "0");
+      const dd = String(parsed.getDate()).padStart(2, "0");
+      return `${dd}-${mm}-${yyyy}`;
+    }
     function qs(obj) {
       const p = new URLSearchParams();
       Object.entries(obj).forEach(([k, v]) => { if (v !== undefined && v !== null && String(v) !== "") p.set(k, v); });
@@ -380,6 +420,10 @@
         region: document.getElementById("regionFilter").value,
         monthLabel: document.getElementById("monthFilter").value,
         billingType: document.getElementById("billingTypeFilter").value,
+        invoiceNumber: document.getElementById("invoiceNumberFilter").value.trim(),
+        invoiceDate: document.getElementById("invoiceDateFilter").value,
+        invoiceSubmissionDateToAccountDepartment: document.getElementById("accountSubmissionDateFilter").value,
+        invoiceSubmissionDateToRegion: document.getElementById("regionSubmissionDateFilter").value,
       };
     }
 
@@ -419,7 +463,7 @@
       document.getElementById("tabCount").textContent = totalRecords;
       const body = document.getElementById("tableBody");
       if (!rows.length) {
-        body.innerHTML = `<tr><td colspan="20" style="padding:28px;text-align:center;color:#706e6b;">No invoice records found for the current filters.</td></tr>`;
+        body.innerHTML = `<tr><td colspan="24" style="padding:28px;text-align:center;color:#706e6b;">No invoice records found for the current filters.</td></tr>`;
         renderPagination();
         return;
       }
@@ -428,7 +472,7 @@
           <td>${esc(r.sno)}</td>
           <td><span class="sf-badge badge-region">${esc(r.region || "-")}</span></td>
           <td><span class="code-chip">${esc(r.callupNo || "-")}</span></td>
-          <td>${esc(r.callupDate || "-")}</td>
+          <td>${esc(formatDisplayDate(r.callupDate))}</td>
           <td>${esc(r.phase || "-")}</td>
           <td>${money(r.noOfSite)}</td>
           <td>${money(r.availableQty)}</td>
@@ -443,6 +487,10 @@
           <td title="${esc(r.remark || "-")}">${esc(r.remark || "-")}</td>
           <td>${money(r.totalBillingMonth)}</td>
           <td><span class="sf-badge badge-billing">${esc(r.billingType || "-")}</span></td>
+          <td>${esc(formatDisplayDate(r.invoiceSubmissionDateToAccountDepartment))}</td>
+          <td><span class="code-chip">${esc(r.invoiceNumber || "-")}</span></td>
+          <td>${esc(formatDisplayDate(r.invoiceDate))}</td>
+          <td>${esc(formatDisplayDate(r.invoiceSubmissionDateToRegion))}</td>
           <td>${esc(r.importedBy || "-")}</td>
           <td>
             <div class="sf-ab">
@@ -497,6 +545,11 @@
       document.getElementById("fRemark").value = data.remark || "";
       document.getElementById("fTotalBillingMonth").value = data.totalBillingMonth ?? "";
       document.getElementById("fBillingType").value = data.billingType || "";
+      document.getElementById("fInvoiceSubmissionDateToAccountDepartment").value = data.invoiceSubmissionDateToAccountDepartment ? String(data.invoiceSubmissionDateToAccountDepartment).slice(0, 10) : "";
+      document.getElementById("fInvoiceNumber").value = data.invoiceNumber || "";
+      document.getElementById("fInvoiceDate").value = data.invoiceDate ? String(data.invoiceDate).slice(0, 10) : "";
+      document.getElementById("fInvoiceSubmissionDateToRegion").value = data.invoiceSubmissionDateToRegion ? String(data.invoiceSubmissionDateToRegion).slice(0, 10) : "";
+      if (mode === "add" || !data.remark) syncCalculatedFields();
       clearNote("formNote");
       document.getElementById("invoiceModalOverlay").classList.add("open");
     }
@@ -526,7 +579,33 @@
         remark: document.getElementById("fRemark").value.trim(),
         totalBillingMonth: document.getElementById("fTotalBillingMonth").value,
         billingType: document.getElementById("fBillingType").value.trim(),
+        invoiceSubmissionDateToAccountDepartment: document.getElementById("fInvoiceSubmissionDateToAccountDepartment").value,
+        invoiceNumber: document.getElementById("fInvoiceNumber").value.trim(),
+        invoiceDate: document.getElementById("fInvoiceDate").value,
+        invoiceSubmissionDateToRegion: document.getElementById("fInvoiceSubmissionDateToRegion").value,
       };
+    }
+
+    function buildAutoRemark() {
+      const noOfSite = Number(document.getElementById("fNoOfSite").value || 0);
+      const availableQty = Number(document.getElementById("fAvailableQty").value || 0);
+      const totalBillingMonth = Number(document.getElementById("fTotalBillingMonth").value || 0);
+      const finalQty = Number(document.getElementById("fFinalQty").value || 0);
+      if (!noOfSite && !availableQty && !totalBillingMonth && !finalQty) return "";
+      const monthPart = totalBillingMonth ? ` (${totalBillingMonth})` : "";
+      return `Number of Sites ${noOfSite} X Qty ${availableQty}${monthPart} = Billing Qty ${finalQty}`;
+    }
+
+    function syncCalculatedFields() {
+      const finalQty = Number(document.getElementById("fFinalQty").value || 0);
+      const perQtyRate = Number(document.getElementById("fPerQtyRate").value || 0);
+      const amount = round2(finalQty * perQtyRate);
+      const tax = round2(amount * 0.18);
+      const finalAmount = round2(amount + tax);
+      document.getElementById("fAmount").value = amount.toFixed(2);
+      document.getElementById("fTaxCgst").value = tax.toFixed(2);
+      document.getElementById("fFinalAmount").value = finalAmount.toFixed(2);
+      document.getElementById("fRemark").value = buildAutoRemark();
     }
 
     async function saveRecord() {
@@ -609,6 +688,10 @@
       document.getElementById("regionFilter").value = "";
       document.getElementById("monthFilter").value = "";
       document.getElementById("billingTypeFilter").value = "";
+      document.getElementById("invoiceNumberFilter").value = "";
+      document.getElementById("invoiceDateFilter").value = "";
+      document.getElementById("accountSubmissionDateFilter").value = "";
+      document.getElementById("regionSubmissionDateFilter").value = "";
       refreshAll(1);
     }
 
@@ -650,6 +733,9 @@
     document.getElementById("nextBtn").addEventListener("click", () => currentPage * pageSize < totalRecords && refreshAll(currentPage + 1));
     document.getElementById("searchInput").addEventListener("keydown", (e) => { if (e.key === "Enter") refreshAll(1); });
     document.getElementById("invoiceModalOverlay").addEventListener("click", (e) => { if (e.target.id === "invoiceModalOverlay") closeModal(); });
+    ["fNoOfSite","fAvailableQty","fFinalQty","fPerQtyRate","fTotalBillingMonth"].forEach((id) => {
+      document.getElementById(id).addEventListener("input", syncCalculatedFields);
+    });
   </script>
 </body>
 </html>
