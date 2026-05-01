@@ -258,6 +258,19 @@ function isPlanAfterReminderCutoff(plan) {
   return visitDateISO > PENDING_STATUS_REMINDER_PLAN_DATE_CUTOFF;
 }
 
+function normalizePlanKeyPart(value = "") {
+  return String(value || "").trim().toUpperCase();
+}
+
+function getPendingStatusRecordKey(plan) {
+  return [
+    normalizePlanKeyPart(plan?.roCode),
+    normalizePlanKeyPart(getPlanVisitDateISO(plan)),
+    normalizePlanKeyPart(plan?.engineer),
+    normalizePlanKeyPart(plan?.phase),
+  ].join("|");
+}
+
 function getPlanStatusCategory(plan) {
   const phase = String(plan?.phase || "").trim().toUpperCase();
   if (phase.startsWith("BPCL")) return "BPCL";
@@ -1520,7 +1533,9 @@ async function sendPendingStatusReminderAlerts() {
       warnings48: 0,
       skippedNoEngineerEmail: 0,
       skippedBeforeCutoff: 0,
+      skippedDuplicateRecordKey: 0,
     };
+    const processedRecordKeys = new Set();
 
     for (const plan of plans) {
       const createdAt = getPlanCreatedAt(plan);
@@ -1534,6 +1549,13 @@ async function sendPendingStatusReminderAlerts() {
       if (isNayaraPlan(plan)) continue;
       if (isOfficePlan(plan)) continue;
 
+      const recordKey = getPendingStatusRecordKey(plan);
+      if (!recordKey || /^\|*\s*$/.test(recordKey)) continue;
+      if (processedRecordKeys.has(recordKey)) {
+        summary.skippedDuplicateRecordKey += 1;
+        continue;
+      }
+
       const category = getPlanStatusCategory(plan);
       if (!["HPCL", "RBML", "BPCL"].includes(category)) continue;
       const planId = String(plan._id || "");
@@ -1545,8 +1567,11 @@ async function sendPendingStatusReminderAlerts() {
       if (statusExists) continue;
 
       const ageHours = Math.floor((now - createdAt) / (1000 * 60 * 60));
-      const shouldSend48 = ageHours >= 48 && !plan.warning48SentAt;
-      const shouldSend24 = ageHours >= 24 && !plan.reminder24SentAt && !shouldSend48;
+      const relatedPlans = plans.filter((item) => getPendingStatusRecordKey(item) === recordKey);
+      const reminderAlreadySent = relatedPlans.some((item) => !!item.reminder24SentAt);
+      const warningAlreadySent = relatedPlans.some((item) => !!item.warning48SentAt);
+      const shouldSend48 = ageHours >= 48 && !warningAlreadySent;
+      const shouldSend24 = ageHours >= 24 && !reminderAlreadySent && !warningAlreadySent && !shouldSend48;
       if (!shouldSend24 && !shouldSend48) continue;
 
       const engineerName = String(plan.engineer || "").trim();
@@ -1590,10 +1615,24 @@ async function sendPendingStatusReminderAlerts() {
         text,
       });
 
+      const sentAt = new Date();
       const updateFields = shouldSend48
-        ? { warning48SentAt: new Date() }
-        : { reminder24SentAt: new Date() };
-      await DailyPlan.findByIdAndUpdate(plan._id, updateFields);
+        ? { warning48SentAt: sentAt }
+        : { reminder24SentAt: sentAt };
+      await DailyPlan.updateMany(
+        {
+          roCode: plan.roCode || "",
+          date: getPlanVisitDateISO(plan),
+          engineer: plan.engineer || "",
+          phase: plan.phase || "",
+        },
+        updateFields
+      );
+      relatedPlans.forEach((item) => {
+        if (shouldSend48) item.warning48SentAt = sentAt;
+        else item.reminder24SentAt = sentAt;
+      });
+      processedRecordKeys.add(recordKey);
 
       await EmailLog.create({
         type: reportType,
