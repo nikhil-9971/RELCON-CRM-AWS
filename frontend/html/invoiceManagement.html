@@ -1,370 +1,655 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Invoice Management - RELCON CRM</title>
-<script src="config.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
-<style>
-:root{
-  --blue:#1d4ed8; --blueLt:#e8f0ff; --blueDk:#173ea6;
-  --green:#15803d; --greenLt:#e8f7ed;
-  --red:#b42318; --redLt:#fef3f2;
-  --amber:#b45309; --amberLt:#fff7ed;
-  --ink:#0f172a; --muted:#64748b; --line:#dbe2ea; --panel:#ffffff; --bg:#f3f6fb;
-  --shadow:0 10px 30px rgba(15,23,42,.08); --r:14px; --rSm:10px;
-}
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Inter',sans-serif;background:linear-gradient(180deg,#eef4ff 0,#f7f9fc 180px,#f3f6fb 100%);color:var(--ink)}
-.topbar{height:54px;padding:0 22px;display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.82);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
-.icon{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#1d4ed8,#0f766e);display:flex;align-items:center;justify-content:center;color:#fff}
-.title{font-size:15px;font-weight:800}
-.meta{font-size:11px;color:var(--muted);padding:4px 10px;border:1px solid var(--line);border-radius:999px;background:#fff}
-.page{padding:18px 22px 24px}
-.hero,.toolbar,.tableCard,.empty,.access{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
-.hero{padding:20px;display:flex;gap:18px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;margin-bottom:14px}
-.hero h1{font-size:24px;letter-spacing:-.03em}
-.hero p{margin-top:6px;max-width:820px;color:var(--muted);line-height:1.6}
-.heroActions{display:flex;gap:10px;flex-wrap:wrap}
-.btn{height:38px;padding:0 14px;border-radius:10px;border:none;font:600 12px Inter,sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:8px;transition:.15s}
-.btn:disabled{opacity:.55;cursor:not-allowed}
-.btnPrimary{background:var(--blue);color:#fff}.btnPrimary:hover{background:var(--blueDk)}
-.btnSoft{background:#fff;border:1px solid var(--line);color:var(--ink)}
-.btnDanger{background:var(--red);color:#fff}
-.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:var(--shadow)}
-.label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
-.value{margin-top:10px;font-size:26px;font-weight:800}
-.sub{margin-top:6px;font-size:12px;color:var(--muted)}
-.toolbar{padding:16px;margin-bottom:14px}
-.toolbarGrid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:10px;align-items:end}
-.field{display:flex;flex-direction:column;gap:6px}
-.field label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
-.input,.select{height:38px;border:1px solid var(--line);border-radius:10px;padding:0 12px;background:#fff;color:var(--ink);outline:none}
-.input:focus,.select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(29,78,216,.12)}
-.uploadRow{margin-top:14px;padding-top:14px;border-top:1px dashed var(--line);display:grid;grid-template-columns:2fr auto auto auto;gap:10px;align-items:center}
-.hint{font-size:12px;color:var(--muted)}
-.check{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink)}
-.notice{margin-top:10px;padding:12px 14px;border-radius:12px;font-size:12px;display:none}
-.notice.show{display:block}.notice.ok{background:var(--greenLt);color:var(--green)}.notice.err{background:var(--redLt);color:var(--red)}
-.tableCard{overflow:hidden}
-.tableHead{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
-.tableTitle{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}
-.count{font-size:11px;color:var(--muted)}
-.tableWrap{overflow:auto;max-height:calc(100vh - 370px)}
-table{width:100%;border-collapse:collapse;min-width:1550px}
-th,td{padding:10px 12px;border-bottom:1px solid #edf1f5;text-align:left;font-size:12px;white-space:nowrap}
-th{position:sticky;top:0;background:#0f172a;color:#eff6ff;font-size:11px;letter-spacing:.05em;text-transform:uppercase;z-index:2}
-tbody tr:hover{background:#f8fbff}
-.money{font-weight:700;color:var(--green)}
-.badge{display:inline-flex;align-items:center;padding:4px 9px;border-radius:999px;background:var(--blueLt);color:var(--blue);font-size:11px;font-weight:700}
-.act{height:30px;width:30px;border-radius:8px;border:1px solid #fecaca;background:#fff5f5;color:var(--red);cursor:pointer}
-.empty,.access{padding:40px 20px;text-align:center}
-.empty i,.access i{font-size:30px;color:var(--muted);margin-bottom:12px}
-.empty h3,.access h3{font-size:18px;margin-bottom:8px}
-.empty p,.access p{color:var(--muted);max-width:540px;margin:0 auto;line-height:1.6}
-@media (max-width:1200px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.toolbarGrid,.uploadRow{grid-template-columns:1fr 1fr}}
-@media (max-width:760px){.page{padding:14px}.hero{padding:16px}.hero h1{font-size:20px}.grid,.toolbarGrid,.uploadRow{grid-template-columns:1fr}.tableWrap{max-height:none}}
-</style>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Invoice Management — RELCON CRM</title>
+  <script src="config.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <style>
+    :root {
+      --sf-blue:#0176d3; --sf-blue-dk:#014486; --sf-blue-lt:#e8f4fd; --sf-blue-hover:#0b5faa;
+      --sf-navy:#1a2e4a;
+      --sf-green:#2e844a; --sf-green-lt:#eaf5ea;
+      --sf-red:#ba0517; --sf-red-lt:#fef1ee;
+      --sf-orange:#dd5a0c; --sf-orange-lt:#fff3e0;
+      --sf-yellow:#b8860b; --sf-yellow-lt:#fff8e6;
+      --sf-purple:#6b3fa0; --sf-purple-lt:#f5f0ff;
+      --sf-teal:#0e7490; --sf-teal-lt:#ecfeff;
+      --bg:#f3f2f2; --surface:#fff; --surface2:#f9f9f9;
+      --border:#dddbda; --border-lt:#f3f2f2;
+      --txt:#080707; --txt2:#3e3e3c; --txt3:#706e6b; --txt4:#aeaeac;
+      --r-sm:4px; --r:6px; --r-lg:8px; --r-xl:12px;
+      --sh-sm:0 2px 4px rgba(0,0,0,0.09); --sh-md:0 8px 24px rgba(0,0,0,0.12);
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html{font-size:13px;-webkit-font-smoothing:antialiased;}
+    body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;}
+    ::-webkit-scrollbar{width:5px;height:5px;}
+    ::-webkit-scrollbar-thumb{background:#c8c6c4;border-radius:3px;}
+
+    .dv-strip{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:52px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:200;box-shadow:0 1px 3px rgba(15,23,42,0.07);}
+    .dv-strip-icon{width:28px;height:28px;background:var(--sf-purple-lt);border-radius:5px;display:flex;align-items:center;justify-content:center;color:var(--sf-purple);font-size:13px;}
+    .dv-strip-title{font-size:14px;font-weight:700;color:var(--txt);letter-spacing:-0.2px;}
+    .dv-strip-sep{width:1px;height:18px;background:var(--border);}
+    .dv-strip-meta{font-size:10px;font-weight:500;color:var(--txt4);background:var(--surface2);border:1px solid var(--border);padding:2px 9px;border-radius:9999px;}
+    .dv-strip-spacer{flex:1;}
+
+    .sf-body{padding:16px 20px;}
+    .sf-bc{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--txt3);margin-bottom:10px;}
+    .sf-bc a{color:var(--sf-blue);text-decoration:none;}
+
+    .kpi-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:14px;}
+    .kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 16px;box-shadow:var(--sh-sm);display:flex;flex-direction:column;gap:4px;border-left:3px solid transparent;cursor:pointer;transition:box-shadow 0.15s,transform 0.15s;}
+    .kpi-card:hover{box-shadow:var(--sh-md);transform:translateY(-1px);}
+    .kpi-card.blue{border-left-color:var(--sf-blue);}
+    .kpi-card.green{border-left-color:var(--sf-green);}
+    .kpi-card.orange{border-left-color:var(--sf-orange);}
+    .kpi-card.purple{border-left-color:var(--sf-purple);}
+    .kpi-num{font-size:24px;font-weight:700;line-height:1;}
+    .kpi-num.blue{color:var(--sf-blue);} .kpi-num.green{color:var(--sf-green);} .kpi-num.orange{color:var(--sf-orange);} .kpi-num.purple{color:var(--sf-purple);}
+    .kpi-label{font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:0.5px;}
+    .kpi-sub{font-size:10px;color:var(--txt4);}
+
+    .sf-page-header{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 20px;margin-bottom:12px;display:flex;align-items:center;gap:14px;box-shadow:var(--sh-sm);flex-wrap:wrap;}
+    .sf-page-icon{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#4338ca);display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;box-shadow:0 2px 8px rgba(107,63,160,0.35);flex-shrink:0;}
+    .sf-page-title{font-size:18px;font-weight:700;color:var(--txt);letter-spacing:-0.3px;}
+    .sf-page-meta{font-size:12px;color:var(--txt3);margin-top:2px;}
+    .sf-page-actions{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+
+    .sf-tabs{display:flex;gap:2px;padding:0 20px;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto;}
+    .sf-tab{font-family:'Inter',sans-serif;font-size:12px;font-weight:500;padding:10px 16px;cursor:pointer;border:none;background:transparent;color:var(--txt3);border-bottom:3px solid transparent;transition:all 0.15s;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
+    .sf-tab:hover{color:var(--txt);background:var(--surface2);}
+    .sf-tab.active{color:var(--sf-blue);border-bottom-color:var(--sf-blue);font-weight:600;}
+    .sf-tab-badge{background:var(--sf-blue-lt);color:var(--sf-blue);font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;min-width:18px;text-align:center;}
+
+    .sf-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);padding:12px 20px;margin-bottom:12px;}
+    .sf-panel-title{font-size:12px;font-weight:700;color:var(--txt);text-transform:uppercase;letter-spacing:0.4px;display:flex;align-items:center;gap:6px;margin-bottom:10px;}
+    .sf-panel-sub{font-size:11px;color:var(--txt3);margin-top:-2px;margin-bottom:10px;}
+
+    .sf-toolbar{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);padding:12px 20px;margin-bottom:10px;display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;}
+    .sf-filter-group{display:flex;flex-direction:column;gap:4px;}
+    .sf-filter-label{font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:0.5px;}
+    .sf-input,.sf-select,.sf-file{font-family:'Inter',sans-serif;font-size:12px;color:var(--txt);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:5px 9px;height:32px;outline:none;transition:border-color 0.15s,box-shadow 0.15s;}
+    .sf-input:focus,.sf-select:focus,.sf-file:focus{border-color:var(--sf-blue);box-shadow:0 0 0 3px rgba(1,118,211,0.12);}
+    .sf-search-wrap{position:relative;}
+    .sf-search-wrap i{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--txt4);font-size:11px;pointer-events:none;}
+    .sf-search-input{padding-left:28px;width:240px;}
+    .sf-select{-webkit-appearance:none;appearance:none;padding-right:26px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath fill='%23aeaeac' d='M0 0l5 7 5-7z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;cursor:pointer;}
+    .sf-toolbar-spacer{flex:1;}
+    .sf-upload-grid{display:grid;grid-template-columns:minmax(240px,1.6fr) auto auto auto;gap:10px;align-items:end;}
+    .sf-check{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--txt2);height:32px;}
+
+    .sf-btn{font-family:'Inter',sans-serif;font-size:12px;font-weight:500;padding:0 14px;height:32px;border-radius:var(--r-sm);cursor:pointer;border:none;display:inline-flex;align-items:center;gap:6px;transition:all 0.15s;white-space:nowrap;}
+    .sf-btn-primary{background:var(--sf-blue);color:#fff;box-shadow:0 1px 3px rgba(1,118,211,0.3);}
+    .sf-btn-primary:hover{background:var(--sf-blue-hover);transform:translateY(-1px);}
+    .sf-btn-neutral{background:var(--surface);color:var(--txt);border:1px solid var(--border);}
+    .sf-btn-neutral:hover{background:var(--bg);}
+    .sf-btn-success{background:var(--sf-green);color:#fff;}
+    .sf-btn-success:hover{background:#1d5e31;transform:translateY(-1px);}
+    .sf-btn-danger{background:var(--sf-red);color:#fff;}
+    .sf-btn-danger:hover{background:#920210;}
+    .sf-btn-purple{background:var(--sf-purple);color:#fff;}
+    .sf-btn-purple:hover{background:#4c2a7a;}
+
+    .sf-note{display:none;padding:10px 12px;border-radius:var(--r);font-size:11px;margin-top:10px;}
+    .sf-note.show{display:block;}
+    .sf-note.success{background:var(--sf-green-lt);color:var(--sf-green);}
+    .sf-note.error{background:var(--sf-red-lt);color:var(--sf-red);}
+
+    .sf-table-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);overflow:hidden;}
+    .sf-table-header{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--surface2);flex-wrap:wrap;}
+    .sf-table-title{font-size:12px;font-weight:700;color:var(--txt);text-transform:uppercase;letter-spacing:0.4px;display:flex;align-items:center;gap:6px;}
+    .sf-record-count{background:var(--sf-blue-lt);color:var(--sf-blue);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;}
+    .sf-table-wrap{overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 395px);}
+    table{width:100%;border-collapse:collapse;font-size:11px;min-width:1580px;}
+    thead th{background:var(--sf-navy)!important;color:#e8f4fd!important;font-size:10px!important;font-weight:600!important;text-transform:uppercase!important;letter-spacing:0.6px!important;padding:9px 12px!important;text-align:left!important;white-space:nowrap!important;border:none!important;border-right:1px solid #253d5b!important;position:sticky;top:0;z-index:10;}
+    thead th:last-child{border-right:none!important;}
+    tbody tr{border-bottom:1px solid var(--border-lt);transition:background 0.1s;}
+    tbody tr:hover{background:#f0f8ff;}
+    tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!important;vertical-align:middle!important;border:none!important;border-bottom:1px solid var(--border-lt)!important;white-space:nowrap;}
+    .code-chip{font-size:11px;font-weight:700;font-family:'SFMono-Regular','Consolas',monospace;background:var(--surface2);border:1px solid var(--border);padding:2px 8px;border-radius:var(--r-sm);color:var(--sf-blue);letter-spacing:.3px;}
+    .money{font-weight:700;color:var(--sf-green);}
+    .sf-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;white-space:nowrap;}
+    .badge-region{background:var(--sf-purple-lt);color:var(--sf-purple);}
+    .badge-billing{background:var(--sf-teal-lt);color:var(--sf-teal);}
+    .sf-ab{display:flex;gap:4px;align-items:center;}
+    .sf-action-btn{font-size:10px;font-weight:500;height:24px;padding:0 7px;border-radius:var(--r-sm);cursor:pointer;border:none;display:inline-flex;align-items:center;gap:3px;transition:all 0.12s;font-family:'Inter',sans-serif;}
+    .sf-ab-edit{background:var(--sf-blue-lt);color:var(--sf-blue);border:1px solid #c5dff5;}
+    .sf-ab-edit:hover{background:#cce8f7;}
+    .sf-ab-delete{background:var(--sf-red-lt);color:var(--sf-red);border:1px solid #f5c6c3;}
+    .sf-ab-delete:hover{background:#fbd5d0;}
+
+    .sf-pagination{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--border);background:var(--surface2);flex-wrap:wrap;gap:8px;}
+    .sf-pagination-info{font-size:11px;color:var(--txt3);}
+    .sf-pag-controls{display:flex;align-items:center;gap:4px;}
+    .sf-page-btn{width:30px;height:30px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--txt2);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.12s;font-family:'Inter',sans-serif;}
+    .sf-page-btn:hover{background:var(--sf-blue-lt);border-color:var(--sf-blue);color:var(--sf-blue);}
+    .sf-page-btn.active{background:var(--sf-blue);border-color:var(--sf-blue);color:#fff;font-weight:700;}
+    .sf-page-btn:disabled{opacity:0.4;cursor:not-allowed;}
+
+    .sf-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:500;display:none;align-items:center;justify-content:center;}
+    .sf-overlay.open{display:flex;}
+    .sf-modal{background:var(--surface);border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,0.25);width:92%;max-width:980px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;}
+    .sf-modal-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface2);flex-shrink:0;}
+    .sf-modal-title{font-size:15px;font-weight:700;color:var(--txt);display:flex;align-items:center;gap:8px;}
+    .sf-modal-close{background:none;border:none;cursor:pointer;color:var(--txt3);font-size:16px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:var(--r-sm);}
+    .sf-modal-close:hover{background:var(--sf-red-lt);color:var(--sf-red);}
+    .sf-modal-body{flex:1;overflow-y:auto;padding:20px;}
+    .sf-modal-footer{padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;background:var(--surface2);flex-shrink:0;}
+    .sf-modal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;}
+    .sf-modal-field{display:flex;flex-direction:column;gap:4px;}
+    .sf-modal-field.full{grid-column:1/-1;}
+    .sf-modal-label{font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:0.5px;}
+    .sf-modal-input,.sf-modal-textarea{font-family:'Inter',sans-serif;font-size:12px;color:var(--txt);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:6px 10px;height:34px;outline:none;width:100%;transition:border-color 0.15s,box-shadow 0.15s;}
+    .sf-modal-input:focus,.sf-modal-textarea:focus{border-color:var(--sf-blue);box-shadow:0 0 0 3px rgba(1,118,211,0.12);}
+    .sf-modal-textarea{height:auto;min-height:72px;resize:vertical;}
+    .empty-state,.access-state{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);padding:36px 20px;text-align:center;}
+    .empty-state i,.access-state i{font-size:28px;color:var(--txt4);margin-bottom:12px;}
+    .empty-state h3,.access-state h3{font-size:17px;margin-bottom:6px;}
+    .empty-state p,.access-state p{font-size:12px;color:var(--txt3);max-width:520px;margin:0 auto;line-height:1.6;}
+    @media (max-width: 960px){.sf-upload-grid{grid-template-columns:1fr 1fr}.sf-page-actions{width:100%}}
+    @media (max-width: 760px){.sf-body{padding:14px 12px}.sf-page-header,.sf-panel,.sf-toolbar{padding:12px}.kpi-row,.sf-modal-grid,.sf-upload-grid{grid-template-columns:1fr}.sf-search-input{width:100%}.sf-table-wrap{max-height:none}}
+  </style>
 </head>
 <body>
-  <div class="topbar">
-    <div class="icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
-    <div class="title">Invoice Management</div>
-    <div class="meta">Admin Workspace</div>
+  <div class="dv-strip">
+    <div class="dv-strip-icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+    <div class="dv-strip-title">Invoice Management</div>
+    <div class="dv-strip-sep"></div>
+    <div class="dv-strip-meta">Admin Only</div>
+    <div class="dv-strip-spacer"></div>
+    <div class="dv-strip-meta" id="dateBadge">Today</div>
   </div>
 
-  <div class="page">
-    <div id="accessDenied" class="access" style="display:none">
+  <div class="sf-body">
+    <div id="accessState" class="access-state" style="display:none;">
       <i class="fa-solid fa-lock"></i>
       <h3>Access Restricted</h3>
-      <p>This module is available only for admin users. Please contact the administrator if you need access.</p>
+      <p>This module is available only for admin users. Please log in with an admin account to manage invoices.</p>
     </div>
 
-    <div id="app" style="display:none">
-      <section class="hero">
+    <div id="app" style="display:none;">
+      <div class="sf-bc"><a href="#">Operations</a><i class="fa-solid fa-angle-right"></i><span>Invoice Management</span></div>
+
+      <div class="sf-page-header">
+        <div class="sf-page-icon"><i class="fa-solid fa-file-circle-plus"></i></div>
         <div>
-          <h1>Invoice Import, Review and Export</h1>
-          <p>Upload your full invoice workbook in one go, review the imported records in portal, and export the report in the same business-friendly column structure as your sample sheet.</p>
+          <div class="sf-page-title">Invoice Register & Billing Control</div>
+          <div class="sf-page-meta">Bulk import invoice workbook, add records manually, edit any invoice entry, and export the report in your billing sheet format.</div>
         </div>
-        <div class="heroActions">
-          <button class="btn btnSoft" id="refreshBtn"><i class="fa-solid fa-rotate"></i> Refresh</button>
-          <button class="btn btnSoft" id="exportBtn"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
-          <button class="btn btnDanger" id="clearBtn"><i class="fa-solid fa-trash"></i> Clear All</button>
+        <div class="sf-page-actions">
+          <button class="sf-btn sf-btn-success" id="addInvoiceBtn"><i class="fa-solid fa-plus"></i> Add Invoice</button>
+          <button class="sf-btn sf-btn-neutral" id="refreshBtn"><i class="fa-solid fa-rotate"></i> Refresh</button>
+          <button class="sf-btn sf-btn-primary" id="exportBtn"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
+          <button class="sf-btn sf-btn-danger" id="clearAllBtn"><i class="fa-solid fa-trash"></i> Clear All</button>
         </div>
-      </section>
+      </div>
 
-      <section class="grid">
-        <div class="card"><div class="label">Total Records</div><div class="value" id="statRecords">0</div><div class="sub">Imported invoice rows</div></div>
-        <div class="card"><div class="label">Total Sites</div><div class="value" id="statSites">0</div><div class="sub">Sum of `No_of_Site`</div></div>
-        <div class="card"><div class="label">Amount</div><div class="value" id="statAmount">0</div><div class="sub">Base billing value</div></div>
-        <div class="card"><div class="label">Final Amount</div><div class="value" id="statFinalAmount">0</div><div class="sub">Billing including tax</div></div>
-      </section>
+      <div class="kpi-row">
+        <div class="kpi-card blue"><div class="kpi-num blue" id="statRecords">0</div><div class="kpi-label">Invoice Records</div><div class="kpi-sub">Imported and manually created entries</div></div>
+        <div class="kpi-card green"><div class="kpi-num green" id="statSites">0</div><div class="kpi-label">Total Sites</div><div class="kpi-sub">Sum of billed site count</div></div>
+        <div class="kpi-card orange"><div class="kpi-num orange" id="statAmount">0</div><div class="kpi-label">Base Amount</div><div class="kpi-sub">Before CGST</div></div>
+        <div class="kpi-card purple"><div class="kpi-num purple" id="statFinalAmount">0</div><div class="kpi-label">Final Amount</div><div class="kpi-sub">Final billed total</div></div>
+      </div>
 
-      <section class="toolbar">
-        <div class="toolbarGrid">
-          <div class="field">
-            <label>Search</label>
-            <input class="input" id="searchInput" placeholder="Search region, callup no, phase, remark..."/>
+      <div class="sf-tabs">
+        <button class="sf-tab active" data-tab="register"><i class="fa-solid fa-table-list"></i> Invoice Register <span class="sf-tab-badge" id="tabCount">0</span></button>
+        <button class="sf-tab" data-tab="bulk"><i class="fa-solid fa-upload"></i> Bulk Import</button>
+      </div>
+
+      <div id="registerTab" class="tab-panel">
+        <div class="sf-toolbar">
+          <div class="sf-filter-group">
+            <div class="sf-filter-label">Search</div>
+            <div class="sf-search-wrap">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input id="searchInput" class="sf-input sf-search-input" placeholder="Region, Callup No, Phase, Remark..."/>
+            </div>
           </div>
-          <div class="field">
-            <label>Region</label>
-            <select class="select" id="regionFilter"><option value="">All Regions</option></select>
+          <div class="sf-filter-group">
+            <div class="sf-filter-label">Region</div>
+            <select id="regionFilter" class="sf-select"><option value="">All Regions</option></select>
           </div>
-          <div class="field">
-            <label>Month</label>
-            <select class="select" id="monthFilter"><option value="">All Months</option></select>
+          <div class="sf-filter-group">
+            <div class="sf-filter-label">Month</div>
+            <select id="monthFilter" class="sf-select"><option value="">All Months</option></select>
           </div>
-          <div class="field">
-            <label>Billing Type</label>
-            <select class="select" id="billingTypeFilter"><option value="">All Types</option></select>
+          <div class="sf-filter-group">
+            <div class="sf-filter-label">Billing Type</div>
+            <select id="billingTypeFilter" class="sf-select"><option value="">All Types</option></select>
           </div>
-          <button class="btn btnPrimary" id="applyBtn"><i class="fa-solid fa-filter"></i> Apply</button>
+          <div class="sf-toolbar-spacer"></div>
+          <button class="sf-btn sf-btn-primary" id="applyFiltersBtn"><i class="fa-solid fa-filter"></i> Apply</button>
+          <button class="sf-btn sf-btn-neutral" id="resetFiltersBtn"><i class="fa-solid fa-eraser"></i> Reset</button>
         </div>
 
-        <div class="uploadRow">
-          <div class="field">
-            <label>Bulk Import Excel</label>
-            <input class="input" id="fileInput" type="file" accept=".xlsx,.xls,.csv"/>
+        <div class="sf-table-card">
+          <div class="sf-table-header">
+            <div class="sf-table-title"><i class="fa-solid fa-receipt"></i> Invoice Register</div>
+            <div class="sf-record-count" id="recordCountChip">0 records</div>
           </div>
-          <label class="check"><input type="checkbox" id="replaceMode"/> Replace existing records</label>
-          <button class="btn btnPrimary" id="uploadBtn"><i class="fa-solid fa-upload"></i> Upload File</button>
-          <div class="hint">Expected columns follow your sample workbook format.</div>
+          <div class="sf-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>SNO</th>
+                  <th>Region</th>
+                  <th>Callup No</th>
+                  <th>Callup Date</th>
+                  <th>Phase</th>
+                  <th>No of Site</th>
+                  <th>Available Qty</th>
+                  <th>Final Qty</th>
+                  <th>Per Qty Rate</th>
+                  <th>Amount</th>
+                  <th>Tax (CGST)</th>
+                  <th>Final Amount</th>
+                  <th>Year</th>
+                  <th>Qtr</th>
+                  <th>Month</th>
+                  <th>Remark</th>
+                  <th>Total Billing Month</th>
+                  <th>Billing Type</th>
+                  <th>Imported By</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="tableBody"></tbody>
+            </table>
+          </div>
+          <div class="sf-pagination">
+            <div class="sf-pagination-info" id="paginationInfo">Showing 0 to 0 of 0 records</div>
+            <div class="sf-pag-controls">
+              <button class="sf-page-btn" id="prevBtn"><i class="fa-solid fa-chevron-left"></i></button>
+              <button class="sf-page-btn active" id="pageBtn">1</button>
+              <button class="sf-page-btn" id="nextBtn"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+          </div>
         </div>
-        <div id="notice" class="notice"></div>
-      </section>
+      </div>
 
-      <section class="tableCard">
-        <div class="tableHead">
-          <div class="tableTitle">Imported Invoice Register</div>
-          <div class="count" id="tableCount">0 records</div>
+      <div id="bulkTab" class="tab-panel" style="display:none;">
+        <div class="sf-panel">
+          <div class="sf-panel-title"><i class="fa-solid fa-cloud-arrow-up"></i> Bulk Upload Invoices</div>
+          <div class="sf-panel-sub">Upload the complete invoice workbook in one shot. The upload format follows your sample Excel structure exactly, similar to the bulk upload flow in Material Management.</div>
+          <div class="sf-upload-grid">
+            <div class="sf-filter-group">
+              <div class="sf-filter-label">Invoice File</div>
+              <input id="fileInput" class="sf-file" type="file" accept=".xlsx,.xls,.csv"/>
+            </div>
+            <label class="sf-check"><input id="replaceMode" type="checkbox"/> Replace existing data</label>
+            <button class="sf-btn sf-btn-primary" id="uploadBtn"><i class="fa-solid fa-upload"></i> Upload File</button>
+            <button class="sf-btn sf-btn-purple" id="sampleBackBtn"><i class="fa-solid fa-table"></i> Back To Register</button>
+          </div>
+          <div id="bulkNote" class="sf-note"></div>
         </div>
-        <div class="tableWrap">
-          <table>
-            <thead>
-              <tr>
-                <th>SNO</th>
-                <th>Region</th>
-                <th>Callup No</th>
-                <th>Callup Date</th>
-                <th>Phase</th>
-                <th>No of Site</th>
-                <th>Available Qty</th>
-                <th>Final Qty</th>
-                <th>Per Qty Rate</th>
-                <th>Amount</th>
-                <th>Tax (CGST)</th>
-                <th>Final Amount</th>
-                <th>Year</th>
-                <th>Qtr</th>
-                <th>Month</th>
-                <th>Remark</th>
-                <th>Total Billing Month</th>
-                <th>Billing Type</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody id="tableBody"></tbody>
-          </table>
+
+        <div class="sf-panel">
+          <div class="sf-panel-title"><i class="fa-solid fa-circle-info"></i> Expected Columns</div>
+          <div class="sf-panel-sub">SNO, Region, Callup_No, Callup_Date, Phase, No_of_Site, Available_Qty, Final_Qty, Per_qty_Rate, Amount, Tax(CGST), Final_amount, Year, Qtr, MONTH, Remark, Total_Billing_Month, Billing Type</div>
         </div>
-      </section>
+      </div>
     </div>
   </div>
 
-<script>
-const API_BASE = window.BACKEND_URL || "/api";
-const API = `${API_BASE}/invoiceManagement`;
-const token = () => localStorage.getItem("token") || "";
-const headers = (extra = {}) => ({ Authorization: `Bearer ${token()}`, ...extra });
+  <div class="sf-overlay" id="invoiceModalOverlay">
+    <div class="sf-modal">
+      <div class="sf-modal-header">
+        <div class="sf-modal-title"><i class="fa-solid fa-file-pen"></i> <span id="invoiceModalTitle">Add Invoice Record</span></div>
+        <button class="sf-modal-close" id="closeInvoiceModalBtn"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="sf-modal-body">
+        <div class="sf-modal-grid">
+          <div class="sf-modal-field"><div class="sf-modal-label">SNO</div><input id="fSno" class="sf-modal-input" type="number"/></div>
+          <div class="sf-modal-field"><div class="sf-modal-label">Region</div><input id="fRegion" class="sf-modal-input"/></div>
+          <div class="sf-modal-field"><div class="sf-modal-label">Callup No</div><input id="fCallupNo" class="sf-modal-input"/></div>
+          <div class="sf-modal-field"><div class="sf-modal-label">Callup Date</div><input id="fCallupDate" class="sf-modal-input" type="date"/></div>
+          <div class="sf-modal-field"><div class="sf-modal-label">Phase</div><input id="fPhase" class="sf-modal-input"/></div>
+          <div class="sf-modal-field"><div class="sf-modal-label">No of Site</div><input id="fNoOfSite" class="sf-modal-input" type="number" step="0.01"/></div>
+          <div class="sf-modal-field"><div class="sf-modal-label">Available Qty</div><input id="fAvailableQty" class="sf-modal-input" type="number" step="0.01"/></div>
+          <div class="sf-modal-field"><div class="sf-modal-label">Final Qty</div><input id="fFinalQty" class="sf-modal-input" type="number" step="0.01"/></div>
+          <div class="sf-modal-field"><div class="sf-modal-label">Per Qty Rate</div><input id="fPerQtyRate" class="sf-modal-input" type="number" step="0.01"/></div>
+          <div class="sf-modal-field"><div class="sf-modal-label">Amount</div><input id="fAmount" class="sf-modal-input" type="number" step="0.01"/></div>
+          <div class="sf-modal-field"><div class="sf-modal-label">Tax (CGST)</div><input id="fTaxCgst" class="sf-modal-input" type="number" step="0.01"/></div>
+          <div class="sf-modal-field"><div class="sf-modal-label">Final Amount</div><input id="fFinalAmount" class="sf-modal-input" type="number" step="0.01"/></div>
+          <div class="sf-modal-field"><div class="sf-modal-label">Year</div><input id="fYearLabel" class="sf-modal-input"/></div>
+          <div class="sf-modal-field"><div class="sf-modal-label">Quarter</div><input id="fQuarter" class="sf-modal-input"/></div>
+          <div class="sf-modal-field"><div class="sf-modal-label">Month</div><input id="fMonthLabel" class="sf-modal-input"/></div>
+          <div class="sf-modal-field"><div class="sf-modal-label">Total Billing Month</div><input id="fTotalBillingMonth" class="sf-modal-input" type="number" step="0.01"/></div>
+          <div class="sf-modal-field"><div class="sf-modal-label">Billing Type</div><input id="fBillingType" class="sf-modal-input"/></div>
+          <div class="sf-modal-field full"><div class="sf-modal-label">Remark</div><textarea id="fRemark" class="sf-modal-textarea"></textarea></div>
+        </div>
+        <div id="formNote" class="sf-note"></div>
+      </div>
+      <div class="sf-modal-footer">
+        <button class="sf-btn sf-btn-neutral" id="cancelInvoiceBtn">Cancel</button>
+        <button class="sf-btn sf-btn-success" id="saveInvoiceBtn"><i class="fa-solid fa-floppy-disk"></i> Save Record</button>
+      </div>
+    </div>
+  </div>
 
-let currentFilters = { search: "", region: "", monthLabel: "", billingType: "" };
-let currentData = [];
+  <script>
+    const API_BASE = window.BACKEND_URL || "/api";
+    const API = `${API_BASE}/invoiceManagement`;
+    const TOKEN = () => localStorage.getItem("token") || "";
+    const HEADERS = (extra = {}) => ({ Authorization: `Bearer ${TOKEN()}`, ...extra });
+    const INR = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 });
+    const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (s) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[s]));
 
-const INR = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 });
-const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (s) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[s]));
+    let currentFilters = { search: "", region: "", monthLabel: "", billingType: "" };
+    let currentPage = 1;
+    let totalRecords = 0;
+    let pageSize = 100;
+    let editId = null;
+    let rowMap = new Map();
 
-function money(v){ return INR.format(Number(v || 0)); }
-
-function qs(obj){
-  const p = new URLSearchParams();
-  Object.entries(obj).forEach(([k,v]) => { if (v !== undefined && v !== null && String(v) !== "") p.set(k, v); });
-  return p.toString();
-}
-
-function showNotice(message, type = "ok"){
-  const box = document.getElementById("notice");
-  box.className = `notice show ${type === "err" ? "err" : "ok"}`;
-  box.textContent = message;
-}
-
-function renderStats(stats){
-  document.getElementById("statRecords").textContent = money(stats.recordCount || 0);
-  document.getElementById("statSites").textContent = money(stats.noOfSite || 0);
-  document.getElementById("statAmount").textContent = money(stats.amount || 0);
-  document.getElementById("statFinalAmount").textContent = money(stats.finalAmount || 0);
-}
-
-function fillSelect(id, values, placeholder){
-  const el = document.getElementById(id);
-  const current = el.value;
-  el.innerHTML = `<option value="">${placeholder}</option>` + values.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join("");
-  el.value = current || "";
-}
-
-function renderTable(rows){
-  currentData = rows;
-  document.getElementById("tableCount").textContent = `${rows.length} record${rows.length === 1 ? "" : "s"}`;
-  const body = document.getElementById("tableBody");
-  if (!rows.length) {
-    body.innerHTML = `<tr><td colspan="19" style="padding:26px;text-align:center;color:#64748b;">No invoice records found for the selected filters.</td></tr>`;
-    return;
-  }
-  body.innerHTML = rows.map((r) => `
-    <tr>
-      <td>${esc(r.sno)}</td>
-      <td><span class="badge">${esc(r.region || "-")}</span></td>
-      <td>${esc(r.callupNo || "-")}</td>
-      <td>${esc(r.callupDate || "-")}</td>
-      <td>${esc(r.phase || "-")}</td>
-      <td>${money(r.noOfSite)}</td>
-      <td>${money(r.availableQty)}</td>
-      <td>${money(r.finalQty)}</td>
-      <td>${money(r.perQtyRate)}</td>
-      <td class="money">${money(r.amount)}</td>
-      <td>${money(r.taxCgst)}</td>
-      <td class="money">${money(r.finalAmount)}</td>
-      <td>${esc(r.yearLabel || "-")}</td>
-      <td>${esc(r.quarter || "-")}</td>
-      <td>${esc(r.monthLabel || "-")}</td>
-      <td title="${esc(r.remark || "-")}">${esc(r.remark || "-")}</td>
-      <td>${money(r.totalBillingMonth)}</td>
-      <td>${esc(r.billingType || "-")}</td>
-      <td><button class="act" onclick="deleteRow('${r._id}')"><i class="fa-solid fa-trash"></i></button></td>
-    </tr>
-  `).join("");
-}
-
-async function fetchUser(){
-  const res = await fetch(`${API_BASE}/user`, { headers: headers() });
-  if (!res.ok) throw new Error("Failed to load user");
-  return res.json();
-}
-
-async function loadStatsAndFilters(){
-  const res = await fetch(`${API}/stats?${qs(currentFilters)}`, { headers: headers() });
-  const json = await res.json();
-  if (!res.ok || !json.success) throw new Error(json.message || "Failed to load stats");
-  renderStats(json.totals || {});
-  fillSelect("regionFilter", json.filters?.regions || [], "All Regions");
-  fillSelect("monthFilter", json.filters?.months || [], "All Months");
-  fillSelect("billingTypeFilter", json.filters?.billingTypes || [], "All Types");
-}
-
-async function loadTable(){
-  const res = await fetch(`${API}?${qs({ ...currentFilters, limit: 500 })}`, { headers: headers() });
-  const json = await res.json();
-  if (!res.ok || !json.success) throw new Error(json.message || "Failed to load records");
-  renderTable(json.data || []);
-}
-
-function readFilters(){
-  currentFilters = {
-    search: document.getElementById("searchInput").value.trim(),
-    region: document.getElementById("regionFilter").value,
-    monthLabel: document.getElementById("monthFilter").value,
-    billingType: document.getElementById("billingTypeFilter").value,
-  };
-}
-
-async function refreshAll(){
-  readFilters();
-  await Promise.all([loadStatsAndFilters(), loadTable()]);
-}
-
-async function uploadFile(){
-  const file = document.getElementById("fileInput").files[0];
-  if (!file) return showNotice("Please choose an Excel file first.", "err");
-  const fd = new FormData();
-  fd.append("file", file);
-  fd.append("mode", document.getElementById("replaceMode").checked ? "replace" : "append");
-
-  const btn = document.getElementById("uploadBtn");
-  btn.disabled = true;
-  btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Uploading...`;
-  try{
-    const res = await fetch(`${API}/bulk-upload`, { method: "POST", headers: headers(), body: fd });
-    const json = await res.json();
-    if (!res.ok || !json.success) throw new Error(json.message || "Upload failed");
-    showNotice(`${json.message}${json.skippedCount ? ` | Invalid rows skipped: ${json.skippedCount}` : ""}`);
-    document.getElementById("fileInput").value = "";
-    await refreshAll();
-  }catch(err){
-    showNotice(err.message, "err");
-  }finally{
-    btn.disabled = false;
-    btn.innerHTML = `<i class="fa-solid fa-upload"></i> Upload File`;
-  }
-}
-
-async function exportExcel(){
-  readFilters();
-  const res = await fetch(`${API}/export/excel?${qs(currentFilters)}`, { headers: headers() });
-  if (!res.ok) {
-    showNotice("Failed to export Excel file.", "err");
-    return;
-  }
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "invoice_management_export.xlsx";
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-async function deleteRow(id){
-  if (!confirm("Delete this invoice record?")) return;
-  const res = await fetch(`${API}/${id}`, { method: "DELETE", headers: headers() });
-  const json = await res.json();
-  if (!res.ok || !json.success) return showNotice(json.message || "Delete failed", "err");
-  showNotice("Invoice record deleted successfully.");
-  await refreshAll();
-}
-
-async function clearAll(){
-  if (!confirm("This will permanently remove all invoice records. Continue?")) return;
-  const res = await fetch(`${API}/admin/clear-all`, { method: "DELETE", headers: headers() });
-  const json = await res.json();
-  if (!res.ok || !json.success) return showNotice(json.message || "Clear all failed", "err");
-  showNotice(`Cleared ${json.deletedCount || 0} invoice records.`);
-  await refreshAll();
-}
-
-document.getElementById("applyBtn").addEventListener("click", refreshAll);
-document.getElementById("refreshBtn").addEventListener("click", refreshAll);
-document.getElementById("uploadBtn").addEventListener("click", uploadFile);
-document.getElementById("exportBtn").addEventListener("click", exportExcel);
-document.getElementById("clearBtn").addEventListener("click", clearAll);
-document.getElementById("searchInput").addEventListener("keydown", (e) => { if (e.key === "Enter") refreshAll(); });
-
-window.deleteRow = deleteRow;
-
-(async function init(){
-  try{
-    const user = await fetchUser();
-    if (String(user.role || "").toLowerCase() !== "admin") {
-      document.getElementById("accessDenied").style.display = "block";
-      return;
+    function setDateBadge() {
+      document.getElementById("dateBadge").textContent = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
     }
-    document.getElementById("app").style.display = "block";
-    await refreshAll();
-  }catch(err){
-    document.getElementById("accessDenied").style.display = "block";
-    document.querySelector("#accessDenied p").textContent = err.message || "Unable to load invoice management module.";
-  }
-})();
-</script>
+
+    function money(v) { return INR.format(Number(v || 0)); }
+    function qs(obj) {
+      const p = new URLSearchParams();
+      Object.entries(obj).forEach(([k, v]) => { if (v !== undefined && v !== null && String(v) !== "") p.set(k, v); });
+      return p.toString();
+    }
+
+    function showNote(id, message, type = "success") {
+      const el = document.getElementById(id);
+      el.className = `sf-note show ${type}`;
+      el.textContent = message;
+    }
+
+    function clearNote(id) {
+      const el = document.getElementById(id);
+      el.className = "sf-note";
+      el.textContent = "";
+    }
+
+    async function fetchUser() {
+      const res = await fetch(`${API_BASE}/user`, { headers: HEADERS() });
+      if (!res.ok) throw new Error("Session expired. Please login again.");
+      return res.json();
+    }
+
+    function readFilters() {
+      currentFilters = {
+        search: document.getElementById("searchInput").value.trim(),
+        region: document.getElementById("regionFilter").value,
+        monthLabel: document.getElementById("monthFilter").value,
+        billingType: document.getElementById("billingTypeFilter").value,
+      };
+    }
+
+    function fillSelect(id, values, placeholder) {
+      const el = document.getElementById(id);
+      const prev = el.value;
+      el.innerHTML = `<option value="">${placeholder}</option>` + values.map((v) => `<option value="${esc(v)}">${esc(v)}</option>`).join("");
+      el.value = prev || "";
+    }
+
+    async function loadStats() {
+      const res = await fetch(`${API}/stats?${qs(currentFilters)}`, { headers: HEADERS() });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.message || "Failed to load stats");
+      const totals = json.totals || {};
+      document.getElementById("statRecords").textContent = money(totals.recordCount || 0);
+      document.getElementById("statSites").textContent = money(totals.noOfSite || 0);
+      document.getElementById("statAmount").textContent = money(totals.amount || 0);
+      document.getElementById("statFinalAmount").textContent = money(totals.finalAmount || 0);
+      fillSelect("regionFilter", json.filters?.regions || [], "All Regions");
+      fillSelect("monthFilter", json.filters?.months || [], "All Months");
+      fillSelect("billingTypeFilter", json.filters?.billingTypes || [], "All Types");
+    }
+
+    function renderPagination() {
+      const from = totalRecords ? ((currentPage - 1) * pageSize) + 1 : 0;
+      const to = Math.min(totalRecords, currentPage * pageSize);
+      document.getElementById("paginationInfo").textContent = `Showing ${from} to ${to} of ${totalRecords} records`;
+      document.getElementById("pageBtn").textContent = currentPage;
+      document.getElementById("prevBtn").disabled = currentPage <= 1;
+      document.getElementById("nextBtn").disabled = currentPage * pageSize >= totalRecords;
+    }
+
+    function renderTable(rows) {
+      rowMap = new Map(rows.map((row) => [String(row._id), row]));
+      document.getElementById("recordCountChip").textContent = `${totalRecords} records`;
+      document.getElementById("tabCount").textContent = totalRecords;
+      const body = document.getElementById("tableBody");
+      if (!rows.length) {
+        body.innerHTML = `<tr><td colspan="20" style="padding:28px;text-align:center;color:#706e6b;">No invoice records found for the current filters.</td></tr>`;
+        renderPagination();
+        return;
+      }
+      body.innerHTML = rows.map((r) => `
+        <tr>
+          <td>${esc(r.sno)}</td>
+          <td><span class="sf-badge badge-region">${esc(r.region || "-")}</span></td>
+          <td><span class="code-chip">${esc(r.callupNo || "-")}</span></td>
+          <td>${esc(r.callupDate || "-")}</td>
+          <td>${esc(r.phase || "-")}</td>
+          <td>${money(r.noOfSite)}</td>
+          <td>${money(r.availableQty)}</td>
+          <td>${money(r.finalQty)}</td>
+          <td>${money(r.perQtyRate)}</td>
+          <td class="money">${money(r.amount)}</td>
+          <td>${money(r.taxCgst)}</td>
+          <td class="money">${money(r.finalAmount)}</td>
+          <td>${esc(r.yearLabel || "-")}</td>
+          <td>${esc(r.quarter || "-")}</td>
+          <td>${esc(r.monthLabel || "-")}</td>
+          <td title="${esc(r.remark || "-")}">${esc(r.remark || "-")}</td>
+          <td>${money(r.totalBillingMonth)}</td>
+          <td><span class="sf-badge badge-billing">${esc(r.billingType || "-")}</span></td>
+          <td>${esc(r.importedBy || "-")}</td>
+          <td>
+            <div class="sf-ab">
+              <button class="sf-action-btn sf-ab-edit" onclick="openEditModalById('${esc(r._id)}')"><i class="fa-solid fa-pen"></i> Edit</button>
+              <button class="sf-action-btn sf-ab-delete" onclick="deleteRecord('${r._id}')"><i class="fa-solid fa-trash"></i> Delete</button>
+            </div>
+          </td>
+        </tr>
+      `).join("");
+      renderPagination();
+    }
+
+    async function loadTable(page = 1) {
+      currentPage = page;
+      const res = await fetch(`${API}?${qs({ ...currentFilters, page, limit: pageSize })}`, { headers: HEADERS() });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.message || "Failed to load records");
+      totalRecords = json.total || 0;
+      renderTable(json.data || []);
+    }
+
+    async function refreshAll(page = 1) {
+      readFilters();
+      await loadStats();
+      await loadTable(page);
+    }
+
+    function switchTab(name) {
+      document.querySelectorAll(".sf-tab").forEach((btn) => btn.classList.toggle("active", btn.dataset.tab === name));
+      document.getElementById("registerTab").style.display = name === "register" ? "block" : "none";
+      document.getElementById("bulkTab").style.display = name === "bulk" ? "block" : "none";
+    }
+
+    function openModal(mode = "add", data = {}) {
+      editId = mode === "edit" ? data._id : null;
+      document.getElementById("invoiceModalTitle").textContent = mode === "edit" ? "Edit Invoice Record" : "Add Invoice Record";
+      document.getElementById("fSno").value = data.sno ?? "";
+      document.getElementById("fRegion").value = data.region || "";
+      document.getElementById("fCallupNo").value = data.callupNo || "";
+      document.getElementById("fCallupDate").value = data.callupDate ? String(data.callupDate).slice(0, 10) : "";
+      document.getElementById("fPhase").value = data.phase || "";
+      document.getElementById("fNoOfSite").value = data.noOfSite ?? "";
+      document.getElementById("fAvailableQty").value = data.availableQty ?? "";
+      document.getElementById("fFinalQty").value = data.finalQty ?? "";
+      document.getElementById("fPerQtyRate").value = data.perQtyRate ?? "";
+      document.getElementById("fAmount").value = data.amount ?? "";
+      document.getElementById("fTaxCgst").value = data.taxCgst ?? "";
+      document.getElementById("fFinalAmount").value = data.finalAmount ?? "";
+      document.getElementById("fYearLabel").value = data.yearLabel || "";
+      document.getElementById("fQuarter").value = data.quarter || "";
+      document.getElementById("fMonthLabel").value = data.monthLabel || "";
+      document.getElementById("fRemark").value = data.remark || "";
+      document.getElementById("fTotalBillingMonth").value = data.totalBillingMonth ?? "";
+      document.getElementById("fBillingType").value = data.billingType || "";
+      clearNote("formNote");
+      document.getElementById("invoiceModalOverlay").classList.add("open");
+    }
+
+    function closeModal() {
+      document.getElementById("invoiceModalOverlay").classList.remove("open");
+      editId = null;
+    }
+
+    function getFormPayload() {
+      return {
+        sno: document.getElementById("fSno").value,
+        region: document.getElementById("fRegion").value.trim(),
+        callupNo: document.getElementById("fCallupNo").value.trim(),
+        callupDate: document.getElementById("fCallupDate").value,
+        phase: document.getElementById("fPhase").value.trim(),
+        noOfSite: document.getElementById("fNoOfSite").value,
+        availableQty: document.getElementById("fAvailableQty").value,
+        finalQty: document.getElementById("fFinalQty").value,
+        perQtyRate: document.getElementById("fPerQtyRate").value,
+        amount: document.getElementById("fAmount").value,
+        taxCgst: document.getElementById("fTaxCgst").value,
+        finalAmount: document.getElementById("fFinalAmount").value,
+        yearLabel: document.getElementById("fYearLabel").value.trim(),
+        quarter: document.getElementById("fQuarter").value.trim(),
+        monthLabel: document.getElementById("fMonthLabel").value.trim(),
+        remark: document.getElementById("fRemark").value.trim(),
+        totalBillingMonth: document.getElementById("fTotalBillingMonth").value,
+        billingType: document.getElementById("fBillingType").value.trim(),
+      };
+    }
+
+    async function saveRecord() {
+      const payload = getFormPayload();
+      const method = editId ? "PUT" : "POST";
+      const url = editId ? `${API}/${editId}` : API;
+      const btn = document.getElementById("saveInvoiceBtn");
+      btn.disabled = true;
+      try {
+        const res = await fetch(url, {
+          method,
+          headers: HEADERS({ "Content-Type": "application/json" }),
+          body: JSON.stringify(payload),
+        });
+        const json = await res.json();
+        if (!res.ok || !json.success) throw new Error(json.message || (json.errors || []).join(", ") || "Save failed");
+        closeModal();
+        await refreshAll(currentPage);
+      } catch (err) {
+        showNote("formNote", err.message, "error");
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function uploadBulk() {
+      const file = document.getElementById("fileInput").files[0];
+      if (!file) return showNote("bulkNote", "Please choose an Excel file first.", "error");
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("mode", document.getElementById("replaceMode").checked ? "replace" : "append");
+      const btn = document.getElementById("uploadBtn");
+      btn.disabled = true;
+      try {
+        const res = await fetch(`${API}/bulk-upload`, { method: "POST", headers: HEADERS(), body: fd });
+        const json = await res.json();
+        if (!res.ok || !json.success) throw new Error(json.message || "Upload failed");
+        showNote("bulkNote", `${json.message}${json.skippedCount ? ` Invalid rows skipped: ${json.skippedCount}` : ""}`, "success");
+        document.getElementById("fileInput").value = "";
+        switchTab("register");
+        await refreshAll(1);
+      } catch (err) {
+        showNote("bulkNote", err.message, "error");
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function deleteRecord(id) {
+      if (!confirm("Delete this invoice record?")) return;
+      const res = await fetch(`${API}/${id}`, { method: "DELETE", headers: HEADERS() });
+      const json = await res.json();
+      if (!res.ok || !json.success) return alert(json.message || "Delete failed");
+      await refreshAll(currentPage);
+    }
+
+    async function clearAllRecords() {
+      if (!confirm("This will permanently remove all invoice records. Continue?")) return;
+      const res = await fetch(`${API}/admin/clear-all`, { method: "DELETE", headers: HEADERS() });
+      const json = await res.json();
+      if (!res.ok || !json.success) return alert(json.message || "Clear all failed");
+      await refreshAll(1);
+    }
+
+    async function exportExcel() {
+      readFilters();
+      const res = await fetch(`${API}/export/excel?${qs(currentFilters)}`, { headers: HEADERS() });
+      if (!res.ok) return alert("Failed to export invoice Excel.");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "invoice_management_export.xlsx";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function resetFilters() {
+      document.getElementById("searchInput").value = "";
+      document.getElementById("regionFilter").value = "";
+      document.getElementById("monthFilter").value = "";
+      document.getElementById("billingTypeFilter").value = "";
+      refreshAll(1);
+    }
+
+    window.openEditModalById = (id) => {
+      const row = rowMap.get(String(id));
+      if (row) openModal("edit", row);
+    };
+    window.deleteRecord = deleteRecord;
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      setDateBadge();
+      try {
+        const user = await fetchUser();
+        if (String(user.role || "").toLowerCase() !== "admin") {
+          document.getElementById("accessState").style.display = "block";
+          return;
+        }
+        document.getElementById("app").style.display = "block";
+        await refreshAll(1);
+      } catch (err) {
+        document.getElementById("accessState").style.display = "block";
+        document.querySelector("#accessState p").textContent = err.message || "Unable to load this module.";
+      }
+    });
+
+    document.querySelectorAll(".sf-tab").forEach((btn) => btn.addEventListener("click", () => switchTab(btn.dataset.tab)));
+    document.getElementById("applyFiltersBtn").addEventListener("click", () => refreshAll(1));
+    document.getElementById("resetFiltersBtn").addEventListener("click", resetFilters);
+    document.getElementById("refreshBtn").addEventListener("click", () => refreshAll(currentPage));
+    document.getElementById("exportBtn").addEventListener("click", exportExcel);
+    document.getElementById("clearAllBtn").addEventListener("click", clearAllRecords);
+    document.getElementById("addInvoiceBtn").addEventListener("click", () => openModal("add"));
+    document.getElementById("closeInvoiceModalBtn").addEventListener("click", closeModal);
+    document.getElementById("cancelInvoiceBtn").addEventListener("click", closeModal);
+    document.getElementById("saveInvoiceBtn").addEventListener("click", saveRecord);
+    document.getElementById("uploadBtn").addEventListener("click", uploadBulk);
+    document.getElementById("sampleBackBtn").addEventListener("click", () => switchTab("register"));
+    document.getElementById("prevBtn").addEventListener("click", () => currentPage > 1 && refreshAll(currentPage - 1));
+    document.getElementById("nextBtn").addEventListener("click", () => currentPage * pageSize < totalRecords && refreshAll(currentPage + 1));
+    document.getElementById("searchInput").addEventListener("keydown", (e) => { if (e.key === "Enter") refreshAll(1); });
+    document.getElementById("invoiceModalOverlay").addEventListener("click", (e) => { if (e.target.id === "invoiceModalOverlay") closeModal(); });
+  </script>
 </body>
 </html>

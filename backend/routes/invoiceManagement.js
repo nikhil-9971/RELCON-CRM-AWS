@@ -113,6 +113,29 @@ function validateInvoiceRow(row) {
   return errors;
 }
 
+function normalizeInvoicePayload(body = {}, fallbackSno = 0) {
+  return {
+    sno: toNumber(body.sno, fallbackSno),
+    region: normalizeText(body.region),
+    callupNo: normalizeText(body.callupNo),
+    callupDate: toISODateFromExcel(body.callupDate),
+    phase: normalizeText(body.phase),
+    noOfSite: toNumber(body.noOfSite),
+    availableQty: toNumber(body.availableQty),
+    finalQty: toNumber(body.finalQty),
+    perQtyRate: toNumber(body.perQtyRate),
+    amount: toNumber(body.amount),
+    taxCgst: toNumber(body.taxCgst),
+    finalAmount: toNumber(body.finalAmount),
+    yearLabel: normalizeText(body.yearLabel),
+    quarter: normalizeText(body.quarter),
+    monthLabel: normalizeText(body.monthLabel),
+    remark: normalizeText(body.remark),
+    totalBillingMonth: toNumber(body.totalBillingMonth),
+    billingType: normalizeText(body.billingType),
+  };
+}
+
 function buildQuery(queryParams = {}) {
   const {
     search = "",
@@ -217,6 +240,58 @@ router.get("/stats", verifyToken, requireRole(["Admin"]), async (req, res) => {
   } catch (err) {
     console.error("[InvoiceMgmt] GET /stats:", err);
     res.status(500).json({ success: false, message: "Failed to fetch invoice stats", error: err.message });
+  }
+});
+
+router.post("/", verifyToken, requireRole(["Admin"]), async (req, res) => {
+  try {
+    const payload = normalizeInvoicePayload(req.body, Date.now());
+    const errors = validateInvoiceRow(payload);
+    if (errors.length) {
+      return res.status(400).json({ success: false, message: "Validation failed", errors });
+    }
+
+    const created = await InvoiceManagement.create({
+      ...payload,
+      sourceFile: normalizeText(req.body.sourceFile),
+      importedBy: req.user?.engineerName || req.user?.username || "Admin",
+      importedAt: new Date(),
+    });
+
+    res.status(201).json({ success: true, message: "Invoice record added successfully", data: created });
+  } catch (err) {
+    console.error("[InvoiceMgmt] POST /:", err);
+    res.status(500).json({ success: false, message: "Failed to add invoice record", error: err.message });
+  }
+});
+
+router.put("/:id", verifyToken, requireRole(["Admin"]), async (req, res) => {
+  try {
+    const payload = normalizeInvoicePayload(req.body);
+    const errors = validateInvoiceRow(payload);
+    if (errors.length) {
+      return res.status(400).json({ success: false, message: "Validation failed", errors });
+    }
+
+    const updated = await InvoiceManagement.findByIdAndUpdate(
+      req.params.id,
+      {
+        ...payload,
+        sourceFile: normalizeText(req.body.sourceFile),
+        importedBy: req.user?.engineerName || req.user?.username || "Admin",
+        importedAt: new Date(),
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ success: false, message: "Invoice record not found" });
+    }
+
+    res.json({ success: true, message: "Invoice record updated successfully", data: updated });
+  } catch (err) {
+    console.error("[InvoiceMgmt] PUT /:id:", err);
+    res.status(500).json({ success: false, message: "Failed to update invoice record", error: err.message });
   }
 });
 
