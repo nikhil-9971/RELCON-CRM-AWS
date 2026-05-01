@@ -742,6 +742,7 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
       <button class="nav-item" onclick="loadPage('attendance.html', this)" id="attendanceLink"><i class="fa-solid fa-calendar-check"></i><span class="nav-txt">Attendance</span></button>
       <button class="nav-item" onclick="loadPage('materialrequirement.html', this)"><i class="fa-solid fa-boxes-packing"></i><span class="nav-txt">Material Requirement</span></button>
       <button class="nav-item" onclick="loadPage('materialManagement.html', this)"><i class="fa-solid fa-boxes-packing"></i><span class="nav-txt">Material Management</span></button>
+      <button id="invoiceManagementLink" class="nav-item" style="display:none" onclick="loadPage('invoiceManagement.html', this)"><i class="fa-solid fa-file-invoice-dollar"></i><span class="nav-txt">Invoice Management</span></button>
       <button id="incidentId" class="nav-item" style="display:none" onclick="loadPage('incident.html', this)"><i class="fa-solid fa-triangle-exclamation"></i><span class="nav-txt">Incident Manager</span></button>
       <button class="nav-item" onclick="loadPage('activeVsFaulty.html', this)"><i class="fa-solid fa-scale-balanced"></i><span class="nav-txt">Active vs Faulty</span></button>
       <button class="nav-item" id="roMasterLink" onclick="loadPage('romaster.html', this)"><i class="fa-solid fa-database"></i><span class="nav-txt">RO Master</span></button>
@@ -1037,7 +1038,7 @@ const pageNames = {
   'materialrequirement.html':'Material Requirement','incident.html':'Incident Manager',
   'romaster.html':'RO Master','activeVsFaulty.html':'Active vs Faulty',
   'logsViewer.html':'Logs Viewer','materialManagement.html':'Material Management',
-  'userManagement.html':'User Management',
+  'invoiceManagement.html':'Invoice Management','userManagement.html':'User Management',
   'attendance.html':'Attendance'
 };
 
@@ -1059,6 +1060,7 @@ const pageSlugs = {
   'mongoExplorer.html':'db-explorer',
   'materialrequirement.html':'material-requirement',
   'materialManagement.html':'material-management',
+  'invoiceManagement.html':'invoice-management',
   'incident.html':'incident-manager',
   'romaster.html':'ro-master',
   'activeVsFaulty.html':'active-vs-faulty',
@@ -1206,6 +1208,7 @@ async function fetchUser(){
       document.getElementById("tasklink").style.display="flex";
       document.getElementById("addSiteBtn").classList.remove("hidden");
       document.getElementById("taskManagementLink").style.display="flex";
+      document.getElementById("invoiceManagementLink").style.display="flex";
       document.getElementById("incidentId").style.display="flex";
     }
     if(user.role==="admin"&&user.engineerName==="Nikhil Trivedi"){

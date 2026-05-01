@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Invoice Management - RELCON CRM</title>
+<script src="config.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+<style>
+:root{
+  --blue:#1d4ed8; --blueLt:#e8f0ff; --blueDk:#173ea6;
+  --green:#15803d; --greenLt:#e8f7ed;
+  --red:#b42318; --redLt:#fef3f2;
+  --amber:#b45309; --amberLt:#fff7ed;
+  --ink:#0f172a; --muted:#64748b; --line:#dbe2ea; --panel:#ffffff; --bg:#f3f6fb;
+  --shadow:0 10px 30px rgba(15,23,42,.08); --r:14px; --rSm:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:linear-gradient(180deg,#eef4ff 0,#f7f9fc 180px,#f3f6fb 100%);color:var(--ink)}
+.topbar{height:54px;padding:0 22px;display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.82);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+.icon{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#1d4ed8,#0f766e);display:flex;align-items:center;justify-content:center;color:#fff}
+.title{font-size:15px;font-weight:800}
+.meta{font-size:11px;color:var(--muted);padding:4px 10px;border:1px solid var(--line);border-radius:999px;background:#fff}
+.page{padding:18px 22px 24px}
+.hero,.toolbar,.tableCard,.empty,.access{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+.hero{padding:20px;display:flex;gap:18px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;margin-bottom:14px}
+.hero h1{font-size:24px;letter-spacing:-.03em}
+.hero p{margin-top:6px;max-width:820px;color:var(--muted);line-height:1.6}
+.heroActions{display:flex;gap:10px;flex-wrap:wrap}
+.btn{height:38px;padding:0 14px;border-radius:10px;border:none;font:600 12px Inter,sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:8px;transition:.15s}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.btnPrimary{background:var(--blue);color:#fff}.btnPrimary:hover{background:var(--blueDk)}
+.btnSoft{background:#fff;border:1px solid var(--line);color:var(--ink)}
+.btnDanger{background:var(--red);color:#fff}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:var(--shadow)}
+.label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.value{margin-top:10px;font-size:26px;font-weight:800}
+.sub{margin-top:6px;font-size:12px;color:var(--muted)}
+.toolbar{padding:16px;margin-bottom:14px}
+.toolbarGrid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:10px;align-items:end}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.input,.select{height:38px;border:1px solid var(--line);border-radius:10px;padding:0 12px;background:#fff;color:var(--ink);outline:none}
+.input:focus,.select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(29,78,216,.12)}
+.uploadRow{margin-top:14px;padding-top:14px;border-top:1px dashed var(--line);display:grid;grid-template-columns:2fr auto auto auto;gap:10px;align-items:center}
+.hint{font-size:12px;color:var(--muted)}
+.check{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink)}
+.notice{margin-top:10px;padding:12px 14px;border-radius:12px;font-size:12px;display:none}
+.notice.show{display:block}.notice.ok{background:var(--greenLt);color:var(--green)}.notice.err{background:var(--redLt);color:var(--red)}
+.tableCard{overflow:hidden}
+.tableHead{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.tableTitle{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}
+.count{font-size:11px;color:var(--muted)}
+.tableWrap{overflow:auto;max-height:calc(100vh - 370px)}
+table{width:100%;border-collapse:collapse;min-width:1550px}
+th,td{padding:10px 12px;border-bottom:1px solid #edf1f5;text-align:left;font-size:12px;white-space:nowrap}
+th{position:sticky;top:0;background:#0f172a;color:#eff6ff;font-size:11px;letter-spacing:.05em;text-transform:uppercase;z-index:2}
+tbody tr:hover{background:#f8fbff}
+.money{font-weight:700;color:var(--green)}
+.badge{display:inline-flex;align-items:center;padding:4px 9px;border-radius:999px;background:var(--blueLt);color:var(--blue);font-size:11px;font-weight:700}
+.act{height:30px;width:30px;border-radius:8px;border:1px solid #fecaca;background:#fff5f5;color:var(--red);cursor:pointer}
+.empty,.access{padding:40px 20px;text-align:center}
+.empty i,.access i{font-size:30px;color:var(--muted);margin-bottom:12px}
+.empty h3,.access h3{font-size:18px;margin-bottom:8px}
+.empty p,.access p{color:var(--muted);max-width:540px;margin:0 auto;line-height:1.6}
+@media (max-width:1200px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.toolbarGrid,.uploadRow{grid-template-columns:1fr 1fr}}
+@media (max-width:760px){.page{padding:14px}.hero{padding:16px}.hero h1{font-size:20px}.grid,.toolbarGrid,.uploadRow{grid-template-columns:1fr}.tableWrap{max-height:none}}
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+    <div class="title">Invoice Management</div>
+    <div class="meta">Admin Workspace</div>
+  </div>
+
+  <div class="page">
+    <div id="accessDenied" class="access" style="display:none">
+      <i class="fa-solid fa-lock"></i>
+      <h3>Access Restricted</h3>
+      <p>This module is available only for admin users. Please contact the administrator if you need access.</p>
+    </div>
+
+    <div id="app" style="display:none">
+      <section class="hero">
+        <div>
+          <h1>Invoice Import, Review and Export</h1>
+          <p>Upload your full invoice workbook in one go, review the imported records in portal, and export the report in the same business-friendly column structure as your sample sheet.</p>
+        </div>
+        <div class="heroActions">
+          <button class="btn btnSoft" id="refreshBtn"><i class="fa-solid fa-rotate"></i> Refresh</button>
+          <button class="btn btnSoft" id="exportBtn"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
+          <button class="btn btnDanger" id="clearBtn"><i class="fa-solid fa-trash"></i> Clear All</button>
+        </div>
+      </section>
+
+      <section class="grid">
+        <div class="card"><div class="label">Total Records</div><div class="value" id="statRecords">0</div><div class="sub">Imported invoice rows</div></div>
+        <div class="card"><div class="label">Total Sites</div><div class="value" id="statSites">0</div><div class="sub">Sum of `No_of_Site`</div></div>
+        <div class="card"><div class="label">Amount</div><div class="value" id="statAmount">0</div><div class="sub">Base billing value</div></div>
+        <div class="card"><div class="label">Final Amount</div><div class="value" id="statFinalAmount">0</div><div class="sub">Billing including tax</div></div>
+      </section>
+
+      <section class="toolbar">
+        <div class="toolbarGrid">
+          <div class="field">
+            <label>Search</label>
+            <input class="input" id="searchInput" placeholder="Search region, callup no, phase, remark..."/>
+          </div>
+          <div class="field">
+            <label>Region</label>
+            <select class="select" id="regionFilter"><option value="">All Regions</option></select>
+          </div>
+          <div class="field">
+            <label>Month</label>
+            <select class="select" id="monthFilter"><option value="">All Months</option></select>
+          </div>
+          <div class="field">
+            <label>Billing Type</label>
+            <select class="select" id="billingTypeFilter"><option value="">All Types</option></select>
+          </div>
+          <button class="btn btnPrimary" id="applyBtn"><i class="fa-solid fa-filter"></i> Apply</button>
+        </div>
+
+        <div class="uploadRow">
+          <div class="field">
+            <label>Bulk Import Excel</label>
+            <input class="input" id="fileInput" type="file" accept=".xlsx,.xls,.csv"/>
+          </div>
+          <label class="check"><input type="checkbox" id="replaceMode"/> Replace existing records</label>
+          <button class="btn btnPrimary" id="uploadBtn"><i class="fa-solid fa-upload"></i> Upload File</button>
+          <div class="hint">Expected columns follow your sample workbook format.</div>
+        </div>
+        <div id="notice" class="notice"></div>
+      </section>
+
+      <section class="tableCard">
+        <div class="tableHead">
+          <div class="tableTitle">Imported Invoice Register</div>
+          <div class="count" id="tableCount">0 records</div>
+        </div>
+        <div class="tableWrap">
+          <table>
+            <thead>
+              <tr>
+                <th>SNO</th>
+                <th>Region</th>
+                <th>Callup No</th>
+                <th>Callup Date</th>
+                <th>Phase</th>
+                <th>No of Site</th>
+                <th>Available Qty</th>
+                <th>Final Qty</th>
+                <th>Per Qty Rate</th>
+                <th>Amount</th>
+                <th>Tax (CGST)</th>
+                <th>Final Amount</th>
+                <th>Year</th>
+                <th>Qtr</th>
+                <th>Month</th>
+                <th>Remark</th>
+                <th>Total Billing Month</th>
+                <th>Billing Type</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+
+<script>
+const API_BASE = window.BACKEND_URL || "/api";
+const API = `${API_BASE}/invoiceManagement`;
+const token = () => localStorage.getItem("token") || "";
+const headers = (extra = {}) => ({ Authorization: `Bearer ${token()}`, ...extra });
+
+let currentFilters = { search: "", region: "", monthLabel: "", billingType: "" };
+let currentData = [];
+
+const INR = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 });
+const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (s) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[s]));
+
+function money(v){ return INR.format(Number(v || 0)); }
+
+function qs(obj){
+  const p = new URLSearchParams();
+  Object.entries(obj).forEach(([k,v]) => { if (v !== undefined && v !== null && String(v) !== "") p.set(k, v); });
+  return p.toString();
+}
+
+function showNotice(message, type = "ok"){
+  const box = document.getElementById("notice");
+  box.className = `notice show ${type === "err" ? "err" : "ok"}`;
+  box.textContent = message;
+}
+
+function renderStats(stats){
+  document.getElementById("statRecords").textContent = money(stats.recordCount || 0);
+  document.getElementById("statSites").textContent = money(stats.noOfSite || 0);
+  document.getElementById("statAmount").textContent = money(stats.amount || 0);
+  document.getElementById("statFinalAmount").textContent = money(stats.finalAmount || 0);
+}
+
+function fillSelect(id, values, placeholder){
+  const el = document.getElementById(id);
+  const current = el.value;
+  el.innerHTML = `<option value="">${placeholder}</option>` + values.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join("");
+  el.value = current || "";
+}
+
+function renderTable(rows){
+  currentData = rows;
+  document.getElementById("tableCount").textContent = `${rows.length} record${rows.length === 1 ? "" : "s"}`;
+  const body = document.getElementById("tableBody");
+  if (!rows.length) {
+    body.innerHTML = `<tr><td colspan="19" style="padding:26px;text-align:center;color:#64748b;">No invoice records found for the selected filters.</td></tr>`;
+    return;
+  }
+  body.innerHTML = rows.map((r) => `
+    <tr>
+      <td>${esc(r.sno)}</td>
+      <td><span class="badge">${esc(r.region || "-")}</span></td>
+      <td>${esc(r.callupNo || "-")}</td>
+      <td>${esc(r.callupDate || "-")}</td>
+      <td>${esc(r.phase || "-")}</td>
+      <td>${money(r.noOfSite)}</td>
+      <td>${money(r.availableQty)}</td>
+      <td>${money(r.finalQty)}</td>
+      <td>${money(r.perQtyRate)}</td>
+      <td class="money">${money(r.amount)}</td>
+      <td>${money(r.taxCgst)}</td>
+      <td class="money">${money(r.finalAmount)}</td>
+      <td>${esc(r.yearLabel || "-")}</td>
+      <td>${esc(r.quarter || "-")}</td>
+      <td>${esc(r.monthLabel || "-")}</td>
+      <td title="${esc(r.remark || "-")}">${esc(r.remark || "-")}</td>
+      <td>${money(r.totalBillingMonth)}</td>
+      <td>${esc(r.billingType || "-")}</td>
+      <td><button class="act" onclick="deleteRow('${r._id}')"><i class="fa-solid fa-trash"></i></button></td>
+    </tr>
+  `).join("");
+}
+
+async function fetchUser(){
+  const res = await fetch(`${API_BASE}/user`, { headers: headers() });
+  if (!res.ok) throw new Error("Failed to load user");
+  return res.json();
+}
+
+async function loadStatsAndFilters(){
+  const res = await fetch(`${API}/stats?${qs(currentFilters)}`, { headers: headers() });
+  const json = await res.json();
+  if (!res.ok || !json.success) throw new Error(json.message || "Failed to load stats");
+  renderStats(json.totals || {});
+  fillSelect("regionFilter", json.filters?.regions || [], "All Regions");
+  fillSelect("monthFilter", json.filters?.months || [], "All Months");
+  fillSelect("billingTypeFilter", json.filters?.billingTypes || [], "All Types");
+}
+
+async function loadTable(){
+  const res = await fetch(`${API}?${qs({ ...currentFilters, limit: 500 })}`, { headers: headers() });
+  const json = await res.json();
+  if (!res.ok || !json.success) throw new Error(json.message || "Failed to load records");
+  renderTable(json.data || []);
+}
+
+function readFilters(){
+  currentFilters = {
+    search: document.getElementById("searchInput").value.trim(),
+    region: document.getElementById("regionFilter").value,
+    monthLabel: document.getElementById("monthFilter").value,
+    billingType: document.getElementById("billingTypeFilter").value,
+  };
+}
+
+async function refreshAll(){
+  readFilters();
+  await Promise.all([loadStatsAndFilters(), loadTable()]);
+}
+
+async function uploadFile(){
+  const file = document.getElementById("fileInput").files[0];
+  if (!file) return showNotice("Please choose an Excel file first.", "err");
+  const fd = new FormData();
+  fd.append("file", file);
+  fd.append("mode", document.getElementById("replaceMode").checked ? "replace" : "append");
+
+  const btn = document.getElementById("uploadBtn");
+  btn.disabled = true;
+  btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Uploading...`;
+  try{
+    const res = await fetch(`${API}/bulk-upload`, { method: "POST", headers: headers(), body: fd });
+    const json = await res.json();
+    if (!res.ok || !json.success) throw new Error(json.message || "Upload failed");
+    showNotice(`${json.message}${json.skippedCount ? ` | Invalid rows skipped: ${json.skippedCount}` : ""}`);
+    document.getElementById("fileInput").value = "";
+    await refreshAll();
+  }catch(err){
+    showNotice(err.message, "err");
+  }finally{
+    btn.disabled = false;
+    btn.innerHTML = `<i class="fa-solid fa-upload"></i> Upload File`;
+  }
+}
+
+async function exportExcel(){
+  readFilters();
+  const res = await fetch(`${API}/export/excel?${qs(currentFilters)}`, { headers: headers() });
+  if (!res.ok) {
+    showNotice("Failed to export Excel file.", "err");
+    return;
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "invoice_management_export.xlsx";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function deleteRow(id){
+  if (!confirm("Delete this invoice record?")) return;
+  const res = await fetch(`${API}/${id}`, { method: "DELETE", headers: headers() });
+  const json = await res.json();
+  if (!res.ok || !json.success) return showNotice(json.message || "Delete failed", "err");
+  showNotice("Invoice record deleted successfully.");
+  await refreshAll();
+}
+
+async function clearAll(){
+  if (!confirm("This will permanently remove all invoice records. Continue?")) return;
+  const res = await fetch(`${API}/admin/clear-all`, { method: "DELETE", headers: headers() });
+  const json = await res.json();
+  if (!res.ok || !json.success) return showNotice(json.message || "Clear all failed", "err");
+  showNotice(`Cleared ${json.deletedCount || 0} invoice records.`);
+  await refreshAll();
+}
+
+document.getElementById("applyBtn").addEventListener("click", refreshAll);
+document.getElementById("refreshBtn").addEventListener("click", refreshAll);
+document.getElementById("uploadBtn").addEventListener("click", uploadFile);
+document.getElementById("exportBtn").addEventListener("click", exportExcel);
+document.getElementById("clearBtn").addEventListener("click", clearAll);
+document.getElementById("searchInput").addEventListener("keydown", (e) => { if (e.key === "Enter") refreshAll(); });
+
+window.deleteRow = deleteRow;
+
+(async function init(){
+  try{
+    const user = await fetchUser();
+    if (String(user.role || "").toLowerCase() !== "admin") {
+      document.getElementById("accessDenied").style.display = "block";
+      return;
+    }
+    document.getElementById("app").style.display = "block";
+    await refreshAll();
+  }catch(err){
+    document.getElementById("accessDenied").style.display = "block";
+    document.querySelector("#accessDenied p").textContent = err.message || "Unable to load invoice management module.";
+  }
+})();
+</script>
+</body>
+</html>
