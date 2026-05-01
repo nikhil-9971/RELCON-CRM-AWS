@@ -153,6 +153,27 @@ function formatDateTimeIST(value = new Date()) {
   });
 }
 
+function getCurrentISTDateParts(baseDate = new Date()) {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "short",
+  });
+
+  const parts = formatter.formatToParts(new Date(baseDate));
+  const map = {};
+  for (const part of parts) {
+    if (part.type !== "literal") map[part.type] = part.value;
+  }
+
+  return {
+    dateISO: `${map.year}-${map.month}-${map.day}`,
+    weekdayShort: String(map.weekday || "").toLowerCase(),
+  };
+}
+
 function buildMaterialDispatchTable(rows = []) {
   if (!rows.length) return "";
 
@@ -1509,6 +1530,151 @@ async function sendVerificationCorrectionEmail({
   }
 }
 
+async function sendMissingMorningDataViewEntryAlert() {
+  const reportType = "Missing Morning Data View Entry Alert";
+
+  try {
+    const { dateISO: todayISO, weekdayShort } = getCurrentISTDateParts();
+    if (weekdayShort === "sun") {
+      return { ok: true, skipped: true, reason: "sunday" };
+    }
+
+    const alreadySent = await EmailLog.findOne({
+      type: reportType,
+      status: "success",
+      "meta.alertDate": todayISO,
+    }).lean();
+    if (alreadySent) {
+      return { ok: true, skipped: true, reason: "already_sent", alertDate: todayISO };
+    }
+
+    const [users, todayPlans] = await Promise.all([
+      User.find({}, "email role engineerName username").lean(),
+      DailyPlan.find({ date: todayISO }).lean(),
+    ]);
+
+    const engineerUsers = users.filter((user) => String(user.role || "").trim().toLowerCase() === "engineer");
+    const submittedEngineers = new Set(
+      todayPlans
+        .map((plan) => normalizePlanKeyPart(plan.engineer || ""))
+        .filter(Boolean)
+    );
+
+    const missingEngineers = [...new Set(
+      engineerUsers
+        .map((user) => String(user.engineerName || user.username || "").trim())
+        .filter(Boolean)
+        .filter((name) => !submittedEngineers.has(normalizePlanKeyPart(name)))
+    )].sort((a, b) => a.localeCompare(b));
+
+    if (!missingEngineers.length) {
+      return { ok: true, skipped: true, reason: "no_missing_entries", alertDate: todayISO };
+    }
+
+    const nikhilRecipients = [...new Set(
+      users
+        .filter((user) => {
+          const username = String(user.username || "").trim().toLowerCase();
+          const engineerName = String(user.engineerName || "").trim().toLowerCase();
+          return username === "nikhil.trivedi" || engineerName === "nikhil trivedi";
+        })
+        .map((user) => normalizeEmail(user.email))
+        .filter(Boolean)
+    )];
+
+    const toRecipients = nikhilRecipients.length ? nikhilRecipients : [normalizeEmail(MAIL_TO)].filter(Boolean);
+    if (!toRecipients.length) {
+      await EmailLog.create({
+        type: reportType,
+        subject: `Skipped: recipient email missing for ${todayISO}`,
+        to: "",
+        status: "failure",
+        sentAt: new Date(),
+        meta: { alertDate: todayISO, reason: "recipient_email_missing", missingCount: missingEngineers.length },
+      });
+      return { ok: false, reason: "recipient_email_missing" };
+    }
+
+    const rowsHtml = missingEngineers
+      .map((name, index) => `
+        <tr>
+          <td style="border:1px solid #000;padding:8px;">${index + 1}</td>
+          <td style="border:1px solid #000;padding:8px;">${htmlEscape(name)}</td>
+        </tr>
+      `)
+      .join("");
+
+    const subject = `Pending Morning Entry Alert | ${todayISO} | ${missingEngineers.length} User(s)`;
+    const html = `
+      <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:#111;">
+        <p>Dear <b>Nikhil Trivedi</b>,</p>
+        <p>
+          Please find below the list of users whose data view entry for <b>${htmlEscape(todayISO)}</b>
+          has not been submitted before <b>09:30 AM IST</b>.
+        </p>
+        <p style="margin:16px 0 8px;"><b>Pending User List</b></p>
+        <table style="border-collapse:collapse;width:100%;font-size:13px;">
+          <thead>
+            <tr>
+              <th style="border:1px solid #000;padding:8px;text-align:left;"><b>S. No.</b></th>
+              <th style="border:1px solid #000;padding:8px;text-align:left;"><b>User Name</b></th>
+            </tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+        <p style="margin-top:16px;">
+          Total pending users: <b>${missingEngineers.length}</b>
+        </p>
+        <p style="margin-top:16px;">
+          Regards,<br>
+          <b>Relcon CRM System</b>
+        </p>
+      </div>
+    `;
+
+    const text = [
+      "Dear Nikhil Trivedi,",
+      "",
+      `Please find below the list of users whose data view entry for ${todayISO} has not been submitted before 09:30 AM IST.`,
+      "",
+      "Pending User List:",
+      ...missingEngineers.map((name, index) => `${index + 1}. ${name}`),
+      "",
+      `Total pending users: ${missingEngineers.length}`,
+      "",
+      "Regards,",
+      "Relcon CRM System",
+    ].join("\n");
+
+    const info = await transporter.sendMail({
+      from: MAIL_FROM,
+      to: toRecipients.join(", "),
+      subject,
+      html,
+      text,
+    });
+
+    await EmailLog.create({
+      type: reportType,
+      subject,
+      to: toRecipients.join(", "),
+      status: "success",
+      sentAt: new Date(),
+      meta: {
+        alertDate: todayISO,
+        missingCount: missingEngineers.length,
+        missingEngineers,
+        messageId: info?.messageId || "",
+      },
+    });
+
+    return { ok: true, alertDate: todayISO, missingCount: missingEngineers.length };
+  } catch (err) {
+    console.error("❌ Missing morning data view entry alert error:", err.message);
+    return { ok: false, error: err };
+  }
+}
+
 async function sendPendingStatusReminderAlerts() {
   const reportType = "Pending Status Reminder Alert";
 
@@ -1726,6 +1892,17 @@ cron.schedule(
   { timezone: "Asia/Kolkata" }
 );
 
+// ─── Scheduler: daily missing morning data-view entry alert at 09:30 IST ─────
+
+cron.schedule(
+  "30 9 * * *",
+  () => {
+    console.log("🔔 Missing morning data view entry alert CRON TRIGGERED:", new Date().toISOString());
+    sendMissingMorningDataViewEntryAlert().catch((e) => console.error("Missing morning data view entry alert job error:", e));
+  },
+  { timezone: "Asia/Kolkata" }
+);
+
 // ─── Manual run ───────────────────────────────────────────────────────────────
 
 // if (require.main === module) {
@@ -1759,6 +1936,11 @@ if (require.main === module) {
       .then((r) => { console.log("Pending status reminder done:", r); process.exit(r.ok ? 0 : 1); })
       .catch((e) => { console.error("❌ error:", e); process.exit(1); });
 
+  } else if (type === "missing-morning-entry") {
+    sendMissingMorningDataViewEntryAlert()
+      .then((r) => { console.log("Missing morning data view entry alert done:", r); process.exit(r.ok ? 0 : 1); })
+      .catch((e) => { console.error("❌ error:", e); process.exit(1); });
+
   } else {
     // default = pending
     sendPendingStatusEmail({ forDateISO: dateArg })
@@ -1774,4 +1956,5 @@ module.exports = {
   sendMonthlyAttendanceSheet,
   sendVerificationCorrectionEmail,
   sendPendingStatusReminderAlerts,
+  sendMissingMorningDataViewEntryAlert,
 };
