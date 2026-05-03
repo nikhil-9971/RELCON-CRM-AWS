@@ -26,6 +26,7 @@ const DailyPlan = require("../models/DailyPlan");
 const Status = require("../models/Status");
 const JioBPStatus = require("../models/jioBPStatus");
 const BPCLStatus = require("../models/BPCLStatus");
+const { importMaterialFileBuffer } = require("./materialUploadService");
 
 const {
   SMTP_HOST,
@@ -1937,6 +1938,67 @@ async function sendMaterialUploadScheduleReminder() {
     return { ok: false, error: err };
   }
 }
+
+async function runScheduledMaterialUpload() {
+  try {
+    const schedule = await MaterialUploadSchedule.findOne({ moduleKey: "material-management" });
+    if (!schedule?.scheduledDate || !schedule?.scheduledTime || !schedule?.scheduledFileBuffer) {
+      return { ok: true, skipped: true, reason: "missing_schedule_or_file" };
+    }
+
+    const dueAtIST = parseISTDateTime(schedule.scheduledDate, schedule.scheduledTime);
+    if (!dueAtIST) return { ok: false, skipped: true, reason: "invalid_schedule" };
+
+    const nowIST = getISTNowDate();
+    if (nowIST < dueAtIST) return { ok: true, skipped: true, reason: "not_due_yet" };
+
+    const scheduleKey = `${schedule.scheduledDate} ${schedule.scheduledTime}`;
+    if (schedule.lastProcessedScheduleKey === scheduleKey) {
+      return { ok: true, skipped: true, reason: "already_processed" };
+    }
+
+    const result = await importMaterialFileBuffer(schedule.scheduledFileBuffer, {
+      actorName: "Material Scheduler",
+      processedScheduleKey: scheduleKey,
+    });
+
+    if (!result.success) {
+      const subject = `Material Scheduler Failed | ${scheduleKey} IST`;
+      const html = `
+        <div style="font-family:Arial,sans-serif;color:#0f172a;line-height:1.6;">
+          <p>Dear Team,</p>
+          <p>The scheduled Material Management auto-upload could not be completed.</p>
+          <p><strong>Scheduled time:</strong> ${htmlEscape(scheduleKey)} IST</p>
+          <p><strong>Reason:</strong> ${htmlEscape(result.message || "Unknown error")}</p>
+          <p>Please open Material Management and upload a corrected file manually.</p>
+        </div>
+      `;
+      await transporter.sendMail({ from: MAIL_FROM, to: MAIL_TO, subject, html });
+      return { ok: false, skipped: false, reason: result.message || "upload_failed" };
+    }
+
+    const subject = `Material Scheduler Completed | ${scheduleKey} IST`;
+    const html = `
+      <div style="font-family:Arial,sans-serif;color:#0f172a;line-height:1.6;">
+        <p>Dear Team,</p>
+        <p>The scheduled Material Management auto-upload has completed successfully.</p>
+        <div style="margin:16px 0;padding:14px 16px;border:1px solid #bbf7d0;border-radius:12px;background:#f0fdf4;">
+          <div><strong>Scheduled time:</strong> ${htmlEscape(scheduleKey)} IST</div>
+          <div><strong>Old records cleared:</strong> ${htmlEscape(String(result.deletedCount || 0))}</div>
+          <div><strong>Fresh rows imported:</strong> ${htmlEscape(String(result.inserted || 0))}</div>
+          <div><strong>Skipped duplicates:</strong> ${htmlEscape(String(result.skipped || 0))}</div>
+        </div>
+        <p>Material Management is now refreshed with the scheduled file.</p>
+      </div>
+    `;
+    await transporter.sendMail({ from: MAIL_FROM, to: MAIL_TO, subject, html });
+    console.log("✅ Scheduled material upload completed for", scheduleKey);
+    return { ok: true, processed: true, scheduleKey, result };
+  } catch (err) {
+    console.error("❌ Scheduled material upload error:", err.message);
+    return { ok: false, error: err };
+  }
+}
 // ─── Scheduler: daily 10:50 IST ───────────────────────────────────────────────
 
 cron.schedule(
@@ -2003,6 +2065,15 @@ cron.schedule(
   { timezone: "Asia/Kolkata" }
 );
 
+cron.schedule(
+  "*/5 * * * *",
+  () => {
+    console.log("⚙️ Material auto upload CRON TRIGGERED:", new Date().toISOString());
+    runScheduledMaterialUpload().catch((e) => console.error("Scheduled material upload job error:", e));
+  },
+  { timezone: "Asia/Kolkata" }
+);
+
 // ─── Scheduler: daily missing morning data-view entry alert at 09:30 IST ─────
 
 cron.schedule(
@@ -2057,6 +2128,11 @@ if (require.main === module) {
       .then((r) => { console.log("Material upload schedule reminder done:", r); process.exit(r.ok ? 0 : 1); })
       .catch((e) => { console.error("❌ error:", e); process.exit(1); });
 
+  } else if (type === "material-auto-upload") {
+    runScheduledMaterialUpload()
+      .then((r) => { console.log("Material auto upload done:", r); process.exit(r.ok ? 0 : 1); })
+      .catch((e) => { console.error("❌ error:", e); process.exit(1); });
+
   } else {
     // default = pending
     sendPendingStatusEmail({ forDateISO: dateArg })
@@ -2073,5 +2149,6 @@ module.exports = {
   sendVerificationCorrectionEmail,
   sendPendingStatusReminderAlerts,
   sendMaterialUploadScheduleReminder,
+  runScheduledMaterialUpload,
   sendMissingMorningDataViewEntryAlert,
 };

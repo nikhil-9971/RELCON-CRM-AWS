@@ -859,6 +859,12 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
           <label>Ops Note</label>
           <textarea id="schedNotes" placeholder="Example: HPCL + RBML consolidated stock file expected from stores team"></textarea>
         </div>
+        <div class="form-field full">
+          <label>Schedule File</label>
+          <input type="file" id="schedFileInput" accept=".xlsx,.xls,.csv" onchange="onScheduleFileSelect(event)"/>
+          <div style="font-size:11px;color:var(--txt3);margin-top:6px;">Upload the exact file now. At scheduled time, this same file will auto-import and replace old material records.</div>
+          <div id="schedFileMeta" style="margin-top:8px;font-size:11px;color:var(--sf-blue);font-weight:600;"></div>
+        </div>
       </div>
       <div class="scheduler-callout" style="margin-top:16px;">
         <i class="fa-solid fa-circle-info" style="margin-top:2px;flex-shrink:0;"></i>
@@ -926,6 +932,7 @@ let recentTransfers = [];
 let selectedTransferRecord = null;
 let transferEngineerDirectory = [];
 let uploadSchedule = null;
+let scheduledUploadFile = null;
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  INIT
@@ -1142,6 +1149,16 @@ function renderUploadSchedule() {
     lastSummaryEl.textContent = uploadSchedule?.lastUploadAt
       ? `${deleted} old records cleared, ${inserted} fresh rows imported`
       : 'Waiting for first refresh';
+  }
+  const fileMetaEl = document.getElementById('schedFileMeta');
+  if (fileMetaEl) {
+    if (scheduledUploadFile) {
+      fileMetaEl.textContent = `Selected file: ${scheduledUploadFile.name} (${(scheduledUploadFile.size / 1024).toFixed(1)} KB)`;
+    } else if (uploadSchedule?.scheduledFileName) {
+      fileMetaEl.textContent = `Stored file: ${uploadSchedule.scheduledFileName} (${((Number(uploadSchedule.scheduledFileSize || 0)) / 1024).toFixed(1)} KB)`;
+    } else {
+      fileMetaEl.textContent = 'No scheduler file stored yet';
+    }
   }
   renderScheduleBanner();
 }
@@ -1597,10 +1614,13 @@ function openScheduleModal() {
   document.getElementById('schedDate').value = uploadSchedule?.scheduledDate || '';
   document.getElementById('schedTime').value = uploadSchedule?.scheduledTime || '';
   document.getElementById('schedNotes').value = uploadSchedule?.notes || '';
+  document.getElementById('schedFileInput').value = '';
+  scheduledUploadFile = null;
   const readOnly = !isAdmin();
   document.getElementById('schedDate').disabled = readOnly;
   document.getElementById('schedTime').disabled = readOnly;
   document.getElementById('schedNotes').disabled = readOnly;
+  document.getElementById('schedFileInput').disabled = readOnly;
   document.getElementById('saveScheduleBtn').style.display = readOnly ? 'none' : 'inline-flex';
   renderUploadSchedule();
   openModal('scheduleModal');
@@ -1610,6 +1630,15 @@ function clearScheduleForm() {
   document.getElementById('schedDate').value = '';
   document.getElementById('schedTime').value = '';
   document.getElementById('schedNotes').value = '';
+  document.getElementById('schedFileInput').value = '';
+  scheduledUploadFile = null;
+  renderUploadSchedule();
+}
+
+function onScheduleFileSelect(e) {
+  const file = e.target.files?.[0] || null;
+  scheduledUploadFile = file;
+  renderUploadSchedule();
 }
 
 async function saveUploadSchedule() {
@@ -1621,21 +1650,25 @@ async function saveUploadSchedule() {
     showToast('Please select both upload date and upload time', 'error');
     return;
   }
+  if (scheduledDate && scheduledTime && !scheduledUploadFile && !uploadSchedule?.scheduledFileName) {
+    showToast('Please attach the scheduler file before saving', 'error');
+    return;
+  }
   btn.disabled = true;
   btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving…';
   try {
+    const fd = new FormData();
+    fd.append('scheduledDate', scheduledDate);
+    fd.append('scheduledTime', scheduledTime);
+    fd.append('timezone', DEFAULT_TIMEZONE);
+    fd.append('notes', notes);
+    if (scheduledUploadFile) fd.append('scheduleFile', scheduledUploadFile);
     const r = await fetch(`${API}/upload-schedule`, {
       method: 'PUT',
       headers: {
-        'Content-Type': 'application/json',
         Authorization: `Bearer ${TOKEN()}`,
       },
-      body: JSON.stringify({
-        scheduledDate,
-        scheduledTime,
-        timezone: DEFAULT_TIMEZONE,
-        notes,
-      }),
+      body: fd,
     });
     const j = await r.json();
     if (!r.ok) {
@@ -1643,6 +1676,7 @@ async function saveUploadSchedule() {
       return;
     }
     uploadSchedule = j.data || null;
+    scheduledUploadFile = null;
     renderUploadSchedule();
     showToast('Upload scheduler saved successfully', 'success');
     closeModal('scheduleModal');

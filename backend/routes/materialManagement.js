@@ -1,13 +1,18 @@
 const express = require("express");
 const router = express.Router();
 const multer = require("multer");
-const XLSX = require("xlsx");
 const path = require("path");
 
 const MaterialManagement = require("../models/MaterialManagement");
-const MaterialUploadSchedule = require("../models/MaterialUploadSchedule");
 const User = require("../models/User");
 const { verifyToken, requireRole } = require("./auth");
+const {
+  normalizeItemStatus,
+  validateRow,
+  getOrCreateUploadSchedule,
+  sanitizeSchedule,
+  importMaterialFileBuffer,
+} = require("../services/materialUploadService");
 
 // ── Multer config ─────────────────────────────────────────────────────────────
 const upload = multer({
@@ -22,34 +27,8 @@ const upload = multer({
 });
 
 // ── Helper ────────────────────────────────────────────────────────────────────
-const VALID_STATUSES = ["OK", "Not Ok (Faulty)", "Under Repair", "Scrapped"];
 const actorName = (req) => req.user?.name || req.user?.email || "System";
 const buildSerial = (prefix = "MAT") => `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-const UPLOAD_SCHEDULE_KEY = "material-management";
-
-function normalizeItemStatus(status = "") {
-  const value = String(status).trim().toLowerCase();
-  if (!value) return "";
-  if (value === "ok") return "OK";
-  if (value === "faulty" || value === "not ok / faulty" || value === "not ok (faulty)") return "Not Ok (Faulty)";
-  if (value === "under repair") return "Under Repair";
-  if (value === "scrapped") return "Scrapped";
-  return status;
-}
-
-function validateRow(row) {
-  const errors = [];
-  if (!row.itemCode)     errors.push("itemCode is required");
-  if (!row.itemName)     errors.push("itemName is required");
-  if (row.qty === undefined || row.qty === null || isNaN(Number(row.qty)))
-    errors.push("qty must be a number");
-  if (!row.itemType)     errors.push("itemType is required");
-  if (!row.itemStatus || !VALID_STATUSES.includes(row.itemStatus))
-    errors.push(`itemStatus must be one of: ${VALID_STATUSES.join(", ")}`);
-  if (!row.engineerName) errors.push("engineerName is required");
-  // customerName optional hai — UI mein field nahi hai
-  return errors;
-}
 
 function buildTransferEntry({ type, qty, fromEngineer = "", toEngineer = "", note = "", referenceSerial = "", createdBy = "" }) {
   return {
@@ -62,14 +41,6 @@ function buildTransferEntry({ type, qty, fromEngineer = "", toEngineer = "", not
     createdBy,
     createdAt: new Date(),
   };
-}
-
-async function getOrCreateUploadSchedule() {
-  let schedule = await MaterialUploadSchedule.findOne({ moduleKey: UPLOAD_SCHEDULE_KEY });
-  if (!schedule) {
-    schedule = await MaterialUploadSchedule.create({ moduleKey: UPLOAD_SCHEDULE_KEY });
-  }
-  return schedule;
 }
 
 router.get("/engineers", verifyToken, requireRole(["Admin", "Manager"]), async (req, res) => {
@@ -95,14 +66,14 @@ router.get("/engineers", verifyToken, requireRole(["Admin", "Manager"]), async (
 router.get("/upload-schedule", verifyToken, requireRole(["Admin", "Manager"]), async (req, res) => {
   try {
     const schedule = await getOrCreateUploadSchedule();
-    res.json({ success: true, data: schedule });
+    res.json({ success: true, data: sanitizeSchedule(schedule) });
   } catch (err) {
     console.error("[MaterialMgmt] GET /upload-schedule:", err);
     res.status(500).json({ success: false, message: "Failed to fetch upload schedule", error: err.message });
   }
 });
 
-router.put("/upload-schedule", verifyToken, requireRole(["Admin"]), async (req, res) => {
+router.put("/upload-schedule", verifyToken, requireRole(["Admin"]), upload.single("scheduleFile"), async (req, res) => {
   try {
     const scheduledDate = String(req.body?.scheduledDate || "").trim();
     const scheduledTime = String(req.body?.scheduledTime || "").trim();
@@ -114,15 +85,29 @@ router.put("/upload-schedule", verifyToken, requireRole(["Admin"]), async (req, 
     }
 
     const schedule = await getOrCreateUploadSchedule();
+    if (scheduledDate && scheduledTime && !req.file?.buffer && !schedule.scheduledFileBuffer) {
+      return res.status(400).json({ success: false, message: "Please attach a scheduler file before saving the upload schedule" });
+    }
+    const previousScheduleKey = `${schedule.scheduledDate || ""} ${schedule.scheduledTime || ""}`;
+    const nextScheduleKey = `${scheduledDate || ""} ${scheduledTime || ""}`;
     schedule.scheduledDate = scheduledDate;
     schedule.scheduledTime = scheduledTime;
     schedule.timezone = timezone;
     schedule.replaceExistingOnUpload = true;
     schedule.notes = notes;
     schedule.updatedBy = actorName(req);
+    if (req.file?.buffer) {
+      schedule.scheduledFileName = req.file.originalname || "";
+      schedule.scheduledFileMimeType = req.file.mimetype || "";
+      schedule.scheduledFileSize = Number(req.file.size || 0) || 0;
+      schedule.scheduledFileBuffer = req.file.buffer;
+      schedule.scheduledFileUploadedAt = new Date();
+      schedule.lastProcessedScheduleKey = "";
+    }
+    if (previousScheduleKey !== nextScheduleKey) schedule.lastProcessedScheduleKey = "";
     await schedule.save();
 
-    res.json({ success: true, message: "Upload scheduler saved successfully", data: schedule });
+    res.json({ success: true, message: "Upload scheduler saved successfully", data: sanitizeSchedule(schedule) });
   } catch (err) {
     console.error("[MaterialMgmt] PUT /upload-schedule:", err);
     res.status(500).json({ success: false, message: "Failed to save upload schedule", error: err.message });
@@ -336,7 +321,8 @@ router.post("/", verifyToken, requireRole(["Admin"]), async (req, res) => {
 
     } = req.body;
 
-    const errors = validateRow({ itemCode, itemName, qty, itemType, itemStatus, engineerName });
+    const normalizedStatus = normalizeItemStatus(itemStatus);
+    const errors = validateRow({ itemCode, itemName, qty, itemType, itemStatus: normalizedStatus, engineerName });
     if (errors.length)
       return res.status(400).json({ success: false, message: "Validation failed", errors });
 
@@ -353,7 +339,7 @@ router.post("/", verifyToken, requireRole(["Admin"]), async (req, res) => {
       itemName,
       qty: Number(qty),
       itemType: itemType.toUpperCase(),
-      itemStatus,                                   // ← NEW
+      itemStatus: normalizedStatus,
       engineerName,
       
       uploadedBy: req.user?.name || req.user?.email || "Admin",
@@ -388,9 +374,9 @@ router.put("/:id", verifyToken, requireRole(["Admin", "Manager"]), async (req, r
     if (!existing || !existing.isActive)
       return res.status(404).json({ success: false, message: "Record not found" });
 
-    // itemStatus validate karein agar diya gaya ho
-    if (itemStatus && !VALID_STATUSES.includes(itemStatus))
-      return res.status(400).json({ success: false, message: `itemStatus must be one of: ${VALID_STATUSES.join(", ")}` });
+    const normalizedStatus = itemStatus ? normalizeItemStatus(itemStatus) : "";
+    if (itemStatus && !["OK", "Not Ok (Faulty)", "Under Repair", "Scrapped"].includes(normalizedStatus))
+      return res.status(400).json({ success: false, message: "itemStatus must be one of: OK, Not Ok (Faulty), Under Repair, Scrapped" });
 
     // Duplicate serial check (agar serial change ho raha hai)
     if (serialNumber && serialNumber !== existing.serialNumber) {
@@ -408,7 +394,7 @@ router.put("/:id", verifyToken, requireRole(["Admin", "Manager"]), async (req, r
           ...(itemName                   && { itemName }),
           ...(qty !== undefined          && { qty: Number(qty) }),
           ...(itemType                   && { itemType: itemType.toUpperCase() }),
-          ...(itemStatus                 && { itemStatus }),          // ← NEW
+          ...(normalizedStatus           && { itemStatus: normalizedStatus }),
           ...(engineerName               && { engineerName }),
          
         },
@@ -446,88 +432,9 @@ router.delete("/:id", verifyToken, requireRole(["Admin"]), async (req, res) => {
 router.post("/bulk-upload", verifyToken, requireRole(["Admin"]), upload.single("file"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded" });
-
-    const workbook  = XLSX.read(req.file.buffer, { type: "buffer" });
-    const sheetName = workbook.SheetNames[0];
-    const sheet     = workbook.Sheets[sheetName];
-    const rows      = XLSX.utils.sheet_to_json(sheet, { defval: "" });
-
-    if (!rows.length) return res.status(400).json({ success: false, message: "Sheet is empty" });
-
-    // CSV column names normalize — UI template ke exact column names match
-    const normalize = (row) => ({
-      serialNumber: (row["Serial Number"] || row["serialNumber"] || row["SNo"] || "").toString().trim(),
-      itemCode:     (row["Item Code"]     || row["itemCode"]     || "").toString().trim(),
-      itemName:     (row["Item Name"]     || row["itemName"]     || "").toString().trim(),
-      qty:           row["Qty"] ?? row["qty"] ?? row["Quantity"] ?? 0,
-      itemType:     (row["Item Type"]     || row["itemType"]     || "").toString().trim(),
-      itemStatus:   (row["Item Status"]   || row["itemStatus"]   || "OK").toString().trim(), // ← NEW
-      engineerName: (row["Engineer"]      || row["engineerName"] || row["Engineer Name"] || "").toString().trim(),
-      
-    });
-
-    const validRows = [];
-    const errorRows = [];
-
-    rows.forEach((rawRow, index) => {
-      const row = normalize(rawRow);
-      const errors = validateRow(row);
-      if (errors.length) {
-        errorRows.push({ row: index + 2, data: rawRow, errors });
-      } else {
-        validRows.push({
-          ...row,
-          qty:          Number(row.qty),
-          itemCode:     row.itemCode.toUpperCase(),
-          itemType:     row.itemType.toUpperCase(),
-          serialNumber: row.serialNumber || `MAT-${Date.now()}-${index}`,
-          uploadedBy:   req.user?.name || "Admin",
-        });
-      }
-    });
-
-    if (!validRows.length) {
-      return res.status(400).json({
-        success: false,
-        message: "No valid rows found in file. Existing material data was not changed.",
-        errorRows,
-      });
-    }
-
-    const schedule = await getOrCreateUploadSchedule();
-    const existingCount = await MaterialManagement.countDocuments({});
-    if (schedule.replaceExistingOnUpload) {
-      await MaterialManagement.deleteMany({});
-    }
-
-    let inserted = 0, skipped = 0;
-    const skipList = [];
-
-    for (const row of validRows) {
-      try {
-        await MaterialManagement.create(row);
-        inserted++;
-      } catch (e) {
-        if (e.code === 11000) { skipped++; skipList.push(row.serialNumber); }
-      }
-    }
-
-    schedule.lastUploadAt = new Date();
-    schedule.lastUploadedBy = actorName(req);
-    schedule.lastDeletedCount = schedule.replaceExistingOnUpload ? existingCount : 0;
-    schedule.lastInsertedCount = inserted;
-    await schedule.save();
-
-    res.json({
-      success: true,
-      message: `Upload complete: ${inserted} inserted, ${skipped} skipped, ${errorRows.length} invalid`,
-      inserted,
-      skipped,
-      deletedCount: schedule.replaceExistingOnUpload ? existingCount : 0,
-      replaceExistingOnUpload: schedule.replaceExistingOnUpload,
-      skipList,
-      errorRows,
-    });
+    const result = await importMaterialFileBuffer(req.file.buffer, { actorName: actorName(req) });
+    if (!result.success) return res.status(400).json(result);
+    res.json(result);
   } catch (err) {
     console.error("[MaterialMgmt] POST /bulk-upload:", err);
     res.status(500).json({ success: false, message: "Server error", error: err.message });

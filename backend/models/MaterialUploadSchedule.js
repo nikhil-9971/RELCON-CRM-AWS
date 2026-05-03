@@ -64,6 +64,37 @@ const materialUploadScheduleSchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
+    scheduledFileName: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    scheduledFileMimeType: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    scheduledFileSize: {
+      type: Number,
+      default: 0,
+    },
+    scheduledFileBuffer: {
+      type: Buffer,
+      default: null,
+    },
+    scheduledFileUploadedAt: {
+      type: Date,
+      default: null,
+    },
+    lastAutoImportAt: {
+      type: Date,
+      default: null,
+    },
+    lastProcessedScheduleKey: {
+      type: String,
+      trim: true,
+      default: "",
+    },
   },
   { timestamps: true }
 );
