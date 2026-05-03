@@ -95,6 +95,9 @@ async function importMaterialFileBuffer(fileBuffer, options = {}) {
   }
 
   const schedule = await getOrCreateUploadSchedule();
+  const currentScheduleKey = schedule.scheduledDate && schedule.scheduledTime
+    ? `${schedule.scheduledDate} ${schedule.scheduledTime}`
+    : "";
   const existingCount = await MaterialManagement.countDocuments({});
   if (schedule.replaceExistingOnUpload) {
     await MaterialManagement.deleteMany({});
@@ -122,8 +125,11 @@ async function importMaterialFileBuffer(fileBuffer, options = {}) {
   schedule.lastUploadedBy = actor;
   schedule.lastDeletedCount = schedule.replaceExistingOnUpload ? existingCount : 0;
   schedule.lastInsertedCount = inserted;
+  const processedScheduleKey = options.processedScheduleKey || currentScheduleKey;
+  if (processedScheduleKey) {
+    schedule.lastProcessedScheduleKey = processedScheduleKey;
+  }
   if (options.processedScheduleKey) {
-    schedule.lastProcessedScheduleKey = options.processedScheduleKey;
     schedule.lastAutoImportAt = new Date();
   }
   await schedule.save();

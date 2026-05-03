@@ -1087,6 +1087,12 @@ function getScheduleDueState() {
   if (!uploadSchedule?.scheduledDate || !uploadSchedule?.scheduledTime) return null;
   const dueAt = new Date(`${uploadSchedule.scheduledDate}T${uploadSchedule.scheduledTime}:00`);
   if (Number.isNaN(dueAt.getTime())) return null;
+  const scheduleKey = `${uploadSchedule.scheduledDate} ${uploadSchedule.scheduledTime}`;
+  const lastUploadAt = uploadSchedule?.lastUploadAt ? new Date(uploadSchedule.lastUploadAt) : null;
+  const completedForCurrentSchedule =
+    uploadSchedule?.lastProcessedScheduleKey === scheduleKey ||
+    (lastUploadAt && !Number.isNaN(lastUploadAt.getTime()) && lastUploadAt.getTime() >= dueAt.getTime());
+  if (completedForCurrentSchedule) return null;
   const now = new Date();
   const diffMs = dueAt.getTime() - now.getTime();
   const diffMin = Math.round(diffMs / 60000);
@@ -1126,14 +1132,16 @@ function renderUploadSchedule() {
   const subline = document.getElementById('scheduleSubline');
   if (!headline || !subline) return;
   const hasSchedule = uploadSchedule?.scheduledDate && uploadSchedule?.scheduledTime;
+  const scheduleKey = hasSchedule ? `${uploadSchedule.scheduledDate} ${uploadSchedule.scheduledTime}` : '';
+  const isScheduleCompleted = hasSchedule && uploadSchedule?.lastProcessedScheduleKey === scheduleKey;
   headline.textContent = hasSchedule
-    ? `Next upload: ${formatScheduleDateTime(uploadSchedule.scheduledDate, uploadSchedule.scheduledTime)}`
+    ? `${isScheduleCompleted ? 'Scheduled upload completed' : 'Next upload'}: ${formatScheduleDateTime(uploadSchedule.scheduledDate, uploadSchedule.scheduledTime)}`
     : 'No upload schedule set';
 
   const note = (uploadSchedule?.notes || '').trim();
   const updatedBy = uploadSchedule?.updatedBy ? ` Set by ${uploadSchedule.updatedBy}.` : '';
   subline.innerHTML = hasSchedule
-    ? `Replace mode is active for every upload.${updatedBy}${note ? `<div class="schedule-note">${esc(note)}</div>` : ''}`
+    ? `${isScheduleCompleted ? 'This schedule has already been satisfied by the latest upload.' : 'Replace mode is active for every upload.'}${updatedBy}${note ? `<div class="schedule-note">${esc(note)}</div>` : ''}`
     : 'Admin can set next upload date/time and every upload will replace old material records.';
 
   const lastUploadEl = document.getElementById('schedLastUpload');
