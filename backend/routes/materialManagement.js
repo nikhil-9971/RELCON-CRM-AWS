@@ -5,6 +5,7 @@ const XLSX = require("xlsx");
 const path = require("path");
 
 const MaterialManagement = require("../models/MaterialManagement");
+const MaterialUploadSchedule = require("../models/MaterialUploadSchedule");
 const User = require("../models/User");
 const { verifyToken, requireRole } = require("./auth");
 
@@ -24,6 +25,7 @@ const upload = multer({
 const VALID_STATUSES = ["OK", "Not Ok (Faulty)", "Under Repair", "Scrapped"];
 const actorName = (req) => req.user?.name || req.user?.email || "System";
 const buildSerial = (prefix = "MAT") => `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+const UPLOAD_SCHEDULE_KEY = "material-management";
 
 function normalizeItemStatus(status = "") {
   const value = String(status).trim().toLowerCase();
@@ -62,6 +64,14 @@ function buildTransferEntry({ type, qty, fromEngineer = "", toEngineer = "", not
   };
 }
 
+async function getOrCreateUploadSchedule() {
+  let schedule = await MaterialUploadSchedule.findOne({ moduleKey: UPLOAD_SCHEDULE_KEY });
+  if (!schedule) {
+    schedule = await MaterialUploadSchedule.create({ moduleKey: UPLOAD_SCHEDULE_KEY });
+  }
+  return schedule;
+}
+
 router.get("/engineers", verifyToken, requireRole(["Admin", "Manager"]), async (req, res) => {
   try {
     const users = await User.find(
@@ -79,6 +89,43 @@ router.get("/engineers", verifyToken, requireRole(["Admin", "Manager"]), async (
   } catch (err) {
     console.error("[MaterialMgmt] GET /engineers:", err);
     res.status(500).json({ success: false, message: "Failed to fetch engineer users", error: err.message });
+  }
+});
+
+router.get("/upload-schedule", verifyToken, requireRole(["Admin", "Manager"]), async (req, res) => {
+  try {
+    const schedule = await getOrCreateUploadSchedule();
+    res.json({ success: true, data: schedule });
+  } catch (err) {
+    console.error("[MaterialMgmt] GET /upload-schedule:", err);
+    res.status(500).json({ success: false, message: "Failed to fetch upload schedule", error: err.message });
+  }
+});
+
+router.put("/upload-schedule", verifyToken, requireRole(["Admin"]), async (req, res) => {
+  try {
+    const scheduledDate = String(req.body?.scheduledDate || "").trim();
+    const scheduledTime = String(req.body?.scheduledTime || "").trim();
+    const timezone = String(req.body?.timezone || "Asia/Kolkata").trim() || "Asia/Kolkata";
+    const notes = String(req.body?.notes || "").trim();
+
+    if ((scheduledDate && !scheduledTime) || (!scheduledDate && scheduledTime)) {
+      return res.status(400).json({ success: false, message: "Both schedule date and time are required together" });
+    }
+
+    const schedule = await getOrCreateUploadSchedule();
+    schedule.scheduledDate = scheduledDate;
+    schedule.scheduledTime = scheduledTime;
+    schedule.timezone = timezone;
+    schedule.replaceExistingOnUpload = true;
+    schedule.notes = notes;
+    schedule.updatedBy = actorName(req);
+    await schedule.save();
+
+    res.json({ success: true, message: "Upload scheduler saved successfully", data: schedule });
+  } catch (err) {
+    console.error("[MaterialMgmt] PUT /upload-schedule:", err);
+    res.status(500).json({ success: false, message: "Failed to save upload schedule", error: err.message });
   }
 });
 
@@ -439,6 +486,20 @@ router.post("/bulk-upload", verifyToken, requireRole(["Admin"]), upload.single("
       }
     });
 
+    if (!validRows.length) {
+      return res.status(400).json({
+        success: false,
+        message: "No valid rows found in file. Existing material data was not changed.",
+        errorRows,
+      });
+    }
+
+    const schedule = await getOrCreateUploadSchedule();
+    const existingCount = await MaterialManagement.countDocuments({});
+    if (schedule.replaceExistingOnUpload) {
+      await MaterialManagement.deleteMany({});
+    }
+
     let inserted = 0, skipped = 0;
     const skipList = [];
 
@@ -451,11 +512,19 @@ router.post("/bulk-upload", verifyToken, requireRole(["Admin"]), upload.single("
       }
     }
 
+    schedule.lastUploadAt = new Date();
+    schedule.lastUploadedBy = actorName(req);
+    schedule.lastDeletedCount = schedule.replaceExistingOnUpload ? existingCount : 0;
+    schedule.lastInsertedCount = inserted;
+    await schedule.save();
+
     res.json({
       success: true,
       message: `Upload complete: ${inserted} inserted, ${skipped} skipped, ${errorRows.length} invalid`,
       inserted,
       skipped,
+      deletedCount: schedule.replaceExistingOnUpload ? existingCount : 0,
+      replaceExistingOnUpload: schedule.replaceExistingOnUpload,
       skipList,
       errorRows,
     });

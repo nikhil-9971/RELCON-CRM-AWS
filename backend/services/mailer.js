@@ -19,6 +19,7 @@ const cron = require("node-cron");
 const XLSX = require("xlsx");
 const { EmailLog } = require("../models/AuditLog");
 const MaterialManagement = require("../models/MaterialManagement");
+const MaterialUploadSchedule = require("../models/MaterialUploadSchedule");
 const User = require("../models/User");
 const Attendance = require("../models/Attendance");
 const DailyPlan = require("../models/DailyPlan");
@@ -172,6 +173,19 @@ function getCurrentISTDateParts(baseDate = new Date()) {
     dateISO: `${map.year}-${map.month}-${map.day}`,
     weekdayShort: String(map.weekday || "").toLowerCase(),
   };
+}
+
+function parseISTDateTime(dateISO = "", timeValue = "") {
+  const [year, month, day] = String(dateISO || "").split("-").map(Number);
+  const [hour, minute] = String(timeValue || "").split(":").map(Number);
+  if (!year || !month || !day || Number.isNaN(hour) || Number.isNaN(minute)) return null;
+  return new Date(year, month - 1, day, hour, minute, 0, 0);
+}
+
+function getISTNowDate() {
+  const now = new Date();
+  const istString = now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" });
+  return new Date(istString);
 }
 
 function buildMaterialDispatchTable(rows = []) {
@@ -1837,6 +1851,92 @@ async function sendPendingStatusReminderAlerts() {
     return { ok: false, error: err };
   }
 }
+
+async function sendMaterialUploadScheduleReminder() {
+  try {
+    const schedule = await MaterialUploadSchedule.findOne({ moduleKey: "material-management" }).lean();
+    if (!schedule?.scheduledDate || !schedule?.scheduledTime) {
+      return { ok: true, skipped: true, reason: "no_schedule" };
+    }
+
+    const dueAtIST = parseISTDateTime(schedule.scheduledDate, schedule.scheduledTime);
+    if (!dueAtIST) {
+      return { ok: false, skipped: true, reason: "invalid_schedule" };
+    }
+
+    const nowIST = getISTNowDate();
+    if (nowIST < dueAtIST) {
+      return { ok: true, skipped: true, reason: "not_due_yet" };
+    }
+
+    const scheduleKey = `${schedule.scheduledDate} ${schedule.scheduledTime}`;
+    if (schedule.lastReminderScheduleKey === scheduleKey) {
+      return { ok: true, skipped: true, reason: "already_sent" };
+    }
+
+    const note = String(schedule.notes || "").trim();
+    const dueText = formatDateTimeIST(dueAtIST);
+    const lastUploadText = schedule.lastUploadAt
+      ? `${formatDateTimeIST(schedule.lastUploadAt)} by ${schedule.lastUploadedBy || "Admin"}`
+      : "No upload has been completed yet.";
+
+    const subject = `Reminder: Material File Upload Due | ${schedule.scheduledDate} ${schedule.scheduledTime} IST`;
+    const html = `
+      <div style="font-family:Arial,sans-serif;color:#0f172a;line-height:1.6;">
+        <p>Dear Team,</p>
+        <p>This is a scheduled reminder for the <strong>Material Management</strong> file upload.</p>
+        <div style="margin:16px 0;padding:14px 16px;border:1px solid #bfdbfe;border-radius:12px;background:#eff6ff;">
+          <div style="font-size:12px;color:#1d4ed8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Upload Window</div>
+          <div style="font-size:18px;font-weight:800;color:#0f172a;margin-top:4px;">${htmlEscape(dueText)}</div>
+          <div style="font-size:13px;color:#475569;margin-top:6px;">Any new upload will replace the previous material records after validation.</div>
+        </div>
+        ${note ? `<p><strong>Ops Note:</strong> ${htmlEscape(note)}</p>` : ""}
+        <p><strong>Last upload status:</strong> ${htmlEscape(lastUploadText)}</p>
+        <p>Please keep the latest stock file ready and upload it on time.</p>
+        <p>Regards,<br/>RELCON CRM Scheduler</p>
+      </div>
+    `;
+
+    const info = await transporter.sendMail({
+      from: MAIL_FROM,
+      to: MAIL_TO,
+      subject,
+      html,
+    });
+
+    await MaterialUploadSchedule.updateOne(
+      { _id: schedule._id },
+      {
+        $set: {
+          lastReminderSentAt: new Date(),
+          lastReminderScheduleKey: scheduleKey,
+        },
+      }
+    );
+
+    try {
+      await EmailLog.create({
+        type: "material-upload-schedule-reminder",
+        to: MAIL_TO,
+        subject,
+        status: "sent",
+        meta: {
+          messageId: info?.messageId || "",
+          scheduledDate: schedule.scheduledDate,
+          scheduledTime: schedule.scheduledTime,
+        },
+      });
+    } catch (logErr) {
+      console.error("Failed to log material upload scheduler email:", logErr?.message || logErr);
+    }
+
+    console.log("✅ Material upload schedule reminder email sent for", scheduleKey);
+    return { ok: true, sent: true, scheduleKey, messageId: info?.messageId || "" };
+  } catch (err) {
+    console.error("❌ Material upload schedule reminder email error:", err.message);
+    return { ok: false, error: err };
+  }
+}
 // ─── Scheduler: daily 10:50 IST ───────────────────────────────────────────────
 
 cron.schedule(
@@ -1892,6 +1992,17 @@ cron.schedule(
   { timezone: "Asia/Kolkata" }
 );
 
+// ─── Scheduler: every 15 mins for material upload due reminder ──────────────
+
+cron.schedule(
+  "*/15 * * * *",
+  () => {
+    console.log("🔔 Material upload schedule reminder CRON TRIGGERED:", new Date().toISOString());
+    sendMaterialUploadScheduleReminder().catch((e) => console.error("Material upload schedule reminder job error:", e));
+  },
+  { timezone: "Asia/Kolkata" }
+);
+
 // ─── Scheduler: daily missing morning data-view entry alert at 09:30 IST ─────
 
 cron.schedule(
@@ -1941,6 +2052,11 @@ if (require.main === module) {
       .then((r) => { console.log("Missing morning data view entry alert done:", r); process.exit(r.ok ? 0 : 1); })
       .catch((e) => { console.error("❌ error:", e); process.exit(1); });
 
+  } else if (type === "material-upload-reminder") {
+    sendMaterialUploadScheduleReminder()
+      .then((r) => { console.log("Material upload schedule reminder done:", r); process.exit(r.ok ? 0 : 1); })
+      .catch((e) => { console.error("❌ error:", e); process.exit(1); });
+
   } else {
     // default = pending
     sendPendingStatusEmail({ forDateISO: dateArg })
@@ -1956,5 +2072,6 @@ module.exports = {
   sendMonthlyAttendanceSheet,
   sendVerificationCorrectionEmail,
   sendPendingStatusReminderAlerts,
+  sendMaterialUploadScheduleReminder,
   sendMissingMorningDataViewEntryAlert,
 };

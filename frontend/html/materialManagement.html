@@ -144,6 +144,23 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
 .activity-text{font-size:11px;color:var(--txt2);line-height:1.45;}
 .activity-meta{font-size:10px;color:var(--txt4);}
 .activity-empty{padding:18px;border:1px dashed var(--border);border-radius:var(--r);font-size:11px;color:var(--txt4);text-align:center;}
+.schedule-strip{display:flex;align-items:flex-start;gap:10px;padding:11px 14px;border:1px solid #bfdbfe;border-radius:var(--r-lg);background:linear-gradient(135deg,#eff6ff,#f8fbff);min-width:min(420px,100%);}
+.schedule-icon{width:34px;height:34px;border-radius:10px;background:#dbeafe;color:#1d4ed8;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.schedule-title{font-size:11px;font-weight:700;color:#1d4ed8;text-transform:uppercase;letter-spacing:.5px;}
+.schedule-main{font-size:13px;font-weight:700;color:var(--txt);margin-top:2px;}
+.schedule-sub{font-size:11px;color:var(--txt3);margin-top:3px;line-height:1.4;}
+.schedule-note{margin-top:7px;font-size:11px;color:#475569;background:#fff;border:1px solid #dbeafe;border-radius:var(--r);padding:7px 9px;}
+.scheduler-callout{margin-top:14px;padding:12px 14px;border:1px solid #fcd34d;border-radius:var(--r-lg);background:#fff8e6;font-size:12px;color:#7c5a03;display:flex;align-items:flex-start;gap:10px;line-height:1.5;}
+.scheduler-meta-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:8px;}
+.scheduler-stat{border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;background:var(--surface2);}
+.scheduler-stat-label{font-size:10px;font-weight:700;color:var(--txt4);text-transform:uppercase;letter-spacing:.4px;}
+.scheduler-stat-value{font-size:12px;font-weight:600;color:var(--txt);margin-top:4px;line-height:1.4;}
+.schedule-banner{margin:0 0 12px;padding:12px 14px;border-radius:var(--r-lg);display:none;align-items:flex-start;gap:10px;border:1px solid transparent;box-shadow:var(--sh-sm);}
+.schedule-banner.show{display:flex;}
+.schedule-banner.info{background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8;}
+.schedule-banner.warn{background:#fff8e6;border-color:#fcd34d;color:#7c5a03;}
+.schedule-banner.danger{background:#fef2f2;border-color:#fecaca;color:#991b1b;}
+.schedule-banner i{margin-top:2px;flex-shrink:0;}
 
 .detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;}
 .detail-field{display:flex;flex-direction:column;gap:3px;}
@@ -309,6 +326,7 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
   .sf-toolbar{gap:8px;padding:10px 14px;}
   .sf-page-header{padding:12px 16px;}
   .ops-grid{grid-template-columns:1fr;}
+  .schedule-strip{min-width:100%;}
 }
 @media(max-width:768px){
   .dv-strip{padding:0 12px;gap:8px;height:48px;}
@@ -324,6 +342,7 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
   .sf-page-title{font-size:15px;}
   .sf-page-meta{font-size:10px;}
   .sf-page-actions{margin-left:0;width:100%;justify-content:flex-end;}
+  .schedule-strip{min-width:100%;}
   .sf-toolbar{flex-direction:column;align-items:stretch;padding:10px 12px;gap:8px;}
   .sf-filter-group{width:100%;}
   .sf-filter-group .sf-input,.sf-filter-group .sf-select{width:100%;height:36px;}
@@ -340,6 +359,7 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
   .modal-overlay{align-items:flex-end;padding-bottom:0;}
   .modal{width:100%!important;max-width:100%!important;border-radius:16px 16px 0 0;max-height:90vh;}
   .form-grid{grid-template-columns:1fr;}
+  .scheduler-meta-grid{grid-template-columns:1fr;}
   #toastWrap{right:10px;left:10px;top:auto;bottom:16px;}
 }
 @media(max-width:480px){
@@ -380,6 +400,11 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
     <span>Material Management</span>
   </div>
 
+  <div class="schedule-banner" id="scheduleBanner">
+    <i class="fa-solid fa-bell"></i>
+    <div id="scheduleBannerText"></div>
+  </div>
+
   <div class="kpi-row" id="statsRow">
     <div class="kpi-card blue active-filter" id="kpiCardAll" onclick="filterByStatus('')">
       <div class="kpi-num blue" id="statTotal">—</div>
@@ -413,6 +438,9 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
       <button class="sf-btn sf-btn-danger" id="clearAllDataBtn" onclick="confirmClearAllData()" style="display:none;">
         <i class="fa-solid fa-trash-can"></i> Clear All Data
       </button>
+      <button class="sf-btn sf-btn-neutral" id="scheduleUploadBtn" onclick="openScheduleModal()" style="display:none;">
+        <i class="fa-solid fa-calendar-clock"></i> Upload Scheduler
+      </button>
       <button class="sf-btn sf-btn-neutral" onclick="openModal('opsModal')">
         <i class="fa-solid fa-bolt"></i> Quick Ops
       </button>
@@ -425,6 +453,14 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
       <button class="sf-btn sf-btn-success" onclick="openAddModal()">
         <i class="fa-solid fa-plus"></i> Add Material
       </button>
+    </div>
+    <div class="schedule-strip" id="scheduleStrip">
+      <div class="schedule-icon"><i class="fa-solid fa-calendar-check"></i></div>
+      <div style="min-width:0;flex:1;">
+        <div class="schedule-title">Upload Scheduler</div>
+        <div class="schedule-main" id="scheduleHeadline">No upload schedule set</div>
+        <div class="schedule-sub" id="scheduleSubline">Admin can set next upload date/time and every upload will replace old material records.</div>
+      </div>
     </div>
   </div>
 
@@ -565,6 +601,11 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
                 <i class="fa-solid fa-file-arrow-up" style="color:var(--sf-green);"></i>
                 <strong>Bulk Intake</strong>
                 <span>Import fresh stock from Excel or CSV.</span>
+              </button>
+              <button class="ops-action" onclick="closeModal('opsModal');openScheduleModal()">
+                <i class="fa-solid fa-calendar-clock" style="color:var(--sf-purple);"></i>
+                <strong>Upload Scheduler</strong>
+                <span>Set next upload date and time for your material file refresh.</span>
               </button>
               <button class="ops-action" onclick="closeModal('opsModal');exportExcel()">
                 <i class="fa-solid fa-file-excel" style="color:var(--sf-green);"></i>
@@ -754,6 +795,13 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
         </div>
       </div>
 
+      <div class="scheduler-callout">
+        <i class="fa-solid fa-database" style="margin-top:2px;flex-shrink:0;"></i>
+        <div>
+          Every bulk upload runs in <strong>replace mode</strong>. Existing material records are deleted first only after the new file passes validation, then fresh rows are imported.
+        </div>
+      </div>
+
       <!-- Drop zone -->
       <div class="upload-zone" id="dropZone"
            onclick="document.getElementById('fileInput').click()"
@@ -791,11 +839,59 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
   </div>
 </div>
 
+<div class="modal-overlay" id="scheduleModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title"><i class="fa-solid fa-calendar-clock"></i> Material Upload Scheduler</span>
+      <button class="modal-close" onclick="closeModal('scheduleModal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-field">
+          <label>Upload Date</label>
+          <input type="date" id="schedDate"/>
+        </div>
+        <div class="form-field">
+          <label>Upload Time</label>
+          <input type="time" id="schedTime"/>
+        </div>
+        <div class="form-field full">
+          <label>Ops Note</label>
+          <textarea id="schedNotes" placeholder="Example: HPCL + RBML consolidated stock file expected from stores team"></textarea>
+        </div>
+      </div>
+      <div class="scheduler-callout" style="margin-top:16px;">
+        <i class="fa-solid fa-circle-info" style="margin-top:2px;flex-shrink:0;"></i>
+        <div>
+          This scheduler helps your team know exactly <strong>which date</strong> and <strong>what time</strong> the next file upload is expected. When that file is uploaded, old material records are automatically replaced with the fresh dataset.
+        </div>
+      </div>
+      <div class="scheduler-meta-grid">
+        <div class="scheduler-stat">
+          <div class="scheduler-stat-label">Last Upload</div>
+          <div class="scheduler-stat-value" id="schedLastUpload">—</div>
+        </div>
+        <div class="scheduler-stat">
+          <div class="scheduler-stat-label">Last Refresh Summary</div>
+          <div class="scheduler-stat-value" id="schedLastSummary">—</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="sf-btn sf-btn-neutral" onclick="clearScheduleForm()">Clear Schedule</button>
+      <button class="sf-btn sf-btn-primary" id="saveScheduleBtn" onclick="saveUploadSchedule()">
+        <i class="fa-solid fa-floppy-disk"></i> Save Schedule
+      </button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ═══════════════════════════════════════════════════════════════════════════
 //  CONFIG
 // ═══════════════════════════════════════════════════════════════════════════
 const API = "/api/materialManagement";
+const DEFAULT_TIMEZONE = "Asia/Kolkata";
 
 const TOKEN = () => {
   let t = localStorage.getItem("token");
@@ -829,6 +925,7 @@ const lastStatsSnapshot = { total: 0, byType: [] };
 let recentTransfers = [];
 let selectedTransferRecord = null;
 let transferEngineerDirectory = [];
+let uploadSchedule = null;
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  INIT
@@ -841,12 +938,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 1800);
     return;
   }
+  loadUploadSchedule();
   loadStats();
   loadTransferEngineerDirectory();
   loadData();
   setDateBadge();
   if (isAdmin()) {
     document.getElementById('clearAllDataBtn').style.display = 'inline-flex';
+    document.getElementById('scheduleUploadBtn').style.display = 'inline-flex';
   }
   if (window.innerWidth < 768) {
     document.getElementById('mobileUploadBtn').style.display = 'flex';
@@ -941,6 +1040,110 @@ async function loadTransferEngineerDirectory() {
   } catch (e) {
     console.warn('Transfer engineer directory load failed', e);
   }
+}
+
+async function loadUploadSchedule() {
+  if (!canManageMaterials()) return;
+  try {
+    const r = await fetch(`${API}/upload-schedule`, { headers: { Authorization: `Bearer ${TOKEN()}` } });
+    if (!r.ok) throw new Error('Failed to load upload schedule');
+    const data = await r.json();
+    uploadSchedule = data?.data || null;
+    renderUploadSchedule();
+  } catch (e) {
+    console.warn('Upload schedule load failed', e);
+  }
+}
+
+function formatScheduleDate(dateStr) {
+  if (!dateStr) return '';
+  const date = new Date(`${dateStr}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return dateStr;
+  return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function formatScheduleDateTime(dateStr, timeStr) {
+  if (!dateStr || !timeStr) return 'Not scheduled';
+  const date = new Date(`${dateStr}T${timeStr}:00`);
+  if (Number.isNaN(date.getTime())) return `${dateStr} ${timeStr}`;
+  return date.toLocaleString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
+}
+
+function getScheduleDueState() {
+  if (!uploadSchedule?.scheduledDate || !uploadSchedule?.scheduledTime) return null;
+  const dueAt = new Date(`${uploadSchedule.scheduledDate}T${uploadSchedule.scheduledTime}:00`);
+  if (Number.isNaN(dueAt.getTime())) return null;
+  const now = new Date();
+  const diffMs = dueAt.getTime() - now.getTime();
+  const diffMin = Math.round(diffMs / 60000);
+  if (diffMin < 0) {
+    return { tone: Math.abs(diffMin) >= 60 ? 'danger' : 'warn', diffMin, dueAt };
+  }
+  if (diffMin <= 180) {
+    return { tone: diffMin <= 60 ? 'warn' : 'info', diffMin, dueAt };
+  }
+  return null;
+}
+
+function renderScheduleBanner() {
+  const banner = document.getElementById('scheduleBanner');
+  const textEl = document.getElementById('scheduleBannerText');
+  if (!banner || !textEl) return;
+  const dueState = getScheduleDueState();
+  if (!dueState) {
+    banner.className = 'schedule-banner';
+    textEl.innerHTML = '';
+    return;
+  }
+  const dueLabel = formatScheduleDateTime(uploadSchedule.scheduledDate, uploadSchedule.scheduledTime);
+  if (dueState.diffMin < 0) {
+    const minsLate = Math.abs(dueState.diffMin);
+    const lateText = minsLate >= 60 ? `${Math.floor(minsLate / 60)}h ${minsLate % 60}m` : `${minsLate}m`;
+    banner.className = `schedule-banner show ${dueState.tone}`;
+    textEl.innerHTML = `<strong>Upload overdue:</strong> scheduled file refresh was due at ${esc(dueLabel)}. Delay: ${esc(lateText)}. Please upload the latest file so old records can be replaced.`;
+    return;
+  }
+  banner.className = `schedule-banner show ${dueState.tone}`;
+  textEl.innerHTML = `<strong>Upcoming upload:</strong> next material file refresh is scheduled for ${esc(dueLabel)}. Keep the latest file ready before the window starts.`;
+}
+
+function renderUploadSchedule() {
+  const headline = document.getElementById('scheduleHeadline');
+  const subline = document.getElementById('scheduleSubline');
+  if (!headline || !subline) return;
+  const hasSchedule = uploadSchedule?.scheduledDate && uploadSchedule?.scheduledTime;
+  headline.textContent = hasSchedule
+    ? `Next upload: ${formatScheduleDateTime(uploadSchedule.scheduledDate, uploadSchedule.scheduledTime)}`
+    : 'No upload schedule set';
+
+  const note = (uploadSchedule?.notes || '').trim();
+  const updatedBy = uploadSchedule?.updatedBy ? ` Set by ${uploadSchedule.updatedBy}.` : '';
+  subline.innerHTML = hasSchedule
+    ? `Replace mode is active for every upload.${updatedBy}${note ? `<div class="schedule-note">${esc(note)}</div>` : ''}`
+    : 'Admin can set next upload date/time and every upload will replace old material records.';
+
+  const lastUploadEl = document.getElementById('schedLastUpload');
+  const lastSummaryEl = document.getElementById('schedLastSummary');
+  if (lastUploadEl) {
+    lastUploadEl.textContent = uploadSchedule?.lastUploadAt
+      ? `${new Date(uploadSchedule.lastUploadAt).toLocaleString('en-IN')} by ${uploadSchedule.lastUploadedBy || 'Admin'}`
+      : 'No upload done yet';
+  }
+  if (lastSummaryEl) {
+    const deleted = Number(uploadSchedule?.lastDeletedCount || 0);
+    const inserted = Number(uploadSchedule?.lastInsertedCount || 0);
+    lastSummaryEl.textContent = uploadSchedule?.lastUploadAt
+      ? `${deleted} old records cleared, ${inserted} fresh rows imported`
+      : 'Waiting for first refresh';
+  }
+  renderScheduleBanner();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1386,6 +1589,71 @@ function openUploadModal() {
   openModal('uploadModal');
 }
 
+function openScheduleModal() {
+  if (!canManageMaterials()) {
+    showToast('Only admin or manager can view upload scheduler', 'error');
+    return;
+  }
+  document.getElementById('schedDate').value = uploadSchedule?.scheduledDate || '';
+  document.getElementById('schedTime').value = uploadSchedule?.scheduledTime || '';
+  document.getElementById('schedNotes').value = uploadSchedule?.notes || '';
+  const readOnly = !isAdmin();
+  document.getElementById('schedDate').disabled = readOnly;
+  document.getElementById('schedTime').disabled = readOnly;
+  document.getElementById('schedNotes').disabled = readOnly;
+  document.getElementById('saveScheduleBtn').style.display = readOnly ? 'none' : 'inline-flex';
+  renderUploadSchedule();
+  openModal('scheduleModal');
+}
+
+function clearScheduleForm() {
+  document.getElementById('schedDate').value = '';
+  document.getElementById('schedTime').value = '';
+  document.getElementById('schedNotes').value = '';
+}
+
+async function saveUploadSchedule() {
+  const btn = document.getElementById('saveScheduleBtn');
+  const scheduledDate = v('schedDate');
+  const scheduledTime = v('schedTime');
+  const notes = v('schedNotes');
+  if ((scheduledDate && !scheduledTime) || (!scheduledDate && scheduledTime)) {
+    showToast('Please select both upload date and upload time', 'error');
+    return;
+  }
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving…';
+  try {
+    const r = await fetch(`${API}/upload-schedule`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${TOKEN()}`,
+      },
+      body: JSON.stringify({
+        scheduledDate,
+        scheduledTime,
+        timezone: DEFAULT_TIMEZONE,
+        notes,
+      }),
+    });
+    const j = await r.json();
+    if (!r.ok) {
+      showToast(j.message || 'Failed to save upload schedule', 'error');
+      return;
+    }
+    uploadSchedule = j.data || null;
+    renderUploadSchedule();
+    showToast('Upload scheduler saved successfully', 'success');
+    closeModal('scheduleModal');
+  } catch (e) {
+    showToast('Network error', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Schedule';
+  }
+}
+
 function onFileSelect(e) {
   const f = e.target.files[0]; if (!f) return;
   selectedFile = f;
@@ -1419,10 +1687,12 @@ async function doUpload() {
     if (r.ok) {
       res.innerHTML = `
         <div class="result-row success"><i class="fa-solid fa-circle-check"></i> ${j.inserted} records inserted successfully</div>
+        ${typeof j.deletedCount === 'number' ? `<div class="result-row warn"><i class="fa-solid fa-database"></i> ${j.deletedCount} old records cleared before import</div>` : ''}
         ${j.skipped ? `<div class="result-row warn"><i class="fa-solid fa-triangle-exclamation"></i> ${j.skipped} duplicates were skipped</div>` : ''}
         ${j.errorRows?.length ? `<div class="result-row error"><i class="fa-solid fa-circle-xmark"></i> ${j.errorRows.length} invalid rows — please check the column names</div>` : ''}
       `;
       showToast(`${j.inserted} records imported successfully`, 'success');
+      await loadUploadSchedule();
       loadData(1); loadStats();
     } else {
       res.innerHTML = `<div class="result-row error"><i class="fa-solid fa-circle-xmark"></i> ${j.message || 'Upload failed'}</div>`;
