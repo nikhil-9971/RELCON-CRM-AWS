@@ -1855,84 +1855,7 @@ async function sendPendingStatusReminderAlerts() {
 
 async function sendMaterialUploadScheduleReminder() {
   try {
-    const schedule = await MaterialUploadSchedule.findOne({ moduleKey: "material-management" }).lean();
-    if (!schedule?.scheduledDate || !schedule?.scheduledTime) {
-      return { ok: true, skipped: true, reason: "no_schedule" };
-    }
-
-    const dueAtIST = parseISTDateTime(schedule.scheduledDate, schedule.scheduledTime);
-    if (!dueAtIST) {
-      return { ok: false, skipped: true, reason: "invalid_schedule" };
-    }
-
-    const nowIST = getISTNowDate();
-    if (nowIST < dueAtIST) {
-      return { ok: true, skipped: true, reason: "not_due_yet" };
-    }
-
-    const scheduleKey = `${schedule.scheduledDate} ${schedule.scheduledTime}`;
-    if (schedule.lastReminderScheduleKey === scheduleKey) {
-      return { ok: true, skipped: true, reason: "already_sent" };
-    }
-
-    const note = String(schedule.notes || "").trim();
-    const dueText = formatDateTimeIST(dueAtIST);
-    const lastUploadText = schedule.lastUploadAt
-      ? `${formatDateTimeIST(schedule.lastUploadAt)} by ${schedule.lastUploadedBy || "Admin"}`
-      : "No upload has been completed yet.";
-
-    const subject = `Reminder: Material File Upload Due | ${schedule.scheduledDate} ${schedule.scheduledTime} IST`;
-    const html = `
-      <div style="font-family:Arial,sans-serif;color:#0f172a;line-height:1.6;">
-        <p>Dear Team,</p>
-        <p>This is a scheduled reminder for the <strong>Material Management</strong> file upload.</p>
-        <div style="margin:16px 0;padding:14px 16px;border:1px solid #bfdbfe;border-radius:12px;background:#eff6ff;">
-          <div style="font-size:12px;color:#1d4ed8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Upload Window</div>
-          <div style="font-size:18px;font-weight:800;color:#0f172a;margin-top:4px;">${htmlEscape(dueText)}</div>
-          <div style="font-size:13px;color:#475569;margin-top:6px;">Any new upload will replace the previous material records after validation.</div>
-        </div>
-        ${note ? `<p><strong>Ops Note:</strong> ${htmlEscape(note)}</p>` : ""}
-        <p><strong>Last upload status:</strong> ${htmlEscape(lastUploadText)}</p>
-        <p>Please keep the latest stock file ready and upload it on time.</p>
-        <p>Regards,<br/>RELCON CRM Scheduler</p>
-      </div>
-    `;
-
-    const info = await transporter.sendMail({
-      from: MAIL_FROM,
-      to: MAIL_TO,
-      subject,
-      html,
-    });
-
-    await MaterialUploadSchedule.updateOne(
-      { _id: schedule._id },
-      {
-        $set: {
-          lastReminderSentAt: new Date(),
-          lastReminderScheduleKey: scheduleKey,
-        },
-      }
-    );
-
-    try {
-      await EmailLog.create({
-        type: "material-upload-schedule-reminder",
-        to: MAIL_TO,
-        subject,
-        status: "sent",
-        meta: {
-          messageId: info?.messageId || "",
-          scheduledDate: schedule.scheduledDate,
-          scheduledTime: schedule.scheduledTime,
-        },
-      });
-    } catch (logErr) {
-      console.error("Failed to log material upload scheduler email:", logErr?.message || logErr);
-    }
-
-    console.log("✅ Material upload schedule reminder email sent for", scheduleKey);
-    return { ok: true, sent: true, scheduleKey, messageId: info?.messageId || "" };
+    return { ok: true, skipped: true, reason: "disabled_by_policy" };
   } catch (err) {
     console.error("❌ Material upload schedule reminder email error:", err.message);
     return { ok: false, error: err };
@@ -1977,21 +1900,79 @@ async function runScheduledMaterialUpload() {
       return { ok: false, skipped: false, reason: result.message || "upload_failed" };
     }
 
-    const subject = `Material Scheduler Completed | ${scheduleKey} IST`;
+    const generatedAt = formatDateTimeIST(new Date());
+    const subject = `Material Upload Completed Successfully | ${scheduleKey} IST`;
     const html = `
-      <div style="font-family:Arial,sans-serif;color:#0f172a;line-height:1.6;">
-        <p>Dear Team,</p>
-        <p>The scheduled Material Management auto-upload has completed successfully.</p>
-        <div style="margin:16px 0;padding:14px 16px;border:1px solid #bbf7d0;border-radius:12px;background:#f0fdf4;">
-          <div><strong>Scheduled time:</strong> ${htmlEscape(scheduleKey)} IST</div>
-          <div><strong>Old records cleared:</strong> ${htmlEscape(String(result.deletedCount || 0))}</div>
-          <div><strong>Fresh rows imported:</strong> ${htmlEscape(String(result.inserted || 0))}</div>
-          <div><strong>Skipped duplicates:</strong> ${htmlEscape(String(result.skipped || 0))}</div>
+      <div style="margin:0;padding:20px 12px;background:#f1f5f9;font:14px/1.6 Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a">
+        <div style="max-width:920px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(15,23,42,.05)">
+          <div style="padding:18px 22px;background:linear-gradient(135deg,#0f172a,#14532d);color:#ffffff">
+            <p style="margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.85">Relcon CRM • Inventory Operations</p>
+            <h2 style="margin:0;font-size:22px;font-weight:700">Material Upload Completed Successfully</h2>
+            <p style="margin:8px 0 0;font-size:13px;opacity:.95">The scheduled material refresh has been processed and inventory data has been updated successfully.</p>
+          </div>
+
+          <div style="padding:22px">
+            <p style="margin:0 0 14px;font-size:13px;color:#334155">
+              Dear Team,
+            </p>
+            <p style="margin:0 0 16px;font-size:13px;color:#475569">
+              This is to confirm that the scheduled <strong>Material Management</strong> upload has completed successfully. The latest file has been processed and the inventory dataset is now refreshed in the system.
+            </p>
+
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+              <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 12px;min-width:190px">
+                <div style="font-size:11px;color:#1d4ed8;text-transform:uppercase;letter-spacing:.05em">Scheduled Window</div>
+                <div style="font-size:20px;line-height:1.25;font-weight:800;color:#1e3a8a">${htmlEscape(scheduleKey)} IST</div>
+              </div>
+              <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px 12px;min-width:190px">
+                <div style="font-size:11px;color:#15803d;text-transform:uppercase;letter-spacing:.05em">Fresh Rows Imported</div>
+                <div style="font-size:24px;line-height:1.2;font-weight:800;color:#166534">${htmlEscape(String(result.inserted || 0))}</div>
+              </div>
+              <div style="background:#fff7ed;border:1px solid #fdba74;border-radius:10px;padding:10px 12px;min-width:190px">
+                <div style="font-size:11px;color:#c2410c;text-transform:uppercase;letter-spacing:.05em">Previous Rows Replaced</div>
+                <div style="font-size:24px;line-height:1.2;font-weight:800;color:#9a3412">${htmlEscape(String(result.deletedCount || 0))}</div>
+              </div>
+            </div>
+
+            <div style="padding:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;color:#475569;font-size:13px">
+              <div style="margin-bottom:6px;"><strong style="color:#0f172a">Upload Summary</strong></div>
+              <div><strong>Skipped duplicates:</strong> ${htmlEscape(String(result.skipped || 0))}</div>
+              <div><strong>Import mode:</strong> Replace existing records after validation</div>
+              <div><strong>Status:</strong> Material Management is now aligned with the latest uploaded sheet</div>
+            </div>
+
+            <p style="margin:18px 0 0;font-size:13px;color:#475569">
+              No further action is required unless you would like to schedule the next material refresh window.
+            </p>
+
+            <p style="margin:18px 0 0;font-size:13px;color:#475569">
+              Regards,<br>
+              <strong style="color:#0f172a">Relcon CRM System</strong>
+            </p>
+
+            <div style="margin-top:18px;padding-top:12px;border-top:1px solid #e2e8f0;color:#64748b;font-size:12px">
+              Generated on ${generatedAt} IST. This is a system-generated email from Relcon CRM.
+            </div>
+          </div>
         </div>
-        <p>Material Management is now refreshed with the scheduled file.</p>
       </div>
     `;
-    await transporter.sendMail({ from: MAIL_FROM, to: MAIL_TO, subject, html });
+    const text = [
+      "Dear Team,",
+      "",
+      "The scheduled Material Management upload has completed successfully.",
+      "",
+      `Scheduled Window: ${scheduleKey} IST`,
+      `Fresh Rows Imported: ${result.inserted || 0}`,
+      `Previous Rows Replaced: ${result.deletedCount || 0}`,
+      `Skipped Duplicates: ${result.skipped || 0}`,
+      "",
+      "Material Management is now refreshed with the latest uploaded sheet.",
+      "",
+      "Regards,",
+      "Relcon CRM System",
+    ].join("\n");
+    await transporter.sendMail({ from: MAIL_FROM, to: MAIL_TO, subject, html, text });
     console.log("✅ Scheduled material upload completed for", scheduleKey);
     return { ok: true, processed: true, scheduleKey, result };
   } catch (err) {
