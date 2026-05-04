@@ -72,8 +72,8 @@ app.use(cors({
 }));
 
 // ✅ Body parsers
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json({ limit: "2mb" }));
+app.use(bodyParser.urlencoded({ extended: true, limit: "2mb" }));
 app.set("trust proxy", true);
 app.use(require("express").static("public"));
 
@@ -128,6 +128,17 @@ app.use((req, res, next) => {
 });
 
 app.use((req, res) => res.status(404).send("Page not found"));
+
+app.use((err, req, res, next) => {
+  if (err?.type === "entity.too.large") {
+    return res.status(413).json({ error: "Request payload is too large. Please keep the profile photo within 500 KB." });
+  }
+  if (err) {
+    console.error("Unhandled server error:", err.message || err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+  next();
+});
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {

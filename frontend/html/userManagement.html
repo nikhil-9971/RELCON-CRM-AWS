@@ -512,7 +512,9 @@ async function saveUser() {
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
       body: JSON.stringify(body),
     });
-    const data = await res.json();
+    const raw = await res.text();
+    let data = {};
+    try { data = raw ? JSON.parse(raw) : {}; } catch { data = { error: raw || "Unexpected server response" }; }
     if (!res.ok) throw new Error(data.error || `Failed to ${isCreate ? "create" : "update"} user`);
     toast(data.message || `User ${isCreate ? "created" : "updated"}`);
     closeModal("editModal");
