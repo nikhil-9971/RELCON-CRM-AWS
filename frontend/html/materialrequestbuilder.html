@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Material Request Builder - RELCON CRM</title>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <script src="https://cdn.sheetjs.com/xlsx-0.18.5/package/dist/xlsx.full.min.js"></script>
+  <script src="config.js"></script>
+  <style>
+    :root{
+      --ink:#0f172a; --muted:#64748b; --muted2:#94a3b8; --bg:#eef2f7; --card:#ffffff; --card2:#f8fafc;
+      --line:#dbe3ef; --brand:#0f766e; --brand2:#155e75; --brand-soft:#dff8f3; --blue:#2563eb; --amber:#d97706; --red:#dc2626; --green:#16a34a;
+      --radius:18px; --radius-sm:10px; --shadow:0 16px 40px rgba(15,23,42,.08);
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Manrope',sans-serif;background:radial-gradient(circle at top left,#f9fffe,transparent 28%),linear-gradient(180deg,#f4f7fb 0%,#edf2f7 100%);color:var(--ink);min-height:100vh}
+    .shell{padding:18px}
+    .hero,.toolbar,.table-card,.overlay-card{background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border:1px solid rgba(219,227,239,.95);box-shadow:var(--shadow);border-radius:var(--radius)}
+    .hero{padding:20px 22px;display:flex;align-items:center;gap:18px;justify-content:space-between;flex-wrap:wrap;margin-bottom:14px}
+    .hero-left{display:flex;align-items:center;gap:16px}
+    .hero-badge{width:56px;height:56px;border-radius:18px;background:linear-gradient(135deg,#0f766e,#2563eb);display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;box-shadow:0 18px 30px rgba(37,99,235,.2)}
+    .hero h1{font-size:24px;line-height:1.1;letter-spacing:-.03em}
+    .hero p{font-size:13px;color:var(--muted);margin-top:4px}
+    .hero-chip-row{display:flex;gap:10px;flex-wrap:wrap}
+    .hero-chip{padding:8px 12px;border-radius:999px;background:var(--card2);border:1px solid var(--line);font-size:12px;font-weight:700;color:var(--muted)}
+    .hero-actions{display:flex;gap:10px;flex-wrap:wrap}
+    .btn{height:40px;padding:0 16px;border:none;border-radius:12px;font:700 13px 'Manrope',sans-serif;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+    .btn-primary{background:linear-gradient(135deg,var(--brand),var(--blue));color:#fff}
+    .btn-soft{background:#fff;border:1px solid var(--line);color:var(--ink)}
+    .toolbar{padding:16px 18px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-bottom:14px}
+    .field{display:flex;flex-direction:column;gap:5px}
+    .field.full{grid-column:span 2}
+    .field label{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+    .input,.select,.textarea{width:100%;height:40px;padding:0 12px;border:1px solid var(--line);border-radius:12px;background:#fff;font:700 13px 'Manrope',sans-serif;color:var(--ink);outline:none}
+    .textarea{height:78px;padding:10px 12px;resize:vertical}
+    .input:focus,.select:focus,.textarea:focus{border-color:var(--blue);box-shadow:0 0 0 4px rgba(37,99,235,.12)}
+    .input.ro{background:#f8fafc;color:var(--muted)}
+    .table-card{overflow:hidden}
+    .table-head{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:linear-gradient(180deg,#fff,#f8fbff)}
+    .table-title{font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+    .count-pill{padding:7px 12px;border-radius:999px;background:var(--brand-soft);color:var(--brand);font-size:12px;font-weight:800}
+    .table-wrap{overflow:auto}
+    table{width:100%;border-collapse:collapse;min-width:1400px}
+    thead th{background:#0f172a;color:#e2e8f0;font-size:11px;text-transform:uppercase;letter-spacing:.06em;padding:12px;text-align:left}
+    tbody td{padding:12px;border-bottom:1px solid #edf2f7;font-size:13px;color:#334155;vertical-align:top}
+    tbody tr:hover{background:#fbfeff}
+    .muted{font-size:11px;color:var(--muted)}
+    .summary{display:inline-flex;flex-direction:column;gap:4px}
+    .summary strong{color:var(--ink)}
+    .tag{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;font-size:11px;font-weight:800}
+    .tag.pending{background:#fff7ed;color:var(--amber)}
+    .tag.process{background:#eff6ff;color:var(--blue)}
+    .tag.done{background:#ecfdf5;color:var(--green)}
+    .action-row{display:flex;gap:6px}
+    .icon-btn{width:32px;height:32px;border:none;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+    .icon-btn.view{background:#eff6ff;color:var(--blue)}
+    .icon-btn.edit{background:#ecfeff;color:var(--brand2)}
+    .icon-btn.delete{background:#fef2f2;color:var(--red)}
+    .empty{padding:34px;text-align:center;color:var(--muted)}
+    .overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;align-items:center;justify-content:center;padding:18px;z-index:40}
+    .overlay.open{display:flex}
+    .overlay-card{width:min(1240px,96vw);max-height:92vh;display:flex;flex-direction:column;overflow:hidden}
+    .overlay-head{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,#fff,#f7fbff)}
+    .overlay-title{font-size:17px;font-weight:800}
+    .overlay-body{padding:18px;overflow:auto;background:#fbfdff}
+    .overlay-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+    .overlay-grid .full{grid-column:1/-1}
+    .section-title{margin:4px 0 10px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+    .builder-wrap{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff}
+    .builder-head{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .builder-list{padding:14px;display:flex;flex-direction:column;gap:12px}
+    .line-item{border:1px solid var(--line);border-radius:14px;padding:14px;background:linear-gradient(180deg,#fff,#fbfdff)}
+    .line-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+    .line-title{font-size:12px;font-weight:800;color:var(--brand2);letter-spacing:.06em;text-transform:uppercase}
+    .line-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+    .detail-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+    .detail-card{padding:12px;border-radius:14px;background:#fff;border:1px solid var(--line)}
+    .detail-card label{display:block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:4px}
+    .detail-card div{font-size:13px;font-weight:700;color:var(--ink)}
+    .overlay-foot{padding:14px 20px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:10px;background:#fff}
+    .toast{position:fixed;top:16px;right:16px;min-width:260px;max-width:360px;padding:12px 14px;border-radius:14px;background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);display:flex;gap:8px;transform:translateX(120%);transition:transform .22s ease;z-index:70}
+    .toast.show{transform:translateX(0)}
+    .toast.success{border-left:4px solid var(--green)}
+    .toast.error{border-left:4px solid var(--red)}
+    .hidden{display:none!important}
+    @media(max-width:1100px){.toolbar,.overlay-grid,.detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.line-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:700px){.shell{padding:12px}.hero,.toolbar,.overlay-body,.overlay-head,.overlay-foot{padding:14px}.toolbar,.overlay-grid,.detail-grid,.line-grid{grid-template-columns:1fr}.field.full{grid-column:span 1}.overlay-card{width:100%;max-height:100vh;border-radius:18px 18px 0 0}}
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <div class="hero-left">
+        <div class="hero-badge"><i class="fa-solid fa-diagram-project"></i></div>
+        <div>
+          <h1>Material Request Builder</h1>
+          <p>Standalone admin-driven request register with clean approval-ready line items.</p>
+        </div>
+      </div>
+      <div class="hero-chip-row">
+        <div class="hero-chip" id="totalChip">0 Requests</div>
+        <div class="hero-chip" id="pendingChip">0 Pending</div>
+        <div class="hero-chip" id="updatedChip">Last sync: -</div>
+      </div>
+      <div class="hero-actions">
+        <button class="btn btn-soft" onclick="loadData()"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
+        <button class="btn btn-soft" onclick="exportExcel()"><i class="fa-solid fa-file-excel"></i> Export</button>
+        <button class="btn btn-primary" id="addBtn" onclick="openCreateModal()"><i class="fa-solid fa-plus"></i> Add Material Request</button>
+      </div>
+    </section>
+
+    <section class="toolbar">
+      <div class="field full">
+        <label>Search</label>
+        <input id="searchInput" class="input" placeholder="Search engineer, RO code, material, docket..." oninput="applyFilters()"/>
+      </div>
+      <div class="field">
+        <label>Engineer</label>
+        <select id="filterEngineer" class="select" onchange="applyFilters()"><option value="">All Engineers</option></select>
+      </div>
+      <div class="field">
+        <label>Region</label>
+        <select id="filterRegion" class="select" onchange="applyFilters()">
+          <option value="">All Regions</option>
+          <option>Patna</option>
+          <option>Begusarai</option>
+          <option>Lucknow</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Status</label>
+        <select id="filterStatus" class="select" onchange="applyFilters()">
+          <option value="">All Status</option>
+          <option>Pending</option>
+          <option>In Process</option>
+          <option>Dispatched</option>
+          <option>Delivered</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>From Date</label>
+        <input id="fromDate" type="date" class="input" onchange="applyFilters()"/>
+      </div>
+      <div class="field">
+        <label>To Date</label>
+        <input id="toDate" type="date" class="input" onchange="applyFilters()"/>
+      </div>
+    </section>
+
+    <section class="table-card">
+      <div class="table-head">
+        <div class="table-title">Material Request Register</div>
+        <div class="count-pill" id="recordCount">0 records</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Engineer</th>
+              <th>Engineer Code</th>
+              <th>Region</th>
+              <th>RO Code</th>
+              <th>RO Name</th>
+              <th>Phase</th>
+              <th>Visit Date</th>
+              <th>Request Summary</th>
+              <th>Qty</th>
+              <th>Status</th>
+              <th>Request To</th>
+              <th>Request Date</th>
+              <th>Updated By</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <tr><td colspan="14" class="empty">Loading material requests...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <div class="overlay" id="entryModal">
+    <div class="overlay-card">
+      <div class="overlay-head">
+        <div class="overlay-title" id="modalTitle">Add Material Request</div>
+        <button class="btn btn-soft" onclick="closeModal('entryModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="overlay-body">
+        <input type="hidden" id="editId"/>
+        <div class="section-title">Request Identity</div>
+        <div class="overlay-grid">
+          <div class="field">
+            <label>Engineer</label>
+            <select id="fEngineer" class="select" onchange="handleEngineerSelection(this.value)"><option value="">Select Engineer</option></select>
+          </div>
+          <div class="field">
+            <label>Engineer Code</label>
+            <input id="fEngineerCode" class="input ro" readonly placeholder="Auto from users"/>
+          </div>
+          <div class="field">
+            <label>Engineer Contact</label>
+            <input id="fEngineerContact" class="input ro" readonly placeholder="Auto from users"/>
+          </div>
+          <div class="field">
+            <label>Engineer Email</label>
+            <input id="fEngineerEmail" class="input ro" readonly placeholder="Auto from users"/>
+          </div>
+          <div class="field">
+            <label>Region</label>
+            <select id="fRegion" class="select">
+              <option value="">Select Region</option>
+              <option>Patna</option>
+              <option>Begusarai</option>
+              <option>Lucknow</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Customer</label>
+            <select id="fCustomer" class="select">
+              <option value="">Select Customer</option>
+              <option>HPCL</option>
+              <option>BPCL</option>
+              <option>JioBP</option>
+              <option>IOCL</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>RO Code</label>
+            <input id="fRoCode" class="input" placeholder="Enter RO Code" oninput="handleRoCodeChange(this.value)"/>
+          </div>
+          <div class="field">
+            <label>RO Name</label>
+            <input id="fRoName" class="input" placeholder="Site name"/>
+          </div>
+          <div class="field">
+            <label>Phase</label>
+            <input id="fPhase" class="input ro" readonly placeholder="Auto from daily plan"/>
+          </div>
+          <div class="field">
+            <label>Date Of Visit</label>
+            <input id="fDate" type="date" class="input"/>
+          </div>
+          <div class="field full">
+            <label>Material Used In</label>
+            <input id="fMaterialUsedIn" class="input" placeholder="Purpose / site context"/>
+          </div>
+        </div>
+
+        <div class="section-title" style="margin-top:16px">Coordination Details</div>
+        <div class="overlay-grid">
+          <div class="field">
+            <label>Material Request To</label>
+            <input id="fRequestTo" class="input" placeholder="Person / department"/>
+          </div>
+          <div class="field">
+            <label>HQO Email</label>
+            <input id="fRequestFromEmail" class="input" value="dispatch@relconsystems.com"/>
+          </div>
+          <div class="field">
+            <label>Material Request Date</label>
+            <input id="fRequestDate" type="date" class="input"/>
+          </div>
+          <div class="field">
+            <label>Material Arrange From</label>
+            <input id="fArrangeFrom" class="input" placeholder="Warehouse / courier"/>
+          </div>
+          <div class="field full">
+            <label>Remarks</label>
+            <textarea id="fRemarks" class="textarea" placeholder="Admin remarks, coordination notes, commercial notes..."></textarea>
+          </div>
+        </div>
+
+        <div class="section-title" style="margin-top:16px">Line Item Builder</div>
+        <div class="builder-wrap">
+          <div class="builder-head">
+            <div>
+              <div style="font-size:14px;font-weight:800">Request Materials</div>
+              <div class="muted">Build one professional request with multiple material lines, challan and delivery context.</div>
+            </div>
+            <button class="btn btn-primary" type="button" onclick="addLineItem()"><i class="fa-solid fa-plus"></i> Add Line</button>
+          </div>
+          <div class="builder-list" id="lineItemList"></div>
+        </div>
+      </div>
+      <div class="overlay-foot">
+        <button class="btn btn-soft" onclick="closeModal('entryModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveEntry()"><i class="fa-solid fa-floppy-disk"></i> Save Request</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="detailModal">
+    <div class="overlay-card" style="width:min(1120px,96vw)">
+      <div class="overlay-head">
+        <div class="overlay-title">Material Request Details</div>
+        <button class="btn btn-soft" onclick="closeModal('detailModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="overlay-body" id="detailBody"></div>
+      <div class="overlay-foot" id="detailFoot">
+        <button class="btn btn-soft" onclick="closeModal('detailModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="deleteModal">
+    <div class="overlay-card" style="width:min(420px,94vw)">
+      <div class="overlay-head"><div class="overlay-title">Delete Material Request</div></div>
+      <div class="overlay-body">This request will be removed permanently.</div>
+      <div class="overlay-foot">
+        <button class="btn btn-soft" onclick="closeModal('deleteModal')">Cancel</button>
+        <button class="btn btn-primary" style="background:linear-gradient(135deg,#dc2626,#b91c1c)" onclick="confirmDelete()">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <datalist id="materialMasterList"></datalist>
+
+  <script src="materialRequestMaster.js"></script>
+  <script>
+    const API = window.BACKEND_URL || "/api";
+    const token = localStorage.getItem("token");
+    if (!token) window.location.href = "login.html";
+
+    const MATERIAL_MASTER = window.MATERIAL_REQUEST_MASTER || [];
+    const REQUEST_TYPES = window.MATERIAL_REQUEST_TYPES || [];
+    const MATERIAL_STATUSES = window.MATERIAL_STATUS_OPTIONS || [];
+    const DELIVERY_STATUSES = window.DELIVERY_STATUS_OPTIONS || [];
+    const MATERIAL_LOOKUP = new Map(MATERIAL_MASTER.map(item => [String(item.name || "").toLowerCase(), item]));
+
+    let currentUser = {};
+    let allRequests = [];
+    let filtered = [];
+    let allUsers = [];
+    let allPlans = [];
+    let lineItemsState = [];
+    let deleteId = null;
+
+    document.getElementById("materialMasterList").innerHTML = MATERIAL_MASTER
+      .map(item => `<option value="${esc(item.name)}">${esc(item.type)}</option>`).join("");
+
+    function esc(s){return String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
+    function fmtDate(d){if(!d) return "-"; try { return new Date(d).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}) } catch { return d }}
+    function today(){return new Date().toISOString().slice(0,10)}
+    function closeModal(id){document.getElementById(id).classList.remove("open")}
+    function openModal(id){document.getElementById(id).classList.add("open")}
+    function isAdmin(){return String(currentUser?.role || "").toLowerCase() === "admin"}
+    function showToast(msg,type="success"){const t=document.getElementById("toast"); t.className=`toast ${type}`; t.innerHTML=`<i class="fa-solid ${type==="success"?"fa-circle-check":"fa-circle-xmark"}"></i><div>${esc(msg)}</div>`; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),3000)}
+    function requestTag(value){const v=String(value||"").toLowerCase(); if(v.includes("deliver")) return "done"; if(v.includes("dispatch")||v.includes("process")||v.includes("transit")) return "process"; return "pending";}
+    function statusMarkup(value){return `<span class="tag ${requestTag(value)}">${esc(value || "Pending")}</span>`}
+    function materialTypeFor(name){return MATERIAL_LOOKUP.get(String(name||"").trim().toLowerCase())?.type || ""}
+    function normalizeLineItem(item={}){return { materialName:String(item.materialName||"").trim(), materialType:String(item.materialType||materialTypeFor(item.materialName)||"").trim(), requestType:String(item.requestType||"Spare").trim(), quantity:Math.max(1,Number(item.quantity||1)||1), materialStatus:String(item.materialStatus||"Pending").trim(), challanNumber:String(item.challanNumber||"").trim(), challanCreationDate:String(item.challanCreationDate||"").trim(), dispatchCourier:String(item.dispatchCourier||"").trim(), docketNumber:String(item.docketNumber||"").trim(), dispatchDate:String(item.dispatchDate||"").trim(), deliveryStatus:String(item.deliveryStatus||"").trim(), deliveryDate:String(item.deliveryDate||"").trim(), poNumber:String(item.poNumber||"").trim(), poDate:String(item.poDate||"").trim(), notes:String(item.notes||"").trim() } }
+    function summarize(items=[]){const valid=items.filter(item=>item.materialName); return { count:valid.length, qty:valid.reduce((s,item)=>s+(Number(item.quantity)||0),0), summary: valid.slice(0,2).map(item=>`${item.materialName}${item.quantity>1?` x${item.quantity}`:""}`).join(", ") + (valid.length>2?` +${valid.length-2} more`:""), status: valid.some(item=>String(item.deliveryStatus||"").toLowerCase().includes("deliver")) ? "Delivered" : (valid[0]?.materialStatus || "Pending"), requestType: valid[0]?.requestType || "", deliveryDate: valid.map(item=>item.deliveryDate).filter(Boolean).sort().slice(-1)[0] || "" } }
+    function engineerOptions(){return allUsers.filter(user=>String(user.role||"").toLowerCase()==="engineer").sort((a,b)=>String(a.engineerName||a.username||"").localeCompare(String(b.engineerName||b.username||"")))}
+    function getEngineer(name){const needle=String(name||"").trim().toLowerCase(); return engineerOptions().find(user=>String(user.engineerName||user.username||"").trim().toLowerCase()===needle) || null}
+    function latestPlanByRoCode(roCode){const needle=String(roCode||"").trim().toLowerCase(); const matches=allPlans.filter(plan=>String(plan.roCode||"").trim().toLowerCase()===needle); if(!matches.length) return null; return matches.sort((a,b)=>String(b.date||"").localeCompare(String(a.date||"")))[0]}
+    function hydrateRecord(row){const items=(Array.isArray(row.lineItems)?row.lineItems:[]).map(normalizeLineItem); const meta=summarize(items); return { ...row, lineItems:items, materialSummary:row.materialSummary || meta.summary, quantity:Number(row.quantity || meta.qty || 0) || 0, materialDispatchStatus:row.materialDispatchStatus || meta.status, materialRequirementType:row.materialRequirementType || meta.requestType, materialReceivedDate:row.materialReceivedDate || meta.deliveryDate, searchBlob:[row.engineer,row.engineerCode,row.region,row.roCode,row.roName,row.phase,row.materialSummary,row.materialRequestTo,row.updatedByName,...items.map(item=>`${item.materialName} ${item.docketNumber} ${item.challanNumber}`)].join(" ").toLowerCase() } }
+    function loadEngineerFilters(){const html='<option value="">All Engineers</option>'+engineerOptions().map(user=>{const name=user.engineerName||user.username||""; return `<option value="${esc(name)}">${esc(name)}</option>`}).join(""); document.getElementById("filterEngineer").innerHTML=html; document.getElementById("fEngineer").innerHTML='<option value="">Select Engineer</option>'+engineerOptions().map(user=>{const name=user.engineerName||user.username||""; return `<option value="${esc(name)}">${esc(name)}</option>`}).join("")}
+    function handleEngineerSelection(name){const user=getEngineer(name); document.getElementById("fEngineerCode").value=user?.empId||""; document.getElementById("fEngineerContact").value=user?.contactNumber||""; document.getElementById("fEngineerEmail").value=user?.email||""}
+    function handleRoCodeChange(roCode){const plan=latestPlanByRoCode(roCode); if(!plan) return; if(!document.getElementById("fRoName").value.trim()) document.getElementById("fRoName").value=plan.roName||""; document.getElementById("fPhase").value=plan.phase||""; if(!document.getElementById("fMaterialUsedIn").value.trim()) document.getElementById("fMaterialUsedIn").value=`${plan.roCode || ""} - ${plan.roName || ""} / ${plan.phase || ""}`.trim()}
+
+    async function fetchJson(url, options={}){const res=await fetch(url,{...options,headers:{...(options.headers||{}),Authorization:`Bearer ${token}`}}); const data=await res.json().catch(()=>[]); if(!res.ok) throw new Error(data.error || "Request failed"); return data}
+
+    async function loadData(){
+      try{
+        const [me, users, plans, requests] = await Promise.all([
+          fetchJson(`${API}/user`),
+          fetchJson(`${API}/getUsers`).catch(()=>[]),
+          fetchJson(`${API}/getDailyPlans`),
+          fetchJson(`${API}/materialRequestBuilder`)
+        ]);
+        currentUser = me || {};
+        allUsers = Array.isArray(users) ? users : [];
+        allPlans = Array.isArray(plans) ? plans : [];
+        allRequests = (Array.isArray(requests) ? requests : []).map(hydrateRecord);
+        document.getElementById("addBtn").classList.toggle("hidden", !isAdmin());
+        loadEngineerFilters();
+        updateHero();
+        applyFilters();
+      }catch(err){
+        document.getElementById("tableBody").innerHTML = `<tr><td colspan="14" class="empty">${esc(err.message)}</td></tr>`;
+        showToast(err.message,"error");
+      }
+    }
+
+    function updateHero(){
+      document.getElementById("totalChip").textContent = `${allRequests.length} Requests`;
+      document.getElementById("pendingChip").textContent = `${allRequests.filter(item=>requestTag(item.materialDispatchStatus)==="pending").length} Pending`;
+      document.getElementById("updatedChip").textContent = `Last sync: ${new Date().toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})}`;
+    }
+
+    function applyFilters(){
+      const q=document.getElementById("searchInput").value.trim().toLowerCase();
+      const eng=document.getElementById("filterEngineer").value;
+      const region=document.getElementById("filterRegion").value;
+      const status=document.getElementById("filterStatus").value;
+      const from=document.getElementById("fromDate").value;
+      const to=document.getElementById("toDate").value;
+      filtered = allRequests.filter(row=>{
+        if(eng && row.engineer !== eng) return false;
+        if(region && row.region !== region) return false;
+        if(status && row.materialDispatchStatus !== status) return false;
+        if(from && String(row.date||"") < from) return false;
+        if(to && String(row.date||"") > to) return false;
+        if(q && !String(row.searchBlob||"").includes(q)) return false;
+        return true;
+      });
+      renderTable();
+    }
+
+    function renderTable(){
+      document.getElementById("recordCount").textContent = `${filtered.length} records`;
+      const tbody=document.getElementById("tableBody");
+      if(!filtered.length){tbody.innerHTML='<tr><td colspan="14" class="empty">No material requests found.</td></tr>'; return}
+      tbody.innerHTML = filtered.map((row,index)=>`
+        <tr>
+          <td><strong>${esc(row.engineer||"-")}</strong><div class="muted">${esc(row.engineerEmailId||"-")}</div></td>
+          <td>${esc(row.engineerCode||"-")}</td>
+          <td>${esc(row.region||"-")}</td>
+          <td><strong>${esc(row.roCode||"-")}</strong></td>
+          <td>${esc(row.roName||"-")}</td>
+          <td>${esc(row.phase||"-")}</td>
+          <td>${fmtDate(row.date)}</td>
+          <td><div class="summary"><strong>${esc(row.materialSummary||"-")}</strong><span class="muted">${row.lineItems.length} line item(s)</span></div></td>
+          <td>${esc(row.quantity||"-")}</td>
+          <td>${statusMarkup(row.materialDispatchStatus)}</td>
+          <td>${esc(row.materialRequestTo||"-")}</td>
+          <td>${fmtDate(row.materialRequestDate)}</td>
+          <td>${esc(row.updatedByName || row.createdByName || "-")}</td>
+          <td><div class="action-row">
+            <button class="icon-btn view" onclick="openDetail(${index})" title="View"><i class="fa-solid fa-eye"></i></button>
+            ${isAdmin()?`<button class="icon-btn edit" onclick="openEdit(${index})" title="Edit"><i class="fa-solid fa-pen"></i></button><button class="icon-btn delete" onclick="openDelete('${row._id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>`:""}
+          </div></td>
+        </tr>
+      `).join("");
+    }
+
+    function renderLineItems(){
+      const list=document.getElementById("lineItemList");
+      if(!lineItemsState.length){list.innerHTML='<div class="empty">No material line added yet.</div>'; return}
+      list.innerHTML = lineItemsState.map((item,index)=>`
+        <div class="line-item">
+          <div class="line-head">
+            <div class="line-title">Material Line ${index+1}</div>
+            <button class="btn btn-soft" type="button" onclick="removeLineItem(${index})"><i class="fa-solid fa-trash"></i> Remove</button>
+          </div>
+          <div class="line-grid">
+            <div class="field"><label>Material Name</label><input class="input" list="materialMasterList" value="${esc(item.materialName)}" oninput="updateLineItem(${index},'materialName',this.value)"/></div>
+            <div class="field"><label>Material Type</label><input class="input" value="${esc(item.materialType)}" oninput="updateLineItem(${index},'materialType',this.value)"/></div>
+            <div class="field"><label>Request Type</label><select class="select" onchange="updateLineItem(${index},'requestType',this.value)"><option value="">Select</option>${REQUEST_TYPES.map(type=>`<option value="${esc(type)}" ${item.requestType===type?"selected":""}>${esc(type)}</option>`).join("")}</select></div>
+            <div class="field"><label>Qty</label><input type="number" min="1" class="input" value="${esc(item.quantity)}" oninput="updateLineItem(${index},'quantity',this.value)"/></div>
+            <div class="field"><label>Status</label><select class="select" onchange="updateLineItem(${index},'materialStatus',this.value)"><option value="">Select</option>${MATERIAL_STATUSES.map(type=>`<option value="${esc(type)}" ${item.materialStatus===type?"selected":""}>${esc(type)}</option>`).join("")}</select></div>
+            <div class="field"><label>Challan Number</label><input class="input" value="${esc(item.challanNumber)}" oninput="updateLineItem(${index},'challanNumber',this.value)"/></div>
+            <div class="field"><label>Challan Date</label><input type="date" class="input" value="${esc(item.challanCreationDate)}" oninput="updateLineItem(${index},'challanCreationDate',this.value)"/></div>
+            <div class="field"><label>Courier</label><input class="input" value="${esc(item.dispatchCourier)}" oninput="updateLineItem(${index},'dispatchCourier',this.value)"/></div>
+            <div class="field"><label>Docket Number</label><input class="input" value="${esc(item.docketNumber)}" oninput="updateLineItem(${index},'docketNumber',this.value)"/></div>
+            <div class="field"><label>Dispatch Date</label><input type="date" class="input" value="${esc(item.dispatchDate)}" oninput="updateLineItem(${index},'dispatchDate',this.value)"/></div>
+            <div class="field"><label>Delivery Status</label><select class="select" onchange="updateLineItem(${index},'deliveryStatus',this.value)"><option value="">Select</option>${DELIVERY_STATUSES.map(type=>`<option value="${esc(type)}" ${item.deliveryStatus===type?"selected":""}>${esc(type)}</option>`).join("")}</select></div>
+            <div class="field"><label>Delivery Date</label><input type="date" class="input" value="${esc(item.deliveryDate)}" oninput="updateLineItem(${index},'deliveryDate',this.value)"/></div>
+            <div class="field"><label>PO Number</label><input class="input" value="${esc(item.poNumber)}" oninput="updateLineItem(${index},'poNumber',this.value)"/></div>
+            <div class="field"><label>PO Date</label><input type="date" class="input" value="${esc(item.poDate)}" oninput="updateLineItem(${index},'poDate',this.value)"/></div>
+            <div class="field"><label>Line Notes</label><input class="input" value="${esc(item.notes)}" oninput="updateLineItem(${index},'notes',this.value)"/></div>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function addLineItem(seed={}){lineItemsState.push(normalizeLineItem(seed.materialName ? seed : { ...seed, requestType:"Spare", quantity:1, materialStatus:"Pending" })); renderLineItems()}
+    function removeLineItem(index){lineItemsState.splice(index,1); renderLineItems()}
+    function updateLineItem(index,key,value){if(!lineItemsState[index]) return; lineItemsState[index][key]=key==="quantity"?Math.max(1,Number(value||1)||1):value; if(key==="materialName" && materialTypeFor(value)) lineItemsState[index].materialType=materialTypeFor(value); renderLineItems()}
+
+    function resetForm(){
+      document.getElementById("editId").value="";
+      document.getElementById("modalTitle").textContent="Add Material Request";
+      ["fEngineerCode","fEngineerContact","fEngineerEmail","fRoCode","fRoName","fPhase","fMaterialUsedIn","fRequestTo","fArrangeFrom","fRemarks"].forEach(id=>document.getElementById(id).value="");
+      document.getElementById("fEngineer").value="";
+      document.getElementById("fRegion").value="";
+      document.getElementById("fCustomer").value="";
+      document.getElementById("fDate").value=today();
+      document.getElementById("fRequestDate").value="";
+      document.getElementById("fRequestFromEmail").value="dispatch@relconsystems.com";
+      lineItemsState=[normalizeLineItem({requestType:"Spare",quantity:1,materialStatus:"Pending"})];
+      renderLineItems();
+    }
+
+    function openCreateModal(){ if(!isAdmin()) return showToast("Only admin can add material requests","error"); resetForm(); openModal("entryModal") }
+    function openEdit(index){
+      if(!isAdmin()) return;
+      const row=filtered[index]; if(!row) return;
+      document.getElementById("editId").value=row._id||"";
+      document.getElementById("modalTitle").textContent="Edit Material Request";
+      document.getElementById("fEngineer").value=row.engineer||"";
+      handleEngineerSelection(row.engineer||"");
+      document.getElementById("fRegion").value=row.region||"";
+      document.getElementById("fCustomer").value=row.customer||"";
+      document.getElementById("fRoCode").value=row.roCode||"";
+      document.getElementById("fRoName").value=row.roName||"";
+      document.getElementById("fPhase").value=row.phase||"";
+      document.getElementById("fDate").value=(row.date||"").slice(0,10);
+      document.getElementById("fMaterialUsedIn").value=row.materialUsedIn||"";
+      document.getElementById("fRequestTo").value=row.materialRequestTo||"";
+      document.getElementById("fRequestFromEmail").value=row.materialRequestFromEmail||"dispatch@relconsystems.com";
+      document.getElementById("fRequestDate").value=(row.materialRequestDate||"").slice(0,10);
+      document.getElementById("fArrangeFrom").value=row.materialArrangeFrom||"";
+      document.getElementById("fRemarks").value=row.remarks||"";
+      lineItemsState=(row.lineItems||[]).map(normalizeLineItem);
+      renderLineItems();
+      openModal("entryModal");
+    }
+
+    function openDetail(index){
+      const row=filtered[index]; if(!row) return;
+      document.getElementById("detailBody").innerHTML=`
+        <div class="detail-grid">
+          <div class="detail-card"><label>Engineer</label><div>${esc(row.engineer||"-")}</div></div>
+          <div class="detail-card"><label>Engineer Code</label><div>${esc(row.engineerCode||"-")}</div></div>
+          <div class="detail-card"><label>Contact</label><div>${esc(row.engineerContactNumber||"-")}</div></div>
+          <div class="detail-card"><label>Email</label><div>${esc(row.engineerEmailId||"-")}</div></div>
+          <div class="detail-card"><label>Region</label><div>${esc(row.region||"-")}</div></div>
+          <div class="detail-card"><label>Customer</label><div>${esc(row.customer||"-")}</div></div>
+          <div class="detail-card"><label>RO Code</label><div>${esc(row.roCode||"-")}</div></div>
+          <div class="detail-card"><label>RO Name</label><div>${esc(row.roName||"-")}</div></div>
+          <div class="detail-card"><label>Phase</label><div>${esc(row.phase||"-")}</div></div>
+          <div class="detail-card"><label>Visit Date</label><div>${fmtDate(row.date)}</div></div>
+          <div class="detail-card"><label>Request To</label><div>${esc(row.materialRequestTo||"-")}</div></div>
+          <div class="detail-card"><label>Request Date</label><div>${fmtDate(row.materialRequestDate)}</div></div>
+        </div>
+        <div class="section-title" style="margin-top:16px">Line Items</div>
+        <div class="builder-wrap">
+          <div class="builder-list">
+            ${(row.lineItems||[]).map(item=>`<div class="line-item"><div class="line-head"><div class="line-title">${esc(item.materialName||"-")}</div>${statusMarkup(item.materialStatus||item.deliveryStatus||"Pending")}</div><div class="line-grid"><div class="field"><label>Type</label><input class="input ro" readonly value="${esc(item.materialType||"-")}"/></div><div class="field"><label>Request Type</label><input class="input ro" readonly value="${esc(item.requestType||"-")}"/></div><div class="field"><label>Qty</label><input class="input ro" readonly value="${esc(item.quantity||"-")}"/></div><div class="field"><label>Courier</label><input class="input ro" readonly value="${esc(item.dispatchCourier||"-")}"/></div><div class="field"><label>Docket</label><input class="input ro" readonly value="${esc(item.docketNumber||"-")}"/></div></div></div>`).join("") || '<div class="empty">No line items available.</div>'}
+          </div>
+        </div>
+      `;
+      document.getElementById("detailFoot").innerHTML=`<button class="btn btn-soft" onclick="closeModal('detailModal')">Close</button>${isAdmin()?`<button class="btn btn-primary" onclick="closeModal('detailModal');openEdit(${index})"><i class="fa-solid fa-pen"></i> Edit</button>`:""}`;
+      openModal("detailModal");
+    }
+
+    function openDelete(id){ if(!isAdmin()) return; deleteId=id; openModal("deleteModal") }
+    async function confirmDelete(){
+      if(!deleteId) return;
+      try{
+        await fetchJson(`${API}/materialRequestBuilder/${deleteId}`,{method:"DELETE"});
+        closeModal("deleteModal");
+        deleteId=null;
+        showToast("Material request deleted");
+        loadData();
+      }catch(err){ showToast(err.message,"error") }
+    }
+
+    async function saveEntry(){
+      if(!isAdmin()) return showToast("Only admin can save material requests","error");
+      const lineItems=lineItemsState.map(normalizeLineItem).filter(item=>item.materialName);
+      const meta=summarize(lineItems);
+      const payload={
+        engineer:document.getElementById("fEngineer").value.trim(),
+        engineerCode:document.getElementById("fEngineerCode").value.trim(),
+        engineerContactNumber:document.getElementById("fEngineerContact").value.trim(),
+        engineerEmailId:document.getElementById("fEngineerEmail").value.trim(),
+        region:document.getElementById("fRegion").value,
+        customer:document.getElementById("fCustomer").value,
+        roCode:document.getElementById("fRoCode").value.trim(),
+        roName:document.getElementById("fRoName").value.trim(),
+        phase:document.getElementById("fPhase").value.trim(),
+        date:document.getElementById("fDate").value.trim(),
+        materialUsedIn:document.getElementById("fMaterialUsedIn").value.trim(),
+        materialRequestTo:document.getElementById("fRequestTo").value.trim(),
+        materialRequestFromEmail:document.getElementById("fRequestFromEmail").value.trim(),
+        materialRequestDate:document.getElementById("fRequestDate").value.trim(),
+        materialArrangeFrom:document.getElementById("fArrangeFrom").value.trim(),
+        materialSummary:meta.summary,
+        materialDispatchStatus:meta.status,
+        materialRequirementType:meta.requestType,
+        quantity:meta.qty,
+        deliveryStatus:lineItems[0]?.deliveryStatus || "",
+        materialReceivedDate:meta.deliveryDate,
+        remarks:document.getElementById("fRemarks").value.trim(),
+        lineItems
+      };
+      if(!payload.engineer || !payload.region || !payload.roCode || !payload.date || !lineItems.length){
+        return showToast("Engineer, region, RO code, visit date and at least one line item are required","error");
+      }
+      try{
+        const id=document.getElementById("editId").value;
+        await fetchJson(`${API}/materialRequestBuilder${id?`/${id}`:""}`,{method:id?"PUT":"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+        closeModal("entryModal");
+        showToast(id?"Material request updated":"Material request created");
+        loadData();
+      }catch(err){ showToast(err.message,"error") }
+    }
+
+    function exportExcel(){
+      const rows=filtered.flatMap(row=>(row.lineItems||[]).map(item=>({
+        Engineer:row.engineer, EngineerCode:row.engineerCode, Contact:row.engineerContactNumber, Email:row.engineerEmailId,
+        Region:row.region, Customer:row.customer, ROCode:row.roCode, ROName:row.roName, Phase:row.phase, VisitDate:row.date,
+        RequestTo:row.materialRequestTo, RequestDate:row.materialRequestDate, ArrangeFrom:row.materialArrangeFrom,
+        MaterialName:item.materialName, MaterialType:item.materialType, RequestType:item.requestType, Quantity:item.quantity,
+        MaterialStatus:item.materialStatus, ChallanNumber:item.challanNumber, ChallanDate:item.challanCreationDate,
+        Courier:item.dispatchCourier, DocketNumber:item.docketNumber, DispatchDate:item.dispatchDate,
+        DeliveryStatus:item.deliveryStatus, DeliveryDate:item.deliveryDate, PONumber:item.poNumber, PODate:item.poDate, Notes:item.notes || row.remarks || ""
+      })));
+      const ws=XLSX.utils.json_to_sheet(rows);
+      const wb=XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb,ws,"Material Requests");
+      XLSX.writeFile(wb,`Material_Request_Builder_${today()}.xlsx`);
+      showToast("Excel exported");
+    }
+
+    document.querySelectorAll(".overlay").forEach(el=>el.addEventListener("click",e=>{if(e.target===el) el.classList.remove("open")}));
+    loadData();
+  </script>
+</body>
+</html>
