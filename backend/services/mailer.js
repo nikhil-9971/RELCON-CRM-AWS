@@ -144,6 +144,24 @@ function normalizeEmail(value) {
   return String(value || "").trim().toLowerCase();
 }
 
+function normalizeStatusLabel(value = "") {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]+/g, "");
+}
+
+function extractEmailAddress(value = "") {
+  const raw = String(value || "").trim();
+  const match = raw.match(/<([^>]+)>/);
+  return normalizeEmail(match ? match[1] : raw);
+}
+
+function buildFromHeader(displayName) {
+  const fromAddress = extractEmailAddress(MAIL_FROM) || normalizeEmail(SMTP_USER) || "no-reply@relconsystems.com";
+  return `"${String(displayName || "Relcon CRM").replace(/"/g, "")}" <${fromAddress}>`;
+}
+
 function formatDateTimeIST(value = new Date()) {
   return new Date(value).toLocaleString("en-IN", {
     timeZone: "Asia/Kolkata",
@@ -152,6 +170,19 @@ function formatDateTimeIST(value = new Date()) {
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
+  });
+}
+
+function formatDateOnlyIST(value = "") {
+  if (!value) return "—";
+  const isoDate = String(value).slice(0, 10);
+  const parsed = new Date(`${isoDate}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return isoDate || "—";
+  return parsed.toLocaleDateString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
   });
 }
 
@@ -212,6 +243,259 @@ function buildMaterialDispatchTable(rows = []) {
     columns,
     "Faulty Material Details"
   );
+}
+
+function buildMaterialRequestLineItemsTable(rows = []) {
+  if (!rows.length) {
+    return `<div style="padding:14px 16px;border:1px solid #dbeafe;border-radius:12px;background:#f8fbff;color:#334155;font-size:13px;">
+      No material line items were available in this request.
+    </div>`;
+  }
+
+  const columns = [
+    { key: "materialName", label: "Material Name" },
+    { key: "materialType", label: "Type" },
+    { key: "requestType", label: "Request Type" },
+    { key: "quantity", label: "Qty" },
+    { key: "materialStatus", label: "Status" },
+    { key: "challanNumber", label: "Challan No" },
+    { key: "dispatchCourier", label: "Courier/Dispatch From" },
+    { key: "docketNumber", label: "Docket Number" },
+    { key: "dispatchDate", label: "Dispatch Date" },
+    { key: "deliveryStatus", label: "Delivery Status" },
+    { key: "deliveryDate", label: "Delivery Date" },
+    { key: "poNumber", label: "PO Number" },
+    { key: "notes", label: "Line Notes" },
+  ];
+
+  return buildTable(
+    rows.map((row) => ({
+      ...row,
+      quantity: row.quantity || "—",
+      materialStatus: row.materialStatus || "Pending",
+      challanNumber: row.challanNumber || "—",
+      dispatchCourier: row.dispatchCourier || "—",
+      docketNumber: row.docketNumber || "—",
+      dispatchDate: formatDateOnlyIST(row.dispatchDate),
+      deliveryStatus: row.deliveryStatus || "—",
+      deliveryDate: formatDateOnlyIST(row.deliveryDate),
+      poNumber: row.poNumber || "—",
+      notes: row.notes || "—",
+    })),
+    columns,
+    "Material Line Details"
+  );
+}
+
+async function getMaterialRequestNotificationRecipients(request = {}) {
+  const users = await User.find({}, "email role engineerName username").lean();
+  const adminEmails = [...new Set(
+    users
+      .filter((user) => String(user.role || "").trim().toLowerCase() === "admin")
+      .map((user) => normalizeEmail(user.email))
+      .filter(Boolean)
+  )];
+
+  const engineerNeedle = String(request.engineer || "").trim().toLowerCase();
+  const engineerEmails = [...new Set(
+    [
+      normalizeEmail(request.engineerEmailId),
+      ...users
+        .filter((user) => {
+          const engineerName = String(user.engineerName || user.username || "").trim().toLowerCase();
+          return engineerNeedle && engineerName === engineerNeedle;
+        })
+        .map((user) => normalizeEmail(user.email)),
+    ].filter(Boolean)
+  )];
+
+  return { adminEmails, engineerEmails };
+}
+
+function buildMaterialRequestSummaryCards(request = {}) {
+  const cards = [
+    ["Engineer", request.engineer || "—"],
+    ["Engineer Code", request.engineerCode || "—"],
+    ["Engineer Email", request.engineerEmailId || "—"],
+    ["Engineer Contact", request.engineerContactNumber || "—"],
+    ["Region", request.region || "—"],
+    ["Customer", request.customer || "—"],
+    ["RO Code", request.roCode || "—"],
+    ["RO Name", request.roName || "—"],
+    ["Phase", request.phase || "—"],
+    ["Material Request Date", formatDateOnlyIST(request.date)],
+    ["Request Given To", request.materialRequestTo || "—"],
+    ["HQO Email", request.materialRequestFromEmail || "—"],
+    ["Dispatch Follow-up Date", formatDateOnlyIST(request.materialRequestDate)],
+    ["Material Arrange From", request.materialArrangeFrom || "—"],
+    ["Request Summary", request.materialSummary || "—"],
+    ["Overall Status", request.materialDispatchStatus || "Pending"],
+    ["Total Quantity", request.quantity || 0],
+    ["Remarks", request.remarks || "—"],
+  ];
+
+  return `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:20px 0 8px;">
+      ${cards.map(([label, value]) => `
+        <div style="border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;background:#ffffff;">
+          <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#64748b;">${htmlEscape(label)}</div>
+          <div style="margin-top:6px;font-size:13px;color:#0f172a;font-weight:600;line-height:1.45;">${htmlEscape(value)}</div>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function buildMaterialRequestEmailHtml({
+  request = {},
+  heading = "",
+  intro = "",
+  highlightLabel = "",
+  highlightValue = "",
+}) {
+  const generatedAt = formatDateTimeIST(new Date());
+
+  return `
+    <div style="margin:0;padding:24px;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
+      <div style="max-width:1080px;margin:0 auto;background:#ffffff;border:1px solid #dbe3ee;border-radius:18px;overflow:hidden;">
+        <div style="padding:24px 28px;background:linear-gradient(135deg,#0f3c68,#0176d3);color:#ffffff;">
+          <div style="font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;opacity:.88;">Relcon CRM</div>
+          <h2 style="margin:10px 0 8px;font-size:26px;line-height:1.25;">${htmlEscape(heading)}</h2>
+          <p style="margin:0;font-size:14px;line-height:1.7;opacity:.96;">${htmlEscape(intro)}</p>
+        </div>
+        <div style="padding:24px 28px;">
+          <div style="padding:16px 18px;border:1px solid #bfdbfe;background:#eff6ff;border-radius:14px;">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#1d4ed8;">${htmlEscape(highlightLabel || "Notification")}</div>
+            <div style="margin-top:6px;font-size:16px;font-weight:700;color:#0f172a;">${htmlEscape(highlightValue || "Material Request Workflow Update")}</div>
+          </div>
+          ${buildMaterialRequestSummaryCards(request)}
+          <div style="margin-top:22px;">
+            ${buildMaterialRequestLineItemsTable(Array.isArray(request.lineItems) ? request.lineItems : [])}
+          </div>
+          <div style="margin-top:22px;padding:16px 18px;border:1px solid #e2e8f0;border-radius:14px;background:#f8fafc;">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#475569;">Process Note</div>
+            <p style="margin:8px 0 0;font-size:13px;line-height:1.7;color:#334155;">
+              This is a system-generated notification from Relcon CRM for controlled material request tracking, dispatch visibility, and delivery confirmation.
+            </p>
+            <p style="margin:8px 0 0;font-size:12px;color:#64748b;">Generated on ${htmlEscape(generatedAt)} IST.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function logMaterialWorkflowEmail({ type, subject, to, cc, status, request, error }) {
+  try {
+    await EmailLog.create({
+      type,
+      subject,
+      to: [...new Set([...(to || []), ...(cc || [])])].join(", "),
+      status,
+      error: error ? String(error) : "",
+      meta: {
+        to: to || [],
+        cc: cc || [],
+        roCode: request?.roCode || "",
+        roName: request?.roName || "",
+        engineer: request?.engineer || "",
+        materialDispatchStatus: request?.materialDispatchStatus || "",
+      },
+    });
+  } catch (logErr) {
+    console.error("Failed to write material workflow EmailLog:", logErr?.message || logErr);
+  }
+}
+
+async function sendMaterialRequestNotification(request = {}) {
+  const requestToNormalized = normalizeStatusLabel(request.materialRequestTo);
+  const hqoEmail = normalizeEmail(request.materialRequestFromEmail);
+  if (requestToNormalized !== "hqo" || !hqoEmail) {
+    return { ok: false, skipped: true, reason: "not_hqo_or_missing_hqo_email" };
+  }
+
+  const { adminEmails, engineerEmails } = await getMaterialRequestNotificationRecipients(request);
+  const cc = [...new Set([...adminEmails, ...engineerEmails].filter((email) => email !== hqoEmail))];
+  const subject = `Material Requirement | ${request.roCode || "RO"} | ${request.engineer || "Engineer"} | ${request.materialSummary || "Request"}`;
+  const html = buildMaterialRequestEmailHtml({
+    request,
+    heading: "Material Requirement Raised For HQO Processing",
+    intro: "A new material requirement has been raised and marked for HQO action. Please review the complete request details and line-item level material information below.",
+    highlightLabel: "Request Given To",
+    highlightValue: request.materialRequestTo || "HQO",
+  });
+
+  const mailOptions = {
+    from: buildFromHeader(`Material Requirement <${extractEmailAddress(MAIL_FROM) || extractEmailAddress(SMTP_USER)}>`),
+    to: hqoEmail,
+    cc: cc.length ? cc.join(", ") : undefined,
+    subject,
+    html,
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    await logMaterialWorkflowEmail({ type: "Material Request Notification", subject, to: [hqoEmail], cc, status: "success", request });
+    return { ok: true, messageId: info?.messageId || "" };
+  } catch (err) {
+    await logMaterialWorkflowEmail({ type: "Material Request Notification", subject, to: [hqoEmail], cc, status: "failure", request, error: err?.message || err });
+    throw err;
+  }
+}
+
+async function sendMaterialDispatchNotification(request = {}, notificationType = "dispatch") {
+  const { adminEmails, engineerEmails } = await getMaterialRequestNotificationRecipients(request);
+  if (!engineerEmails.length) {
+    return { ok: false, skipped: true, reason: "missing_engineer_email" };
+  }
+
+  const statusLabel = notificationType === "delivered" ? "Delivered" : "Dispatched";
+  const displayName = notificationType === "delivered"
+    ? `Material Delivered Notification <${extractEmailAddress(MAIL_FROM) || extractEmailAddress(SMTP_USER)}>`
+    : `Material Dispatch Notification <${extractEmailAddress(MAIL_FROM) || extractEmailAddress(SMTP_USER)}>`;
+  const subjectPrefix = notificationType === "delivered" ? "Material Delivered Notification" : "Material Dispatch Notification";
+  const subject = `${subjectPrefix} | ${request.roCode || "RO"} | ${request.engineer || "Engineer"} | ${request.materialSummary || "Request"}`;
+  const html = buildMaterialRequestEmailHtml({
+    request,
+    heading: notificationType === "delivered" ? "Material Delivery Confirmation" : "Material Dispatch Update",
+    intro: notificationType === "delivered"
+      ? "The material request below has been updated to delivered status. Please review the delivery confirmation details, including dispatch and docket references."
+      : "The material request below has been updated to dispatched status. Please review the dispatch references, courier source, and docket details shared below.",
+    highlightLabel: "Current Workflow Status",
+    highlightValue: statusLabel,
+  });
+
+  const mailOptions = {
+    from: buildFromHeader(displayName),
+    to: engineerEmails.join(", "),
+    cc: adminEmails.length ? adminEmails.join(", ") : undefined,
+    subject,
+    html,
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    await logMaterialWorkflowEmail({
+      type: notificationType === "delivered" ? "Material Delivered Notification" : "Material Dispatch Notification",
+      subject,
+      to: engineerEmails,
+      cc: adminEmails,
+      status: "success",
+      request,
+    });
+    return { ok: true, messageId: info?.messageId || "" };
+  } catch (err) {
+    await logMaterialWorkflowEmail({
+      type: notificationType === "delivered" ? "Material Delivered Notification" : "Material Dispatch Notification",
+      subject,
+      to: engineerEmails,
+      cc: adminEmails,
+      status: "failure",
+      request,
+      error: err?.message || err,
+    });
+    throw err;
+  }
 }
 
 function prettifyFieldName(field = "") {
@@ -2132,4 +2416,7 @@ module.exports = {
   sendMaterialUploadScheduleReminder,
   runScheduledMaterialUpload,
   sendMissingMorningDataViewEntryAlert,
+  sendMaterialRequestNotification,
+  sendMaterialDispatchNotification,
+  normalizeStatusLabel,
 };

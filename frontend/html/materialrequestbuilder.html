@@ -1003,7 +1003,11 @@ function exportExcel(){
   showToast("Excel exported successfully");
 }
 
-document.querySelectorAll(".modal-overlay").forEach(el=>el.addEventListener("click",e=>{if(e.target===el) el.classList.remove("open")}));
+document.querySelectorAll(".modal-overlay").forEach(el=>el.addEventListener("click",e=>{
+  if(e.target!==el) return;
+  if(el.id==="requestModal") return;
+  el.classList.remove("open");
+}));
 loadData();
 </script>
 </body>

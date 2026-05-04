@@ -2,6 +2,11 @@ const express = require("express");
 const router = express.Router();
 const MaterialRequestBuilder = require("../models/MaterialRequestBuilder");
 const verifyToken = require("../middleware/authMiddleware");
+const {
+  sendMaterialRequestNotification,
+  sendMaterialDispatchNotification,
+  normalizeStatusLabel,
+} = require("../services/mailer");
 
 function isAdmin(req) {
   return String(req.user?.role || "").toLowerCase() === "admin";
@@ -66,6 +71,42 @@ function normalizePayload(body = {}, req = {}) {
   };
 }
 
+async function triggerMaterialRequestCreateNotifications(created) {
+  try {
+    await sendMaterialRequestNotification(created);
+  } catch (err) {
+    console.error("Material request HQO notification error:", err?.message || err);
+  }
+}
+
+function shouldNotifyDispatch(previous = {}, next = {}) {
+  const before = normalizeStatusLabel(previous.materialDispatchStatus);
+  const after = normalizeStatusLabel(next.materialDispatchStatus);
+  return before !== "dispatched" && after === "dispatched";
+}
+
+function shouldNotifyDelivered(previous = {}, next = {}) {
+  const beforeDispatch = normalizeStatusLabel(previous.materialDispatchStatus);
+  const afterDispatch = normalizeStatusLabel(next.materialDispatchStatus);
+  const beforeDelivery = normalizeStatusLabel(previous.deliveryStatus);
+  const afterDelivery = normalizeStatusLabel(next.deliveryStatus);
+  return (beforeDispatch !== "delivered" && afterDispatch === "delivered")
+    || (beforeDelivery !== "delivered" && afterDelivery === "delivered");
+}
+
+async function triggerMaterialRequestUpdateNotifications(previous, updated) {
+  try {
+    if (shouldNotifyDispatch(previous, updated)) {
+      await sendMaterialDispatchNotification(updated, "dispatch");
+    }
+    if (shouldNotifyDelivered(previous, updated)) {
+      await sendMaterialDispatchNotification(updated, "delivered");
+    }
+  } catch (err) {
+    console.error("Material request status notification error:", err?.message || err);
+  }
+}
+
 router.get("/", verifyToken, async (req, res) => {
   try {
     const data = await MaterialRequestBuilder.find().sort({ createdAt: -1 });
@@ -82,6 +123,7 @@ router.post("/", verifyToken, async (req, res) => {
     }
     const payload = normalizePayload(req.body, req);
     const created = await MaterialRequestBuilder.create(payload);
+    await triggerMaterialRequestCreateNotifications(created.toObject ? created.toObject() : created);
     res.status(201).json(created);
   } catch (err) {
     res.status(400).json({ error: "Failed to create material request" });
@@ -97,6 +139,7 @@ router.put("/:id", verifyToken, async (req, res) => {
     if (!existing) return res.status(404).json({ error: "Material request not found" });
     const payload = normalizePayload({ ...existing.toObject(), ...req.body, createdByUsername: existing.createdByUsername, createdByName: existing.createdByName }, req);
     const updated = await MaterialRequestBuilder.findByIdAndUpdate(req.params.id, payload, { new: true });
+    await triggerMaterialRequestUpdateNotifications(existing.toObject(), updated?.toObject ? updated.toObject() : updated);
     res.json(updated);
   } catch (err) {
     res.status(400).json({ error: "Failed to update material request" });
