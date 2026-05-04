@@ -201,6 +201,9 @@
     .req-mini-table th{background:var(--surface2);font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--txt3);}
     .req-mini-table tr:last-child td{border-bottom:none;}
     .req-empty{padding:18px;border:1px dashed var(--border);border-radius:10px;background:var(--surface2);font-size:12px;color:var(--txt3);text-align:center;}
+    .sf-segment{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+    .sf-segment-btn{height:34px;padding:0 14px;border-radius:999px;border:1px solid var(--border);background:var(--surface);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;color:var(--txt2);cursor:pointer;transition:all .15s;}
+    .sf-segment-btn.active{background:var(--sf-blue);border-color:var(--sf-blue);color:#fff;box-shadow:0 4px 14px rgba(1,118,211,.22);}
 
     /* Confirm delete */
     .sf-confirm-modal{background:var(--surface);border-radius:12px;box-shadow:var(--sh-md);width:380px;overflow:hidden;}
@@ -443,6 +446,15 @@
     </div>
   </div>
 
+  <div class="sf-segment">
+    <button class="sf-segment-btn active" id="segRequirement" onclick="switchSection('requirement')">
+      <i class="fa-solid fa-list-check"></i> Material Requirement
+    </button>
+    <button class="sf-segment-btn" id="segRequest" onclick="switchSection('request')">
+      <i class="fa-solid fa-boxes-stacked"></i> Material Request Builder
+    </button>
+  </div>
+
   <!-- Toolbar -->
   <div class="sf-toolbar">
     <!-- Search -->
@@ -535,25 +547,7 @@
     </div>
     <div class="sf-table-wrap">
       <table id="mainTable">
-        <thead>
-          <tr>
-            <th onclick="sortBy('engineer')">Engineer <span id="sort-engineer"></span></th>
-            <th onclick="sortBy('region')">Region <span id="sort-region"></span></th>
-          <th onclick="sortBy('roCode')">RO Code <span id="sort-roCode"></span></th>
-          <th onclick="sortBy('roName')">RO Name <span id="sort-roName"></span></th>
-          <th onclick="sortBy('customer')">Customer <span id="sort-customer"></span></th>
-          <th onclick="sortBy('date')">Visit Date <span id="sort-date"></span></th>
-          <th>Request Summary</th>
-          <th onclick="sortBy('quantity')">Qty <span id="sort-quantity"></span></th>
-          <th onclick="sortBy('materialRequirementType')">Request Type <span id="sort-materialRequirementType"></span></th>
-          <th onclick="sortBy('materialDispatchStatus')">Dispatch Status <span id="sort-materialDispatchStatus"></span></th>
-          <th>Request To</th>
-          <th onclick="sortBy('materialRequestDate')">Request Date <span id="sort-materialRequestDate"></span></th>
-          <th onclick="sortBy('deliveryStatus')">Delivery <span id="sort-deliveryStatus"></span></th>
-          <th onclick="sortBy('materialReceivedDate')">Delivery Date <span id="sort-materialReceivedDate"></span></th>
-          <th id="actionHeader" style="text-align:center;">Actions</th>
-        </tr>
-      </thead>
+        <thead id="tableHead"></thead>
       <tbody id="tableBody"></tbody>
       </table>
     </div>
@@ -566,13 +560,59 @@
 </main>
 
 <!-- ══ EDIT / MANUAL ADD MODAL ══ -->
-<div class="sf-overlay" id="entryModal">
+<div class="sf-overlay" id="legacyEntryModal">
+  <div class="sf-modal sf-modal-lg">
+    <div class="sf-modal-header">
+      <div class="sf-modal-title" id="legacyEntryModalTitle">
+        <i class="fa-solid fa-pen-to-square" style="color:var(--sf-purple);"></i> Edit Material Requirement
+      </div>
+      <button class="sf-modal-close" onclick="closeLegacyEntryModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="sf-modal-body">
+      <input type="hidden" id="legacyEditId"/>
+      <div class="sf-modal-section">Site Information</div>
+      <div class="sf-modal-grid">
+        <div class="sf-modal-field"><label class="sf-modal-label">Engineer <span class="sf-modal-req">*</span></label><input id="lfEngineer" class="sf-modal-input" placeholder="Engineer name"/></div>
+        <div class="sf-modal-field"><label class="sf-modal-label">Region</label><input id="lfRegion" class="sf-modal-input" placeholder="Region"/></div>
+        <div class="sf-modal-field"><label class="sf-modal-label">RO Code <span class="sf-modal-req">*</span></label><input id="lfRoCode" class="sf-modal-input" placeholder="RO Code"/></div>
+        <div class="sf-modal-field"><label class="sf-modal-label">RO Name</label><input id="lfRoName" class="sf-modal-input" placeholder="RO Name"/></div>
+        <div class="sf-modal-field"><label class="sf-modal-label">Phase</label><input id="lfPhase" class="sf-modal-input" placeholder="Phase"/></div>
+        <div class="sf-modal-field"><label class="sf-modal-label">Date Of Visit <span class="sf-modal-req">*</span></label><input type="date" id="lfDate" class="sf-modal-input"/></div>
+        <div class="sf-modal-field full"><label class="sf-modal-label">Required Material <span class="sf-modal-req">*</span></label><textarea id="lfMaterial" class="sf-modal-textarea" placeholder="Describe required material(s)…"></textarea></div>
+      </div>
+      <div class="sf-modal-section" style="margin-top:18px;">Material Tracking</div>
+      <div class="sf-modal-grid">
+        <div class="sf-modal-field">
+          <label class="sf-modal-label">Dispatch Status</label>
+          <select id="lfDispatchStatus" class="sf-modal-select">
+            <option value="">— Select —</option>
+            <option>Pending</option>
+            <option>In Process</option>
+            <option>Dispatched</option>
+            <option>Received</option>
+          </select>
+        </div>
+        <div class="sf-modal-field"><label class="sf-modal-label">Material Request To</label><input id="lfRequestTo" class="sf-modal-input" placeholder="Person / Department"/></div>
+        <div class="sf-modal-field"><label class="sf-modal-label">Material Request Date</label><input type="date" id="lfRequestDate" class="sf-modal-input"/></div>
+        <div class="sf-modal-field"><label class="sf-modal-label">Material Arrange From</label><input id="lfArrangeFrom" class="sf-modal-input" placeholder="Vendor / Warehouse"/></div>
+        <div class="sf-modal-field"><label class="sf-modal-label">Material Received Date</label><input type="date" id="lfReceivedDate" class="sf-modal-input"/></div>
+        <div class="sf-modal-field"><label class="sf-modal-label">Remarks / Notes</label><input id="lfRemarks" class="sf-modal-input" placeholder="Any additional notes…"/></div>
+      </div>
+    </div>
+    <div class="sf-modal-footer">
+      <button class="sf-btn sf-btn-neutral" onclick="closeLegacyEntryModal()"><i class="fa-solid fa-xmark"></i> Cancel</button>
+      <button class="sf-btn sf-btn-success" onclick="saveLegacyEntry()"><i class="fa-solid fa-floppy-disk"></i> Save Entry</button>
+    </div>
+  </div>
+</div>
+
+<div class="sf-overlay" id="requestEntryModal">
   <div class="sf-modal sf-modal-lg">
     <div class="sf-modal-header">
       <div class="sf-modal-title" id="entryModalTitle">
         <i class="fa-solid fa-pen-to-square" style="color:var(--sf-purple);"></i> Edit Material Entry
       </div>
-      <button class="sf-modal-close" onclick="closeEntryModal()"><i class="fa-solid fa-xmark"></i></button>
+      <button class="sf-modal-close" onclick="closeRequestEntryModal()"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div class="sf-modal-body">
       <input type="hidden" id="editId"/>
@@ -687,8 +727,8 @@
       </div>
     </div>
     <div class="sf-modal-footer">
-      <button class="sf-btn sf-btn-neutral" onclick="closeEntryModal()"><i class="fa-solid fa-xmark"></i> Cancel</button>
-      <button class="sf-btn sf-btn-success" onclick="saveEntry()"><i class="fa-solid fa-floppy-disk"></i> Save Entry</button>
+      <button class="sf-btn sf-btn-neutral" onclick="closeRequestEntryModal()"><i class="fa-solid fa-xmark"></i> Cancel</button>
+      <button class="sf-btn sf-btn-success" onclick="saveRequestEntry()"><i class="fa-solid fa-floppy-disk"></i> Save Entry</button>
     </div>
   </div>
 </div>
@@ -752,6 +792,7 @@ let editMode = false;
 let currentEditingRow = null;
 let activeKPI = "";
 let lineItemsState = [];
+let activeSection = "requirement";
 
 /* ── Init ── */
 document.getElementById('dateBadge').textContent =
@@ -765,6 +806,18 @@ function fmtDate(d){if(!d)return '—';try{return new Date(d).toLocaleDateString
 function today(){return new Date().toISOString().slice(0,10);}
 function showLoader(msg='Loading…'){document.querySelector('.sf-loader-text').textContent=msg;document.getElementById('loader').classList.remove('hidden');}
 function hideLoader(){document.getElementById('loader').classList.add('hidden');}
+function switchSection(section){
+  activeSection = section;
+  document.getElementById('segRequirement').classList.toggle('active', section === 'requirement');
+  document.getElementById('segRequest').classList.toggle('active', section === 'request');
+  document.getElementById('manualAddBtn').innerHTML = section === 'requirement'
+    ? '<i class="fa-solid fa-plus"></i> Add Entry'
+    : '<i class="fa-solid fa-plus"></i> Add Material Request';
+  document.getElementById('recordCountBadge').textContent = section === 'requirement' ? 'Loading requirement…' : 'Loading requests…';
+  sortKey = "";
+  document.querySelectorAll('[id^="sort-"]').forEach(el=>el.innerHTML='');
+  renderTable();
+}
 function siteKey(row){return [row?.engineer||'',row?.roCode||'',row?.date||''].map(v=>String(v).trim().toLowerCase()).join('|');}
 function inferCustomer(row){
   const hay = `${row?.customer||''} ${row?.roName||''} ${row?.sourceType||''}`.toLowerCase();
@@ -1110,13 +1163,51 @@ function sortBy(key){
 function renderTable(){
   const start=(currentPage-1)*rowsPerPage;
   const page=filtered.slice(start,start+rowsPerPage);
-  document.getElementById('recordCountBadge').textContent=`${filtered.length} records`;
+  document.getElementById('recordCountBadge').textContent=`${filtered.length} ${activeSection==='requirement'?'requirement':'request'} records`;
   document.getElementById('pageInfo').textContent=`Showing ${Math.min(start+1,filtered.length)||0}–${Math.min(start+rowsPerPage,filtered.length)} of ${filtered.length}`;
   document.getElementById('perPageInfo').textContent=`${rowsPerPage} per page`;
 
+  const tableHead=document.getElementById('tableHead');
   const tbody=document.getElementById('tableBody');
+  tableHead.innerHTML = activeSection === 'requirement'
+    ? `<tr>
+        <th onclick="sortBy('engineer')">Engineer <span id="sort-engineer"></span></th>
+        <th onclick="sortBy('region')">Region <span id="sort-region"></span></th>
+        <th onclick="sortBy('roCode')">RO Code <span id="sort-roCode"></span></th>
+        <th onclick="sortBy('roName')">RO Name <span id="sort-roName"></span></th>
+        <th onclick="sortBy('phase')">Phase <span id="sort-phase"></span></th>
+        <th onclick="sortBy('date')">Visit Date <span id="sort-date"></span></th>
+        <th>Required Material</th>
+        <th onclick="sortBy('materialDispatchStatus')">Dispatch Status <span id="sort-materialDispatchStatus"></span></th>
+        <th>Request To</th>
+        <th onclick="sortBy('materialRequestDate')">Request Date <span id="sort-materialRequestDate"></span></th>
+        <th>Arrange From</th>
+        <th onclick="sortBy('materialReceivedDate')">Received Date <span id="sort-materialReceivedDate"></span></th>
+        <th id="actionHeader" style="text-align:center;">Actions</th>
+      </tr>`
+    : `<tr>
+        <th onclick="sortBy('engineer')">Engineer <span id="sort-engineer"></span></th>
+        <th onclick="sortBy('region')">Region <span id="sort-region"></span></th>
+        <th onclick="sortBy('roCode')">RO Code <span id="sort-roCode"></span></th>
+        <th onclick="sortBy('roName')">RO Name <span id="sort-roName"></span></th>
+        <th onclick="sortBy('customer')">Customer <span id="sort-customer"></span></th>
+        <th onclick="sortBy('date')">Visit Date <span id="sort-date"></span></th>
+        <th>Request Summary</th>
+        <th onclick="sortBy('quantity')">Qty <span id="sort-quantity"></span></th>
+        <th onclick="sortBy('materialRequirementType')">Request Type <span id="sort-materialRequirementType"></span></th>
+        <th onclick="sortBy('materialDispatchStatus')">Dispatch Status <span id="sort-materialDispatchStatus"></span></th>
+        <th>Request To</th>
+        <th onclick="sortBy('materialRequestDate')">Request Date <span id="sort-materialRequestDate"></span></th>
+        <th onclick="sortBy('deliveryStatus')">Delivery <span id="sort-deliveryStatus"></span></th>
+        <th onclick="sortBy('materialReceivedDate')">Delivery Date <span id="sort-materialReceivedDate"></span></th>
+        <th id="actionHeader" style="text-align:center;">Actions</th>
+      </tr>`;
+  if(sortKey){
+    const el=document.getElementById('sort-'+sortKey);
+    if(el) el.innerHTML=sortDir===1?` <i class="fa-solid fa-arrow-up" style="font-size:8px;"></i>`:` <i class="fa-solid fa-arrow-down" style="font-size:8px;"></i>`;
+  }
   if(!page.length){
-    tbody.innerHTML=`<tr><td colspan="15" style="text-align:center;padding:28px;color:var(--txt3);">No material request records found.</td></tr>`;
+    tbody.innerHTML=`<tr><td colspan="${activeSection==='requirement'?13:15}" style="text-align:center;padding:28px;color:var(--txt3);">No ${activeSection==='requirement'?'material requirement':'material request'} records found.</td></tr>`;
     renderPagination(filtered.length); return;
   }
 
@@ -1139,6 +1230,27 @@ function renderTable(){
   tbody.innerHTML=page.map((row,i)=>{
     const idx=start+i;
     const canEdit = canManageRecord(row);
+    if(activeSection === 'requirement'){
+      return `<tr>
+        <td>${esc(row.engineer||'—')}</td>
+        <td>${esc(row.region||'—')}</td>
+        <td style="color:var(--sf-blue)!important;font-weight:700;">${esc(row.roCode||'—')}</td>
+        <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;" title="${esc(row.roName||'')}">${esc((row.roName||'').slice(0,25))}${(row.roName||'').length>25?'…':''}</td>
+        <td><span style="background:var(--sf-purple-lt);color:var(--sf-purple);padding:1px 7px;border-radius:10px;font-size:10px;font-weight:600;">${esc(row.phase||'—')}</span></td>
+        <td style="color:var(--txt3);">${fmtDate(row.date)}</td>
+        <td style="white-space:normal;min-width:160px;"><span class="sf-badge badge-material" style="white-space:normal;padding:3px 8px;">${esc(row.material||row.materialSummary||'—')}</span></td>
+        <td>${dispatchBadge(row.materialDispatchStatus)}</td>
+        <td>${esc(row.materialRequestTo||'—')}</td>
+        <td style="color:var(--txt3);">${fmtDate(row.materialRequestDate)}</td>
+        <td>${esc(row.materialArrangeFrom||'—')}</td>
+        <td style="color:var(--txt3);">${fmtDate(row.materialReceivedDate)}</td>
+        <td><div class="sf-ab">
+          <button class="sf-action-btn sf-ab-view" onclick="viewDetail(${idx})" title="View"><i class="fa-solid fa-eye"></i></button>
+          ${canEdit?`<button class="sf-action-btn sf-ab-edit" onclick="openEditModal(${idx})" title="Edit"><i class="fa-solid fa-pen"></i></button>`:''}
+          ${canEdit&&row._id?`<button class="sf-action-btn sf-ab-delete" onclick="promptDelete(${idx})" title="Delete"><i class="fa-solid fa-trash"></i></button>`:''}
+        </div></td>
+      </tr>`;
+    }
     return `<tr>
       <td>${esc(row.engineer||'—')}</td>
       <td>${esc(row.region||'—')}</td>
@@ -1157,13 +1269,11 @@ function renderTable(){
       <td style="color:var(--txt3);">${fmtDate(row.materialRequestDate)}</td>
       <td>${deliveryBadge(row.deliveryStatus)}</td>
       <td style="color:var(--txt3);">${fmtDate(row.materialReceivedDate)}</td>
-      <td>
-        <div class="sf-ab">
-          <button class="sf-action-btn sf-ab-view"   onclick="viewDetail(${idx})" title="View"><i class="fa-solid fa-eye"></i></button>
-          ${canEdit?`<button class="sf-action-btn sf-ab-edit" onclick="openEditModal(${idx})" title="${row._id?'Edit':'Create Request'}"><i class="fa-solid ${row._id?'fa-pen':'fa-plus'}"></i></button>`:''}
-          ${canEdit&&row._id?`<button class="sf-action-btn sf-ab-delete" onclick="promptDelete(${idx})" title="Delete"><i class="fa-solid fa-trash"></i></button>`:''}
-        </div>
-      </td>
+      <td><div class="sf-ab">
+        <button class="sf-action-btn sf-ab-view" onclick="viewDetail(${idx})" title="View"><i class="fa-solid fa-eye"></i></button>
+        ${canEdit?`<button class="sf-action-btn sf-ab-edit" onclick="openEditModal(${idx})" title="${row._id?'Edit':'Create Request'}"><i class="fa-solid ${row._id?'fa-pen':'fa-plus'}"></i></button>`:''}
+        ${canEdit&&row._id?`<button class="sf-action-btn sf-ab-delete" onclick="promptDelete(${idx})" title="Delete"><i class="fa-solid fa-trash"></i></button>`:''}
+      </div></td>
     </tr>`;
   }).join('');
   renderPagination(filtered.length);
@@ -1193,6 +1303,51 @@ function renderPagination(total){
 
 /* ── Detail View ── */
 function viewDetail(idx){
+  if(activeSection === 'requirement') return viewLegacyDetail(idx);
+  return viewRequestDetail(idx);
+}
+
+function viewLegacyDetail(idx){
+  const start=(currentPage-1)*rowsPerPage;
+  const row=filtered[start+idx]||filtered[idx];
+  if(!row) return;
+  const dispBadge = row.materialDispatchStatus
+    ?`<span class="sf-badge ${normalizeDispatch(row.materialDispatchStatus)==='dispatched'?'badge-dispatched':normalizeDispatch(row.materialDispatchStatus)==='received'?'badge-received':normalizeDispatch(row.materialDispatchStatus)==='inprocess'?'badge-inprocess':'badge-pending'}">${esc(row.materialDispatchStatus)}</span>`
+    :`<span class="sf-badge badge-none">—</span>`;
+  document.getElementById('detailBody').innerHTML=`
+    <div class="det-section">
+      <div class="det-section-title">Site Information</div>
+      <div class="det-grid">
+        <div class="det-field"><div class="det-label">Engineer</div><div class="det-value">${esc(row.engineer||'—')}</div></div>
+        <div class="det-field"><div class="det-label">Region</div><div class="det-value">${esc(row.region||'—')}</div></div>
+        <div class="det-field"><div class="det-label">RO Code</div><div class="det-value" style="color:var(--sf-blue);">${esc(row.roCode||'—')}</div></div>
+        <div class="det-field"><div class="det-label">RO Name</div><div class="det-value">${esc(row.roName||'—')}</div></div>
+        <div class="det-field"><div class="det-label">Phase</div><div class="det-value">${esc(row.phase||'—')}</div></div>
+        <div class="det-field"><div class="det-label">Visit Date</div><div class="det-value">${fmtDate(row.date)}</div></div>
+      </div>
+    </div>
+    <div class="det-section">
+      <div class="det-section-title">Material Requirement</div>
+      <div style="background:var(--sf-purple-lt);border:1px solid #d4b8f0;border-radius:var(--r);padding:10px 14px;font-size:12px;color:var(--sf-purple);font-weight:600;">${esc(row.material||row.materialSummary||'—')}</div>
+    </div>
+    <div class="det-section">
+      <div class="det-section-title">Fulfilment Tracking</div>
+      <div class="det-grid">
+        <div class="det-field"><div class="det-label">Dispatch Status</div><div class="det-value">${dispBadge}</div></div>
+        <div class="det-field"><div class="det-label">Request To</div><div class="det-value">${esc(row.materialRequestTo||'—')}</div></div>
+        <div class="det-field"><div class="det-label">Request Date</div><div class="det-value">${fmtDate(row.materialRequestDate)}</div></div>
+        <div class="det-field"><div class="det-label">Arrange From</div><div class="det-value">${esc(row.materialArrangeFrom||'—')}</div></div>
+        <div class="det-field"><div class="det-label">Received Date</div><div class="det-value">${fmtDate(row.materialReceivedDate)}</div></div>
+        ${row.remarks?`<div class="det-field"><div class="det-label">Remarks</div><div class="det-value">${esc(row.remarks)}</div></div>`:''}
+      </div>
+    </div>`;
+  document.getElementById('detailFooter').innerHTML=`
+    <button class="sf-btn sf-btn-neutral" onclick="document.getElementById('detailModal').classList.remove('open')"><i class="fa-solid fa-xmark"></i> Close</button>
+    ${canManageRecord(row)?`<button class="sf-btn sf-btn-primary" onclick="document.getElementById('detailModal').classList.remove('open');openEditModal(${idx})"><i class="fa-solid fa-pen"></i> Edit</button>`:''}`;
+  document.getElementById('detailModal').classList.add('open');
+}
+
+function viewRequestDetail(idx){
   const start=(currentPage-1)*rowsPerPage;
   const row=filtered[start+idx]||filtered[idx];
   if(!row) return;
@@ -1377,6 +1532,10 @@ function updateLineItem(index, field, value){
   renderLineItems();
 }
 function openEditModal(idx){
+  if(activeSection === 'requirement') return openLegacyEditModal(idx);
+  return openRequestEditModal(idx);
+}
+function openRequestEditModal(idx){
   const start=(currentPage-1)*rowsPerPage;
   const row=filtered[start+idx]||filtered[idx];
   if(!row || !canManageRecord(row)) return;
@@ -1407,11 +1566,15 @@ function openEditModal(idx){
   });
   lineItemsState = (row.lineItems?.length ? row.lineItems : [createSeedLineItem(row.materialSummary||row.material||'')]).map(normalizeLineItem);
   renderLineItems();
-  document.getElementById('entryModal').classList.add('open');
+  document.getElementById('requestEntryModal').classList.add('open');
 }
 
 /* ── Manual Add ── */
 function openManualModal(){
+  if(activeSection === 'requirement') return openLegacyManualModal();
+  return openRequestManualModal();
+}
+function openRequestManualModal(){
   editMode=false; currentEditingRow=null;
   document.getElementById('entryModalTitle').innerHTML=`<i class="fa-solid fa-plus" style="color:var(--sf-purple);"></i> Add Material Request`;
   document.getElementById('editId').value='';
@@ -1426,11 +1589,11 @@ function openManualModal(){
   if(eng){document.getElementById('fEngineer').value=eng;}
   lineItemsState = [createSeedLineItem()];
   renderLineItems();
-  document.getElementById('entryModal').classList.add('open');
+  document.getElementById('requestEntryModal').classList.add('open');
 }
-function closeEntryModal(){document.getElementById('entryModal').classList.remove('open');}
+function closeRequestEntryModal(){document.getElementById('requestEntryModal').classList.remove('open');}
 
-function saveEntry(){
+function saveRequestEntry(){
   const id=document.getElementById('editId').value;
   const normalizedItems = lineItemsState.map(normalizeLineItem).filter(item=>item.materialName);
   const metrics = summarizeLineItems(normalizedItems);
@@ -1477,7 +1640,85 @@ function saveEntry(){
   const url=id?`${baseUrl}/materialRequirement/${id}`:`${baseUrl}/materialRequirement`;
   fetch(url,{method,headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify(payload)})
     .then(async r=>{const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.message||'Save failed'); return d;})
-    .then(()=>{hideLoader();showToast(editMode?'Entry updated':'Entry added','success');closeEntryModal();fetchData();})
+    .then(()=>{hideLoader();showToast(editMode?'Entry updated':'Entry added','success');closeRequestEntryModal();fetchData();})
+    .catch(e=>{hideLoader();showToast('Save failed','error',e.message);});
+}
+
+function openLegacyEditModal(idx){
+  const start=(currentPage-1)*rowsPerPage;
+  const row=filtered[start+idx]||filtered[idx];
+  if(!row || !canManageRecord(row)) return;
+  editMode=true; currentEditingRow=row;
+  document.getElementById('legacyEntryModalTitle').innerHTML=`<i class="fa-solid fa-pen-to-square" style="color:var(--sf-blue);"></i> Edit Material Requirement`;
+  document.getElementById('legacyEditId').value=row._id||'';
+  document.getElementById('lfEngineer').value=row.engineer||''; document.getElementById('lfEngineer').readOnly=row.origin!=='manual'; document.getElementById('lfEngineer').classList.toggle('ro',row.origin!=='manual');
+  document.getElementById('lfRegion').value=row.region||''; document.getElementById('lfRegion').readOnly=row.origin!=='manual'; document.getElementById('lfRegion').classList.toggle('ro',row.origin!=='manual');
+  document.getElementById('lfRoCode').value=row.roCode||''; document.getElementById('lfRoCode').readOnly=row.origin!=='manual'; document.getElementById('lfRoCode').classList.toggle('ro',row.origin!=='manual');
+  document.getElementById('lfRoName').value=row.roName||''; document.getElementById('lfRoName').readOnly=row.origin!=='manual'; document.getElementById('lfRoName').classList.toggle('ro',row.origin!=='manual');
+  document.getElementById('lfPhase').value=row.phase||''; document.getElementById('lfPhase').readOnly=row.origin!=='manual'; document.getElementById('lfPhase').classList.toggle('ro',row.origin!=='manual');
+  document.getElementById('lfDate').value=(row.date||'').slice(0,10); document.getElementById('lfDate').readOnly=row.origin!=='manual'; document.getElementById('lfDate').classList.toggle('ro',row.origin!=='manual');
+  document.getElementById('lfMaterial').value=row.material||row.materialSummary||'';
+  document.getElementById('lfDispatchStatus').value=row.materialDispatchStatus||'';
+  document.getElementById('lfRequestTo').value=row.materialRequestTo||'';
+  document.getElementById('lfRequestDate').value=(row.materialRequestDate||'').slice(0,10);
+  document.getElementById('lfArrangeFrom').value=row.materialArrangeFrom||'';
+  document.getElementById('lfReceivedDate').value=(row.materialReceivedDate||'').slice(0,10);
+  document.getElementById('lfRemarks').value=row.remarks||'';
+  document.getElementById('legacyEntryModal').classList.add('open');
+}
+function openLegacyManualModal(){
+  editMode=false; currentEditingRow=null;
+  document.getElementById('legacyEntryModalTitle').innerHTML=`<i class="fa-solid fa-plus" style="color:var(--sf-purple);"></i> Add Material Requirement`;
+  ['lfEngineer','lfRegion','lfRoCode','lfRoName','lfPhase','lfMaterial','lfRequestTo','lfArrangeFrom','lfRemarks'].forEach(id=>{
+    const el=document.getElementById(id);
+    el.value=''; el.readOnly=false; el.classList.remove('ro');
+  });
+  document.getElementById('lfDate').value=today(); document.getElementById('lfDate').readOnly=false; document.getElementById('lfDate').classList.remove('ro');
+  document.getElementById('lfDispatchStatus').value=''; document.getElementById('lfRequestDate').value=''; document.getElementById('lfReceivedDate').value='';
+  const eng=currentUser?.engineerName||currentUser?.username||'';
+  if(eng) document.getElementById('lfEngineer').value=eng;
+  document.getElementById('legacyEditId').value='';
+  document.getElementById('legacyEntryModal').classList.add('open');
+}
+function closeLegacyEntryModal(){document.getElementById('legacyEntryModal').classList.remove('open');}
+function saveLegacyEntry(){
+  const id=document.getElementById('legacyEditId').value;
+  const materialValue=document.getElementById('lfMaterial').value.trim();
+  const lineItem = normalizeLineItem({
+    materialName: materialValue,
+    materialStatus: document.getElementById('lfDispatchStatus').value,
+    dispatchCourier: document.getElementById('lfArrangeFrom').value.trim(),
+    deliveryDate: document.getElementById('lfReceivedDate').value.trim(),
+    notes: document.getElementById('lfRemarks').value.trim(),
+  });
+  const payload={
+    engineer:document.getElementById('lfEngineer').value.trim(),
+    region:document.getElementById('lfRegion').value.trim(),
+    roCode:document.getElementById('lfRoCode').value.trim(),
+    roName:document.getElementById('lfRoName').value.trim(),
+    phase:document.getElementById('lfPhase').value.trim(),
+    date:document.getElementById('lfDate').value.trim(),
+    material:materialValue,
+    materialSummary:materialValue,
+    materialDispatchStatus:document.getElementById('lfDispatchStatus').value,
+    materialRequestTo:document.getElementById('lfRequestTo').value.trim(),
+    materialRequestDate:document.getElementById('lfRequestDate').value.trim(),
+    materialArrangeFrom:document.getElementById('lfArrangeFrom').value.trim(),
+    materialReceivedDate:document.getElementById('lfReceivedDate').value.trim(),
+    remarks:document.getElementById('lfRemarks').value.trim(),
+    lineItems:[lineItem],
+    sourceRecordId:currentEditingRow?.sourceRecordId || '',
+    sourceType:currentEditingRow?.sourceType || 'Manual Request',
+  };
+  if(!payload.roCode||!payload.date||!payload.engineer||!payload.material){
+    showToast('Validation Error','warn','Engineer, RO Code, Date and Material are required.'); return;
+  }
+  showLoader(editMode?'Updating…':'Saving…');
+  const method=id?'PUT':'POST';
+  const url=id?`${baseUrl}/materialRequirement/${id}`:`${baseUrl}/materialRequirement`;
+  fetch(url,{method,headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify(payload)})
+    .then(async r=>{const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.message||'Save failed'); return d;})
+    .then(()=>{hideLoader();showToast(editMode?'Entry updated':'Entry added','success');closeLegacyEntryModal();fetchData();})
     .catch(e=>{hideLoader();showToast('Save failed','error',e.message);});
 }
 
@@ -1506,23 +1747,40 @@ function toggleExportMenu(){document.getElementById('exportMenu').classList.togg
 function closeExportMenu(e){const m=document.getElementById('exportMenu');if(!e.target.closest('#exportDrop')){m.classList.remove('open');document.removeEventListener('click',closeExportMenu);}}
 
 function _toXLSX(data,sheetName,fileName){
-  const rows=flattenForExport(data);
+  const rows=activeSection==='requirement'
+    ? data.map(r=>({
+        Engineer:r.engineer, Region:r.region, ROCode:r.roCode, ROName:r.roName, Phase:r.phase,
+        VisitDate:r.date, RequiredMaterial:r.material||r.materialSummary,
+        DispatchStatus:r.materialDispatchStatus, RequestTo:r.materialRequestTo,
+        RequestDate:r.materialRequestDate, ArrangeFrom:r.materialArrangeFrom,
+        ReceivedDate:r.materialReceivedDate, Remarks:r.remarks||''
+      }))
+    : flattenForExport(data);
   const ws=XLSX.utils.json_to_sheet(rows);
   const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,sheetName);
   XLSX.writeFile(wb,fileName);
 }
 function _toCSV(data,fileName){
-  const rows = flattenForExport(data);
-  const keys = Object.keys(rows[0] || { Engineer:'', ROCode:'', MaterialName:'' });
+  const rows = activeSection==='requirement'
+    ? data.map(r=>({
+        engineer:r.engineer, region:r.region, roCode:r.roCode, roName:r.roName, phase:r.phase,
+        date:r.date, material:r.material||r.materialSummary, materialDispatchStatus:r.materialDispatchStatus,
+        materialRequestTo:r.materialRequestTo, materialRequestDate:r.materialRequestDate,
+        materialArrangeFrom:r.materialArrangeFrom, materialReceivedDate:r.materialReceivedDate, remarks:r.remarks||''
+      }))
+    : flattenForExport(data);
+  const keys = Object.keys(rows[0] || (activeSection==='requirement'
+    ? { engineer:'', roCode:'', material:'' }
+    : { Engineer:'', ROCode:'', MaterialName:'' }));
   const csv=[keys.join(','),...rows.map(r=>keys.map(k=>`"${String(r[k]??'').replaceAll('"','""')}"`).join(','))].join('\n');
   const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);a.download=fileName;a.click();
 }
-function exportToExcel(){_toXLSX(filtered,'Material',`Material_Report_${today()}.xlsx`);showToast('Excel exported','success');toggleExportMenu();}
-function exportFiltered(){_toCSV(filtered,`Material_Filtered_${today()}.csv`);showToast('CSV exported','success');toggleExportMenu();}
+function exportToExcel(){_toXLSX(filtered,activeSection==='requirement'?'Requirement':'Material Request',`${activeSection==='requirement'?'Material_Requirement':'Material_Request'}_Report_${today()}.xlsx`);showToast('Excel exported','success');toggleExportMenu();}
+function exportFiltered(){_toCSV(filtered,`${activeSection==='requirement'?'Material_Requirement':'Material_Request'}_Filtered_${today()}.csv`);showToast('CSV exported','success');toggleExportMenu();}
 function exportPendingOnly(){
   const pend=filtered.filter(r=>!r.materialDispatchStatus||normalizeDispatch(r.materialDispatchStatus)==='pending');
   if(!pend.length){showToast('No pending entries','warn');toggleExportMenu();return;}
-  _toCSV(pend,`Material_Pending_${today()}.csv`);
+  _toCSV(pend,`${activeSection==='requirement'?'Material_Requirement':'Material_Request'}_Pending_${today()}.csv`);
   showToast(`${pend.length} pending entries exported`,'success'); toggleExportMenu();
 }
 
