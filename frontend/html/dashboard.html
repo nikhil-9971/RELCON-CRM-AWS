@@ -1198,11 +1198,34 @@ async function fetchUser(){
     if(!res.ok) throw new Error("NetworkError"); // retry silently
     const user=await res.json();
     const initial=(user.engineerName||user.username||"R")[0].toUpperCase();
+    const hasPhoto = !!String(user.profilePhoto||"").trim();
     document.getElementById("navUserName").textContent=user.engineerName||user.username;
     document.getElementById("navUserRole").textContent=user.role;
-    document.getElementById("navAvatar").textContent=initial;
+    document.getElementById("navAvatar").textContent=hasPhoto?"":initial;
+    if(hasPhoto){
+      document.getElementById("navAvatar").style.backgroundImage=`url("${user.profilePhoto}")`;
+      document.getElementById("navAvatar").style.backgroundSize="cover";
+      document.getElementById("navAvatar").style.backgroundPosition="center";
+      document.getElementById("navAvatar").style.color="transparent";
+    } else {
+      document.getElementById("navAvatar").style.backgroundImage="";
+      document.getElementById("navAvatar").style.backgroundSize="";
+      document.getElementById("navAvatar").style.backgroundPosition="";
+      document.getElementById("navAvatar").style.color="";
+    }
     document.getElementById("topbarUserName").textContent=user.engineerName||user.username;
-    document.getElementById("topbarAvatar").textContent=initial;
+    document.getElementById("topbarAvatar").textContent=hasPhoto?"":initial;
+    if(hasPhoto){
+      document.getElementById("topbarAvatar").style.backgroundImage=`url("${user.profilePhoto}")`;
+      document.getElementById("topbarAvatar").style.backgroundSize="cover";
+      document.getElementById("topbarAvatar").style.backgroundPosition="center";
+      document.getElementById("topbarAvatar").style.color="transparent";
+    } else {
+      document.getElementById("topbarAvatar").style.backgroundImage="";
+      document.getElementById("topbarAvatar").style.backgroundSize="";
+      document.getElementById("topbarAvatar").style.backgroundPosition="";
+      document.getElementById("topbarAvatar").style.color="";
+    }
     document.getElementById("udName").textContent=user.engineerName||user.username;
     document.getElementById("udRole").textContent=(user.role||'').toUpperCase();
 

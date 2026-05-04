@@ -85,6 +85,15 @@ tbody tr:hover{background:#f0f8ff;}
 .field label{font-size:var(--fs-xs);font-weight:700;color:var(--txt2);}
 .field input,.field select{height:40px;border:1px solid var(--border);border-radius:var(--r-sm);padding:0 12px;font:500 var(--fs-sm) 'Inter',sans-serif;color:var(--txt);}
 .field input:focus,.field select:focus{outline:none;border-color:var(--sf-blue);box-shadow:0 0 0 3px rgba(1,118,211,.12);}
+.photo-panel{grid-column:1/-1;display:grid;grid-template-columns:140px 1fr;gap:16px;padding:16px;border:1px solid var(--border);border-radius:12px;background:linear-gradient(180deg,#fbfdff,#f8fafc);}
+.photo-preview{width:140px;height:140px;border-radius:18px;border:1px solid #d8e6f7;background:linear-gradient(135deg,#dbeafe,#eff6ff);display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.7);}
+.photo-preview img{width:100%;height:100%;object-fit:cover;display:block;}
+.photo-fallback{font-size:44px;font-weight:800;letter-spacing:-.04em;color:var(--sf-blue);}
+.photo-meta{display:flex;flex-direction:column;justify-content:center;gap:10px;}
+.photo-title{font-size:15px;font-weight:700;color:var(--txt);}
+.photo-sub{font-size:12px;color:var(--txt3);line-height:1.55;}
+.photo-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.file-chip{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border-radius:999px;background:#fff;border:1px solid var(--border);font-size:12px;color:var(--txt3);}
 .muted{font-size:var(--fs-xs);color:var(--txt4);line-height:1.45;}
 .hint-card{margin-left:auto;font-size:var(--fs-xs);color:var(--txt3);padding:7px 11px;border:1px solid var(--border);border-radius:999px;background:#fff;line-height:1.2;}
 .toast{position:fixed;top:16px;right:16px;min-width:240px;max-width:360px;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:var(--sh-md);padding:12px 14px;display:flex;gap:8px;z-index:300;transform:translateX(120%);transition:transform .25s ease;}
@@ -101,6 +110,8 @@ tbody tr:hover{background:#f0f8ff;}
   .hero-actions{margin-left:0;width:100%;}
   .hero-actions .btn,.toolbar .btn{width:100%;justify-content:center;}
   .grid{grid-template-columns:1fr;}
+  .photo-panel{grid-template-columns:1fr;}
+  .photo-preview{width:120px;height:120px;}
   .overlay{align-items:flex-end;padding:0;}
   .modal{max-width:100%;border-radius:16px 16px 0 0;}
 }
@@ -233,6 +244,19 @@ tbody tr:hover{background:#f0f8ff;}
           <label>Employee ID</label>
           <input id="fEmpId"/>
         </div>
+        <div class="photo-panel">
+          <div class="photo-preview" id="photoPreview"></div>
+          <div class="photo-meta">
+            <div class="photo-title">Profile Photo</div>
+            <div class="photo-sub">Upload a clear profile photo to make user identity more polished across the CRM. Allowed formats: PNG, JPG, JPEG, WEBP. Maximum size: 500 KB.</div>
+            <div class="photo-actions">
+              <button type="button" class="btn btn-primary" onclick="document.getElementById('fProfilePhoto').click()"><i class="fa-solid fa-camera"></i> Upload Photo</button>
+              <button type="button" class="btn btn-neutral" onclick="removeProfilePhoto()"><i class="fa-solid fa-trash-can"></i> Remove</button>
+            </div>
+            <div class="file-chip" id="photoFileInfo"><i class="fa-regular fa-image"></i> No file selected</div>
+            <input id="fProfilePhoto" type="file" accept="image/png,image/jpeg,image/jpg,image/webp" class="hidden" onchange="handleProfilePhotoChange(event)"/>
+          </div>
+        </div>
         <div class="field full">
           <label id="passwordLabel">Set New Password</label>
           <input id="fPassword" type="password" placeholder="Leave blank to keep the current password"/>
@@ -267,6 +291,8 @@ tbody tr:hover{background:#f0f8ff;}
 const API = "/api/user-management/users";
 let allUsers = [];
 let modalMode = "edit";
+let profilePhotoData = "";
+const MAX_PROFILE_PHOTO_BYTES = 500 * 1024;
 
 function token() {
   return localStorage.getItem("token")
@@ -294,6 +320,58 @@ function toast(msg, type="success") {
   el.innerHTML = `<i class="fa-solid ${type==="success"?"fa-circle-check":"fa-circle-xmark"}"></i><div>${esc(msg)}</div>`;
   el.classList.add("show");
   setTimeout(() => el.classList.remove("show"), 2800);
+}
+
+function initialsForUser(user = {}) {
+  return String(user.engineerName || user.username || "R").trim().charAt(0).toUpperCase() || "R";
+}
+
+function setPhotoPreview(photo = "", user = {}) {
+  const preview = document.getElementById("photoPreview");
+  if (photo) {
+    preview.innerHTML = `<img src="${photo}" alt="Profile photo"/>`;
+  } else {
+    preview.innerHTML = `<div class="photo-fallback">${esc(initialsForUser(user))}</div>`;
+  }
+}
+
+function setPhotoFileInfo(label = "No file selected") {
+  document.getElementById("photoFileInfo").innerHTML = `<i class="fa-regular fa-image"></i> ${esc(label)}`;
+}
+
+function resetProfilePhoto(user = {}) {
+  profilePhotoData = user.profilePhoto || "";
+  setPhotoPreview(profilePhotoData, user);
+  setPhotoFileInfo(profilePhotoData ? "Existing profile photo ready" : "No file selected");
+  const input = document.getElementById("fProfilePhoto");
+  if (input) input.value = "";
+}
+
+function removeProfilePhoto() {
+  profilePhotoData = "";
+  setPhotoPreview("", { engineerName: document.getElementById("fEngineerName").value, username: document.getElementById("fUsername").value });
+  setPhotoFileInfo("Photo removed");
+  document.getElementById("fProfilePhoto").value = "";
+}
+
+function handleProfilePhotoChange(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  if (!/^image\/(png|jpeg|jpg|webp)$/i.test(file.type)) {
+    event.target.value = "";
+    return toast("Only PNG, JPG, JPEG, or WEBP images are allowed", "error");
+  }
+  if (file.size > MAX_PROFILE_PHOTO_BYTES) {
+    event.target.value = "";
+    return toast("Profile photo must be 500 KB or less", "error");
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    profilePhotoData = String(reader.result || "");
+    setPhotoPreview(profilePhotoData, { engineerName: document.getElementById("fEngineerName").value, username: document.getElementById("fUsername").value });
+    setPhotoFileInfo(`${file.name} • ${(file.size / 1024).toFixed(0)} KB`);
+  };
+  reader.readAsDataURL(file);
 }
 
 function openModal(id) { document.getElementById(id).classList.add("open"); }
@@ -353,7 +431,7 @@ function renderTable() {
   tbody.innerHTML = rows.map((u, i) => `
     <tr>
       <td>${i + 1}</td>
-      <td><strong>${esc(u.username)}</strong></td>
+      <td><div style="display:flex;align-items:center;gap:10px;"><div style="width:34px;height:34px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#e8f4fd;color:#0176d3;font-weight:800;border:1px solid #cfe3f8;">${u.profilePhoto ? `<img src="${u.profilePhoto}" alt="avatar" style="width:100%;height:100%;object-fit:cover;display:block;"/>` : esc(initialsForUser(u))}</div><strong>${esc(u.username)}</strong></div></td>
       <td>${esc(u.email || "—")}</td>
       <td>${esc(u.contactNumber || "—")}</td>
       <td>${esc(u.engineerName)}</td>
@@ -382,6 +460,7 @@ function openCreate() {
   document.getElementById("fRole").value = "engineer";
   document.getElementById("fEmpId").value = "";
   document.getElementById("fPassword").value = "";
+  resetProfilePhoto({});
   document.getElementById("passwordLabel").textContent = "Password";
   document.getElementById("passwordHelp").textContent = "A password is required when creating a new user.";
   openModal("editModal");
@@ -400,6 +479,7 @@ function openEdit(id, focusPassword = false) {
   document.getElementById("fRole").value = String(user.role || "engineer").toLowerCase() === "admin" ? "admin" : "engineer";
   document.getElementById("fEmpId").value = user.empId || "";
   document.getElementById("fPassword").value = "";
+  resetProfilePhoto(user);
   document.getElementById("passwordLabel").textContent = "Set New Password";
   document.getElementById("passwordHelp").textContent = "The current password cannot be viewed. You can only replace it with a new one.";
   openModal("editModal");
@@ -415,6 +495,7 @@ async function saveUser() {
     engineerName: document.getElementById("fEngineerName").value.trim(),
     role: document.getElementById("fRole").value.trim(),
     empId: document.getElementById("fEmpId").value.trim(),
+    profilePhoto: profilePhotoData,
   };
   const password = document.getElementById("fPassword").value;
   if (password) body.password = password;

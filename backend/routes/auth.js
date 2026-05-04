@@ -91,9 +91,43 @@ function normalizeUserRole(role = "") {
   return value || "engineer";
 }
 
+const PROFILE_PHOTO_MAX_BYTES = 500 * 1024;
+
+function parseProfilePhoto(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const match = raw.match(/^data:(image\/(?:png|jpeg|jpg|webp));base64,([A-Za-z0-9+/=]+)$/i);
+  if (!match) {
+    throw new Error("Profile photo must be PNG, JPG, JPEG, or WEBP");
+  }
+  const buffer = Buffer.from(match[2], "base64");
+  if (buffer.length > PROFILE_PHOTO_MAX_BYTES) {
+    throw new Error("Profile photo size must be 500 KB or less");
+  }
+  const mime = match[1].toLowerCase() === "image/jpg" ? "image/jpeg" : match[1].toLowerCase();
+  return `data:${mime};base64,${match[2]}`;
+}
+
 // 🔍 Logged-in user info
-router.get("/user", verifyToken, (req, res) => {
-  res.json(req.user);
+router.get("/user", verifyToken, async (req, res) => {
+  try {
+    const user = await User.findOne(
+      { username: req.user?.username },
+      "username role engineerName email contactNumber empId profilePhoto"
+    ).lean();
+    if (!user) return res.json(req.user);
+    res.json({
+      username: user.username || req.user?.username || "",
+      role: user.role || req.user?.role || "",
+      engineerName: user.engineerName || req.user?.engineerName || "",
+      email: user.email || "",
+      contactNumber: user.contactNumber || "",
+      empId: user.empId || "",
+      profilePhoto: user.profilePhoto || "",
+    });
+  } catch (err) {
+    res.json(req.user);
+  }
 });
 
 router.get("/pcb-provided-counts", verifyToken, async (req, res) => {
@@ -173,7 +207,7 @@ router.get("/user-management/users", verifyToken, async (req, res) => {
     if (!isNikhilAdmin(req.user)) {
       return res.status(403).json({ error: "Access denied. Nikhil admin only." });
     }
-    const users = await User.find({}, "username email contactNumber role engineerName empId").sort({ username: 1 }).lean();
+    const users = await User.find({}, "username email contactNumber role engineerName empId profilePhoto").sort({ username: 1 }).lean();
     res.json(users.map(u => ({
       _id: u._id,
       username: u.username || "",
@@ -182,6 +216,7 @@ router.get("/user-management/users", verifyToken, async (req, res) => {
       role: normalizeUserRole(u.role),
       engineerName: u.engineerName || "",
       empId: u.empId || "",
+      profilePhoto: u.profilePhoto || "",
       passwordVisible: false,
       passwordNote: "Stored securely and not retrievable",
     })));
@@ -195,7 +230,7 @@ router.post("/user-management/users", verifyToken, async (req, res) => {
     if (!isNikhilAdmin(req.user)) {
       return res.status(403).json({ error: "Access denied. Nikhil admin only." });
     }
-    const { username, email, contactNumber, engineerName, role, empId, password } = req.body;
+    const { username, email, contactNumber, engineerName, role, empId, password, profilePhoto } = req.body;
     if (!username || !engineerName || !password) {
       return res.status(400).json({ error: "Username, engineer name, and password are required" });
     }
@@ -211,6 +246,7 @@ router.post("/user-management/users", verifyToken, async (req, res) => {
       engineerName: String(engineerName).trim(),
       role: normalizeUserRole(role),
       empId: String(empId || "").trim(),
+      profilePhoto: parseProfilePhoto(profilePhoto),
       password: hashedPassword,
     });
     res.status(201).json({
@@ -223,6 +259,7 @@ router.post("/user-management/users", verifyToken, async (req, res) => {
         role: normalizeUserRole(created.role),
         engineerName: created.engineerName || "",
         empId: created.empId || "",
+        profilePhoto: created.profilePhoto || "",
         passwordVisible: false,
         passwordNote: "Stored securely and not retrievable",
       }
@@ -237,7 +274,7 @@ router.put("/user-management/users/:id", verifyToken, async (req, res) => {
     if (!isNikhilAdmin(req.user)) {
       return res.status(403).json({ error: "Access denied. Nikhil admin only." });
     }
-    const { username, email, contactNumber, engineerName, role, empId, password } = req.body;
+    const { username, email, contactNumber, engineerName, role, empId, password, profilePhoto } = req.body;
     const updates = {};
     if (username !== undefined) updates.username = String(username).trim();
     if (email !== undefined) updates.email = String(email).trim();
@@ -245,8 +282,9 @@ router.put("/user-management/users/:id", verifyToken, async (req, res) => {
     if (engineerName !== undefined) updates.engineerName = String(engineerName).trim();
     if (role !== undefined) updates.role = normalizeUserRole(role);
     if (empId !== undefined) updates.empId = String(empId).trim();
+    if (profilePhoto !== undefined) updates.profilePhoto = parseProfilePhoto(profilePhoto);
     if (password) updates.password = await bcrypt.hash(password, 10);
-    const updated = await User.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true, select: "username email contactNumber role engineerName empId" });
+    const updated = await User.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true, select: "username email contactNumber role engineerName empId profilePhoto" });
     if (!updated) return res.status(404).json({ error: "User not found" });
     res.json({
       message: "User updated successfully",
@@ -258,6 +296,7 @@ router.put("/user-management/users/:id", verifyToken, async (req, res) => {
         role: normalizeUserRole(updated.role),
         engineerName: updated.engineerName || "",
         empId: updated.empId || "",
+        profilePhoto: updated.profilePhoto || "",
         passwordVisible: false,
         passwordNote: password ? "Password updated successfully" : "Stored securely and not retrievable",
       }

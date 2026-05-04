@@ -7,6 +7,7 @@ const UserSchema = new mongoose.Schema({
   role: String,
   engineerName: String,
   empId: String,
+  profilePhoto: { type: String, default: "" },
   pcbProvidedCount: { type: Number, default: 0 },
 });
 // ✅ Fixed: removed broken `mongoose.model.UserSchema ||` which always returned undefined
