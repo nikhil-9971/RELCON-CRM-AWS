@@ -394,6 +394,134 @@ function buildMaterialRequestEmailHtml({
   `;
 }
 
+function buildMaterialRequestCsvRows(request = {}) {
+  const base = {
+    Engineer: request.engineer || "",
+    EngineerCode: request.engineerCode || "",
+    EngineerEmail: request.engineerEmailId || "",
+    EngineerContact: request.engineerContactNumber || "",
+    Region: request.region || "",
+    Customer: request.customer || "",
+    ROCode: request.roCode || "",
+    ROName: request.roName || "",
+    Phase: request.phase || "",
+    MaterialRequestDate: request.date || "",
+    RequestGivenTo: request.materialRequestTo || "",
+    HQOEmail: request.materialRequestFromEmail || "",
+    DispatchFollowupDate: request.materialRequestDate || "",
+    ArrangeFrom: request.materialArrangeFrom || "",
+    RequestSummary: request.materialSummary || "",
+    OverallStatus: request.materialDispatchStatus || "",
+    TotalQuantity: request.quantity || 0,
+    Remarks: request.remarks || "",
+  };
+
+  const lineItems = Array.isArray(request.lineItems) && request.lineItems.length
+    ? request.lineItems
+    : [{}];
+
+  return lineItems.map((item, index) => ({
+    ...base,
+    LineNo: index + 1,
+    MaterialName: item.materialName || "",
+    MaterialType: item.materialType || "",
+    RequestType: item.requestType || "",
+    Quantity: item.quantity || "",
+    LineStatus: item.materialStatus || "",
+    ChallanNumber: item.challanNumber || "",
+    ChallanDate: item.challanCreationDate || "",
+    DispatchCourier: item.dispatchCourier || "",
+    DocketNumber: item.docketNumber || "",
+    DispatchDate: item.dispatchDate || "",
+    DeliveryStatus: item.deliveryStatus || "",
+    DeliveryDate: item.deliveryDate || "",
+    PONumber: item.poNumber || "",
+    PODate: item.poDate || "",
+    LineNotes: item.notes || "",
+  }));
+}
+
+function buildMaterialRequestCsvAttachment(request = {}, fileLabel = "material-request") {
+  const rows = buildMaterialRequestCsvRows(request);
+  const keys = Object.keys(rows[0] || { RequestSummary: "" });
+  const csv = toCSV(rows, keys);
+  const safeRoCode = String(request.roCode || "RO").replace(/[^a-z0-9_-]/gi, "_");
+  const safeLabel = String(fileLabel || "material-request").replace(/[^a-z0-9_-]/gi, "_");
+  return {
+    filename: `${safeLabel}_${safeRoCode}_${String(request.date || "").slice(0, 10) || "request"}.csv`,
+    content: csv,
+    contentType: "text/csv; charset=utf-8",
+  };
+}
+
+function buildMaterialLineItemsText(rows = []) {
+  if (!rows.length) return "No material line items available.";
+
+  return rows
+    .map((item, index) => {
+      const parts = [
+        `${index + 1}. Material Name: ${item.materialName || "—"}`,
+        `   Material Type: ${item.materialType || "—"}`,
+        `   Request Type: ${item.requestType || "—"}`,
+        `   Quantity: ${item.quantity || "—"}`,
+        `   Status: ${item.materialStatus || "Pending"}`,
+        `   Challan No: ${item.challanNumber || "—"}`,
+        `   Challan Date: ${formatDateOnlyIST(item.challanCreationDate)}`,
+        `   Courier/Dispatch From: ${item.dispatchCourier || "—"}`,
+        `   Docket Number: ${item.docketNumber || "—"}`,
+        `   Dispatch Date: ${formatDateOnlyIST(item.dispatchDate)}`,
+        `   Delivery Status: ${item.deliveryStatus || "—"}`,
+        `   Delivery Date: ${formatDateOnlyIST(item.deliveryDate)}`,
+        `   PO Number: ${item.poNumber || "—"}`,
+        `   PO Date: ${formatDateOnlyIST(item.poDate)}`,
+        `   Line Notes: ${item.notes || "—"}`,
+      ];
+      return parts.join("\n");
+    })
+    .join("\n\n");
+}
+
+function buildMaterialRequestPlainText({
+  request = {},
+  greeting = "Team",
+  intro = "",
+  statusLabel = "",
+}) {
+  return [
+    `Dear ${greeting},`,
+    "",
+    intro,
+    "",
+    "Request Summary",
+    `- Current Status: ${statusLabel || request.materialDispatchStatus || "Pending"}`,
+    `- Engineer: ${request.engineer || "—"} (${request.engineerCode || "—"})`,
+    `- Engineer Email: ${request.engineerEmailId || "—"}`,
+    `- Engineer Contact: ${request.engineerContactNumber || "—"}`,
+    `- Region: ${request.region || "—"}`,
+    `- Customer: ${request.customer || "—"}`,
+    `- RO Code: ${request.roCode || "—"}`,
+    `- RO Name: ${request.roName || "—"}`,
+    `- Phase: ${request.phase || "—"}`,
+    `- Material Request Date: ${formatDateOnlyIST(request.date)}`,
+    `- Request Given To: ${request.materialRequestTo || "—"}`,
+    `- HQO Email: ${request.materialRequestFromEmail || "—"}`,
+    `- Dispatch Follow-up Date: ${formatDateOnlyIST(request.materialRequestDate)}`,
+    `- Material Arrange From: ${request.materialArrangeFrom || "—"}`,
+    `- Request Summary: ${request.materialSummary || "—"}`,
+    `- Total Quantity: ${request.quantity || 0}`,
+    `- Remarks: ${request.remarks || "—"}`,
+    "",
+    "Material Line Details",
+    buildMaterialLineItemsText(Array.isArray(request.lineItems) ? request.lineItems : []),
+    "",
+    "A CSV attachment containing the full material request details is attached for record and operational follow-up.",
+    "",
+    "Regards,",
+    "Relcon CRM",
+    `Generated on ${formatDateTimeIST(new Date())} IST`,
+  ].join("\n");
+}
+
 async function logMaterialWorkflowEmail({ type, subject, to, cc, status, request, error }) {
   try {
     await EmailLog.create({
@@ -425,13 +553,12 @@ async function sendMaterialRequestNotification(request = {}) {
 
   const { adminEmails, engineerEmails } = await getMaterialRequestNotificationRecipients(request);
   const cc = [...new Set([...adminEmails, ...engineerEmails].filter((email) => email !== hqoEmail))];
-  const subject = `Material Requirement | ${request.roCode || "RO"} | ${request.engineer || "Engineer"} | ${request.materialSummary || "Request"}`;
-  const html = buildMaterialRequestEmailHtml({
+  const subject = `Corrective Action - Material Request Builder | Requirement given to HQO | ${request.roCode || "RO"} | ${request.engineer || "Engineer"}`;
+  const text = buildMaterialRequestPlainText({
     request,
-    heading: "Material Requirement Raised For HQO Processing",
-    intro: "A new material requirement has been raised and marked for HQO action. Please review the complete request details and line-item level material information below.",
-    highlightLabel: "Request Given To",
-    highlightValue: request.materialRequestTo || "HQO",
+    greeting: "HQO Team",
+    intro: "A material request has been raised and the current workflow status is Requirement given to HQO. Please review the request details below and take the necessary action.",
+    statusLabel: "Requirement given to HQO",
   });
 
   const mailOptions = {
@@ -439,7 +566,8 @@ async function sendMaterialRequestNotification(request = {}) {
     to: hqoEmail,
     cc: cc.length ? cc.join(", ") : undefined,
     subject,
-    html,
+    text,
+    attachments: [buildMaterialRequestCsvAttachment(request, "material_requirement")],
   };
 
   try {
@@ -462,16 +590,17 @@ async function sendMaterialDispatchNotification(request = {}, notificationType =
   const displayName = notificationType === "delivered"
     ? `Material Delivered Notification <${extractEmailAddress(MAIL_FROM) || extractEmailAddress(SMTP_USER)}>`
     : `Material Dispatch Notification <${extractEmailAddress(MAIL_FROM) || extractEmailAddress(SMTP_USER)}>`;
-  const subjectPrefix = notificationType === "delivered" ? "Material Delivered Notification" : "Material Dispatch Notification";
-  const subject = `${subjectPrefix} | ${request.roCode || "RO"} | ${request.engineer || "Engineer"} | ${request.materialSummary || "Request"}`;
-  const html = buildMaterialRequestEmailHtml({
+  const subjectPrefix = notificationType === "delivered"
+    ? "Corrective Action - Material Request Builder | Material Delivered"
+    : "Corrective Action - Material Request Builder | Material Dispatch";
+  const subject = `${subjectPrefix} | ${request.roCode || "RO"} | ${request.engineer || "Engineer"}`;
+  const text = buildMaterialRequestPlainText({
     request,
-    heading: notificationType === "delivered" ? "Material Delivery Confirmation" : "Material Dispatch Update",
+    greeting: request.engineer || "Team",
     intro: notificationType === "delivered"
-      ? "The material request below has been updated to delivered status. Please review the delivery confirmation details, including dispatch and docket references."
-      : "The material request below has been updated to dispatched status. Please review the dispatch references, courier source, and docket details shared below.",
-    highlightLabel: "Current Workflow Status",
-    highlightValue: statusLabel,
+      ? "This is to confirm that the material request below has been marked as Delivered. Please find the request details, dispatch references, and line-wise status below."
+      : "This is to inform you that the material request below has been marked as Dispatched. Please find the dispatch references, docket details, and line-wise material details below.",
+    statusLabel,
   });
 
   const mailOptions = {
@@ -479,7 +608,8 @@ async function sendMaterialDispatchNotification(request = {}, notificationType =
     to: engineerEmails.join(", "),
     cc: adminEmails.length ? adminEmails.join(", ") : undefined,
     subject,
-    html,
+    text,
+    attachments: [buildMaterialRequestCsvAttachment(request, notificationType === "delivered" ? "material_delivered" : "material_dispatch")],
   };
 
   try {
