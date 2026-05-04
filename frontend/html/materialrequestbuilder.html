@@ -131,9 +131,13 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
 .line-sub{font-size:11px;color:var(--txt3)}
 .line-list{display:flex;flex-direction:column;gap:12px;padding:14px}
 .line-item{border:1px solid var(--border);border-radius:var(--r-lg);padding:14px;background:linear-gradient(180deg,#fff,#fbfbfb)}
-.line-item-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.line-item-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #ecebea}
 .line-index{font-size:11px;font-weight:700;color:var(--sf-purple);text-transform:uppercase;letter-spacing:.5px}
+.line-meta{font-size:11px;color:var(--txt3);margin-top:4px;line-height:1.45}
 .line-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.field-helper{font-size:10px;color:var(--txt4);line-height:1.4}
+.line-notes{min-height:72px}
+.line-item .sf-input,.line-item .sf-select,.line-item .sf-textarea{background:#fff}
 .detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
 .detail-field{display:flex;flex-direction:column;gap:3px}
 .detail-label{font-size:10px;font-weight:700;color:var(--txt4);text-transform:uppercase;letter-spacing:.5px}
@@ -365,7 +369,7 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
           <input id="fPhase" class="sf-input ro" readonly placeholder="Auto from daily plan"/>
         </div>
         <div class="form-field">
-          <label>Date Of Visit</label>
+          <label>Material Request Date</label>
           <input type="date" id="fDate" class="sf-input"/>
         </div>
         <div class="form-field full">
@@ -385,7 +389,7 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
           <input id="fRequestFromEmail" class="sf-input" value="dispatch@relconsystems.com"/>
         </div>
         <div class="form-field">
-          <label>Material Request Date</label>
+          <label>Dispatch Follow-up Date</label>
           <input type="date" id="fRequestDate" class="sf-input"/>
         </div>
         <div class="form-field">
@@ -627,7 +631,7 @@ function renderTable(){
   document.getElementById("countChip").textContent = `${total} record${total===1?"":"s"}`;
   if(activeTab === "requests"){
     head.innerHTML = `<tr>
-      <th>#</th><th>Engineer</th><th>Code</th><th>Region</th><th>RO Code</th><th>RO Name</th><th>Phase</th><th>Visit Date</th><th>Request Summary</th><th>Qty</th><th>Status</th><th>Request To</th><th>Request Date</th><th>Updated By</th><th>Actions</th>
+      <th>#</th><th>Engineer</th><th>Code</th><th>Region</th><th>RO Code</th><th>RO Name</th><th>Phase</th><th>Material Request Date</th><th>Request Summary</th><th>Qty</th><th>Status</th><th>Request To</th><th>Dispatch Follow-up Date</th><th>Updated By</th><th>Actions</th>
     </tr>`;
   } else {
     head.innerHTML = `<tr>
@@ -745,6 +749,14 @@ function openRequestModal(index=null){
   openModal("requestModal");
 }
 
+function lineItemMeta(item={}){
+  const parts = [];
+  if(item.materialName) parts.push(esc(item.materialName));
+  else parts.push("Type to search from material master");
+  if(item.quantity) parts.push(`Qty ${esc(item.quantity)}`);
+  return parts.join(" • ");
+}
+
 function renderLineItems(){
   const list = document.getElementById("lineItemList");
   if(!requestLineItems.length){
@@ -756,26 +768,49 @@ function renderLineItems(){
       <div class="line-item-head">
         <div>
           <div class="line-index">Material Line ${index+1}</div>
-          <div style="font-size:11px;color:var(--txt3);margin-top:3px;">${esc(item.materialName||"Select from master")} ${item.quantity?`• Qty ${esc(item.quantity)}`:""}</div>
+          <div class="line-meta" data-line-meta="${index}">${lineItemMeta(item)}</div>
         </div>
         <button type="button" class="sf-btn sf-btn-neutral" onclick="removeLineItem(${index})"><i class="fa-solid fa-trash"></i> Remove</button>
       </div>
       <div class="line-grid">
-        <div class="form-field"><label>Material Name</label><input class="sf-input" list="masterNameList" value="${esc(item.materialName)}" oninput="updateLineItem(${index},'materialName',this.value)"/></div>
-        <div class="form-field"><label>Material Type</label><input class="sf-input ro" readonly value="${esc(item.materialType)}"/></div>
-        <div class="form-field"><label>Request Type</label><select class="sf-select" onchange="updateLineItem(${index},'requestType',this.value)"><option value="">Select</option>${REQUEST_TYPES.map(type=>`<option value="${esc(type)}" ${item.requestType===type?"selected":""}>${esc(type)}</option>`).join("")}</select></div>
-        <div class="form-field"><label>Quantity</label><input type="number" min="1" class="sf-input" value="${esc(item.quantity)}" oninput="updateLineItem(${index},'quantity',this.value)"/></div>
-        <div class="form-field"><label>Status</label><select class="sf-select" onchange="updateLineItem(${index},'materialStatus',this.value)"><option value="">Select</option>${MATERIAL_STATUSES.map(type=>`<option value="${esc(type)}" ${item.materialStatus===type?"selected":""}>${esc(type)}</option>`).join("")}</select></div>
-        <div class="form-field"><label>Challan No.</label><input class="sf-input" value="${esc(item.challanNumber)}" oninput="updateLineItem(${index},'challanNumber',this.value)"/></div>
-        <div class="form-field"><label>Challan Date</label><input type="date" class="sf-input" value="${esc(item.challanCreationDate)}" oninput="updateLineItem(${index},'challanCreationDate',this.value)"/></div>
-        <div class="form-field"><label>Courier / Dispatch From</label><input class="sf-input" value="${esc(item.dispatchCourier)}" oninput="updateLineItem(${index},'dispatchCourier',this.value)"/></div>
-        <div class="form-field"><label>Docket Number</label><input class="sf-input" value="${esc(item.docketNumber)}" oninput="updateLineItem(${index},'docketNumber',this.value)"/></div>
-        <div class="form-field"><label>Dispatch Date</label><input type="date" class="sf-input" value="${esc(item.dispatchDate)}" oninput="updateLineItem(${index},'dispatchDate',this.value)"/></div>
-        <div class="form-field"><label>Delivery Status</label><select class="sf-select" onchange="updateLineItem(${index},'deliveryStatus',this.value)"><option value="">Select</option>${DELIVERY_STATUSES.map(type=>`<option value="${esc(type)}" ${item.deliveryStatus===type?"selected":""}>${esc(type)}</option>`).join("")}</select></div>
-        <div class="form-field"><label>Delivery Date</label><input type="date" class="sf-input" value="${esc(item.deliveryDate)}" oninput="updateLineItem(${index},'deliveryDate',this.value)"/></div>
-        <div class="form-field"><label>PO Number</label><input class="sf-input" value="${esc(item.poNumber)}" oninput="updateLineItem(${index},'poNumber',this.value)"/></div>
-        <div class="form-field"><label>PO Date</label><input type="date" class="sf-input" value="${esc(item.poDate)}" oninput="updateLineItem(${index},'poDate',this.value)"/></div>
-        <div class="form-field full"><label>Line Notes</label><input class="sf-input" value="${esc(item.notes)}" oninput="updateLineItem(${index},'notes',this.value)"/></div>
+        <div class="form-field">
+          <label>Material Name</label>
+          <input class="sf-input" list="masterNameList" autocomplete="off" placeholder="Type to filter material master" value="${esc(item.materialName)}" oninput="handleLineItemInput(${index},'materialName',this)"/>
+          <div class="field-helper">Search live material master items and pick the exact request line.</div>
+        </div>
+        <div class="form-field">
+          <label>Material Type</label>
+          <input class="sf-input ro" readonly data-line-type="${index}" value="${esc(item.materialType)}"/>
+          <div class="field-helper">Auto-filled from the selected material master item.</div>
+        </div>
+        <div class="form-field"><label>Request Type</label><select class="sf-select" onchange="handleLineItemSelect(${index},'requestType',this)"><option value="">Select</option>${REQUEST_TYPES.map(type=>`<option value="${esc(type)}" ${item.requestType===type?"selected":""}>${esc(type)}</option>`).join("")}</select></div>
+        <div class="form-field"><label>Quantity</label><input type="number" min="1" class="sf-input" value="${esc(item.quantity)}" oninput="handleLineItemInput(${index},'quantity',this)"/></div>
+        <div class="form-field"><label>Status</label><select class="sf-select" onchange="handleLineItemSelect(${index},'materialStatus',this)"><option value="">Select</option>${MATERIAL_STATUSES.map(type=>`<option value="${esc(type)}" ${item.materialStatus===type?"selected":""}>${esc(type)}</option>`).join("")}</select></div>
+        <div class="form-field">
+          <label>Challan No</label>
+          <input class="sf-input" placeholder="Enter challan reference" value="${esc(item.challanNumber)}" oninput="handleLineItemInput(${index},'challanNumber',this)"/>
+        </div>
+        <div class="form-field"><label>Challan Date</label><input type="date" class="sf-input" value="${esc(item.challanCreationDate)}" oninput="handleLineItemInput(${index},'challanCreationDate',this)"/></div>
+        <div class="form-field">
+          <label>Courier/Dispatch From</label>
+          <input class="sf-input" placeholder="Courier name or dispatch source" value="${esc(item.dispatchCourier)}" oninput="handleLineItemInput(${index},'dispatchCourier',this)"/>
+        </div>
+        <div class="form-field">
+          <label>Docket Number</label>
+          <input class="sf-input" placeholder="Enter docket number" value="${esc(item.docketNumber)}" oninput="handleLineItemInput(${index},'docketNumber',this)"/>
+        </div>
+        <div class="form-field"><label>Dispatch Date</label><input type="date" class="sf-input" value="${esc(item.dispatchDate)}" oninput="handleLineItemInput(${index},'dispatchDate',this)"/></div>
+        <div class="form-field"><label>Delivery Status</label><select class="sf-select" onchange="handleLineItemSelect(${index},'deliveryStatus',this)"><option value="">Select</option>${DELIVERY_STATUSES.map(type=>`<option value="${esc(type)}" ${item.deliveryStatus===type?"selected":""}>${esc(type)}</option>`).join("")}</select></div>
+        <div class="form-field"><label>Delivery Date</label><input type="date" class="sf-input" value="${esc(item.deliveryDate)}" oninput="handleLineItemInput(${index},'deliveryDate',this)"/></div>
+        <div class="form-field">
+          <label>PO Number</label>
+          <input class="sf-input" placeholder="Enter PO number" value="${esc(item.poNumber)}" oninput="handleLineItemInput(${index},'poNumber',this)"/>
+        </div>
+        <div class="form-field"><label>PO Date</label><input type="date" class="sf-input" value="${esc(item.poDate)}" oninput="handleLineItemInput(${index},'poDate',this)"/></div>
+        <div class="form-field full">
+          <label>Line Notes</label>
+          <textarea class="sf-textarea line-notes" placeholder="Special instructions, dispatch remarks, or approval notes" oninput="handleLineItemInput(${index},'notes',this)">${esc(item.notes)}</textarea>
+        </div>
       </div>
     </div>
   `).join("");
@@ -783,7 +818,27 @@ function renderLineItems(){
 
 function addLineItem(){requestLineItems.push(normalizeLineItem({ requestType:"Spare", quantity:1, materialStatus:"Pending" })); renderLineItems()}
 function removeLineItem(index){requestLineItems.splice(index,1); renderLineItems()}
-function updateLineItem(index,key,value){if(!requestLineItems[index]) return; requestLineItems[index][key] = key==="quantity" ? Math.max(1,Number(value||1)||1) : value; if(key==="materialName") requestLineItems[index].materialType = materialTypeFor(value); renderLineItems()}
+function updateLineItemState(index,key,value){
+  if(!requestLineItems[index]) return;
+  requestLineItems[index][key] = key==="quantity" ? Math.max(1,Number(value||1)||1) : value;
+  if(key==="materialName") requestLineItems[index].materialType = materialTypeFor(value);
+}
+function refreshLineItemView(index){
+  const item = requestLineItems[index];
+  if(!item) return;
+  const metaNode = document.querySelector(`[data-line-meta="${index}"]`);
+  if(metaNode) metaNode.innerHTML = lineItemMeta(item);
+  const typeNode = document.querySelector(`[data-line-type="${index}"]`);
+  if(typeNode) typeNode.value = item.materialType || "";
+}
+function handleLineItemInput(index,key,element){
+  updateLineItemState(index,key,element.value);
+  if(key==="quantity" && String(element.value) !== String(requestLineItems[index]?.quantity || "")) element.value = requestLineItems[index].quantity;
+  if(key==="materialName" || key==="quantity") refreshLineItemView(index);
+}
+function handleLineItemSelect(index,key,element){
+  updateLineItemState(index,key,element.value);
+}
 
 async function saveRequest(){
   if(!isAdmin()) return showToast("Only admin can save material requests","error");
@@ -872,8 +927,9 @@ function openDetail(index){
       <div class="detail-field"><div class="detail-label">RO Code</div><div class="detail-value">${esc(row.roCode||"—")}</div></div>
       <div class="detail-field"><div class="detail-label">RO Name</div><div class="detail-value">${esc(row.roName||"—")}</div></div>
       <div class="detail-field"><div class="detail-label">Phase</div><div class="detail-value">${esc(row.phase||"—")}</div></div>
+      <div class="detail-field"><div class="detail-label">Material Request Date</div><div class="detail-value">${fmtDate(row.date)}</div></div>
       <div class="detail-field"><div class="detail-label">Request To</div><div class="detail-value">${esc(row.materialRequestTo||"—")}</div></div>
-      <div class="detail-field"><div class="detail-label">Request Date</div><div class="detail-value">${fmtDate(row.materialRequestDate)}</div></div>
+      <div class="detail-field"><div class="detail-label">Dispatch Follow-up Date</div><div class="detail-value">${fmtDate(row.materialRequestDate)}</div></div>
       <div class="detail-field"><div class="detail-label">Status</div><div class="detail-value"><span class="sf-badge ${statusClass(row.materialDispatchStatus)}">${esc(row.materialDispatchStatus||"Pending")}</span></div></div>
       <div class="detail-field"><div class="detail-label">Updated By</div><div class="detail-value">${esc(row.updatedByName||row.createdByName||"—")}</div></div>
     </div>
