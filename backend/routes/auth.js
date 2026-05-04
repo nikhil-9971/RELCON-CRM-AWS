@@ -173,11 +173,12 @@ router.get("/user-management/users", verifyToken, async (req, res) => {
     if (!isNikhilAdmin(req.user)) {
       return res.status(403).json({ error: "Access denied. Nikhil admin only." });
     }
-    const users = await User.find({}, "username email role engineerName empId").sort({ username: 1 }).lean();
+    const users = await User.find({}, "username email contactNumber role engineerName empId").sort({ username: 1 }).lean();
     res.json(users.map(u => ({
       _id: u._id,
       username: u.username || "",
       email: u.email || "",
+      contactNumber: u.contactNumber || "",
       role: normalizeUserRole(u.role),
       engineerName: u.engineerName || "",
       empId: u.empId || "",
@@ -194,7 +195,7 @@ router.post("/user-management/users", verifyToken, async (req, res) => {
     if (!isNikhilAdmin(req.user)) {
       return res.status(403).json({ error: "Access denied. Nikhil admin only." });
     }
-    const { username, email, engineerName, role, empId, password } = req.body;
+    const { username, email, contactNumber, engineerName, role, empId, password } = req.body;
     if (!username || !engineerName || !password) {
       return res.status(400).json({ error: "Username, engineer name, and password are required" });
     }
@@ -206,6 +207,7 @@ router.post("/user-management/users", verifyToken, async (req, res) => {
     const created = await User.create({
       username: String(username).trim(),
       email: String(email || "").trim(),
+      contactNumber: String(contactNumber || "").trim(),
       engineerName: String(engineerName).trim(),
       role: normalizeUserRole(role),
       empId: String(empId || "").trim(),
@@ -217,6 +219,7 @@ router.post("/user-management/users", verifyToken, async (req, res) => {
         _id: created._id,
         username: created.username || "",
         email: created.email || "",
+        contactNumber: created.contactNumber || "",
         role: normalizeUserRole(created.role),
         engineerName: created.engineerName || "",
         empId: created.empId || "",
@@ -234,15 +237,16 @@ router.put("/user-management/users/:id", verifyToken, async (req, res) => {
     if (!isNikhilAdmin(req.user)) {
       return res.status(403).json({ error: "Access denied. Nikhil admin only." });
     }
-    const { username, email, engineerName, role, empId, password } = req.body;
+    const { username, email, contactNumber, engineerName, role, empId, password } = req.body;
     const updates = {};
     if (username !== undefined) updates.username = String(username).trim();
     if (email !== undefined) updates.email = String(email).trim();
+    if (contactNumber !== undefined) updates.contactNumber = String(contactNumber).trim();
     if (engineerName !== undefined) updates.engineerName = String(engineerName).trim();
     if (role !== undefined) updates.role = normalizeUserRole(role);
     if (empId !== undefined) updates.empId = String(empId).trim();
     if (password) updates.password = await bcrypt.hash(password, 10);
-    const updated = await User.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true, select: "username email role engineerName empId" });
+    const updated = await User.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true, select: "username email contactNumber role engineerName empId" });
     if (!updated) return res.status(404).json({ error: "User not found" });
     res.json({
       message: "User updated successfully",
@@ -250,6 +254,7 @@ router.put("/user-management/users/:id", verifyToken, async (req, res) => {
         _id: updated._id,
         username: updated.username || "",
         email: updated.email || "",
+        contactNumber: updated.contactNumber || "",
         role: normalizeUserRole(updated.role),
         engineerName: updated.engineerName || "",
         empId: updated.empId || "",

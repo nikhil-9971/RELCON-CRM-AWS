@@ -181,6 +181,7 @@ tbody tr:hover{background:#f0f8ff;}
             <th>#</th>
             <th>Username</th>
             <th>Email</th>
+            <th>Contact</th>
             <th>Engineer Name</th>
             <th>Role</th>
             <th>Employee ID</th>
@@ -189,7 +190,7 @@ tbody tr:hover{background:#f0f8ff;}
           </tr>
         </thead>
         <tbody id="tableBody">
-          <tr><td colspan="8" class="empty">Loading users...</td></tr>
+          <tr><td colspan="9" class="empty">Loading users...</td></tr>
         </tbody>
       </table>
     </div>
@@ -212,6 +213,10 @@ tbody tr:hover{background:#f0f8ff;}
         <div class="field">
           <label>Email</label>
           <input id="fEmail" type="email" placeholder="name@example.com"/>
+        </div>
+        <div class="field">
+          <label>Contact Number</label>
+          <input id="fContactNumber" placeholder="10-digit mobile number"/>
         </div>
         <div class="field">
           <label>Engineer Name</label>
@@ -302,7 +307,7 @@ function clearFilters() {
 
 async function loadUsers() {
   if (!isAllowed()) {
-    document.getElementById("tableBody").innerHTML = `<tr><td colspan="7" class="empty">Access denied. This page is available only to admin user nikhil.trivedi.</td></tr>`;
+    document.getElementById("tableBody").innerHTML = `<tr><td colspan="9" class="empty">Access denied. This page is available only to admin user nikhil.trivedi.</td></tr>`;
     return;
   }
   try {
@@ -331,7 +336,7 @@ function filteredUsers() {
   const q = document.getElementById("searchInput").value.trim().toLowerCase();
   const role = document.getElementById("roleFilter").value.trim().toLowerCase();
   return allUsers.filter(u => {
-    const matchesQ = !q || [u.username, u.email, u.engineerName, u.empId, u.role].some(v => String(v || "").toLowerCase().includes(q));
+    const matchesQ = !q || [u.username, u.email, u.contactNumber, u.engineerName, u.empId, u.role].some(v => String(v || "").toLowerCase().includes(q));
     const matchesRole = !role || String(u.role || "").toLowerCase() === role;
     return matchesQ && matchesRole;
   });
@@ -342,7 +347,7 @@ function renderTable() {
   document.getElementById("recordCount").textContent = `${rows.length} user${rows.length === 1 ? "" : "s"}`;
   const tbody = document.getElementById("tableBody");
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="8" class="empty">No users found.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="empty">No users found.</td></tr>`;
     return;
   }
   tbody.innerHTML = rows.map((u, i) => `
@@ -350,6 +355,7 @@ function renderTable() {
       <td>${i + 1}</td>
       <td><strong>${esc(u.username)}</strong></td>
       <td>${esc(u.email || "—")}</td>
+      <td>${esc(u.contactNumber || "—")}</td>
       <td>${esc(u.engineerName)}</td>
       <td><span class="badge ${String(u.role).toLowerCase()==="admin"?"badge-admin":"badge-user"}">${esc(String(u.role || "").toLowerCase()==="admin"?"admin":"engineer")}</span></td>
       <td>${esc(u.empId || "—")}</td>
@@ -371,6 +377,7 @@ function openCreate() {
   document.getElementById("editId").value = "";
   document.getElementById("fUsername").value = "";
   document.getElementById("fEmail").value = "";
+  document.getElementById("fContactNumber").value = "";
   document.getElementById("fEngineerName").value = "";
   document.getElementById("fRole").value = "engineer";
   document.getElementById("fEmpId").value = "";
@@ -388,6 +395,7 @@ function openEdit(id, focusPassword = false) {
   document.getElementById("editId").value = user._id;
   document.getElementById("fUsername").value = user.username || "";
   document.getElementById("fEmail").value = user.email || "";
+  document.getElementById("fContactNumber").value = user.contactNumber || "";
   document.getElementById("fEngineerName").value = user.engineerName || "";
   document.getElementById("fRole").value = String(user.role || "engineer").toLowerCase() === "admin" ? "admin" : "engineer";
   document.getElementById("fEmpId").value = user.empId || "";
@@ -403,6 +411,7 @@ async function saveUser() {
   const body = {
     username: document.getElementById("fUsername").value.trim(),
     email: document.getElementById("fEmail").value.trim(),
+    contactNumber: document.getElementById("fContactNumber").value.trim(),
     engineerName: document.getElementById("fEngineerName").value.trim(),
     role: document.getElementById("fRole").value.trim(),
     empId: document.getElementById("fEmpId").value.trim(),

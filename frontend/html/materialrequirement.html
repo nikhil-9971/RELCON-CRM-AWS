@@ -621,27 +621,34 @@
       <div class="sf-modal-grid">
         <div class="sf-modal-field">
           <label class="sf-modal-label">Engineer <span class="sf-modal-req" id="engReq">*</span></label>
-          <input id="fEngineer" class="sf-modal-input" placeholder="Engineer name"/>
+          <select id="fEngineer" class="sf-modal-select" onchange="handleEngineerSelection(this.value)">
+            <option value="">Select Engineer</option>
+          </select>
         </div>
         <div class="sf-modal-field">
           <label class="sf-modal-label">Engineer Code</label>
-          <input id="fEngineerCode" class="sf-modal-input" placeholder="e.g. J0"/>
+          <input id="fEngineerCode" class="sf-modal-input ro" placeholder="Auto from user management" readonly/>
         </div>
         <div class="sf-modal-field">
           <label class="sf-modal-label">Engineer Contact</label>
-          <input id="fEngineerContact" class="sf-modal-input" placeholder="Mobile number"/>
+          <input id="fEngineerContact" class="sf-modal-input ro" placeholder="Auto from user management" readonly/>
         </div>
         <div class="sf-modal-field">
           <label class="sf-modal-label">Engineer Email</label>
-          <input id="fEngineerEmail" class="sf-modal-input" placeholder="Email address"/>
+          <input id="fEngineerEmail" class="sf-modal-input ro" placeholder="Auto from user management" readonly/>
         </div>
         <div class="sf-modal-field">
           <label class="sf-modal-label">Region</label>
-          <input id="fRegion" class="sf-modal-input" placeholder="Region"/>
+          <select id="fRegion" class="sf-modal-select">
+            <option value="">Select Region</option>
+            <option>Patna</option>
+            <option>Begusarai</option>
+            <option>Lucknow</option>
+          </select>
         </div>
         <div class="sf-modal-field">
           <label class="sf-modal-label">RO Code <span class="sf-modal-req" id="roReq">*</span></label>
-          <input id="fRoCode" class="sf-modal-input" placeholder="e.g. BHR001"/>
+          <input id="fRoCode" class="sf-modal-input" placeholder="e.g. BHR001" oninput="handleRoCodeChange(this.value)"/>
         </div>
         <div class="sf-modal-field">
           <label class="sf-modal-label">RO Name</label>
@@ -649,7 +656,7 @@
         </div>
         <div class="sf-modal-field">
           <label class="sf-modal-label">Phase</label>
-          <input id="fPhase" class="sf-modal-input" placeholder="Phase"/>
+          <input id="fPhase" class="sf-modal-input ro" placeholder="Auto from daily plan" readonly/>
         </div>
         <div class="sf-modal-field">
           <label class="sf-modal-label">Date Of Visit <span class="sf-modal-req" id="dateReq">*</span></label>
@@ -680,7 +687,7 @@
         </div>
         <div class="sf-modal-field">
           <label class="sf-modal-label">HQO Person Email</label>
-          <input id="fRequestFromEmail" class="sf-modal-input" placeholder="dispatch@relconsystems.com"/>
+          <input id="fRequestFromEmail" class="sf-modal-input" placeholder="dispatch@relconsystems.com" value="dispatch@relconsystems.com"/>
         </div>
         <div class="sf-modal-field">
           <label class="sf-modal-label">Material Request Date</label>
@@ -783,7 +790,8 @@ const MATERIAL_LOOKUP = new Map(MATERIAL_MASTER.map(item => [item.name.toLowerCa
 const REQUEST_TYPES = window.MATERIAL_REQUEST_TYPES || [];
 const MATERIAL_STATUSES = window.MATERIAL_STATUS_OPTIONS || [];
 const DELIVERY_STATUSES = window.DELIVERY_STATUS_OPTIONS || [];
-let allData = [], filtered = [];
+let allData = [], requestData = [], filtered = [];
+let engineerUsers = [], dailyPlanData = [];
 let currentUser = null;
 let currentPage = 1, rowsPerPage = 25;
 let sortKey = "", sortDir = 1;
@@ -813,10 +821,55 @@ function switchSection(section){
   document.getElementById('manualAddBtn').innerHTML = section === 'requirement'
     ? '<i class="fa-solid fa-plus"></i> Add Entry'
     : '<i class="fa-solid fa-plus"></i> Add Material Request';
+  document.getElementById('manualAddBtn').classList.toggle('hidden', section === 'request' && !isAdminUser());
   document.getElementById('recordCountBadge').textContent = section === 'requirement' ? 'Loading requirement…' : 'Loading requests…';
   sortKey = "";
   document.querySelectorAll('[id^="sort-"]').forEach(el=>el.innerHTML='');
+  populateDynamicFilters(getActiveBaseData());
+  updateKPIs(getActiveBaseData());
+  currentPage = 1;
   renderTable();
+}
+function getActiveBaseData(){
+  return activeSection === 'requirement' ? allData : requestData;
+}
+function isAdminUser(){
+  return String(currentUser?.role || '').toLowerCase() === 'admin';
+}
+function loadEngineerOptions(){
+  const select = document.getElementById('fEngineer');
+  const engineers = engineerUsers
+    .filter(user => String(user.role || '').toLowerCase() === 'engineer')
+    .sort((a,b)=>String(a.engineerName || a.username || '').localeCompare(String(b.engineerName || b.username || '')));
+  select.innerHTML = '<option value="">Select Engineer</option>' + engineers.map(user=>{
+    const name = user.engineerName || user.username || '';
+    return `<option value="${esc(name)}">${esc(name)}</option>`;
+  }).join('');
+}
+function getEngineerProfile(name){
+  const needle = String(name || '').trim().toLowerCase();
+  return engineerUsers.find(user => String(user.engineerName || user.username || '').trim().toLowerCase() === needle) || null;
+}
+function handleEngineerSelection(name){
+  const user = getEngineerProfile(name);
+  document.getElementById('fEngineerCode').value = user?.empId || '';
+  document.getElementById('fEngineerContact').value = user?.contactNumber || '';
+  document.getElementById('fEngineerEmail').value = user?.email || '';
+}
+function findPlanByRoCode(roCode){
+  const needle = String(roCode || '').trim().toLowerCase();
+  const matches = dailyPlanData.filter(plan => String(plan.roCode || '').trim().toLowerCase() === needle);
+  if(!matches.length) return null;
+  return matches.sort((a,b)=>String(b.date || '').localeCompare(String(a.date || '')))[0];
+}
+function handleRoCodeChange(roCode){
+  const plan = findPlanByRoCode(roCode);
+  if(!plan) return;
+  if(!document.getElementById('fRoName').value.trim()) document.getElementById('fRoName').value = plan.roName || '';
+  document.getElementById('fPhase').value = plan.phase || '';
+  if(!document.getElementById('fMaterialUsedIn').value.trim()){
+    document.getElementById('fMaterialUsedIn').value = `${plan.roCode || ''} - ${plan.roName || ''} / ${plan.phase || ''}`.trim();
+  }
 }
 function siteKey(row){return [row?.engineer||'',row?.roCode||'',row?.date||''].map(v=>String(v).trim().toLowerCase()).join('|');}
 function inferCustomer(row){
@@ -881,6 +934,7 @@ function sortValue(value){
 }
 function canManageRecord(row){
   const role = String(currentUser?.role||'').toLowerCase();
+  if(activeSection === 'request') return role === 'admin';
   if(role !== 'engineer') return true;
   const myName = String(currentUser?.engineerName || currentUser?.username || '').trim().toLowerCase();
   return String(row?.engineer||'').trim().toLowerCase() === myName;
@@ -1042,12 +1096,16 @@ async function fetchData(){
   try{
     const userRes = await fetchWithTimeout(`${baseUrl}/user`,{headers:{Authorization:`Bearer ${token}`}}).catch(()=>null);
     currentUser = userRes && userRes.ok ? await userRes.json().catch(()=>({})) : {};
+    const usersPromise = isAdminUser()
+      ? fetchWithTimeout(`${baseUrl}/getUsers`,{headers:{Authorization:`Bearer ${token}`}}).catch(()=>null)
+      : Promise.resolve(null);
 
-    const [hpclRes,jioRes,planRes,materialRes] = await Promise.all([
+    const [hpclRes,jioRes,planRes,materialRes,usersRes] = await Promise.all([
       fetchWithTimeout(`${baseUrl}/getMergedStatusRecords`,{headers:{Authorization:`Bearer ${token}`}}),
       fetchWithTimeout(`${baseUrl}/jioBP/getAllJioBPStatus`,{headers:{Authorization:`Bearer ${token}`}}),
       fetchWithTimeout(`${baseUrl}/getDailyPlans`,{headers:{Authorization:`Bearer ${token}`}}),
       fetchWithTimeout(`${baseUrl}/materialRequirement`,{headers:{Authorization:`Bearer ${token}`}}),
+      usersPromise,
     ]);
     if(!hpclRes.ok) throw new Error(`Status records failed: ${hpclRes.status}`);
     if(!materialRes.ok) throw new Error(`Material data failed: ${materialRes.status}`);
@@ -1055,6 +1113,9 @@ async function fetchData(){
     const jioData      = await jioRes.json().catch(()=>[]);
     const planData     = await planRes.json().catch(()=>[]);
     const materialData = (await materialRes.json().catch(()=>[])).map(normalizeMaterialRecord);
+    engineerUsers = usersRes?.ok ? await usersRes.json().catch(()=>[]) : [];
+    dailyPlanData = planData;
+    loadEngineerOptions();
 
     const planMap={};
     planData.forEach(p=>{const k=p._id?.toString();if(k)planMap[k]=p;});
@@ -1070,14 +1131,18 @@ async function fetchData(){
       return buildDisplayRow(record, plan, materialMap.get(key), sourceType);
     });
 
-    const manualOnly = materialData.filter(item=>!sourceKeys.has(siteKey(item))).map(item=>({
+    const manualOnly = materialData.filter(item=>!sourceKeys.has(siteKey(item)) && item.sourceType !== 'Admin Material Request').map(item=>({
       ...item,
       origin:'manual',
       sourceType:item.sourceType || 'Manual Request'
     }));
 
+    requestData = materialData
+      .filter(item => item.sourceType === 'Admin Material Request')
+      .map(item => ({ ...item, origin:'admin-request' }));
+
     allData=[...mergedSources,...manualOnly];
-    populateDynamicFilters(allData);
+    populateDynamicFilters(getActiveBaseData());
     document.getElementById('lastSync').textContent=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
     applyFilters();
   }catch(e){
@@ -1102,6 +1167,7 @@ function populateDynamicFilters(data){
 
 /* ── Filters ── */
 function applyFilters(){
+  const baseRecords = getActiveBaseData();
   const q   = document.getElementById('searchInput').value.trim().toLowerCase();
   const eng = document.getElementById('filterEngineer').value;
   const reg = document.getElementById('filterRegion').value;
@@ -1112,9 +1178,13 @@ function applyFilters(){
   const role= String(currentUser?.role||'').toLowerCase();
   const myName=(currentUser?.engineerName||currentUser?.username||'').trim().toLowerCase();
 
-  filtered = allData.filter(item=>{
-    const sourceHasMaterial = !!(item.lineItemCount || getSourceMaterial(item) || item.materialSummary);
-    const isVerified = item.origin === 'manual' || item.origin === 'saved' || item.isVerified===true || item.isVerified==='true';
+  filtered = baseRecords.filter(item=>{
+    const sourceHasMaterial = activeSection === 'request'
+      ? !!(item.lineItemCount || item.materialSummary)
+      : !!(item.lineItemCount || getSourceMaterial(item) || item.materialSummary);
+    const isVerified = activeSection === 'request'
+      ? true
+      : (item.origin === 'manual' || item.origin === 'saved' || item.isVerified===true || item.isVerified==='true');
     if(!sourceHasMaterial || !isVerified) return false;
     if(role==='engineer'&&String(item.engineer||'').trim().toLowerCase()!==myName) return false;
     if(eng&&item.engineer!==eng) return false;
@@ -1538,7 +1608,7 @@ function openEditModal(idx){
 function openRequestEditModal(idx){
   const start=(currentPage-1)*rowsPerPage;
   const row=filtered[start+idx]||filtered[idx];
-  if(!row || !canManageRecord(row)) return;
+  if(!row || !canManageRecord(row) || !isAdminUser()) return;
   editMode=true; currentEditingRow=row;
   document.getElementById('entryModalTitle').innerHTML=`<i class="fa-solid fa-pen-to-square" style="color:var(--sf-blue);"></i> ${row._id?'Edit Material Request':'Create Material Request'}`;
   document.getElementById('editId').value=row._id||'';
@@ -1558,12 +1628,12 @@ function openRequestEditModal(idx){
   document.getElementById('fRequestDate').value=(row.materialRequestDate||'').slice(0,10);
   document.getElementById('fArrangeFrom').value=row.materialArrangeFrom||'';
   document.getElementById('fRemarks').value=row.remarks||'';
-  const sourceBacked = row.origin !== 'manual';
-  ['fEngineer','fRegion','fRoCode','fRoName','fPhase','fDate'].forEach(id=>{
-    const el=document.getElementById(id);
-    el.readOnly=sourceBacked;
-    el.classList.toggle('ro',sourceBacked);
-  });
+  handleEngineerSelection(row.engineer||'');
+  document.getElementById('fEngineerCode').readOnly = true;
+  document.getElementById('fEngineerContact').readOnly = true;
+  document.getElementById('fEngineerEmail').readOnly = true;
+  document.getElementById('fPhase').readOnly = true;
+  ['fEngineerCode','fEngineerContact','fEngineerEmail','fPhase'].forEach(id=>document.getElementById(id).classList.add('ro'));
   lineItemsState = (row.lineItems?.length ? row.lineItems : [createSeedLineItem(row.materialSummary||row.material||'')]).map(normalizeLineItem);
   renderLineItems();
   document.getElementById('requestEntryModal').classList.add('open');
@@ -1575,18 +1645,24 @@ function openManualModal(){
   return openRequestManualModal();
 }
 function openRequestManualModal(){
+  if(!isAdminUser()){
+    showToast('Access denied','warn','Material Request Builder mein entry sirf admin kar sakta hai.');
+    return;
+  }
   editMode=false; currentEditingRow=null;
   document.getElementById('entryModalTitle').innerHTML=`<i class="fa-solid fa-plus" style="color:var(--sf-purple);"></i> Add Material Request`;
   document.getElementById('editId').value='';
-  ['fEngineer','fEngineerCode','fEngineerContact','fEngineerEmail','fRegion','fRoCode','fRoName','fPhase','fRequestTo','fRequestFromEmail','fArrangeFrom','fRemarks','fMaterialUsedIn'].forEach(id=>{
-    document.getElementById(id).value='';
-    document.getElementById(id).readOnly=false;
-    document.getElementById(id).classList.remove('ro');
-  });
+  ['fEngineerCode','fEngineerContact','fEngineerEmail','fRoCode','fRoName','fPhase','fRequestTo','fRequestFromEmail','fArrangeFrom','fRemarks','fMaterialUsedIn'].forEach(id=>{ document.getElementById(id).value=''; });
+  document.getElementById('fEngineer').value='';
+  document.getElementById('fRegion').value='';
   document.getElementById('fDate').value=today(); document.getElementById('fDate').readOnly=false; document.getElementById('fDate').classList.remove('ro');
   document.getElementById('fRequestDate').value=''; document.getElementById('fCustomer').value='';
-  const eng=currentUser?.engineerName||currentUser?.username||'';
-  if(eng){document.getElementById('fEngineer').value=eng;}
+  document.getElementById('fRequestFromEmail').value='dispatch@relconsystems.com';
+  document.getElementById('fEngineerCode').readOnly = true;
+  document.getElementById('fEngineerContact').readOnly = true;
+  document.getElementById('fEngineerEmail').readOnly = true;
+  document.getElementById('fPhase').readOnly = true;
+  ['fEngineerCode','fEngineerContact','fEngineerEmail','fPhase'].forEach(id=>document.getElementById(id).classList.add('ro'));
   lineItemsState = [createSeedLineItem()];
   renderLineItems();
   document.getElementById('requestEntryModal').classList.add('open');
@@ -1594,6 +1670,10 @@ function openRequestManualModal(){
 function closeRequestEntryModal(){document.getElementById('requestEntryModal').classList.remove('open');}
 
 function saveRequestEntry(){
+  if(!isAdminUser()){
+    showToast('Access denied','warn','Material Request Builder mein save sirf admin kar sakta hai.');
+    return;
+  }
   const id=document.getElementById('editId').value;
   const normalizedItems = lineItemsState.map(normalizeLineItem).filter(item=>item.materialName);
   const metrics = summarizeLineItems(normalizedItems);
@@ -1628,12 +1708,12 @@ function saveRequestEntry(){
     poNumber:normalizedItems[0]?.poNumber || '',
     poDate:normalizedItems[0]?.poDate || '',
     sourceRecordId:currentEditingRow?.sourceRecordId || '',
-    sourceType:currentEditingRow?.sourceType || 'Manual Request',
+    sourceType:'Admin Material Request',
     lineItems:normalizedItems,
     remarks:document.getElementById('fRemarks').value.trim(),
   };
-  if(!payload.roCode||!payload.date||!payload.engineer||!normalizedItems.length){
-    showToast('Validation Error','warn','Engineer, RO Code, Date aur kam se kam 1 material line item required hai.'); return;
+  if(!payload.roCode||!payload.date||!payload.engineer||!payload.region||!normalizedItems.length){
+    showToast('Validation Error','warn','Engineer, Region, RO Code, Date aur kam se kam 1 material line item required hai.'); return;
   }
   showLoader(editMode?'Updating…':'Saving…');
   const method=id?'PUT':'POST';
