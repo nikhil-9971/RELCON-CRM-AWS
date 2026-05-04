@@ -6,6 +6,7 @@ const {
   sendMaterialRequestNotification,
   sendMaterialDispatchNotification,
   normalizeStatusLabel,
+  isRequirementGivenToHQOStatus,
 } = require("../services/mailer");
 
 function isAdmin(req) {
@@ -73,10 +74,18 @@ function normalizePayload(body = {}, req = {}) {
 
 async function triggerMaterialRequestCreateNotifications(created) {
   try {
-    await sendMaterialRequestNotification(created);
+    if (isRequirementGivenToHQOStatus(created?.materialDispatchStatus)) {
+      await sendMaterialRequestNotification(created);
+    }
   } catch (err) {
     console.error("Material request HQO notification error:", err?.message || err);
   }
+}
+
+function shouldNotifyRequirement(previous = {}, next = {}) {
+  const before = isRequirementGivenToHQOStatus(previous.materialDispatchStatus);
+  const after = isRequirementGivenToHQOStatus(next.materialDispatchStatus);
+  return !before && after;
 }
 
 function shouldNotifyDispatch(previous = {}, next = {}) {
@@ -96,6 +105,9 @@ function shouldNotifyDelivered(previous = {}, next = {}) {
 
 async function triggerMaterialRequestUpdateNotifications(previous, updated) {
   try {
+    if (shouldNotifyRequirement(previous, updated)) {
+      await sendMaterialRequestNotification(updated);
+    }
     if (shouldNotifyDispatch(previous, updated)) {
       await sendMaterialDispatchNotification(updated, "dispatch");
     }

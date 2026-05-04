@@ -151,6 +151,15 @@ function normalizeStatusLabel(value = "") {
     .replace(/[\s_-]+/g, "");
 }
 
+function isRequirementGivenToHQOStatus(value = "") {
+  const normalized = normalizeStatusLabel(value);
+  return [
+    "requimentgiventohqo",
+    "requirementgiventohqo",
+    "requirmentgiventohqo",
+  ].includes(normalized);
+}
+
 function extractEmailAddress(value = "") {
   const raw = String(value || "").trim();
   const match = raw.match(/<([^>]+)>/);
@@ -408,10 +417,10 @@ async function logMaterialWorkflowEmail({ type, subject, to, cc, status, request
 }
 
 async function sendMaterialRequestNotification(request = {}) {
-  const requestToNormalized = normalizeStatusLabel(request.materialRequestTo);
+  const statusMatches = isRequirementGivenToHQOStatus(request.materialDispatchStatus);
   const hqoEmail = normalizeEmail(request.materialRequestFromEmail);
-  if (requestToNormalized !== "hqo" || !hqoEmail) {
-    return { ok: false, skipped: true, reason: "not_hqo_or_missing_hqo_email" };
+  if (!statusMatches || !hqoEmail) {
+    return { ok: false, skipped: true, reason: "status_not_hqo_or_missing_hqo_email" };
   }
 
   const { adminEmails, engineerEmails } = await getMaterialRequestNotificationRecipients(request);
@@ -2419,4 +2428,5 @@ module.exports = {
   sendMaterialRequestNotification,
   sendMaterialDispatchNotification,
   normalizeStatusLabel,
+  isRequirementGivenToHQOStatus,
 };
