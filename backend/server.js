@@ -20,6 +20,7 @@ const jioBPStatusRoutes        = require("./routes/jioBPStatusRoutes");
 const bpclStatusRoutes         = require("./routes/bpclStatusRoutes");
 const materialRoutes           = require("./routes/materialRequirement");
 const materialRequestBuilderRoutes = require("./routes/materialRequestBuilder");
+const materialRequestMasterItemsRoutes = require("./routes/materialRequestMasterItems");
 const materialManagement       = require("./routes/materialManagement")
 const invoiceManagement        = require("./routes/invoiceManagement");
 const chatRoutes               = require("./routes/chatRoutes");
@@ -95,6 +96,7 @@ app.use("/api/jioBP", jioBPStatusRoutes);
 app.use("/api/bpclStatus", bpclStatusRoutes);
 app.use("/api/materialRequirement", materialRoutes);
 app.use("/api/materialRequestBuilder", materialRequestBuilderRoutes);
+app.use("/api/materialRequestMasterItems", materialRequestMasterItemsRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api", incidentRoutes);
 app.use("/api/ai", aiAgentRoutes);
