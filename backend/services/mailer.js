@@ -355,6 +355,93 @@ function buildMaterialRequestSummaryCards(request = {}) {
   `;
 }
 
+function buildMaterialRequestSummaryTable(request = {}) {
+  const rows = [
+    ["Engineer Name", request.engineer || "—"],
+    ["Engineer Code", request.engineerCode || "—"],
+    ["Engineer Email", request.engineerEmailId || "—"],
+    ["Engineer Contact", request.engineerContactNumber || "—"],
+    ["Region", request.region || "—"],
+    ["Customer", request.customer || "—"],
+    ["RO Code", request.roCode || "—"],
+    ["RO Name", request.roName || "—"],
+    ["Phase", request.phase || "—"],
+    ["Material Request Date", formatDateOnlyIST(request.date)],
+    ["Request Given To", request.materialRequestTo || "—"],
+    ["HQO Email", request.materialRequestFromEmail || "—"],
+    ["Dispatch Follow-up Date", formatDateOnlyIST(request.materialRequestDate)],
+    ["Material Arrange From", request.materialArrangeFrom || "—"],
+    ["Request Summary", request.materialSummary || "—"],
+    ["Current Status", request.materialDispatchStatus || "Pending"],
+    ["Total Quantity", request.quantity || 0],
+    ["Remarks", request.remarks || "—"],
+  ];
+
+  return `
+    <table style="width:100%;border-collapse:collapse;border:1px solid #dbe3ee;border-radius:12px;overflow:hidden;background:#ffffff;font-size:13px;">
+      <tbody>
+        ${rows.map(([label, value], index) => `
+          <tr style="background:${index % 2 === 0 ? "#ffffff" : "#f8fafc"};">
+            <td style="width:260px;padding:11px 14px;border-bottom:1px solid #e5edf5;font-weight:700;color:#334155;vertical-align:top;">${htmlEscape(label)}</td>
+            <td style="padding:11px 14px;border-bottom:1px solid #e5edf5;color:#0f172a;vertical-align:top;line-height:1.5;">${htmlEscape(value)}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+function buildMaterialRequestProfessionalEmailHtml({
+  request = {},
+  title = "",
+  intro = "",
+  salutation = "Team",
+  statusLabel = "",
+}) {
+  const generatedAt = formatDateTimeIST(new Date());
+
+  return `
+    <div style="margin:0;padding:24px;background:#eef3f8;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
+      <div style="max-width:1040px;margin:0 auto;background:#ffffff;border:1px solid #d9e2ec;border-radius:16px;overflow:hidden;">
+        <div style="padding:24px 28px;background:#16324f;color:#ffffff;">
+          <div style="font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;opacity:.88;">Relcon CRM</div>
+          <h2 style="margin:10px 0 0;font-size:24px;line-height:1.25;font-weight:700;">${htmlEscape(title)}</h2>
+        </div>
+        <div style="padding:28px;">
+          <p style="margin:0 0 14px;font-size:14px;line-height:1.7;color:#0f172a;">Dear ${htmlEscape(salutation)},</p>
+          <p style="margin:0 0 18px;font-size:14px;line-height:1.75;color:#334155;">${htmlEscape(intro)}</p>
+
+          <div style="margin:0 0 18px;padding:14px 16px;border:1px solid #cbd5e1;border-radius:12px;background:#f8fafc;">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#64748b;">Current Workflow Status</div>
+            <div style="margin-top:6px;font-size:16px;font-weight:700;color:#0f172a;">${htmlEscape(statusLabel || request.materialDispatchStatus || "Pending")}</div>
+          </div>
+
+          <div style="margin-top:20px;">
+            <div style="margin:0 0 10px;font-size:15px;font-weight:700;color:#0f172a;">Request Details</div>
+            ${buildMaterialRequestSummaryTable(request)}
+          </div>
+
+          <div style="margin-top:24px;">
+            ${buildMaterialRequestLineItemsTable(Array.isArray(request.lineItems) ? request.lineItems : [])}
+          </div>
+
+          <div style="margin-top:22px;padding:16px 18px;border:1px solid #dbe3ee;border-radius:12px;background:#f8fafc;">
+            <p style="margin:0;font-size:13px;line-height:1.7;color:#334155;">
+              The complete request data is also attached in CSV format for operational review, dispatch coordination, and audit reference.
+            </p>
+            <p style="margin:8px 0 0;font-size:12px;color:#64748b;">Generated on ${htmlEscape(generatedAt)} IST.</p>
+          </div>
+
+          <p style="margin:22px 0 0;font-size:14px;line-height:1.7;color:#334155;">
+            Regards,<br/>
+            <strong>Relcon CRM</strong>
+          </p>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function buildMaterialRequestEmailHtml({
   request = {},
   heading = "",
@@ -553,11 +640,18 @@ async function sendMaterialRequestNotification(request = {}) {
 
   const { adminEmails, engineerEmails } = await getMaterialRequestNotificationRecipients(request);
   const cc = [...new Set([...adminEmails, ...engineerEmails].filter((email) => email !== hqoEmail))];
-  const subject = `Corrective Action - Material Request Builder | Requirement given to HQO | ${request.roCode || "RO"} | ${request.engineer || "Engineer"}`;
+  const subject = `Material Request Notification | HQO Action Required | ${request.roCode || "RO"} | ${request.engineer || "Engineer"}`;
+  const html = buildMaterialRequestProfessionalEmailHtml({
+    request,
+    salutation: "HQO Team",
+    title: "Material Request Raised for HQO Review",
+    intro: "A material request has been raised and marked for HQO action. Kindly review the request details and material line information shared below and proceed with the necessary coordination.",
+    statusLabel: "Requirement given to HQO",
+  });
   const text = buildMaterialRequestPlainText({
     request,
     greeting: "HQO Team",
-    intro: "A material request has been raised and the current workflow status is Requirement given to HQO. Please review the request details below and take the necessary action.",
+    intro: "A material request has been raised and marked for HQO action. Please review the request details and proceed with the necessary coordination.",
     statusLabel: "Requirement given to HQO",
   });
 
@@ -566,6 +660,7 @@ async function sendMaterialRequestNotification(request = {}) {
     to: hqoEmail,
     cc: cc.length ? cc.join(", ") : undefined,
     subject,
+    html,
     text,
     attachments: [buildMaterialRequestCsvAttachment(request, "material_requirement")],
   };
@@ -591,9 +686,18 @@ async function sendMaterialDispatchNotification(request = {}, notificationType =
     ? `Material Delivered Notification <${extractEmailAddress(MAIL_FROM) || extractEmailAddress(SMTP_USER)}>`
     : `Material Dispatch Notification <${extractEmailAddress(MAIL_FROM) || extractEmailAddress(SMTP_USER)}>`;
   const subjectPrefix = notificationType === "delivered"
-    ? "Corrective Action - Material Request Builder | Material Delivered"
-    : "Corrective Action - Material Request Builder | Material Dispatch";
+    ? "Material Delivery Confirmation"
+    : "Material Dispatch Notification";
   const subject = `${subjectPrefix} | ${request.roCode || "RO"} | ${request.engineer || "Engineer"}`;
+  const html = buildMaterialRequestProfessionalEmailHtml({
+    request,
+    salutation: request.engineer || "Team",
+    title: notificationType === "delivered" ? "Material Delivery Confirmation" : "Material Dispatch Update",
+    intro: notificationType === "delivered"
+      ? "This is to confirm that the material request referenced below has been updated to Delivered status. Please review the delivery details and line-wise material information for record confirmation."
+      : "This is to inform you that the material request referenced below has been updated to Dispatched status. Please review the dispatch details, courier references, and docket information shared below.",
+    statusLabel,
+  });
   const text = buildMaterialRequestPlainText({
     request,
     greeting: request.engineer || "Team",
@@ -608,6 +712,7 @@ async function sendMaterialDispatchNotification(request = {}, notificationType =
     to: engineerEmails.join(", "),
     cc: adminEmails.length ? adminEmails.join(", ") : undefined,
     subject,
+    html,
     text,
     attachments: [buildMaterialRequestCsvAttachment(request, notificationType === "delivered" ? "material_delivered" : "material_dispatch")],
   };
