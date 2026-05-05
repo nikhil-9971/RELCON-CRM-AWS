@@ -393,6 +393,10 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
           <input type="date" id="fRequestDate" class="sf-input"/>
         </div>
         <div class="form-field">
+          <label>Destination Address</label>
+          <textarea id="fDestinationAddress" class="sf-textarea" placeholder="Enter complete delivery / destination address"></textarea>
+        </div>
+        <div class="form-field">
           <label>Material Arrange From</label>
           <input id="fArrangeFrom" class="sf-input" placeholder="Warehouse / courier"/>
         </div>
@@ -717,7 +721,7 @@ function openRequestModal(index=null){
   document.getElementById("requestModalTitle").innerHTML = `<i class="fa-solid fa-plus-circle" style="color:var(--sf-blue);"></i> ${index===null?"Add Material Request":"Edit Material Request"}`;
   if(index===null){
     document.getElementById("requestEditId").value = "";
-    ["fEngineerCode","fEngineerContact","fEngineerEmail","fRoCode","fRoName","fPhase","fMaterialUsedIn","fRequestTo","fArrangeFrom","fRemarks"].forEach(id=>document.getElementById(id).value="");
+    ["fEngineerCode","fEngineerContact","fEngineerEmail","fRoCode","fRoName","fPhase","fMaterialUsedIn","fRequestTo","fArrangeFrom","fRemarks","fDestinationAddress"].forEach(id=>document.getElementById(id).value="");
     document.getElementById("fEngineer").value = "";
     document.getElementById("fRegion").value = "";
     document.getElementById("fCustomer").value = "";
@@ -741,6 +745,7 @@ function openRequestModal(index=null){
     document.getElementById("fRequestTo").value = row.materialRequestTo || "";
     document.getElementById("fRequestFromEmail").value = row.materialRequestFromEmail || "dispatch@relconsystems.com";
     document.getElementById("fRequestDate").value = (row.materialRequestDate || "").slice(0,10);
+    document.getElementById("fDestinationAddress").value = row.destinationAddress || "";
     document.getElementById("fArrangeFrom").value = row.materialArrangeFrom || "";
     document.getElementById("fRemarks").value = row.remarks || "";
     requestLineItems = (row.lineItems || []).map(normalizeLineItem);
@@ -859,6 +864,7 @@ async function saveRequest(){
     materialRequestTo:document.getElementById("fRequestTo").value.trim(),
     materialRequestFromEmail:document.getElementById("fRequestFromEmail").value.trim(),
     materialRequestDate:document.getElementById("fRequestDate").value.trim(),
+    destinationAddress:document.getElementById("fDestinationAddress").value.trim(),
     materialArrangeFrom:document.getElementById("fArrangeFrom").value.trim(),
     materialSummary:meta.summary,
     materialDispatchStatus:meta.primaryStatus,
@@ -930,6 +936,7 @@ function openDetail(index){
       <div class="detail-field"><div class="detail-label">Material Request Date</div><div class="detail-value">${fmtDate(row.date)}</div></div>
       <div class="detail-field"><div class="detail-label">Request To</div><div class="detail-value">${esc(row.materialRequestTo||"—")}</div></div>
       <div class="detail-field"><div class="detail-label">Dispatch Follow-up Date</div><div class="detail-value">${fmtDate(row.materialRequestDate)}</div></div>
+      <div class="detail-field"><div class="detail-label">Destination Address</div><div class="detail-value">${esc(row.destinationAddress||"—")}</div></div>
       <div class="detail-field"><div class="detail-label">Status</div><div class="detail-value"><span class="sf-badge ${statusClass(row.materialDispatchStatus)}">${esc(row.materialDispatchStatus||"Pending")}</span></div></div>
       <div class="detail-field"><div class="detail-label">Updated By</div><div class="detail-value">${esc(row.updatedByName||row.createdByName||"—")}</div></div>
     </div>
@@ -990,6 +997,7 @@ function exportExcel(){
     Engineer:row.engineer, EngineerCode:row.engineerCode, Contact:row.engineerContactNumber, Email:row.engineerEmailId,
     Region:row.region, Customer:row.customer, ROCode:row.roCode, ROName:row.roName, Phase:row.phase, VisitDate:row.date,
     RequestTo:row.materialRequestTo, HQOEmail:row.materialRequestFromEmail, RequestDate:row.materialRequestDate, ArrangeFrom:row.materialArrangeFrom,
+    DestinationAddress:row.destinationAddress,
     MaterialName:item.materialName, MaterialType:item.materialType, RequestType:item.requestType, Quantity:item.quantity,
     MaterialStatus:item.materialStatus, ChallanNumber:item.challanNumber, ChallanDate:item.challanCreationDate,
     Courier:item.dispatchCourier, DocketNumber:item.docketNumber, DispatchDate:item.dispatchDate,

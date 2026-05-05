@@ -37,6 +37,7 @@ const MaterialRequestBuilderSchema = new mongoose.Schema(
     materialRequestTo: { type: String, default: "" },
     materialRequestFromEmail: { type: String, default: "" },
     materialRequestDate: { type: String, default: "" },
+    destinationAddress: { type: String, default: "" },
     materialArrangeFrom: { type: String, default: "" },
     materialSummary: { type: String, default: "" },
     materialDispatchStatus: { type: String, default: "" },

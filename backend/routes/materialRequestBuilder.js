@@ -56,6 +56,7 @@ function normalizePayload(body = {}, req = {}) {
     materialRequestTo: String(body.materialRequestTo || "").trim(),
     materialRequestFromEmail: String(body.materialRequestFromEmail || "").trim(),
     materialRequestDate: String(body.materialRequestDate || "").trim(),
+    destinationAddress: String(body.destinationAddress || "").trim(),
     materialArrangeFrom: String(body.materialArrangeFrom || "").trim(),
     materialSummary: String(body.materialSummary || summary).trim(),
     materialDispatchStatus: String(body.materialDispatchStatus || lineItems[0]?.materialStatus || "").trim(),

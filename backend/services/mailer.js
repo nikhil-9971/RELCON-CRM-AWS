@@ -336,6 +336,7 @@ function buildMaterialRequestSummaryCards(request = {}) {
     ["Request Given To", request.materialRequestTo || "—"],
     ["HQO Email", request.materialRequestFromEmail || "—"],
     ["Dispatch Follow-up Date", formatDateOnlyIST(request.materialRequestDate)],
+    ["Destination Address", request.destinationAddress || "—"],
     ["Material Arrange From", request.materialArrangeFrom || "—"],
     ["Request Summary", request.materialSummary || "—"],
     ["Overall Status", request.materialDispatchStatus || "Pending"],
@@ -370,6 +371,7 @@ function buildMaterialRequestSummaryTable(request = {}) {
     ["Request Given To", request.materialRequestTo || "—"],
     ["HQO Email", request.materialRequestFromEmail || "—"],
     ["Dispatch Follow-up Date", formatDateOnlyIST(request.materialRequestDate)],
+    ["Destination Address", request.destinationAddress || "—"],
     ["Material Arrange From", request.materialArrangeFrom || "—"],
     ["Request Summary", request.materialSummary || "—"],
     ["Current Status", request.materialDispatchStatus || "Pending"],
@@ -401,43 +403,21 @@ function buildMaterialRequestProfessionalEmailHtml({
   const generatedAt = formatDateTimeIST(new Date());
 
   return `
-    <div style="margin:0;padding:24px;background:#eef3f8;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
-      <div style="max-width:1040px;margin:0 auto;background:#ffffff;border:1px solid #d9e2ec;border-radius:16px;overflow:hidden;">
-        <div style="padding:24px 28px;background:#16324f;color:#ffffff;">
-          <div style="font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;opacity:.88;">Relcon CRM</div>
-          <h2 style="margin:10px 0 0;font-size:24px;line-height:1.25;font-weight:700;">${htmlEscape(title)}</h2>
-        </div>
-        <div style="padding:28px;">
-          <p style="margin:0 0 14px;font-size:14px;line-height:1.7;color:#0f172a;">Dear ${htmlEscape(salutation)},</p>
-          <p style="margin:0 0 18px;font-size:14px;line-height:1.75;color:#334155;">${htmlEscape(intro)}</p>
+    <div style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;font-size:14px;line-height:1.7;">
+      <p style="margin:0 0 14px;">Dear ${htmlEscape(salutation)},</p>
+      <p style="margin:0 0 12px;"><strong>${htmlEscape(title)}</strong></p>
+      <p style="margin:0 0 18px;">${htmlEscape(intro)}</p>
+      <p style="margin:0 0 16px;"><strong>Current Workflow Status:</strong> ${htmlEscape(statusLabel || request.materialDispatchStatus || "Pending")}</p>
 
-          <div style="margin:0 0 18px;padding:14px 16px;border:1px solid #cbd5e1;border-radius:12px;background:#f8fafc;">
-            <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#64748b;">Current Workflow Status</div>
-            <div style="margin-top:6px;font-size:16px;font-weight:700;color:#0f172a;">${htmlEscape(statusLabel || request.materialDispatchStatus || "Pending")}</div>
-          </div>
+      <p style="margin:0 0 8px;"><strong>Request Details</strong></p>
+      ${buildMaterialRequestSummaryTable(request)}
 
-          <div style="margin-top:20px;">
-            <div style="margin:0 0 10px;font-size:15px;font-weight:700;color:#0f172a;">Request Details</div>
-            ${buildMaterialRequestSummaryTable(request)}
-          </div>
-
-          <div style="margin-top:24px;">
-            ${buildMaterialRequestLineItemsTable(Array.isArray(request.lineItems) ? request.lineItems : [])}
-          </div>
-
-          <div style="margin-top:22px;padding:16px 18px;border:1px solid #dbe3ee;border-radius:12px;background:#f8fafc;">
-            <p style="margin:0;font-size:13px;line-height:1.7;color:#334155;">
-              The complete request data is also attached in CSV format for operational review, dispatch coordination, and audit reference.
-            </p>
-            <p style="margin:8px 0 0;font-size:12px;color:#64748b;">Generated on ${htmlEscape(generatedAt)} IST.</p>
-          </div>
-
-          <p style="margin:22px 0 0;font-size:14px;line-height:1.7;color:#334155;">
-            Regards,<br/>
-            <strong>Relcon CRM</strong>
-          </p>
-        </div>
+      <div style="margin-top:20px;">
+        ${buildMaterialRequestLineItemsTable(Array.isArray(request.lineItems) ? request.lineItems : [])}
       </div>
+
+      <p style="margin:18px 0 0;">The complete request data is also attached in CSV format for operational review, dispatch coordination, and audit reference.</p>
+      <p style="margin:14px 0 0;">Regards,<br/><strong>Relcon CRM</strong><br/><span style="color:#64748b;font-size:12px;">Generated on ${htmlEscape(generatedAt)} IST.</span></p>
     </div>
   `;
 }
@@ -496,6 +476,7 @@ function buildMaterialRequestCsvRows(request = {}) {
     RequestGivenTo: request.materialRequestTo || "",
     HQOEmail: request.materialRequestFromEmail || "",
     DispatchFollowupDate: request.materialRequestDate || "",
+    DestinationAddress: request.destinationAddress || "",
     ArrangeFrom: request.materialArrangeFrom || "",
     RequestSummary: request.materialSummary || "",
     OverallStatus: request.materialDispatchStatus || "",
@@ -593,6 +574,7 @@ function buildMaterialRequestPlainText({
     `- Request Given To: ${request.materialRequestTo || "—"}`,
     `- HQO Email: ${request.materialRequestFromEmail || "—"}`,
     `- Dispatch Follow-up Date: ${formatDateOnlyIST(request.materialRequestDate)}`,
+    `- Destination Address: ${request.destinationAddress || "—"}`,
     `- Material Arrange From: ${request.materialArrangeFrom || "—"}`,
     `- Request Summary: ${request.materialSummary || "—"}`,
     `- Total Quantity: ${request.quantity || 0}`,
