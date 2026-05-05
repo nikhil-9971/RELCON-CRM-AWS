@@ -1774,8 +1774,10 @@ async function exportExcel() {
     const blob = await r.blob();
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
+    const disposition = r.headers.get('Content-Disposition') || '';
+    const match = disposition.match(/filename=\"?([^"]+)\"?/i);
     a.href     = url;
-    a.download = `materials_${new Date().toISOString().slice(0,10)}.xlsx`;
+    a.download = match?.[1] || `materials_${new Date().toISOString().slice(0,10)}.xlsx`;
     a.click();
     URL.revokeObjectURL(url);
     showToast('Export downloaded successfully', 'success');
