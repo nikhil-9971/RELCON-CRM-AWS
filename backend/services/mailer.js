@@ -2542,6 +2542,83 @@ async function sendMaterialUploadScheduleReminder() {
   }
 }
 
+async function sendMaterialSheetUploadReminder() {
+  const reportType = "Material Sheet Upload Reminder";
+
+  try {
+    const [toRecipients, ccRecipients] = await Promise.all([
+      getUserEmailsByUsernames(["anurag.mishra"]),
+      getUserEmailsByUsernames(["nikhil.trivedi"]),
+    ]);
+    if (!toRecipients.length) {
+      await EmailLog.create({
+        type: reportType,
+        subject: "Skipped: missing recipient for material sheet upload reminder",
+        to: "",
+        status: "failure",
+        error: "Recipient email not found for anurag.mishra",
+      });
+      return { ok: false, reason: "missing_to_recipient" };
+    }
+
+    const subject = "Reminder: Material Management Sheet Upload Due Today";
+    const text = [
+      "Dear Anurag,",
+      "",
+      "This is a scheduled reminder to upload the latest Material Management sheet in the RELCON CRM system today.",
+      "",
+      "Please ensure that the uploaded sheet is complete, accurate, and reflects the most recent material position so that inventory visibility and downstream operations remain aligned.",
+      "",
+      "Recommended checks before upload:",
+      "1. Confirm the latest stock quantities are updated.",
+      "2. Ensure item status and engineer allocation are accurate.",
+      "3. Verify that duplicate or outdated rows are removed from the source file.",
+      "",
+      "Kindly complete the upload at the earliest convenience within today's working cycle.",
+      "",
+      "Regards,",
+      "Relcon CRM",
+      `Generated on ${formatDateTimeIST(new Date())} IST`,
+    ].join("\n");
+
+    const info = await transporter.sendMail({
+      from: MAIL_FROM,
+      to: toRecipients.join(", "),
+      cc: ccRecipients.length ? ccRecipients.join(", ") : undefined,
+      subject,
+      text,
+    });
+
+    await EmailLog.create({
+      type: reportType,
+      subject,
+      to: [...new Set([...toRecipients, ...ccRecipients])].join(", "),
+      status: "success",
+      meta: {
+        messageId: info?.messageId || "",
+        schedule: "Wednesday and Friday at 11:30 IST",
+        cc: ccRecipients,
+      },
+    });
+
+    return { ok: true, messageId: info?.messageId || "" };
+  } catch (err) {
+    console.error("❌ Material sheet upload reminder email error:", err.message);
+    try {
+      await EmailLog.create({
+        type: reportType,
+        subject: "Material sheet upload reminder - failure",
+        to: "",
+        status: "failure",
+        error: err.message,
+      });
+    } catch (logErr) {
+      console.error("Failed to write EmailLog for material sheet upload reminder:", logErr?.message || logErr);
+    }
+    return { ok: false, error: err };
+  }
+}
+
 async function runScheduledMaterialUpload() {
   try {
     const schedule = await MaterialUploadSchedule.findOne({ moduleKey: "material-management" });
@@ -2728,13 +2805,13 @@ cron.schedule(
   { timezone: "Asia/Kolkata" }
 );
 
-// ─── Scheduler: every 15 mins for material upload due reminder ──────────────
+// ─── Scheduler: Wednesday & Friday 11:30 IST for material sheet upload reminder ──
 
 cron.schedule(
-  "*/15 * * * *",
+  "30 11 * * 3,5",
   () => {
-    console.log("🔔 Material upload schedule reminder CRON TRIGGERED:", new Date().toISOString());
-    sendMaterialUploadScheduleReminder().catch((e) => console.error("Material upload schedule reminder job error:", e));
+    console.log("🔔 Material sheet upload reminder CRON TRIGGERED:", new Date().toISOString());
+    sendMaterialSheetUploadReminder().catch((e) => console.error("Material sheet upload reminder job error:", e));
   },
   { timezone: "Asia/Kolkata" }
 );
@@ -2807,6 +2884,11 @@ if (require.main === module) {
       .then((r) => { console.log("Material upload schedule reminder done:", r); process.exit(r.ok ? 0 : 1); })
       .catch((e) => { console.error("❌ error:", e); process.exit(1); });
 
+  } else if (type === "material-sheet-upload-reminder") {
+    sendMaterialSheetUploadReminder()
+      .then((r) => { console.log("Material sheet upload reminder done:", r); process.exit(r.ok ? 0 : 1); })
+      .catch((e) => { console.error("❌ error:", e); process.exit(1); });
+
   } else if (type === "material-auto-upload") {
     runScheduledMaterialUpload()
       .then((r) => { console.log("Material auto upload done:", r); process.exit(r.ok ? 0 : 1); })
@@ -2829,6 +2911,7 @@ module.exports = {
   sendVerificationCorrectionEmail,
   sendPendingStatusReminderAlerts,
   sendMaterialUploadScheduleReminder,
+  sendMaterialSheetUploadReminder,
   runScheduledMaterialUpload,
   sendMissingMorningDataViewEntryAlert,
   sendMaterialRequestNotification,
