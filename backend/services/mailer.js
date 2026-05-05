@@ -24,6 +24,7 @@ const User = require("../models/User");
 const Attendance = require("../models/Attendance");
 const DailyPlan = require("../models/DailyPlan");
 const Status = require("../models/Status");
+const Task = require("../models/Task");
 const JioBPStatus = require("../models/jioBPStatus");
 const BPCLStatus = require("../models/BPCLStatus");
 const { importMaterialFileBuffer } = require("./materialUploadService");
@@ -786,6 +787,53 @@ function buildCorrectionSummaryHtml(changes = []) {
   `;
 }
 
+async function getUserEmailsByUsernames(usernames = []) {
+  const normalizedUsernames = [...new Set(usernames.map((value) => String(value || "").trim().toLowerCase()).filter(Boolean))];
+  if (!normalizedUsernames.length) return [];
+  const users = await User.find({}, "username email").lean();
+  return [...new Set(
+    users
+      .filter((user) => normalizedUsernames.includes(String(user.username || "").trim().toLowerCase()))
+      .map((user) => normalizeEmail(user.email))
+      .filter(Boolean)
+  )];
+}
+
+function isHpclActionRequiredStatusRecord(record = {}) {
+  const plan = record.planId || {};
+  const phase = String(plan.phase || record.phase || "").trim().toUpperCase();
+  if (!phase.startsWith("HPCL")) return false;
+
+  const earthingStatus = String(record.earthingStatus || "").trim().toUpperCase();
+  const duOffline = String(record.duOffline || "").trim().toUpperCase();
+  const duDependency = String(record.duDependency || "").trim().toUpperCase();
+  const tankOffline = String(record.tankOffline || "").trim().toUpperCase();
+  const tankDependency = String(record.tankDependency || "").trim().toUpperCase();
+
+  return earthingStatus === "NOT OK"
+    || (duOffline && duOffline !== "ALL OK" && ["HPCL", "BOTH"].includes(duDependency))
+    || (tankOffline && tankOffline !== "ALL OK" && ["HPCL", "BOTH"].includes(tankDependency));
+}
+
+function buildHpclActionRequiredIssue(record = {}) {
+  const issues = [];
+  const earthingStatus = String(record.earthingStatus || "").trim().toUpperCase();
+  const duOffline = String(record.duOffline || "").trim();
+  const duDependency = String(record.duDependency || "").trim().toUpperCase();
+  const tankOffline = String(record.tankOffline || "").trim();
+  const tankDependency = String(record.tankDependency || "").trim().toUpperCase();
+
+  if (earthingStatus === "NOT OK") issues.push(`Earthing NOT OK${record.voltageReading ? ` (${record.voltageReading})` : ""}`);
+  if (duOffline && duOffline.toUpperCase() !== "ALL OK" && ["HPCL", "BOTH"].includes(duDependency)) {
+    issues.push(`DU Offline: ${duOffline}${record.duRemark ? ` | ${record.duRemark}` : ""}`);
+  }
+  if (tankOffline && tankOffline.toUpperCase() !== "ALL OK" && ["HPCL", "BOTH"].includes(tankDependency)) {
+    issues.push(`Tank Offline: ${tankOffline}${record.tankRemark ? ` | ${record.tankRemark}` : ""}`);
+  }
+
+  return issues.join(" + ") || "Action Required";
+}
+
 function getPlanCreatedAt(plan) {
   if (plan?.createdAt) return new Date(plan.createdAt);
   if (plan?._id?.getTimestamp) return plan._id.getTimestamp();
@@ -1524,6 +1572,128 @@ async function sendUnverifiedStatusEmail() {
 
   } catch (err) {
     console.error("❌ Unverified mail error:", err.message);
+  }
+}
+
+async function sendHpclActionRequiredUnverifiedEmail() {
+  const reportType = "HPCL Action Required Unverified Report";
+
+  try {
+    const [statusRecords, toRecipients, ccRecipients] = await Promise.all([
+      Status.find({ isVerified: false }).populate("planId").lean(),
+      getUserEmailsByUsernames(["anurag.mishra"]),
+      getUserEmailsByUsernames(["nikhil.trivedi"]),
+    ]);
+
+    if (!toRecipients.length) {
+      await EmailLog.create({
+        type: reportType,
+        subject: "Skipped: missing recipient for HPCL action required unverified report",
+        to: "",
+        status: "failure",
+        error: "Recipient email not found for anurag.mishra",
+      });
+      return { ok: false, reason: "missing_to_recipient" };
+    }
+
+    const rows = statusRecords
+      .filter((record) => isHpclActionRequiredStatusRecord(record))
+      .map((record, index) => {
+        const plan = record.planId || {};
+        return {
+          serialNumber: index + 1,
+          date: String(plan.date || "").slice(0, 10),
+          roCode: plan.roCode || "",
+          roName: plan.roName || "",
+          region: plan.region || "",
+          engineer: plan.engineer || "",
+          issue: buildHpclActionRequiredIssue(record),
+          earthingStatus: record.earthingStatus || "—",
+          voltageReading: record.voltageReading || "—",
+          duOffline: record.duOffline || "—",
+          duDependency: record.duDependency || "—",
+          tankOffline: record.tankOffline || "—",
+          tankDependency: record.tankDependency || "—",
+        };
+      })
+      .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+
+    if (!rows.length) {
+      console.log("ℹ️ No unverified HPCL action-required records found for scheduled report.");
+      return { ok: true, skipped: true, count: 0 };
+    }
+
+    const columns = [
+      { key: "serialNumber", label: "S. No." },
+      { key: "date", label: "Visit Date" },
+      { key: "roCode", label: "RO Code" },
+      { key: "roName", label: "RO Name" },
+      { key: "region", label: "Region" },
+      { key: "engineer", label: "Engineer" },
+      { key: "issue", label: "Action Required Issue" },
+      { key: "earthingStatus", label: "Earthing" },
+      { key: "voltageReading", label: "Voltage" },
+      { key: "duOffline", label: "DU Offline" },
+      { key: "duDependency", label: "DU Dependency" },
+      { key: "tankOffline", label: "Tank Offline" },
+      { key: "tankDependency", label: "Tank Dependency" },
+    ];
+
+    const html = `
+      <div style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;font-size:14px;line-height:1.7;">
+        <p style="margin:0 0 14px;">Dear Anurag,</p>
+        <p style="margin:0 0 14px;">
+          Please find below the list of HPCL status records where action is required and verification is still pending.
+          These records need timely review to avoid follow-up delays and operational dependency closures being missed.
+        </p>
+        ${buildTable(rows, columns, "HPCL Action Required Records Pending Verification")}
+        <p style="margin:18px 0 0;">
+          Kindly review and verify the above records on priority.
+        </p>
+        <p style="margin:14px 0 0;">
+          Regards,<br/>
+          <strong>Relcon CRM</strong><br/>
+          <span style="color:#64748b;font-size:12px;">Generated on ${htmlEscape(formatDateTimeIST(new Date()))} IST.</span>
+        </p>
+      </div>
+    `;
+
+    const subject = `HPCL Status Verification Pending | Action Required Records | ${rows.length} Open`;
+    const mailOptions = {
+      from: MAIL_FROM,
+      to: toRecipients.join(", "),
+      cc: ccRecipients.length ? ccRecipients.join(", ") : undefined,
+      subject,
+      html,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    await EmailLog.create({
+      type: reportType,
+      subject,
+      to: [...new Set([...toRecipients, ...ccRecipients])].join(", "),
+      status: "success",
+      meta: {
+        count: rows.length,
+        messageId: info?.messageId || "",
+        cc: ccRecipients,
+      },
+    });
+    return { ok: true, count: rows.length, messageId: info?.messageId || "" };
+  } catch (err) {
+    console.error("❌ HPCL action required unverified mail error:", err.message);
+    try {
+      await EmailLog.create({
+        type: reportType,
+        subject: "HPCL action required unverified report - failure",
+        to: "",
+        status: "failure",
+        error: err.message,
+      });
+    } catch (logErr) {
+      console.error("Failed to write EmailLog for HPCL action required report:", logErr?.message || logErr);
+    }
+    return { ok: false, error: err };
   }
 }
 
@@ -2512,6 +2682,19 @@ cron.schedule(
   { timezone: "Asia/Kolkata" }
 );
 
+// ─── Scheduler: daily 11:20 IST except Sunday for HPCL action-required records ──
+
+cron.schedule(
+  "20 11 * * 1-6",
+  () => {
+    console.log("🔔 HPCL action required pending verification CRON TRIGGERED:", new Date().toISOString());
+    sendHpclActionRequiredUnverifiedEmail().catch((e) =>
+      console.error("HPCL action required pending verification job error:", e)
+    );
+  },
+  { timezone: "Asia/Kolkata" }
+);
+
 // ─── Scheduler: daily 11:00 IST for faulty material dispatch alerts ──────────
 
 cron.schedule(
@@ -2594,6 +2777,11 @@ if (require.main === module) {
       .then(() => { console.log("Unverified Done"); process.exit(0); })
       .catch((e) => { console.error("❌ error:", e); process.exit(1); });
 
+  } else if (type === "hpcl-action-required-unverified") {
+    sendHpclActionRequiredUnverifiedEmail()
+      .then((r) => { console.log("HPCL action required pending verification done:", r); process.exit(r.ok ? 0 : 1); })
+      .catch((e) => { console.error("❌ error:", e); process.exit(1); });
+
   } else if (type === "faulty-material") {
     sendFaultyMaterialDispatchAlerts()
       .then((r) => { console.log("Faulty material dispatch alert done:", r); process.exit(r.ok ? 0 : 1); })
@@ -2635,6 +2823,7 @@ if (require.main === module) {
 module.exports = {
   sendPendingStatusEmail,
   sendUnverifiedStatusEmail,
+  sendHpclActionRequiredUnverifiedEmail,
   sendFaultyMaterialDispatchAlerts,
   sendMonthlyAttendanceSheet,
   sendVerificationCorrectionEmail,
