@@ -1797,12 +1797,22 @@ async function saveBPCLStatus() {
 /* ── EXPORT ── */
 function toggleExportMenu() { document.getElementById('exportMenu').classList.toggle('open'); setTimeout(() => document.addEventListener('click', closeExportMenuHandler), 10); }
 function closeExportMenuHandler(e) { if(!e.target.closest('#exportDropdown')) { document.getElementById('exportMenu').classList.remove('open'); document.removeEventListener('click', closeExportMenuHandler); } }
+function normalizeIssueTypeForExcel(value) {
+  const raw = String(value || '').trim();
+  const normalized = raw.toUpperCase();
+  if (normalized === 'ISSUE & PM VISIT') return 'ISSUE & AMC VISIT';
+  if (normalized === 'PM VISIT') return 'AMC VISIT';
+  if (normalized === 'ATG VISIT') return 'ISSUE VISIT';
+  if (normalized === 'ISSUE VISIT') return 'ISSUE VISIT';
+  if (normalized === 'POWER ON') return 'OTHER';
+  return raw;
+}
 
 function exportStyledExcel() {
   const wb=XLSX.utils.book_new(), date=new Date().toLocaleDateString('en-CA');
   const titleRow=[["Coordinator Name: Nikhil Trivedi","","","","","","","","","Date: "+date]];
   const headerRow=[["Customer","Phase","Zone","Region","RO Code","RO Name","Employee Id","Engineer Name","Incident Id","Issue Report/Visit Schedule For","Issue Type","AMC_QTR_DETAIL","Date of Visit","Arrival Time","Leave Time","Completion Status","Support Taken from","Final Status","Reason Of UnResolved","Reason - Reach at site at 2.30 Hours","Reason - Engg. At site after 6 PM",""]];
-  const tableRows=filteredData.map(d => { const [cust,ph]=(d.phase||'').split('/')||['','']; return [cust.trim(),ph?.trim()||'',(d.zone||'').trim(),(d.region||'').trim(),(d.roCode||'').trim(),(d.roName||'').trim(),(d.empId||'').trim(),(d.engineer||'').trim(),(d.incidentId||'').trim(),(d.purpose||'').trim(),(d.issueType||'').trim(),(d.amcQtr||'').trim(),(d.date||'').trim(),(d.arrivalTime||'').trim(),(d.leaveTime||'').trim(),(d.completionStatus||'').trim(),(d.supportTakenFrom||'').trim(),(d.incidentStatus||'').trim(),(d.whatDone||'').trim(),(d.reasonAfter12PM||'').trim(),(d.reasonAfter6PM||'').trim()]; });
+  const tableRows=filteredData.map(d => { const [cust,ph]=(d.phase||'').split('/')||['','']; return [cust.trim(),ph?.trim()||'',(d.zone||'').trim(),(d.region||'').trim(),(d.roCode||'').trim(),(d.roName||'').trim(),(d.empId||'').trim(),(d.engineer||'').trim(),(d.incidentId||'').trim(),(d.purpose||'').trim(),normalizeIssueTypeForExcel(d.issueType),(d.amcQtr||'').trim(),(d.date||'').trim(),(d.arrivalTime||'').trim(),(d.leaveTime||'').trim(),(d.completionStatus||'').trim(),(d.supportTakenFrom||'').trim(),(d.incidentStatus||'').trim(),(d.whatDone||'').trim(),(d.reasonAfter12PM||'').trim(),(d.reasonAfter6PM||'').trim()]; });
   const ws=XLSX.utils.aoa_to_sheet([...titleRow,...headerRow,...tableRows]);
   ws['!cols']=Array(10).fill({wch:25});
   const name=(loggedInUser.engineerName||loggedInUser.username||'User').replace(/\s+/g,'_');
