@@ -17,6 +17,10 @@ const ChatSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    expiresAt: {
+      type: Date,
+      default: null,
+    },
   },
 
   { timestamps: true }
@@ -25,5 +29,6 @@ const ChatSchema = new mongoose.Schema(
 // Add indexes for better performance and proper ordering
 ChatSchema.index({ roomId: 1, createdAt: 1 });
 ChatSchema.index({ createdAt: 1 });
+ChatSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0, partialFilterExpression: { expiresAt: { $type: "date" } } });
 
 module.exports = mongoose.model("Chat", ChatSchema);

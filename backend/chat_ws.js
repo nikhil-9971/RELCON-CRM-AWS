@@ -4,6 +4,13 @@ const jwt = require("jsonwebtoken");
 const Chat = require("./models/Chat");
 
 const JWT_SECRET = process.env.JWT_SECRET || "relcon-secret-key";
+const DM_RETENTION_DAYS = 15;
+
+function getDmExpiryDate() {
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + DM_RETENTION_DAYS);
+  return expiresAt;
+}
 
 // username -> set of sockets
 const clients = new Map();
@@ -159,6 +166,7 @@ function setupWebsocket(server) {
           delivered: true,
           read: false,
           replyTo: msg.replyTo || null,
+          expiresAt: getDmExpiryDate(),
         });
 
         const payloadMessage = {

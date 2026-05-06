@@ -3,6 +3,13 @@ const router = express.Router();
 const Chat = require("../models/Chat");
 const User = require("../models/User");
 const authMiddleware = require("../middleware/authMiddleware");
+const DM_RETENTION_DAYS = 15;
+
+function getDmExpiryDate() {
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + DM_RETENTION_DAYS);
+  return expiresAt;
+}
 
 // Send a message (fallback if not using WS)
 router.post("/send", async (req, res) => {
@@ -15,6 +22,7 @@ router.post("/send", async (req, res) => {
       text,
       roomId,
       delivered: true,
+      expiresAt: getDmExpiryDate(),
     }); // via REST consider delivered
     res.status(201).json(message);
   } catch (err) {
