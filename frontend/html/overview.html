@@ -567,6 +567,21 @@ const baseUrl = window.BACKEND_URL || "/api";
 
 function byId(id){ return document.getElementById(id); }
 function getToken(){ return localStorage.getItem("token"); }
+function getEngineerNameSet() {
+  const list = Array.isArray(window.__engineerUsers) ? window.__engineerUsers : [];
+  return new Set(
+    list
+      .map((u) => String(u.engineerName || u.username || "").trim().toLowerCase())
+      .filter(Boolean)
+  );
+}
+function isEngineerRecordName(name) {
+  const normalized = String(name || "").trim().toLowerCase();
+  if (!normalized) return false;
+  const engineerNames = getEngineerNameSet();
+  if (!engineerNames.size) return true;
+  return engineerNames.has(normalized);
+}
 
 // Date badge
 document.getElementById('todayBadge').textContent =
@@ -577,7 +592,7 @@ async function loadOverview() {
     const token = getToken();
     const headers = { Authorization: `Bearer ${token}` };
 
-    const [userRes,plansRes,statusRes,jioRes,incidentRes,loginLogsRes,pcbProvidedRes] = await Promise.all([
+    const [userRes,plansRes,statusRes,jioRes,incidentRes,loginLogsRes,pcbProvidedRes,engineerUsersRes] = await Promise.all([
       fetch(`${baseUrl}/user`, { headers }),
       fetch(`${baseUrl}/getDailyPlans`, { headers }),
       fetch(`${baseUrl}/getMergedStatusRecords`, { headers }),
@@ -585,6 +600,7 @@ async function loadOverview() {
       fetch(`${baseUrl}/getAllIncidents`, { headers }),
       fetch(`${baseUrl}/audit/loginLogs`, { headers }),
       fetch(`${baseUrl}/pcb-provided-counts`, { headers }),
+      fetch(`${baseUrl}/getUsers`, { headers }),
     ]);
 
     const currentUser = await userRes.json();
@@ -594,6 +610,7 @@ async function loadOverview() {
     const incJson = await incidentRes.json();
     const loginLogs = await loginLogsRes.json();
     const pcbProvidedCounts = await pcbProvidedRes.json();
+    const engineerUsers = engineerUsersRes.ok ? await engineerUsersRes.json() : [];
 
     const today = new Date().toLocaleDateString("en-CA");
     const plansToday = (Array.isArray(plans) ? plans : []).filter((p) => {
@@ -718,6 +735,9 @@ async function loadOverview() {
     window.__allPlans = Array.isArray(plans) ? plans : [];
     window.__statusRecords = Array.isArray(hpcl) ? hpcl : [];
     window.__currentUser = currentUser || {};
+    window.__engineerUsers = Array.isArray(engineerUsers)
+      ? engineerUsers.filter((u) => String(u.role || "").trim().toLowerCase() === "engineer")
+      : [];
     buildMonthDropdown(window.__allPlans);
     const sel = document.getElementById("monthSelect");
     renderEngineerMonthly(window.__allPlans, sel.value);
@@ -860,6 +880,7 @@ function renderPcbInstallation(statusRecords, pcbProvidedCounts) {
   const isAdmin = userRole === "admin";
   const today = new Date().toISOString().slice(0, 10);
   let filteredRecords = statusRecords || [];
+  filteredRecords = filteredRecords.filter((r) => isEngineerRecordName(r.engineer || r.Engineer || r.engineerName));
   if (userRole === "engineer" && currentEngineer) filteredRecords = filteredRecords.filter((r) => String(r.engineer || r.Engineer || r.engineerName || "").trim().toLowerCase() === currentEngineer.toLowerCase());
   const map = new Map();
   filteredRecords.forEach((r) => {
@@ -874,6 +895,7 @@ function renderPcbInstallation(statusRecords, pcbProvidedCounts) {
   Object.entries(pcbProvidedCounts || {}).forEach(([eng, provided]) => {
     const name = String(eng || "").trim();
     if (!name) return;
+    if (!isEngineerRecordName(name)) return;
     if (userRole === "engineer" && currentEngineer && name.toLowerCase() !== currentEngineer.toLowerCase()) return;
     if (!map.has(name)) map.set(name, { provided: Number(provided || 0) || 0, installed: 0, todayInstalled: 0 });
     else map.get(name).provided = Number(provided || 0) || 0;
@@ -1010,6 +1032,7 @@ function exportPcbInstallationExcel() {
     const userRole = currentUser.role || "";
     const currentEngineer = currentUser.engineerName || currentUser.username || "";
     let pcbRecords = statusRecords.filter((r) => { const purpose = String(r.purpose || r.PurposeOfVisit || r.PURPOSEOFVISIT || "").trim().toUpperCase(); return purpose.includes("POWER PROTECTION PCB") && (purpose.includes("INSTALL") || purpose.includes("INSTAL")); });
+    pcbRecords = pcbRecords.filter((r) => isEngineerRecordName(r.engineer || r.Engineer || r.engineerName));
     if (userRole === "engineer" && currentEngineer) pcbRecords = pcbRecords.filter((r) => String(r.engineer || r.Engineer || r.engineerName || "").trim().toLowerCase() === currentEngineer.toLowerCase());
     const detailRows = pcbRecords.map((r) => ({ EngineerName: String(r.engineer || r.Engineer || "").trim(), Region: String(r.region || r.Region || "").trim(), ROCode: String(r.roCode || r.ROCode || r.rocode || "").trim(), ROName: String(r.roName || r.ROName || "").trim(), Phase: String(r.phase || "").trim(), Date: String(r.date || r.Date || "").trim(), PurposeOfVisit: String(r.purpose || r.PurposeOfVisit || r.PURPOSEOFVISIT || "").trim() }));
     const summaryMap = {};
@@ -1024,6 +1047,7 @@ function exportPcbInstallationExcel() {
     Object.entries(pcbProvidedCounts || {}).forEach(([eng, provided]) => {
       const name = String(eng || "").trim();
       if (!name) return;
+      if (!isEngineerRecordName(name)) return;
       if (userRole === "engineer" && currentEngineer && name.toLowerCase() !== currentEngineer.toLowerCase()) return;
       if (!summaryMap[name]) summaryMap[name] = { Provided: Number(provided || 0) || 0, Today: 0, Total: 0, Pending: 0 };
       else summaryMap[name].Provided = Number(provided || 0) || 0;

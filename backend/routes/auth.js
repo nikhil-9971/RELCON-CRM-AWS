@@ -134,7 +134,9 @@ router.get("/pcb-provided-counts", verifyToken, async (req, res) => {
   try {
     const role = String(req.user?.role || "").toLowerCase();
     const engineerName = String(req.user?.engineerName || req.user?.username || "").trim();
-    const query = role === "admin" ? {} : { engineerName };
+    const query = role === "admin"
+      ? { role: { $in: ["engineer", "Engineer", "user", "User"] } }
+      : { engineerName, role: { $in: ["engineer", "Engineer", "user", "User"] } };
     const users = await User.find(query, "engineerName username pcbProvidedCount").lean();
     const counts = {};
     users.forEach((user) => {
@@ -170,7 +172,10 @@ router.put("/pcb-provided-counts", verifyToken, async (req, res) => {
       )
     );
 
-    const users = await User.find({}, "engineerName username pcbProvidedCount").lean();
+    const users = await User.find(
+      { role: { $in: ["engineer", "Engineer", "user", "User"] } },
+      "engineerName username pcbProvidedCount"
+    ).lean();
     const savedCounts = {};
     users.forEach((user) => {
       const key = String(user.engineerName || user.username || "").trim();
