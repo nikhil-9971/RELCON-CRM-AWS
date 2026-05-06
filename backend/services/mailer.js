@@ -1912,6 +1912,234 @@ async function sendFaultyMaterialDispatchAlerts() {
   }
 }
 
+async function sendFaultyProbeHQODispatchReminder() {
+  const alertType = "Faulty Probe HQO Dispatch Reminder";
+
+  try {
+    const [faultyMaterials, users] = await Promise.all([
+      MaterialManagement.find({
+        isActive: true,
+        itemType: "PROBE",
+        itemStatus: "Not Ok (Faulty)",
+        qty: { $gt: 0 },
+      })
+        .sort({ engineerName: 1, updatedAt: -1, createdAt: -1 })
+        .lean(),
+      User.find({}, "username email role engineerName").lean(),
+    ]);
+
+    const adminEmails = [...new Set(
+      users
+        .filter((user) => String(user.role || "").trim().toLowerCase() === "admin")
+        .map((user) => normalizeEmail(user.email))
+        .filter(Boolean)
+    )];
+
+    const engineerMap = new Map();
+    for (const user of users) {
+      const key = String(user.engineerName || "").trim().toLowerCase();
+      if (!key) continue;
+      if (!engineerMap.has(key)) engineerMap.set(key, []);
+      engineerMap.get(key).push(user);
+    }
+
+    const grouped = new Map();
+    for (const item of faultyMaterials) {
+      const key = String(item.engineerName || "").trim().toLowerCase();
+      if (!key) continue;
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key).push(item);
+    }
+
+    const summary = {
+      sent: 0,
+      skippedNoEngineerEmail: 0,
+      skippedNoAdminEmail: 0,
+      totalEngineersReviewed: grouped.size,
+    };
+
+    for (const [engineerKey, materials] of grouped.entries()) {
+      const engineerUsers = engineerMap.get(engineerKey) || [];
+      const engineerEmails = [...new Set(
+        engineerUsers.map((user) => normalizeEmail(user.email)).filter(Boolean)
+      )];
+      const engineerName = materials[0]?.engineerName || engineerUsers[0]?.engineerName || "Engineer";
+
+      if (!engineerEmails.length) {
+        summary.skippedNoEngineerEmail += 1;
+        await EmailLog.create({
+          type: alertType,
+          subject: `Skipped: missing engineer email for ${engineerName}`,
+          to: "",
+          status: "failure",
+          sentAt: new Date(),
+          meta: {
+            engineerName,
+            probeRows: materials.length,
+            reason: "Engineer email not found in users collection",
+          },
+        });
+        continue;
+      }
+
+      if (!adminEmails.length) {
+        summary.skippedNoAdminEmail += 1;
+        await EmailLog.create({
+          type: alertType,
+          subject: `Skipped: missing admin CC for ${engineerName}`,
+          to: engineerEmails.join(", "),
+          status: "failure",
+          sentAt: new Date(),
+          meta: {
+            engineerName,
+            probeRows: materials.length,
+            reason: "No admin email found in users collection",
+          },
+        });
+        continue;
+      }
+
+      const probeRows = materials.map((row) => ({
+        serialNumber: row.serialNumber || "—",
+        itemCode: row.itemCode || "—",
+        itemName: row.itemName || "—",
+        qty: Number(row.qty || 0),
+        itemType: row.itemType || "—",
+        itemStatus: row.itemStatus || "—",
+        remarks: row.remarks || "",
+        updatedAt: row.updatedAt || row.createdAt || new Date(),
+      }));
+
+      const totalProbeQty = probeRows.reduce((sum, row) => sum + Number(row.qty || 0), 0);
+      const generatedAt = formatDateTimeIST(new Date());
+      const htmlBody = `
+        <div style="margin:0;padding:20px 12px;background:#f1f5f9;font:14px/1.6 Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a">
+          <div style="max-width:1080px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(15,23,42,.05)">
+            <div style="padding:18px 22px;background:linear-gradient(135deg,#7f1d1d,#b91c1c);color:#ffffff">
+              <p style="margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.9">Relcon CRM • Probe Dispatch Reminder</p>
+              <h2 style="margin:0;font-size:22px;font-weight:700">Strictly Dispatch Faulty Probe to HQO</h2>
+              <p style="margin:8px 0 0;font-size:13px;opacity:.95">Faulty probe stock is pending under <strong>${htmlEscape(engineerName)}</strong> and must be dispatched to HQO without delay.</p>
+            </div>
+
+            <div style="padding:22px">
+              <p style="margin:0 0 14px;font-size:13px;color:#334155">
+                Dear <strong>${htmlEscape(engineerName)}</strong>,
+              </p>
+              <p style="margin:0 0 14px;font-size:13px;color:#475569">
+                This is a strict reminder that the below <strong>Probe</strong> items are currently marked as <strong>Not Ok (Faulty)</strong> in Relcon CRM under your name.
+              </p>
+              <p style="margin:0 0 16px;font-size:13px;color:#475569">
+                You are required to dispatch these faulty probes to <strong>HQO</strong> on priority and coordinate the dispatch confirmation immediately with the admin team.
+              </p>
+
+              <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+                <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:10px 12px;min-width:180px">
+                  <div style="font-size:11px;color:#9a3412;text-transform:uppercase;letter-spacing:.05em">Faulty Probe Quantity</div>
+                  <div style="font-size:24px;line-height:1.2;font-weight:800;color:#c2410c">${totalProbeQty}</div>
+                </div>
+                <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 12px;min-width:180px">
+                  <div style="font-size:11px;color:#1d4ed8;text-transform:uppercase;letter-spacing:.05em">Faulty Probe Entries</div>
+                  <div style="font-size:24px;line-height:1.2;font-weight:800;color:#1e40af">${probeRows.length}</div>
+                </div>
+              </div>
+
+              ${buildMaterialDispatchTable(probeRows)}
+
+              <div style="margin-top:18px;padding:14px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;color:#7f1d1d;font-size:13px">
+                <strong>Strict Action Required:</strong> Kindly dispatch all above faulty probes to HQO and share courier / handover confirmation with the admin team without fail.
+              </div>
+
+              <p style="margin:18px 0 0;font-size:13px;color:#475569">
+                This reminder is being sent to ensure there is no delay in faulty probe movement, repair coordination, and stock reconciliation.
+              </p>
+
+              <p style="margin:14px 0 0;font-size:13px;color:#475569">
+                Regards,<br>
+                <strong style="color:#0f172a">Nikhil Trivedi</strong>
+              </p>
+
+              <div style="margin-top:18px;padding-top:12px;border-top:1px solid #e2e8f0;color:#64748b;font-size:12px">
+                Generated on ${generatedAt} IST. This is a scheduled reminder from Relcon CRM.
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const textBody = [
+        `Dear ${engineerName},`,
+        "",
+        "This is a strict reminder that the below Probe items are currently marked as Not Ok (Faulty) in Relcon CRM under your name.",
+        "You are required to dispatch these faulty probes to HQO on priority and share dispatch confirmation with the admin team without fail.",
+        "",
+        `Faulty Probe Quantity: ${totalProbeQty}`,
+        `Faulty Probe Entries: ${probeRows.length}`,
+        "",
+        ...probeRows.flatMap((row, index) => [
+          `${index + 1}. ${row.itemName} | Code: ${row.itemCode} | Serial: ${row.serialNumber} | Qty: ${row.qty} | Status: ${row.itemStatus}`,
+          `   Remarks: ${row.remarks || "—"}`,
+        ]),
+        "",
+        "Strict Action Required: Kindly dispatch all above faulty probes to HQO and share courier / handover confirmation with the admin team.",
+        "",
+        "Regards,",
+        "Nikhil Trivedi",
+        `Generated on ${generatedAt} IST`,
+      ].join("\n");
+
+      const subject = `Strictly Dispatch Faulty Probe to HQO | ${engineerName} | Entries ${probeRows.length}`;
+      const mailOptions = {
+        from: buildFromHeader("Nikhil Trivedi"),
+        to: engineerEmails.join(", "),
+        cc: adminEmails.join(", "),
+        subject,
+        html: htmlBody,
+        text: textBody,
+      };
+
+      const info = await transporter.sendMail(mailOptions);
+
+      await EmailLog.create({
+        type: alertType,
+        subject,
+        to: engineerEmails.join(", "),
+        status: "success",
+        sentAt: new Date(),
+        meta: {
+          cc: adminEmails.join(", "),
+          engineerName,
+          totalProbeQty,
+          probeRows: probeRows.length,
+          messageId: info?.messageId || "",
+        },
+      });
+
+      summary.sent += 1;
+    }
+
+    console.log("✅ Faulty probe HQO dispatch reminder summary:", summary);
+    return { ok: true, summary };
+  } catch (err) {
+    console.error("❌ Faulty probe HQO dispatch reminder error:", err.message);
+    try {
+      await EmailLog.create({
+        type: alertType,
+        subject: "Faulty probe HQO dispatch reminder - failure",
+        to: "",
+        status: "failure",
+        sentAt: new Date(),
+        meta: {
+          error: err.message || String(err),
+        },
+      });
+    } catch (logErr) {
+      console.error("Failed to write EmailLog for faulty probe reminder:", logErr?.message || logErr);
+    }
+
+    return { ok: false, error: err };
+  }
+}
+
 async function sendMonthlyAttendanceSheet({ baseDate = new Date() } = {}) {
   const reportType = "Monthly Attendance Sheet";
 
@@ -2793,6 +3021,17 @@ cron.schedule(
   { timezone: "Asia/Kolkata" }
 );
 
+// ─── Scheduler: every Friday 10:00 IST for faulty probe HQO dispatch reminder ─
+
+cron.schedule(
+  "0 10 * * 5",
+  () => {
+    console.log("🔔 Faulty probe HQO dispatch reminder CRON TRIGGERED:", new Date().toISOString());
+    sendFaultyProbeHQODispatchReminder().catch((e) => console.error("Faulty probe HQO dispatch reminder job error:", e));
+  },
+  { timezone: "Asia/Kolkata" }
+);
+
 // ─── Scheduler: monthly attendance sheet on 1st day, 08:00 IST ──────────────
 
 cron.schedule(
@@ -2917,6 +3156,7 @@ module.exports = {
   sendUnverifiedStatusEmail,
   sendHpclActionRequiredUnverifiedEmail,
   sendFaultyMaterialDispatchAlerts,
+  sendFaultyProbeHQODispatchReminder,
   sendMonthlyAttendanceSheet,
   sendVerificationCorrectionEmail,
   sendPendingStatusReminderAlerts,
