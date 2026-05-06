@@ -1648,11 +1648,29 @@ async function openStatusModal(planId) {
   document.getElementById('statusForm').reset();
   const currentPlan = fullData.find(p => p._id === planId);
   const roCode = currentPlan?.roCode;
+  let latestVerifiedHpcl = null;
   if (roCode) {
     try {
       const r = await fetch(`${baseUrl}/getLatestVerifiedHPCLByRoCode/${roCode}`, { headers:{Authorization:`Bearer ${localStorage.getItem('token')}`} });
-      if (r.ok) { const d = await r.json(); if(d.probeMake) document.getElementById('probeMake').value=d.probeMake; if(d.probeSize) document.getElementById('probeSize').value=d.probeSize; showToast('Probe details auto-filled from verified record.', 'info'); }
+      if (r.ok) {
+        const d = await r.json();
+        latestVerifiedHpcl = d;
+        if (d.probeMake) document.getElementById('probeMake').value = d.probeMake;
+        if (d.probeSize) document.getElementById('probeSize').value = d.probeSize;
+        showToast('Verified HPCL details loaded from last record.', 'info');
+      }
     } catch {}
+  }
+  function fillRelconSimDetails() {
+    if (!latestVerifiedHpcl) return false;
+    const hasRelconConnectivity = String(latestVerifiedHpcl.connectivityType || '').trim().toUpperCase() === 'RELCON SIM';
+    if (!hasRelconConnectivity) return false;
+    document.getElementById('sim1Number').value = latestVerifiedHpcl.sim1Number || '';
+    document.getElementById('sim1Provider').value = latestVerifiedHpcl.sim1Provider || '';
+    document.getElementById('sim2Number').value = latestVerifiedHpcl.sim2Number || '';
+    document.getElementById('sim2Provider').value = latestVerifiedHpcl.sim2Provider || '';
+    document.getElementById('iemiNumber').value = latestVerifiedHpcl.iemiNumber || '';
+    return true;
   }
   function applyAutoFieldLogic() {
     const duOff = document.getElementById('duOffline').value, tankOff = document.getElementById('tankOffline').value;
@@ -1671,8 +1689,14 @@ async function openStatusModal(planId) {
     const sel = this.value; const ids = ['sim1Provider','sim1Number','sim2Provider','sim2Number','iemiNumber'];
     if (sel==='RELCON SIM') {
       ids.forEach(id => document.getElementById(id).disabled=false);
-      if (roCode) {
-        try { const r = await fetch(`${baseUrl}/getSimDetails/${roCode}`, {headers:{Authorization:`Bearer ${localStorage.getItem('token')}`}}); const d = await r.json(); document.getElementById('sim1Number').value=d.sim1Number||''; document.getElementById('sim1Provider').value=d.sim1Provider||''; document.getElementById('sim2Number').value=d.sim2Number||''; document.getElementById('sim2Provider').value=d.sim2Provider||''; document.getElementById('iemiNumber').value=d.iemiNumber||''; } catch {}
+      const filled = fillRelconSimDetails();
+      if (filled) {
+        showToast('SIM & IMEI auto-filled from last verified status.', 'info');
+      } else {
+        ['sim1Provider','sim1Number','sim2Provider','sim2Number','iemiNumber'].forEach(id => {
+          document.getElementById(id).value = '';
+        });
+        showToast('Last verified RELCON SIM details not found for this RO Code.', 'error');
       }
     } else { ['NA','NA','NA','NA','NA'].forEach((v,i) => { document.getElementById(ids[i]).value=v; document.getElementById(ids[i]).disabled=true; }); }
   });

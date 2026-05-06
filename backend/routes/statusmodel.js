@@ -648,7 +648,7 @@ router.put("/verifyStatus/:id", verifyToken, async (req, res) => {
 ------------------------------------------------- */
 router.get("/getLatestVerifiedHPCLByRoCode/:roCode", async (req, res) => {
   try {
-    const { roCode } = req.params;
+    const roCode = String(req.params.roCode || "").trim().toUpperCase();
 
     // 1. इस RO Code के सभी DailyPlans ढूंढें
     const plans = await DailyPlan.find({ roCode }).select("_id");
@@ -660,7 +660,7 @@ router.get("/getLatestVerifiedHPCLByRoCode/:roCode", async (req, res) => {
       isVerified: true,
     })
       .sort({ createdAt: -1 })
-      .select("probeMake probeSize") // हमें सिर्फ ये दो फील्ड्स चाहिए
+      .select("probeMake probeSize connectivityType sim1Provider sim1Number sim2Provider sim2Number iemiNumber")
       .lean();
 
     if (!lastVerified) {
