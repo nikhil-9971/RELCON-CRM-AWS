@@ -187,6 +187,7 @@ router.put("/updateBPCLStatus/:id", authMiddleware, async (req, res) => {
 ------------------------------------------------- */
 router.put("/verifyBPCLStatus/:id", authMiddleware, async (req, res) => {
   try {
+    const adminRemark = String(req.body?.adminRemark || "").trim();
     if (req.user?.role !== "admin") {
       return res.status(403).json({
         success: false,
@@ -200,6 +201,7 @@ router.put("/verifyBPCLStatus/:id", authMiddleware, async (req, res) => {
         isVerified: true,
         verifiedBy: req.user.username,
         verifiedAt: new Date(),
+        ...(adminRemark ? { "verificationEditLog.adminRemark": adminRemark } : {}),
       },
       { new: true },
     ).populate("planId");
@@ -213,7 +215,7 @@ router.put("/verifyBPCLStatus/:id", authMiddleware, async (req, res) => {
 
     const plan = updated.planId || {};
     const correctionLog = updated.verificationEditLog || {};
-    if (Array.isArray(correctionLog.changes) && correctionLog.changes.length && !correctionLog.notificationSentAt) {
+    if (((Array.isArray(correctionLog.changes) && correctionLog.changes.length) || correctionLog.adminRemark) && !correctionLog.notificationSentAt) {
       await sendVerificationCorrectionEmail({
         category: "BPCL",
         engineerName: plan.engineer || "",
@@ -222,6 +224,7 @@ router.put("/verifyBPCLStatus/:id", authMiddleware, async (req, res) => {
         visitDate: plan.date || "",
         correctedBy: correctionLog.editedBy || req.user?.username || "admin",
         changes: correctionLog.changes,
+        adminRemark: correctionLog.adminRemark || adminRemark,
       });
 
       await BPCLStatus.findByIdAndUpdate(req.params.id, {

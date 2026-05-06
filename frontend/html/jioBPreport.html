@@ -328,6 +328,24 @@
     </div>
   </div>
 
+  <div id="verifyRemarkModal" class="sf-modal-overlay hidden">
+    <div class="sf-confirm-modal" style="width:520px;max-width:92vw;">
+      <div class="sf-modal-header">
+        <div class="sf-modal-title"><i class="fa-solid fa-circle-check" style="color:#0176d3;"></i> Verify Record</div>
+      </div>
+      <div class="sf-modal-body">
+        <div class="sf-modal-field">
+          <label class="sf-modal-label">Admin Verification Remark</label>
+          <textarea id="verifyAdminRemark" class="sf-modal-input" style="height:110px;padding:10px 12px;resize:vertical;" placeholder="Write the admin verification remark that should be highlighted in the engineer mail."></textarea>
+        </div>
+      </div>
+      <div class="sf-modal-footer">
+        <button class="sf-btn sf-btn-neutral" onclick="closeVerifyRemarkModal()">Cancel</button>
+        <button class="sf-btn sf-btn-success" onclick="submitVerifyRemark()">Verify</button>
+      </div>
+    </div>
+  </div>
+
   <!-- LOADER -->
   <div id="loader" class="sf-loader hidden">
     <div class="sf-spinner-lg"></div>
@@ -519,8 +537,10 @@
       else showToast("Failed to update record.","error");
     }
 
+    let verifyTargetId = null;
     function deleteRecord(id){deleteTargetId=id;document.getElementById("deleteModal").classList.remove("hidden");}
     function cancelDelete(){deleteTargetId=null;document.getElementById("deleteModal").classList.add("hidden");}
+    function closeVerifyRemarkModal(){verifyTargetId=null;document.getElementById("verifyAdminRemark").value="";document.getElementById("verifyRemarkModal").classList.add("hidden");}
     async function confirmDelete(){
       if(!deleteTargetId)return;
       const res=await fetch(`${baseUrl}/jioBP/deleteJioBPStatus/${deleteTargetId}`,{method:"DELETE",headers:{Authorization:`Bearer ${token}`}});
@@ -530,10 +550,17 @@
       deleteTargetId=null;
     }
 
-    async function verifyRecord(id){
-      if(!confirm("Mark this record as VERIFIED?"))return;
-      const res=await fetch(`${baseUrl}/jioBP/verifyStatus/${id}`,{method:"PUT",headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},body:JSON.stringify({isVerified:true})});
-      if(res.ok){showToast("Record marked as Verified.");await fetchData();}
+    function verifyRecord(id){
+      verifyTargetId=id;
+      document.getElementById("verifyAdminRemark").value="";
+      document.getElementById("verifyRemarkModal").classList.remove("hidden");
+    }
+
+    async function submitVerifyRemark(){
+      if(!verifyTargetId)return;
+      const adminRemark=document.getElementById("verifyAdminRemark").value.trim();
+      const res=await fetch(`${baseUrl}/jioBP/verifyStatus/${verifyTargetId}`,{method:"PUT",headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},body:JSON.stringify({isVerified:true,adminRemark})});
+      if(res.ok){showToast("Record marked as Verified.");closeVerifyRemarkModal();await fetchData();}
       else showToast("Verification failed.","error");
     }
 

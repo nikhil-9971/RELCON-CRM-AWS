@@ -4,6 +4,7 @@ const verificationEditLogSchema = new mongoose.Schema(
   {
     editedBy: { type: String, default: "" },
     editedAt: { type: Date, default: null },
+    adminRemark: { type: String, default: "" },
     changes: {
       type: [
         {

@@ -494,6 +494,7 @@ router.delete("/deleteStatus/:id", verifyToken, async (req, res) => {
 // ✅ VERIFY a status by ID
 router.put("/verifyStatus/:id", verifyToken, async (req, res) => {
   const { id } = req.params;
+  const adminRemark = String(req.body?.adminRemark || "").trim();
 
   if (!id || id === "undefined") {
     return res.status(400).send("Invalid ID provided.");
@@ -506,7 +507,10 @@ router.put("/verifyStatus/:id", verifyToken, async (req, res) => {
 
     const updated = await Status.findByIdAndUpdate(
       id,
-      { isVerified: true },
+      {
+        isVerified: true,
+        ...(adminRemark ? { "verificationEditLog.adminRemark": adminRemark } : {}),
+      },
       { new: true },
     ).populate("planId");
 
@@ -531,7 +535,7 @@ router.put("/verifyStatus/:id", verifyToken, async (req, res) => {
     });
 
     const correctionLog = updated.verificationEditLog || {};
-    if (Array.isArray(correctionLog.changes) && correctionLog.changes.length && !correctionLog.notificationSentAt) {
+    if (((Array.isArray(correctionLog.changes) && correctionLog.changes.length) || correctionLog.adminRemark) && !correctionLog.notificationSentAt) {
       await sendVerificationCorrectionEmail({
         category: "HPCL",
         engineerName,
@@ -540,6 +544,7 @@ router.put("/verifyStatus/:id", verifyToken, async (req, res) => {
         visitDate,
         correctedBy: correctionLog.editedBy || req.user?.username || "admin",
         changes: correctionLog.changes,
+        adminRemark: correctionLog.adminRemark || adminRemark,
       });
 
       await Status.findByIdAndUpdate(id, {

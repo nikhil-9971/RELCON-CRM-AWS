@@ -2083,12 +2083,13 @@ async function sendVerificationCorrectionEmail({
   visitDate = "",
   correctedBy = "",
   changes = [],
+  adminRemark = "",
 } = {}) {
   const reportType = `${category} Verification Correction Alert`;
 
   try {
-    if (!engineerName || !changes.length) {
-      return { ok: false, reason: "missing_engineer_or_changes" };
+    if (!engineerName || (!changes.length && !String(adminRemark || "").trim())) {
+      return { ok: false, reason: "missing_engineer_changes_and_remark" };
     }
 
     const users = await User.find({}, "email role engineerName username").lean();
@@ -2124,6 +2125,7 @@ async function sendVerificationCorrectionEmail({
 
     const generatedAt = formatDateTimeIST(new Date());
     const correctionReason = "The record was corrected during admin verification because one or more submitted values did not match the required reporting standard or final site observations.";
+    const remarkText = String(adminRemark || "").trim();
     const textBody = [
       `Dear ${engineerName},`,
       "",
@@ -2138,9 +2140,10 @@ async function sendVerificationCorrectionEmail({
       `Corrected By: ${correctedBy || "Admin"}`,
       "",
       `Reason for Correction: ${correctionReason}`,
+      ...(remarkText ? ["", `Admin Verification Remark: ${remarkText}`] : []),
       "",
       "Correction Summary:",
-      buildCorrectionSummaryText(changes),
+      changes.length ? buildCorrectionSummaryText(changes) : "No field-level correction was captured. Please review the admin verification remark carefully.",
       "",
       "Please take care to submit future records correctly to avoid verification delays and rework.",
       "",
@@ -2177,8 +2180,14 @@ async function sendVerificationCorrectionEmail({
           </tbody>
         </table>
         <p style="margin:16px 0 0;"><b>Reason for Correction:</b> ${htmlEscape(correctionReason)}</p>
+        ${remarkText ? `
+          <div style="margin:16px 0 0;padding:12px 14px;border:2px solid #dc2626;background:#fef2f2;border-radius:8px;">
+            <div style="color:#991b1b;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">Admin Verification Remark</div>
+            <div style="color:#dc2626;font-size:15px;font-weight:800;line-height:1.7;">${htmlEscape(remarkText)}</div>
+          </div>
+        ` : ""}
         <p style="margin:16px 0 8px;"><b>Correction Summary</b></p>
-        ${buildCorrectionSummaryHtml(changes)}
+        ${changes.length ? buildCorrectionSummaryHtml(changes) : `<p style="margin:8px 0 0;">No field-level correction was captured. Please review the admin verification remark carefully.</p>`}
         <p style="margin-top:16px;">
           Please take care to submit future records correctly to avoid verification delays and rework.
         </p>
@@ -2213,6 +2222,7 @@ async function sendVerificationCorrectionEmail({
         roName,
         visitDate,
         correctedBy,
+        adminRemark: remarkText,
         changeCount: changes.length,
         messageId: info?.messageId || "",
       },

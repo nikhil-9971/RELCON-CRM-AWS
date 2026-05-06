@@ -201,6 +201,7 @@ router.delete("/deleteJioBPStatus/:id", authMiddleware, async (req, res) => {
 router.put("/verifyStatus/:id", authMiddleware, async (req, res) => {
   try {
     const user = req.user;
+    const adminRemark = String(req.body?.adminRemark || "").trim();
     console.log("🔍 VERIFY API: Requesting user", user);
 
     if (user.username !== "nikhil.trivedi" || user.role !== "admin") {
@@ -209,7 +210,10 @@ router.put("/verifyStatus/:id", authMiddleware, async (req, res) => {
 
     const updated = await JioBPStatus.findByIdAndUpdate(
       req.params.id,
-      { isVerified: true },
+      {
+        isVerified: true,
+        ...(adminRemark ? { "verificationEditLog.adminRemark": adminRemark } : {}),
+      },
       { new: true }
     ).populate("planId");
     if (!updated) {
@@ -220,7 +224,7 @@ router.put("/verifyStatus/:id", authMiddleware, async (req, res) => {
 
     const plan = updated.planId || {};
     const correctionLog = updated.verificationEditLog || {};
-    if (Array.isArray(correctionLog.changes) && correctionLog.changes.length && !correctionLog.notificationSentAt) {
+    if (((Array.isArray(correctionLog.changes) && correctionLog.changes.length) || correctionLog.adminRemark) && !correctionLog.notificationSentAt) {
       await sendVerificationCorrectionEmail({
         category: "RBML",
         engineerName: plan.engineer || "",
@@ -229,6 +233,7 @@ router.put("/verifyStatus/:id", authMiddleware, async (req, res) => {
         visitDate: plan.date || "",
         correctedBy: correctionLog.editedBy || req.user?.username || "admin",
         changes: correctionLog.changes,
+        adminRemark: correctionLog.adminRemark || adminRemark,
       });
 
       await JioBPStatus.findByIdAndUpdate(req.params.id, {
