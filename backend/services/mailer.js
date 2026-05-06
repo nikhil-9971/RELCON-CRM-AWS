@@ -17,6 +17,8 @@ const axios = require("axios");
 const nodemailer = require("nodemailer");
 const cron = require("node-cron");
 const XLSX = require("xlsx");
+const mongoose = require("mongoose");
+const zlib = require("zlib");
 const { EmailLog } = require("../models/AuditLog");
 const MaterialManagement = require("../models/MaterialManagement");
 const MaterialUploadSchedule = require("../models/MaterialUploadSchedule");
@@ -261,6 +263,97 @@ function parseRecipientEmails(value = "") {
       .map((entry) => extractEmailAddress(entry))
       .filter(Boolean)
   )];
+}
+
+const CRC32_TABLE = (() => {
+  const table = new Uint32Array(256);
+  for (let i = 0; i < 256; i += 1) {
+    let c = i;
+    for (let j = 0; j < 8; j += 1) {
+      c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+    }
+    table[i] = c >>> 0;
+  }
+  return table;
+})();
+
+function crc32(buffer) {
+  let crc = 0xffffffff;
+  for (let i = 0; i < buffer.length; i += 1) {
+    crc = CRC32_TABLE[(crc ^ buffer[i]) & 0xff] ^ (crc >>> 8);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function getDosDateTimeParts(value = new Date()) {
+  const date = new Date(value);
+  const year = Math.max(1980, date.getFullYear());
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+  const seconds = Math.floor(date.getSeconds() / 2);
+  return {
+    dosTime: (hours << 11) | (minutes << 5) | seconds,
+    dosDate: ((year - 1980) << 9) | (month << 5) | day,
+  };
+}
+
+function buildSingleFileZipArchive(filename, contentBuffer, modifiedAt = new Date()) {
+  const fileNameBuffer = Buffer.from(String(filename || "backup.json"), "utf8");
+  const sourceBuffer = Buffer.isBuffer(contentBuffer) ? contentBuffer : Buffer.from(contentBuffer || "");
+  const compressedBuffer = zlib.deflateRawSync(sourceBuffer);
+  const checksum = crc32(sourceBuffer);
+  const { dosTime, dosDate } = getDosDateTimeParts(modifiedAt);
+
+  const localHeader = Buffer.alloc(30 + fileNameBuffer.length);
+  let offset = 0;
+  localHeader.writeUInt32LE(0x04034b50, offset); offset += 4;
+  localHeader.writeUInt16LE(20, offset); offset += 2;
+  localHeader.writeUInt16LE(0, offset); offset += 2;
+  localHeader.writeUInt16LE(8, offset); offset += 2;
+  localHeader.writeUInt16LE(dosTime, offset); offset += 2;
+  localHeader.writeUInt16LE(dosDate, offset); offset += 2;
+  localHeader.writeUInt32LE(checksum, offset); offset += 4;
+  localHeader.writeUInt32LE(compressedBuffer.length, offset); offset += 4;
+  localHeader.writeUInt32LE(sourceBuffer.length, offset); offset += 4;
+  localHeader.writeUInt16LE(fileNameBuffer.length, offset); offset += 2;
+  localHeader.writeUInt16LE(0, offset); offset += 2;
+  fileNameBuffer.copy(localHeader, offset);
+
+  const centralHeader = Buffer.alloc(46 + fileNameBuffer.length);
+  offset = 0;
+  centralHeader.writeUInt32LE(0x02014b50, offset); offset += 4;
+  centralHeader.writeUInt16LE(20, offset); offset += 2;
+  centralHeader.writeUInt16LE(20, offset); offset += 2;
+  centralHeader.writeUInt16LE(0, offset); offset += 2;
+  centralHeader.writeUInt16LE(8, offset); offset += 2;
+  centralHeader.writeUInt16LE(dosTime, offset); offset += 2;
+  centralHeader.writeUInt16LE(dosDate, offset); offset += 2;
+  centralHeader.writeUInt32LE(checksum, offset); offset += 4;
+  centralHeader.writeUInt32LE(compressedBuffer.length, offset); offset += 4;
+  centralHeader.writeUInt32LE(sourceBuffer.length, offset); offset += 4;
+  centralHeader.writeUInt16LE(fileNameBuffer.length, offset); offset += 2;
+  centralHeader.writeUInt16LE(0, offset); offset += 2;
+  centralHeader.writeUInt16LE(0, offset); offset += 2;
+  centralHeader.writeUInt16LE(0, offset); offset += 2;
+  centralHeader.writeUInt16LE(0, offset); offset += 2;
+  centralHeader.writeUInt32LE(0, offset); offset += 4;
+  centralHeader.writeUInt32LE(0, offset); offset += 4;
+  fileNameBuffer.copy(centralHeader, offset);
+
+  const endRecord = Buffer.alloc(22);
+  offset = 0;
+  endRecord.writeUInt32LE(0x06054b50, offset); offset += 4;
+  endRecord.writeUInt16LE(0, offset); offset += 2;
+  endRecord.writeUInt16LE(0, offset); offset += 2;
+  endRecord.writeUInt16LE(1, offset); offset += 2;
+  endRecord.writeUInt16LE(1, offset); offset += 2;
+  endRecord.writeUInt32LE(centralHeader.length, offset); offset += 4;
+  endRecord.writeUInt32LE(localHeader.length + compressedBuffer.length, offset); offset += 4;
+  endRecord.writeUInt16LE(0, offset);
+
+  return Buffer.concat([localHeader, compressedBuffer, centralHeader, endRecord]);
 }
 
 function buildMaterialDispatchTable(rows = []) {
@@ -2374,6 +2467,189 @@ async function sendWeeklyUserMailSummaryToAdmins({ baseDate = new Date() } = {})
   }
 }
 
+async function sendDatabaseBackupArchiveToAdmins({ force = false } = {}) {
+  const reportType = "Database Backup Archive";
+
+  try {
+    const users = await User.find({}, "username email role engineerName").lean();
+    const adminEmails = [...new Set(
+      users
+        .filter((user) => String(user.role || "").trim().toLowerCase() === "admin")
+        .map((user) => normalizeEmail(user.email))
+        .filter(Boolean)
+    )];
+
+    if (!adminEmails.length) {
+      await EmailLog.create({
+        type: reportType,
+        subject: "Skipped: admin emails missing for database backup archive",
+        to: "",
+        status: "failure",
+        sentAt: new Date(),
+        meta: { reason: "No admin email found in users collection" },
+      });
+      return { ok: false, reason: "missing_admin_email" };
+    }
+
+    if (!force) {
+      const lastSuccess = await EmailLog.findOne({ type: reportType, status: "success" })
+        .sort({ sentAt: -1 })
+        .lean();
+      if (lastSuccess?.sentAt) {
+        const nextDueAt = new Date(lastSuccess.sentAt);
+        nextDueAt.setDate(nextDueAt.getDate() + 15);
+        if (new Date() < nextDueAt) {
+          return {
+            ok: true,
+            skipped: true,
+            reason: "next_backup_not_due_yet",
+            nextDueAt: nextDueAt.toISOString(),
+          };
+        }
+      }
+    }
+
+    if (mongoose.connection.readyState !== 1 || !mongoose.connection.db) {
+      throw new Error("MongoDB connection is not ready for backup export");
+    }
+
+    const db = mongoose.connection.db;
+    const dbName = db.databaseName || "relcon";
+    const collections = await db.listCollections({}, { nameOnly: true }).toArray();
+    const backupCollections = {};
+
+    for (const collectionInfo of collections) {
+      const collectionName = String(collectionInfo?.name || "").trim();
+      if (!collectionName || collectionName.startsWith("system.")) continue;
+      const docs = await db.collection(collectionName).find({}).toArray();
+      backupCollections[collectionName] = docs;
+    }
+
+    const generatedAt = new Date();
+    const backupPayload = {
+      generatedAt: generatedAt.toISOString(),
+      generatedAtIST: formatDateTimeIST(generatedAt),
+      databaseName: dbName,
+      collectionCount: Object.keys(backupCollections).length,
+      collections: backupCollections,
+    };
+
+    const jsonBuffer = Buffer.from(JSON.stringify(backupPayload, null, 2), "utf8");
+    const dateStamp = formatDateOnlyISO(generatedAt);
+    const jsonFilename = `relcon_db_backup_${dateStamp}.json`;
+    const zipFilename = `relcon_db_backup_${dateStamp}.zip`;
+    const zipBuffer = buildSingleFileZipArchive(jsonFilename, jsonBuffer, generatedAt);
+
+    const collectionRows = Object.entries(backupCollections).map(([name, docs]) => ({
+      collectionName: name,
+      documentCount: Array.isArray(docs) ? docs.length : 0,
+    })).sort((a, b) => a.collectionName.localeCompare(b.collectionName));
+
+    const subject = `Database Backup Archive | ${dateStamp} | Collections ${collectionRows.length}`;
+    const html = `
+      <div style="margin:0;padding:20px 12px;background:#f1f5f9;font:14px/1.6 Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a">
+        <div style="max-width:1080px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(15,23,42,.05)">
+          <div style="padding:18px 22px;background:linear-gradient(135deg,#0f172a,#14532d);color:#ffffff">
+            <p style="margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.85">Relcon CRM • Database Backup</p>
+            <h2 style="margin:0;font-size:22px;font-weight:700">Database Backup Archive Attached</h2>
+            <p style="margin:8px 0 0;font-size:13px;opacity:.95">A zipped snapshot of the current database has been attached for safe archival.</p>
+          </div>
+
+          <div style="padding:22px">
+            <p style="margin:0 0 14px;font-size:13px;color:#334155">Dear Admin Team,</p>
+            <p style="margin:0 0 16px;font-size:13px;color:#475569">
+              Please find attached the latest database backup archive in ZIP format. You can download and keep it safely for recovery or audit purposes.
+            </p>
+
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+              <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 12px;min-width:210px">
+                <div style="font-size:11px;color:#1d4ed8;text-transform:uppercase;letter-spacing:.05em">Database Name</div>
+                <div style="font-size:20px;line-height:1.2;font-weight:800;color:#1e3a8a">${htmlEscape(dbName)}</div>
+              </div>
+              <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px 12px;min-width:210px">
+                <div style="font-size:11px;color:#15803d;text-transform:uppercase;letter-spacing:.05em">Collections Backed Up</div>
+                <div style="font-size:24px;line-height:1.2;font-weight:800;color:#166534">${collectionRows.length}</div>
+              </div>
+              <div style="background:#fff7ed;border:1px solid #fdba74;border-radius:10px;padding:10px 12px;min-width:210px">
+                <div style="font-size:11px;color:#c2410c;text-transform:uppercase;letter-spacing:.05em">ZIP Size</div>
+                <div style="font-size:24px;line-height:1.2;font-weight:800;color:#9a3412">${(zipBuffer.length / (1024 * 1024)).toFixed(2)} MB</div>
+              </div>
+            </div>
+
+            ${buildTable(collectionRows, [
+              { key: "collectionName", label: "Collection Name" },
+              { key: "documentCount", label: "Document Count" },
+            ], "Backup Collection Summary")}
+
+            <p style="margin:18px 0 0;font-size:13px;color:#475569">
+              Regards,<br>
+              <strong style="color:#0f172a">Relcon CRM</strong>
+            </p>
+
+            <div style="margin-top:18px;padding-top:12px;border-top:1px solid #e2e8f0;color:#64748b;font-size:12px">
+              Generated on ${htmlEscape(formatDateTimeIST(generatedAt))} IST.
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const info = await transporter.sendMail({
+      from: buildFromHeader("Relcon CRM Backup"),
+      to: adminEmails.join(", "),
+      subject,
+      html,
+      attachments: [
+        {
+          filename: zipFilename,
+          content: zipBuffer,
+          contentType: "application/zip",
+        },
+      ],
+    });
+
+    await EmailLog.create({
+      type: reportType,
+      subject,
+      to: adminEmails.join(", "),
+      status: "success",
+      sentAt: new Date(),
+      meta: {
+        databaseName: dbName,
+        collectionCount: collectionRows.length,
+        zipFilename,
+        zipBytes: zipBuffer.length,
+        messageId: info?.messageId || "",
+      },
+    });
+
+    return {
+      ok: true,
+      databaseName: dbName,
+      collectionCount: collectionRows.length,
+      zipBytes: zipBuffer.length,
+      messageId: info?.messageId || "",
+    };
+  } catch (err) {
+    console.error("❌ Database backup archive email error:", err.message);
+    try {
+      await EmailLog.create({
+        type: reportType,
+        subject: "Database backup archive - failure",
+        to: "",
+        status: "failure",
+        sentAt: new Date(),
+        meta: {
+          error: err.message || String(err),
+        },
+      });
+    } catch (logErr) {
+      console.error("Failed to write EmailLog for database backup archive:", logErr?.message || logErr);
+    }
+    return { ok: false, error: err };
+  }
+}
+
 async function sendMonthlyAttendanceSheet({ baseDate = new Date() } = {}) {
   const reportType = "Monthly Attendance Sheet";
 
@@ -3277,6 +3553,17 @@ cron.schedule(
   { timezone: "Asia/Kolkata" }
 );
 
+// ─── Scheduler: daily 10:15 IST, sends DB backup only when 15 days are completed ─
+
+cron.schedule(
+  "15 10 * * *",
+  () => {
+    console.log("🔔 Database backup archive scheduler triggered:", new Date().toISOString());
+    sendDatabaseBackupArchiveToAdmins().catch((e) => console.error("Database backup archive job error:", e));
+  },
+  { timezone: "Asia/Kolkata" }
+);
+
 // ─── Scheduler: monthly attendance sheet on 1st day, 08:00 IST ──────────────
 
 cron.schedule(
@@ -3388,6 +3675,11 @@ if (require.main === module) {
       .then((r) => { console.log("Material auto upload done:", r); process.exit(r.ok ? 0 : 1); })
       .catch((e) => { console.error("❌ error:", e); process.exit(1); });
 
+  } else if (type === "db-backup") {
+    sendDatabaseBackupArchiveToAdmins({ force: true })
+      .then((r) => { console.log("Database backup archive done:", r); process.exit(r.ok ? 0 : 1); })
+      .catch((e) => { console.error("❌ error:", e); process.exit(1); });
+
   } else {
     // default = pending
     sendPendingStatusEmail({ forDateISO: dateArg })
@@ -3403,6 +3695,7 @@ module.exports = {
   sendFaultyMaterialDispatchAlerts,
   sendFaultyProbeHQODispatchReminder,
   sendWeeklyUserMailSummaryToAdmins,
+  sendDatabaseBackupArchiveToAdmins,
   sendMonthlyAttendanceSheet,
   sendVerificationCorrectionEmail,
   sendPendingStatusReminderAlerts,
