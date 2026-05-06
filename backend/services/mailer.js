@@ -230,6 +230,39 @@ function getISTNowDate() {
   return new Date(istString);
 }
 
+function formatDateOnlyISO(value = new Date()) {
+  const date = new Date(value);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getWeeklyUserMailSummaryRange(baseDate = new Date()) {
+  const nowIST = getISTNowDate(baseDate);
+  const end = new Date(nowIST);
+  end.setHours(23, 59, 59, 999);
+  end.setDate(end.getDate() - 1);
+  const start = new Date(end);
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - 4);
+  return {
+    start,
+    end,
+    startISO: formatDateOnlyISO(start),
+    endISO: formatDateOnlyISO(end),
+  };
+}
+
+function parseRecipientEmails(value = "") {
+  return [...new Set(
+    String(value || "")
+      .split(",")
+      .map((entry) => extractEmailAddress(entry))
+      .filter(Boolean)
+  )];
+}
+
 function buildMaterialDispatchTable(rows = []) {
   if (!rows.length) return "";
 
@@ -2140,6 +2173,207 @@ async function sendFaultyProbeHQODispatchReminder() {
   }
 }
 
+async function sendWeeklyUserMailSummaryToAdmins({ baseDate = new Date() } = {}) {
+  const reportType = "Weekly User Mail Summary";
+
+  try {
+    const { start, end, startISO, endISO } = getWeeklyUserMailSummaryRange(baseDate);
+    const users = await User.find({}, "username email role engineerName").lean();
+
+    const adminEmails = [...new Set(
+      users
+        .filter((user) => String(user.role || "").trim().toLowerCase() === "admin")
+        .map((user) => normalizeEmail(user.email))
+        .filter(Boolean)
+    )];
+
+    if (!adminEmails.length) {
+      await EmailLog.create({
+        type: reportType,
+        subject: `Skipped: admin emails missing for ${startISO} to ${endISO}`,
+        to: "",
+        status: "failure",
+        sentAt: new Date(),
+        meta: {
+          startISO,
+          endISO,
+          reason: "No admin email found in users collection",
+        },
+      });
+      return { ok: false, reason: "missing_admin_email" };
+    }
+
+    const userEmailMap = new Map();
+    users
+      .filter((user) => ["engineer", "user"].includes(String(user.role || "").trim().toLowerCase()))
+      .forEach((user) => {
+        const email = normalizeEmail(user.email);
+        if (!email) return;
+        userEmailMap.set(email, {
+          engineerName: String(user.engineerName || user.username || "").trim() || "User",
+          username: String(user.username || "").trim(),
+          email,
+        });
+      });
+
+    const logs = await EmailLog.find({
+      status: "success",
+      sentAt: { $gte: start, $lte: end },
+    })
+      .sort({ sentAt: 1 })
+      .lean();
+
+    const summaryMap = new Map();
+    const detailRows = [];
+
+    for (const log of logs) {
+      const recipients = parseRecipientEmails(log.to);
+      for (const email of recipients) {
+        const userInfo = userEmailMap.get(email);
+        if (!userInfo) continue;
+        if (!summaryMap.has(email)) {
+          summaryMap.set(email, {
+            engineerName: userInfo.engineerName,
+            username: userInfo.username,
+            email,
+            totalMails: 0,
+            lastMailAt: "",
+            mailTypes: new Set(),
+          });
+        }
+
+        const entry = summaryMap.get(email);
+        entry.totalMails += 1;
+        entry.lastMailAt = formatDateTimeIST(log.sentAt);
+        entry.mailTypes.add(String(log.type || "General").trim() || "General");
+
+        detailRows.push({
+          sentAt: formatDateTimeIST(log.sentAt),
+          engineerName: userInfo.engineerName,
+          username: userInfo.username || "—",
+          email,
+          type: log.type || "General",
+          subject: log.subject || "—",
+        });
+      }
+    }
+
+    const summaryRows = Array.from(summaryMap.values())
+      .map((row) => ({
+        engineerName: row.engineerName,
+        username: row.username || "—",
+        email: row.email,
+        totalMails: row.totalMails,
+        lastMailAt: row.lastMailAt || "—",
+        mailTypes: Array.from(row.mailTypes).sort().join(", ") || "—",
+      }))
+      .sort((a, b) => b.totalMails - a.totalMails || a.engineerName.localeCompare(b.engineerName));
+
+    const totalMailDeliveries = summaryRows.reduce((sum, row) => sum + Number(row.totalMails || 0), 0);
+    const uniqueUsers = summaryRows.length;
+    const generatedAt = formatDateTimeIST(new Date());
+
+    const html = `
+      <div style="margin:0;padding:20px 12px;background:#f1f5f9;font:14px/1.6 Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a">
+        <div style="max-width:1180px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(15,23,42,.05)">
+          <div style="padding:18px 22px;background:linear-gradient(135deg,#0f172a,#2563eb);color:#ffffff">
+            <p style="margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.85">Relcon CRM • Weekly Admin Summary</p>
+            <h2 style="margin:0;font-size:22px;font-weight:700">Weekly User Mail Summary</h2>
+            <p style="margin:8px 0 0;font-size:13px;opacity:.95">User mail activity summary for ${htmlEscape(startISO)} to ${htmlEscape(endISO)}.</p>
+          </div>
+
+          <div style="padding:22px">
+            <p style="margin:0 0 14px;font-size:13px;color:#334155">Dear Admin Team,</p>
+            <p style="margin:0 0 16px;font-size:13px;color:#475569">
+              Please find below the weekly summary of successful mails sent to engineer / user accounts during the period <strong>${htmlEscape(startISO)}</strong> to <strong>${htmlEscape(endISO)}</strong>.
+            </p>
+
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+              <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 12px;min-width:200px">
+                <div style="font-size:11px;color:#1d4ed8;text-transform:uppercase;letter-spacing:.05em">Total Mail Deliveries</div>
+                <div style="font-size:24px;line-height:1.2;font-weight:800;color:#1e3a8a">${totalMailDeliveries}</div>
+              </div>
+              <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px 12px;min-width:200px">
+                <div style="font-size:11px;color:#15803d;text-transform:uppercase;letter-spacing:.05em">Unique Users Reached</div>
+                <div style="font-size:24px;line-height:1.2;font-weight:800;color:#166534">${uniqueUsers}</div>
+              </div>
+            </div>
+
+            ${buildTable(summaryRows, [
+              { key: "engineerName", label: "Engineer Name" },
+              { key: "username", label: "Username" },
+              { key: "email", label: "Email" },
+              { key: "totalMails", label: "Total Mails" },
+              { key: "lastMailAt", label: "Last Mail Sent" },
+              { key: "mailTypes", label: "Mail Types" },
+            ], "User-Wise Mail Summary")}
+
+            ${buildTable(detailRows, [
+              { key: "sentAt", label: "Sent At" },
+              { key: "engineerName", label: "Engineer Name" },
+              { key: "username", label: "Username" },
+              { key: "email", label: "Email" },
+              { key: "type", label: "Mail Type" },
+              { key: "subject", label: "Subject" },
+            ], "Detailed Mail Log")}
+
+            <p style="margin:18px 0 0;font-size:13px;color:#475569">
+              Regards,<br>
+              <strong style="color:#0f172a">Relcon CRM</strong>
+            </p>
+
+            <div style="margin-top:18px;padding-top:12px;border-top:1px solid #e2e8f0;color:#64748b;font-size:12px">
+              Generated on ${generatedAt} IST.
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const subject = `Weekly User Mail Summary | ${startISO} to ${endISO} | Users ${uniqueUsers} | Mails ${totalMailDeliveries}`;
+    const info = await transporter.sendMail({
+      from: buildFromHeader("Relcon CRM"),
+      to: adminEmails.join(", "),
+      subject,
+      html,
+    });
+
+    await EmailLog.create({
+      type: reportType,
+      subject,
+      to: adminEmails.join(", "),
+      status: "success",
+      sentAt: new Date(),
+      meta: {
+        startISO,
+        endISO,
+        uniqueUsers,
+        totalMailDeliveries,
+        messageId: info?.messageId || "",
+      },
+    });
+
+    return { ok: true, uniqueUsers, totalMailDeliveries, messageId: info?.messageId || "" };
+  } catch (err) {
+    console.error("❌ Weekly user mail summary error:", err.message);
+    try {
+      await EmailLog.create({
+        type: reportType,
+        subject: "Weekly user mail summary - failure",
+        to: "",
+        status: "failure",
+        sentAt: new Date(),
+        meta: {
+          error: err.message || String(err),
+        },
+      });
+    } catch (logErr) {
+      console.error("Failed to write EmailLog for weekly user mail summary:", logErr?.message || logErr);
+    }
+    return { ok: false, error: err };
+  }
+}
+
 async function sendMonthlyAttendanceSheet({ baseDate = new Date() } = {}) {
   const reportType = "Monthly Attendance Sheet";
 
@@ -3032,6 +3266,17 @@ cron.schedule(
   { timezone: "Asia/Kolkata" }
 );
 
+// ─── Scheduler: every Saturday 10:00 IST for weekly user mail summary ───────
+
+cron.schedule(
+  "0 10 * * 6",
+  () => {
+    console.log("🔔 Weekly user mail summary CRON TRIGGERED:", new Date().toISOString());
+    sendWeeklyUserMailSummaryToAdmins().catch((e) => console.error("Weekly user mail summary job error:", e));
+  },
+  { timezone: "Asia/Kolkata" }
+);
+
 // ─── Scheduler: monthly attendance sheet on 1st day, 08:00 IST ──────────────
 
 cron.schedule(
@@ -3157,6 +3402,7 @@ module.exports = {
   sendHpclActionRequiredUnverifiedEmail,
   sendFaultyMaterialDispatchAlerts,
   sendFaultyProbeHQODispatchReminder,
+  sendWeeklyUserMailSummaryToAdmins,
   sendMonthlyAttendanceSheet,
   sendVerificationCorrectionEmail,
   sendPendingStatusReminderAlerts,
