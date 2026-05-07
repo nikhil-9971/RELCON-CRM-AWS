@@ -299,61 +299,94 @@ function getDosDateTimeParts(value = new Date()) {
   };
 }
 
-function buildSingleFileZipArchive(filename, contentBuffer, modifiedAt = new Date()) {
-  const fileNameBuffer = Buffer.from(String(filename || "backup.json"), "utf8");
-  const sourceBuffer = Buffer.isBuffer(contentBuffer) ? contentBuffer : Buffer.from(contentBuffer || "");
-  const compressedBuffer = zlib.deflateRawSync(sourceBuffer);
-  const checksum = crc32(sourceBuffer);
-  const { dosTime, dosDate } = getDosDateTimeParts(modifiedAt);
+function buildZipArchive(files = []) {
+  const preparedFiles = files.map((file) => {
+    const fileNameBuffer = Buffer.from(String(file?.filename || "backup.json"), "utf8");
+    const sourceBuffer = Buffer.isBuffer(file?.content)
+      ? file.content
+      : Buffer.from(file?.content || "");
+    const compressedBuffer = zlib.deflateRawSync(sourceBuffer);
+    const checksum = crc32(sourceBuffer);
+    const { dosTime, dosDate } = getDosDateTimeParts(file?.modifiedAt || new Date());
+    return {
+      fileNameBuffer,
+      sourceBuffer,
+      compressedBuffer,
+      checksum,
+      dosTime,
+      dosDate,
+    };
+  });
 
-  const localHeader = Buffer.alloc(30 + fileNameBuffer.length);
-  let offset = 0;
-  localHeader.writeUInt32LE(0x04034b50, offset); offset += 4;
-  localHeader.writeUInt16LE(20, offset); offset += 2;
-  localHeader.writeUInt16LE(0, offset); offset += 2;
-  localHeader.writeUInt16LE(8, offset); offset += 2;
-  localHeader.writeUInt16LE(dosTime, offset); offset += 2;
-  localHeader.writeUInt16LE(dosDate, offset); offset += 2;
-  localHeader.writeUInt32LE(checksum, offset); offset += 4;
-  localHeader.writeUInt32LE(compressedBuffer.length, offset); offset += 4;
-  localHeader.writeUInt32LE(sourceBuffer.length, offset); offset += 4;
-  localHeader.writeUInt16LE(fileNameBuffer.length, offset); offset += 2;
-  localHeader.writeUInt16LE(0, offset); offset += 2;
-  fileNameBuffer.copy(localHeader, offset);
+  const localParts = [];
+  const centralParts = [];
+  let runningOffset = 0;
 
-  const centralHeader = Buffer.alloc(46 + fileNameBuffer.length);
-  offset = 0;
-  centralHeader.writeUInt32LE(0x02014b50, offset); offset += 4;
-  centralHeader.writeUInt16LE(20, offset); offset += 2;
-  centralHeader.writeUInt16LE(20, offset); offset += 2;
-  centralHeader.writeUInt16LE(0, offset); offset += 2;
-  centralHeader.writeUInt16LE(8, offset); offset += 2;
-  centralHeader.writeUInt16LE(dosTime, offset); offset += 2;
-  centralHeader.writeUInt16LE(dosDate, offset); offset += 2;
-  centralHeader.writeUInt32LE(checksum, offset); offset += 4;
-  centralHeader.writeUInt32LE(compressedBuffer.length, offset); offset += 4;
-  centralHeader.writeUInt32LE(sourceBuffer.length, offset); offset += 4;
-  centralHeader.writeUInt16LE(fileNameBuffer.length, offset); offset += 2;
-  centralHeader.writeUInt16LE(0, offset); offset += 2;
-  centralHeader.writeUInt16LE(0, offset); offset += 2;
-  centralHeader.writeUInt16LE(0, offset); offset += 2;
-  centralHeader.writeUInt16LE(0, offset); offset += 2;
-  centralHeader.writeUInt32LE(0, offset); offset += 4;
-  centralHeader.writeUInt32LE(0, offset); offset += 4;
-  fileNameBuffer.copy(centralHeader, offset);
+  for (const file of preparedFiles) {
+    const localHeader = Buffer.alloc(30 + file.fileNameBuffer.length);
+    let offset = 0;
+    localHeader.writeUInt32LE(0x04034b50, offset); offset += 4;
+    localHeader.writeUInt16LE(20, offset); offset += 2;
+    localHeader.writeUInt16LE(0, offset); offset += 2;
+    localHeader.writeUInt16LE(8, offset); offset += 2;
+    localHeader.writeUInt16LE(file.dosTime, offset); offset += 2;
+    localHeader.writeUInt16LE(file.dosDate, offset); offset += 2;
+    localHeader.writeUInt32LE(file.checksum, offset); offset += 4;
+    localHeader.writeUInt32LE(file.compressedBuffer.length, offset); offset += 4;
+    localHeader.writeUInt32LE(file.sourceBuffer.length, offset); offset += 4;
+    localHeader.writeUInt16LE(file.fileNameBuffer.length, offset); offset += 2;
+    localHeader.writeUInt16LE(0, offset); offset += 2;
+    file.fileNameBuffer.copy(localHeader, offset);
 
+    const centralHeader = Buffer.alloc(46 + file.fileNameBuffer.length);
+    offset = 0;
+    centralHeader.writeUInt32LE(0x02014b50, offset); offset += 4;
+    centralHeader.writeUInt16LE(20, offset); offset += 2;
+    centralHeader.writeUInt16LE(20, offset); offset += 2;
+    centralHeader.writeUInt16LE(0, offset); offset += 2;
+    centralHeader.writeUInt16LE(8, offset); offset += 2;
+    centralHeader.writeUInt16LE(file.dosTime, offset); offset += 2;
+    centralHeader.writeUInt16LE(file.dosDate, offset); offset += 2;
+    centralHeader.writeUInt32LE(file.checksum, offset); offset += 4;
+    centralHeader.writeUInt32LE(file.compressedBuffer.length, offset); offset += 4;
+    centralHeader.writeUInt32LE(file.sourceBuffer.length, offset); offset += 4;
+    centralHeader.writeUInt16LE(file.fileNameBuffer.length, offset); offset += 2;
+    centralHeader.writeUInt16LE(0, offset); offset += 2;
+    centralHeader.writeUInt16LE(0, offset); offset += 2;
+    centralHeader.writeUInt16LE(0, offset); offset += 2;
+    centralHeader.writeUInt16LE(0, offset); offset += 2;
+    centralHeader.writeUInt32LE(0, offset); offset += 4;
+    centralHeader.writeUInt32LE(runningOffset, offset); offset += 4;
+    file.fileNameBuffer.copy(centralHeader, offset);
+
+    localParts.push(localHeader, file.compressedBuffer);
+    centralParts.push(centralHeader);
+    runningOffset += localHeader.length + file.compressedBuffer.length;
+  }
+
+  const centralDirectory = Buffer.concat(centralParts);
   const endRecord = Buffer.alloc(22);
-  offset = 0;
+  let offset = 0;
   endRecord.writeUInt32LE(0x06054b50, offset); offset += 4;
   endRecord.writeUInt16LE(0, offset); offset += 2;
   endRecord.writeUInt16LE(0, offset); offset += 2;
-  endRecord.writeUInt16LE(1, offset); offset += 2;
-  endRecord.writeUInt16LE(1, offset); offset += 2;
-  endRecord.writeUInt32LE(centralHeader.length, offset); offset += 4;
-  endRecord.writeUInt32LE(localHeader.length + compressedBuffer.length, offset); offset += 4;
+  endRecord.writeUInt16LE(preparedFiles.length, offset); offset += 2;
+  endRecord.writeUInt16LE(preparedFiles.length, offset); offset += 2;
+  endRecord.writeUInt32LE(centralDirectory.length, offset); offset += 4;
+  endRecord.writeUInt32LE(runningOffset, offset); offset += 4;
   endRecord.writeUInt16LE(0, offset);
 
-  return Buffer.concat([localHeader, compressedBuffer, centralHeader, endRecord]);
+  return Buffer.concat([...localParts, centralDirectory, endRecord]);
+}
+
+function buildSingleFileZipArchive(filename, contentBuffer, modifiedAt = new Date()) {
+  return buildZipArchive([
+    {
+      filename,
+      content: contentBuffer,
+      modifiedAt,
+    },
+  ]);
 }
 
 function buildMaterialDispatchTable(rows = []) {
@@ -2526,19 +2559,32 @@ async function sendDatabaseBackupArchiveToAdmins({ force = false } = {}) {
     }
 
     const generatedAt = new Date();
-    const backupPayload = {
+    const dateStamp = formatDateOnlyISO(generatedAt);
+    const zipFilename = `relcon_db_backup_${dateStamp}.zip`;
+    const manifestPayload = {
       generatedAt: generatedAt.toISOString(),
       generatedAtIST: formatDateTimeIST(generatedAt),
       databaseName: dbName,
       collectionCount: Object.keys(backupCollections).length,
-      collections: backupCollections,
+      collections: Object.entries(backupCollections).map(([collectionName, docs]) => ({
+        collectionName,
+        documentCount: Array.isArray(docs) ? docs.length : 0,
+        filename: `collections/${collectionName}.json`,
+      })),
     };
-
-    const jsonBuffer = Buffer.from(JSON.stringify(backupPayload, null, 2), "utf8");
-    const dateStamp = formatDateOnlyISO(generatedAt);
-    const jsonFilename = `relcon_db_backup_${dateStamp}.json`;
-    const zipFilename = `relcon_db_backup_${dateStamp}.zip`;
-    const zipBuffer = buildSingleFileZipArchive(jsonFilename, jsonBuffer, generatedAt);
+    const zipFiles = [
+      {
+        filename: `manifest_${dateStamp}.json`,
+        content: Buffer.from(JSON.stringify(manifestPayload, null, 2), "utf8"),
+        modifiedAt: generatedAt,
+      },
+      ...Object.entries(backupCollections).map(([collectionName, docs]) => ({
+        filename: `collections/${collectionName}.json`,
+        content: Buffer.from(JSON.stringify(docs, null, 2), "utf8"),
+        modifiedAt: generatedAt,
+      })),
+    ];
+    const zipBuffer = buildZipArchive(zipFiles);
 
     const collectionRows = Object.entries(backupCollections).map(([name, docs]) => ({
       collectionName: name,
@@ -2558,7 +2604,7 @@ async function sendDatabaseBackupArchiveToAdmins({ force = false } = {}) {
           <div style="padding:22px">
             <p style="margin:0 0 14px;font-size:13px;color:#334155">Dear Admin Team,</p>
             <p style="margin:0 0 16px;font-size:13px;color:#475569">
-              Please find attached the latest database backup archive in ZIP format. You can download and keep it safely for recovery or audit purposes.
+              Please find attached the latest database backup archive in ZIP format. Each collection is included as a separate JSON file inside the ZIP, along with one manifest file for quick reference.
             </p>
 
             <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
@@ -3222,7 +3268,7 @@ async function sendPendingStatusReminderAlerts() {
       });
 
       const info = await transporter.sendMail({
-        from: MAIL_FROM,
+        from: buildFromHeader("Nikhil Trivedi"),
         to: engineerEmails.join(", "),
         cc: adminEmails.join(", "),
         subject,
