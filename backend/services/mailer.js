@@ -3164,6 +3164,355 @@ async function sendMissingMorningDataViewEntryAlert() {
   }
 }
 
+function isEngineerRole(value = "") {
+  return String(value || "").trim().toLowerCase() === "engineer";
+}
+
+function getDailyPlanSummaryCategory(plan = {}) {
+  const phase = String(plan.phase || "").trim().toUpperCase();
+  const purpose = String(plan.purpose || "").trim().toUpperCase();
+  const issueType = String(plan.issueType || "").trim().toUpperCase();
+  const roName = String(plan.roName || "").trim().toUpperCase();
+
+  if (purpose === "NO PLAN" || issueType === "NO PLAN" || phase === "NO PLAN" || roName === "NO PLAN") {
+    return "NO PLAN";
+  }
+  if (purpose === "IN LEAVE" || issueType === "IN LEAVE" || phase === "IN LEAVE" || roName === "IN LEAVE") {
+    return "IN LEAVE";
+  }
+  if (phase.startsWith("BPCL")) return "BPCL";
+  if (phase.includes("RBML") || phase.includes("JIO")) return "RBML";
+  if (phase.startsWith("HPCL") || phase === "HPCL OFFICE") return "HPCL";
+  return "OTHER";
+}
+
+function getLatestPlanPerEngineer(plans = []) {
+  const latestByEngineer = new Map();
+
+  for (const plan of plans) {
+    const engineerName = String(plan.engineer || "").trim();
+    const engineerKey = normalizePlanKeyPart(engineerName);
+    if (!engineerKey) continue;
+
+    const existing = latestByEngineer.get(engineerKey);
+    const currentStamp = new Date(plan.updatedAt || plan.createdAt || plan.date || 0).getTime() || 0;
+    const existingStamp = existing
+      ? (new Date(existing.updatedAt || existing.createdAt || existing.date || 0).getTime() || 0)
+      : -1;
+
+    if (!existing || currentStamp >= existingStamp) {
+      latestByEngineer.set(engineerKey, plan);
+    }
+  }
+
+  return latestByEngineer;
+}
+
+async function sendDailyPlanCompletionSummaryToNikhil({ dateISO } = {}) {
+  const reportType = "Daily Plan Completion Summary";
+
+  try {
+    const summaryDate = String(dateISO || getCurrentISTDateParts().dateISO).slice(0, 10);
+    const { dateISO: todayISO } = getCurrentISTDateParts();
+    if (summaryDate !== todayISO) {
+      return { ok: true, skipped: true, reason: "only_current_date_supported", summaryDate };
+    }
+
+    const alreadySent = await EmailLog.findOne({
+      type: reportType,
+      status: "success",
+      "meta.summaryDate": summaryDate,
+    }).lean();
+    if (alreadySent) {
+      return { ok: true, skipped: true, reason: "already_sent", summaryDate };
+    }
+
+    const [users, plans] = await Promise.all([
+      User.find({}, "username email role engineerName").lean(),
+      DailyPlan.find({ date: summaryDate }).lean(),
+    ]);
+
+    const engineerUsers = [...new Set(
+      users
+        .filter((user) => isEngineerRole(user.role))
+        .map((user) => String(user.engineerName || user.username || "").trim())
+        .filter(Boolean)
+    )].sort((a, b) => a.localeCompare(b));
+
+    if (!engineerUsers.length) {
+      return { ok: true, skipped: true, reason: "no_engineers_found", summaryDate };
+    }
+
+    const latestPlansByEngineer = getLatestPlanPerEngineer(plans);
+    const missingEngineers = engineerUsers.filter(
+      (name) => !latestPlansByEngineer.has(normalizePlanKeyPart(name))
+    );
+
+    if (missingEngineers.length) {
+      return {
+        ok: true,
+        skipped: true,
+        reason: "waiting_for_remaining_users",
+        summaryDate,
+        pendingUsers: missingEngineers,
+      };
+    }
+
+    const userCounts = {
+      totalUsers: engineerUsers.length,
+      hpcl: 0,
+      bpcl: 0,
+      rbml: 0,
+      noPlan: 0,
+      inLeave: 0,
+      other: 0,
+    };
+
+    const planCounts = {
+      totalPlans: plans.length,
+      hpcl: 0,
+      bpcl: 0,
+      rbml: 0,
+      noPlan: 0,
+      inLeave: 0,
+      other: 0,
+    };
+
+    for (const plan of plans) {
+      const category = getDailyPlanSummaryCategory(plan);
+      if (category === "HPCL") planCounts.hpcl += 1;
+      else if (category === "BPCL") planCounts.bpcl += 1;
+      else if (category === "RBML") planCounts.rbml += 1;
+      else if (category === "NO PLAN") planCounts.noPlan += 1;
+      else if (category === "IN LEAVE") planCounts.inLeave += 1;
+      else planCounts.other += 1;
+    }
+
+    const detailRows = engineerUsers.map((engineerName) => {
+      const plan = latestPlansByEngineer.get(normalizePlanKeyPart(engineerName)) || {};
+      const category = getDailyPlanSummaryCategory(plan);
+
+      if (category === "HPCL") userCounts.hpcl += 1;
+      else if (category === "BPCL") userCounts.bpcl += 1;
+      else if (category === "RBML") userCounts.rbml += 1;
+      else if (category === "NO PLAN") userCounts.noPlan += 1;
+      else if (category === "IN LEAVE") userCounts.inLeave += 1;
+      else userCounts.other += 1;
+
+      return {
+        engineerName,
+        category,
+        phase: plan.phase || "—",
+        roCode: plan.roCode || "—",
+        roName: plan.roName || "—",
+        purpose: plan.purpose || "—",
+      };
+    });
+
+    const toRecipients = await getUserEmailsByUsernames(["nikhil.trivedi"]);
+    const fallbackRecipients = [normalizeEmail(MAIL_TO)].filter(Boolean);
+    const recipients = toRecipients.length ? toRecipients : fallbackRecipients;
+
+    if (!recipients.length) {
+      await EmailLog.create({
+        type: reportType,
+        subject: `Skipped: recipient missing for ${summaryDate}`,
+        to: "",
+        status: "failure",
+        sentAt: new Date(),
+        meta: { summaryDate, reason: "recipient_email_missing" },
+      });
+      return { ok: false, reason: "recipient_email_missing", summaryDate };
+    }
+
+    const generatedAt = formatDateTimeIST(new Date());
+    const completionPct = userCounts.totalUsers > 0 ? Math.round((detailRows.length / userCounts.totalUsers) * 100) : 0;
+    const userCards = [
+      { label: "Total Users", value: userCounts.totalUsers, tone: ["#eff6ff", "#bfdbfe", "#1d4ed8", "#1e3a8a"] },
+      { label: "HPCL Users", value: userCounts.hpcl, tone: ["#eff6ff", "#93c5fd", "#1d4ed8", "#1e3a8a"] },
+      { label: "BPCL Users", value: userCounts.bpcl, tone: ["#ecfdf5", "#86efac", "#15803d", "#166534"] },
+      { label: "RBML Users", value: userCounts.rbml, tone: ["#fff7ed", "#fdba74", "#c2410c", "#9a3412"] },
+      { label: "No Plan Users", value: userCounts.noPlan, tone: ["#fef2f2", "#fca5a5", "#b91c1c", "#991b1b"] },
+      { label: "Leave Users", value: userCounts.inLeave, tone: ["#faf5ff", "#d8b4fe", "#7e22ce", "#6b21a8"] },
+    ];
+
+    if (userCounts.other > 0) {
+      userCards.push({ label: "Other Users", value: userCounts.other, tone: ["#f8fafc", "#cbd5e1", "#475569", "#334155"] });
+    }
+
+    const planCards = [
+      { label: "Total Plans", value: planCounts.totalPlans, tone: ["#eef2ff", "#c7d2fe", "#4338ca", "#3730a3"] },
+      { label: "HPCL Plans", value: planCounts.hpcl, tone: ["#eff6ff", "#93c5fd", "#1d4ed8", "#1e3a8a"] },
+      { label: "BPCL Plans", value: planCounts.bpcl, tone: ["#ecfdf5", "#86efac", "#15803d", "#166534"] },
+      { label: "RBML Plans", value: planCounts.rbml, tone: ["#fff7ed", "#fdba74", "#c2410c", "#9a3412"] },
+      { label: "No Plan Entries", value: planCounts.noPlan, tone: ["#fef2f2", "#fca5a5", "#b91c1c", "#991b1b"] },
+      { label: "Leave Entries", value: planCounts.inLeave, tone: ["#faf5ff", "#d8b4fe", "#7e22ce", "#6b21a8"] },
+    ];
+
+    if (planCounts.other > 0) {
+      planCards.push({ label: "Other Plans", value: planCounts.other, tone: ["#f8fafc", "#cbd5e1", "#475569", "#334155"] });
+    }
+
+    const buildCardsHtml = (cards = []) => cards.map((card) => `
+      <div style="background:${card.tone[0]};border:1px solid ${card.tone[1]};border-radius:14px;padding:14px 16px;min-width:170px;flex:1 1 170px;">
+        <div style="font-size:11px;color:${card.tone[2]};text-transform:uppercase;letter-spacing:.08em;font-weight:700;">${htmlEscape(card.label)}</div>
+        <div style="margin-top:8px;font-size:28px;line-height:1.1;color:${card.tone[3]};font-weight:800;">${htmlEscape(String(card.value))}</div>
+      </div>
+    `).join("");
+    const userCardsHtml = buildCardsHtml(userCards);
+    const planCardsHtml = buildCardsHtml(planCards);
+
+    const rowsHtml = detailRows
+      .map((row, index) => `
+        <tr style="background:${index % 2 === 0 ? "#ffffff" : "#f8fafc"};">
+          <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;">${index + 1}</td>
+          <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;">${htmlEscape(row.engineerName)}</td>
+          <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;font-weight:700;">${htmlEscape(row.category)}</td>
+          <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;">${htmlEscape(row.phase)}</td>
+          <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;">${htmlEscape(row.roCode)}</td>
+          <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;">${htmlEscape(row.roName)}</td>
+          <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;">${htmlEscape(row.purpose)}</td>
+        </tr>
+      `)
+      .join("");
+
+    const subject = `Daily Plan Closure Summary | ${summaryDate} | Users H:${userCounts.hpcl} B:${userCounts.bpcl} R:${userCounts.rbml} NP:${userCounts.noPlan} L:${userCounts.inLeave} | Plans H:${planCounts.hpcl} B:${planCounts.bpcl} R:${planCounts.rbml}`;
+    const html = `
+      <div style="margin:0;padding:20px 12px;background:#f1f5f9;font:14px/1.6 Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a">
+        <div style="max-width:1020px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;box-shadow:0 10px 30px rgba(15,23,42,.08)">
+          <div style="padding:22px 24px;background:linear-gradient(135deg,#0f172a,#1d4ed8);color:#ffffff">
+            <p style="margin:0 0 6px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;opacity:.85">Relcon CRM • Daily Planning Dashboard</p>
+            <h2 style="margin:0;font-size:24px;font-weight:800;">All Users Have Submitted Today's Plan</h2>
+            <p style="margin:8px 0 0;font-size:13px;opacity:.95">Summary for <strong>${htmlEscape(summaryDate)}</strong> with category-wise engineer allocation and closure status.</p>
+          </div>
+
+          <div style="padding:24px">
+            <p style="margin:0 0 14px;font-size:13px;color:#334155;">
+              Dear <strong>Nikhil Trivedi</strong>,
+            </p>
+            <p style="margin:0 0 18px;font-size:13px;color:#475569;">
+              All engineer users have submitted their current-day plan entries. Please find below the consolidated dashboard showing both <strong>user-wise</strong> and <strong>plan-wise</strong> counts for <strong>HPCL</strong>, <strong>BPCL</strong>, <strong>RBML</strong>, <strong>No Plan</strong>, and <strong>Leave</strong>.
+            </p>
+
+            <div style="margin-bottom:8px;font-size:13px;font-weight:700;color:#0f172a;">User-wise Summary</div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px;">
+              ${userCardsHtml}
+            </div>
+
+            <div style="margin-bottom:8px;font-size:13px;font-weight:700;color:#0f172a;">Plan-wise Summary</div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px;">
+              ${planCardsHtml}
+            </div>
+
+            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px;">
+              <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px;min-width:240px;flex:1 1 240px;">
+                <div style="font-size:11px;color:#475569;text-transform:uppercase;letter-spacing:.08em;font-weight:700;">Submission Coverage</div>
+                <div style="margin-top:8px;font-size:26px;font-weight:800;color:#0f172a;">${htmlEscape(`${detailRows.length}/${userCounts.totalUsers}`)}</div>
+                <div style="margin-top:4px;font-size:13px;color:#64748b;">All expected engineer users are covered for the day.</div>
+              </div>
+              <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:14px 16px;min-width:240px;flex:1 1 240px;">
+                <div style="font-size:11px;color:#15803d;text-transform:uppercase;letter-spacing:.08em;font-weight:700;">Completion Status</div>
+                <div style="margin-top:8px;font-size:26px;font-weight:800;color:#166534;">${htmlEscape(`${completionPct}%`)}</div>
+                <div style="margin-top:4px;font-size:13px;color:#15803d;">Daily planning intake is complete for ${htmlEscape(summaryDate)}.</div>
+              </div>
+            </div>
+
+            <div style="border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;background:#ffffff;">
+              <div style="padding:14px 16px;background:#f8fafc;border-bottom:1px solid #e2e8f0;">
+                <div style="font-size:14px;font-weight:700;color:#0f172a;">Engineer-wise Plan Snapshot</div>
+                <div style="margin-top:4px;font-size:12px;color:#64748b;">Latest plan captured per engineer for the day is listed below.</div>
+              </div>
+              <div style="overflow:auto;">
+                <table style="width:100%;border-collapse:collapse;min-width:820px;font-size:12px;">
+                  <thead>
+                    <tr>
+                      <th style="padding:10px 12px;background:#0f172a;color:#e2e8f0;text-align:left;">#</th>
+                      <th style="padding:10px 12px;background:#0f172a;color:#e2e8f0;text-align:left;">Engineer</th>
+                      <th style="padding:10px 12px;background:#0f172a;color:#e2e8f0;text-align:left;">Category</th>
+                      <th style="padding:10px 12px;background:#0f172a;color:#e2e8f0;text-align:left;">Phase</th>
+                      <th style="padding:10px 12px;background:#0f172a;color:#e2e8f0;text-align:left;">RO Code</th>
+                      <th style="padding:10px 12px;background:#0f172a;color:#e2e8f0;text-align:left;">RO Name</th>
+                      <th style="padding:10px 12px;background:#0f172a;color:#e2e8f0;text-align:left;">Purpose</th>
+                    </tr>
+                  </thead>
+                  <tbody>${rowsHtml}</tbody>
+                </table>
+              </div>
+            </div>
+
+            <p style="margin:18px 0 0;font-size:13px;color:#475569;">
+              Regards,<br>
+              <strong style="color:#0f172a;">Relcon CRM System</strong>
+            </p>
+
+            <div style="margin-top:18px;padding-top:12px;border-top:1px solid #e2e8f0;color:#64748b;font-size:12px;">
+              Generated on ${generatedAt} IST. This is an automated daily plan closure notification.
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const text = [
+      "Dear Nikhil Trivedi,",
+      "",
+      `All engineer users have submitted their current-day plan entries for ${summaryDate}.`,
+      "",
+      "User-wise Summary:",
+      `Total Users: ${userCounts.totalUsers}`,
+      `HPCL Users: ${userCounts.hpcl}`,
+      `BPCL Users: ${userCounts.bpcl}`,
+      `RBML Users: ${userCounts.rbml}`,
+      `No Plan Users: ${userCounts.noPlan}`,
+      `Leave Users: ${userCounts.inLeave}`,
+      ...(userCounts.other > 0 ? [`Other Users: ${userCounts.other}`] : []),
+      "",
+      "Plan-wise Summary:",
+      `Total Plans: ${planCounts.totalPlans}`,
+      `HPCL Plans: ${planCounts.hpcl}`,
+      `BPCL Plans: ${planCounts.bpcl}`,
+      `RBML Plans: ${planCounts.rbml}`,
+      `No Plan Entries: ${planCounts.noPlan}`,
+      `Leave Entries: ${planCounts.inLeave}`,
+      ...(planCounts.other > 0 ? [`Other Plans: ${planCounts.other}`] : []),
+      "",
+      "Engineer-wise latest plan snapshot:",
+      ...detailRows.map((row, index) => `${index + 1}. ${row.engineerName} | ${row.category} | ${row.phase} | ${row.roCode} | ${row.roName} | ${row.purpose}`),
+      "",
+      "Regards,",
+      "Relcon CRM System",
+    ].join("\n");
+
+    const info = await transporter.sendMail({
+      from: buildFromHeader("Relcon CRM"),
+      to: recipients.join(", "),
+      subject,
+      html,
+      text,
+    });
+
+    await EmailLog.create({
+        type: reportType,
+        subject,
+        to: recipients.join(", "),
+        status: "success",
+        sentAt: new Date(),
+        meta: {
+          summaryDate,
+          userCounts,
+          planCounts,
+          totalRows: detailRows.length,
+          messageId: info?.messageId || "",
+        },
+      });
+
+    return { ok: true, summaryDate, userCounts, planCounts };
+  } catch (err) {
+    console.error("❌ Daily plan completion summary mail error:", err.message);
+    return { ok: false, error: err };
+  }
+}
+
 async function sendPendingStatusReminderAlerts() {
   const reportType = "Pending Status Reminder Alert";
 
@@ -3706,6 +4055,11 @@ if (require.main === module) {
       .then((r) => { console.log("Missing morning data view entry alert done:", r); process.exit(r.ok ? 0 : 1); })
       .catch((e) => { console.error("❌ error:", e); process.exit(1); });
 
+  } else if (type === "daily-plan-closure") {
+    sendDailyPlanCompletionSummaryToNikhil({ dateISO: dateArg })
+      .then((r) => { console.log("Daily plan closure summary done:", r); process.exit(r.ok ? 0 : 1); })
+      .catch((e) => { console.error("❌ error:", e); process.exit(1); });
+
   } else if (type === "material-upload-reminder") {
     sendMaterialUploadScheduleReminder()
       .then((r) => { console.log("Material upload schedule reminder done:", r); process.exit(r.ok ? 0 : 1); })
@@ -3749,6 +4103,7 @@ module.exports = {
   sendMaterialSheetUploadReminder,
   runScheduledMaterialUpload,
   sendMissingMorningDataViewEntryAlert,
+  sendDailyPlanCompletionSummaryToNikhil,
   sendMaterialRequestNotification,
   sendMaterialDispatchNotification,
   normalizeStatusLabel,

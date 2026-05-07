@@ -5,6 +5,7 @@ const Status = require("../models/Status");
 const verifyToken = require("../middleware/authMiddleware");
 const JioBPStatus = require("../models/jioBPStatus");
 const BPCLStatus = require("../models/BPCLStatus");
+const { sendDailyPlanCompletionSummaryToNikhil } = require("../services/mailer");
 
 const User = require("../models/User");
 
@@ -105,6 +106,8 @@ router.post("/saveDailyPlan", async (req, res) => {
 
     const plan = new DailyPlan(req.body);
     await plan.save();
+    sendDailyPlanCompletionSummaryToNikhil({ dateISO: plan.date })
+      .catch((mailErr) => console.error("Daily plan completion summary trigger failed:", mailErr?.message || mailErr));
     res.json({ ok: true, message: "✅ Plan saved!" });
   } catch (error) {
     res.status(500).send("❌ Error saving plan: " + error.message);
