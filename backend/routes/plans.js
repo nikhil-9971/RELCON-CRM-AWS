@@ -8,14 +8,116 @@ const BPCLStatus = require("../models/BPCLStatus");
 
 const User = require("../models/User");
 
+const HPCL_AMC_PHASES = [
+  "HPCL/Phase-X",
+  "HPCL/Phase-IX",
+  "HPCL/Phase-XI",
+  "HPCL/Phase-XII",
+  "HPCL/Phase-XIII",
+];
+const HPCL_AMC_VISIT_TYPES = ["PM Visit", "Issue & PM Visit", "ATG & PM Visit"];
+const DEFAULT_HPCL_AMC_START_DATE = "2026-04-01";
+const DEFAULT_HPCL_AMC_END_DATE = "2026-06-30";
+
+function normalizeText(value = "") {
+  return String(value || "").trim();
+}
+
+function normalizeDate(value = "") {
+  return String(value || "").slice(0, 10);
+}
+
+function formatDateForMessage(value = "") {
+  const isoDate = normalizeDate(value);
+  if (!isoDate) return "";
+  const parsed = new Date(`${isoDate}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return isoDate;
+  return parsed.toLocaleDateString("en-GB");
+}
+
+async function getHPCLAMCValidationResult({
+  roCode,
+  phase,
+  issueType,
+  startDate,
+  endDate,
+  excludePlanId,
+}) {
+  if (!HPCL_AMC_PHASES.includes(normalizeText(phase))) {
+    return { isValid: true };
+  }
+
+  if (normalizeText(issueType) === "POWER ON OR SAT") {
+    return { isValid: true };
+  }
+
+  const normalizedRoCode = normalizeText(roCode).toUpperCase();
+  const normalizedIssueType = normalizeText(issueType);
+  const isAMCVisit = HPCL_AMC_VISIT_TYPES.includes(normalizedIssueType);
+  const windowStart = normalizeDate(startDate) || DEFAULT_HPCL_AMC_START_DATE;
+  const windowEnd = normalizeDate(endDate) || DEFAULT_HPCL_AMC_END_DATE;
+
+  const query = {
+    roCode: normalizedRoCode,
+    issueType: { $in: HPCL_AMC_VISIT_TYPES },
+    date: { $gte: windowStart, $lte: windowEnd },
+  };
+
+  if (excludePlanId) {
+    query._id = { $ne: excludePlanId };
+  }
+
+  const roPlans = await DailyPlan.find(query).sort({ date: -1, createdAt: -1 }).lean();
+
+  if (roPlans.length === 0 && !isAMCVisit) {
+    return {
+      isValid: false,
+      message: "AMC Pending — Please select Issue & PM Visit or PM Visit.",
+    };
+  }
+
+  if (roPlans.length > 0 && isAMCVisit) {
+    const latest = roPlans[0];
+    const visitDate = formatDateForMessage(latest.date);
+    const engineerName = normalizeText(latest.engineer);
+    const engineerNote = engineerName ? ` by ${engineerName}` : "";
+    return {
+      isValid: false,
+      message: `AMC already done on ${visitDate}${engineerNote}. Please select Issue Visit.`,
+      latestPlan: {
+        date: normalizeDate(latest.date),
+        engineer: engineerName,
+        issueType: normalizeText(latest.issueType),
+      },
+    };
+  }
+
+  return { isValid: true };
+}
+
 // ✅ Save Daily Plan
 router.post("/saveDailyPlan", async (req, res) => {
   try {
+    const validation = await getHPCLAMCValidationResult(req.body || {});
+    if (!validation.isValid) {
+      return res.status(400).json(validation);
+    }
+
     const plan = new DailyPlan(req.body);
     await plan.save();
-    res.send("✅ Plan saved!");
+    res.json({ ok: true, message: "✅ Plan saved!" });
   } catch (error) {
     res.status(500).send("❌ Error saving plan: " + error.message);
+  }
+});
+
+router.get("/validateHPCLAMC", async (req, res) => {
+  try {
+    const validation = await getHPCLAMCValidationResult(req.query || {});
+    res.json(validation);
+  } catch (error) {
+    console.error("Error validating HPCL AMC:", error);
+    res.status(500).json({ isValid: true });
   }
 });
 
@@ -113,6 +215,14 @@ router.get("/getStatusByPlan/:id", async (req, res) => {
 //Plan edit
 router.put("/updateDailyPlan/:id", async (req, res) => {
   try {
+    const validation = await getHPCLAMCValidationResult({
+      ...(req.body || {}),
+      excludePlanId: req.params.id,
+    });
+    if (!validation.isValid) {
+      return res.status(400).json(validation);
+    }
+
     const updated = await DailyPlan.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
     });

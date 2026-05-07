@@ -921,8 +921,20 @@
         body: JSON.stringify(data), credentials: 'include',
       });
       setBtnLoading(false);
-      if (response.ok) { showToast('Daily plan submitted successfully!'); document.getElementById('formId').reset(); document.getElementById('date').value = new Date().toLocaleDateString('en-CA'); }
-      else showToast('Error submitting plan. Please retry.', 'error');
+
+      if (response.ok) {
+        showToast('Daily plan submitted successfully!');
+        document.getElementById('formId').reset();
+        document.getElementById('date').value = new Date().toLocaleDateString('en-CA');
+        return;
+      }
+
+      let errorMessage = 'Error submitting plan. Please retry.';
+      try {
+        const result = await response.json();
+        if (result?.message) errorMessage = result.message;
+      } catch {}
+      showToast(errorMessage, 'error');
     }
 
     async function fetchROInfo() {
@@ -1037,24 +1049,23 @@
       const validHPCLPhases = ['HPCL/Phase-X','HPCL/Phase-IX','HPCL/Phase-XI','HPCL/Phase-XII','HPCL/Phase-XIII'];
       if (!data.phase || !validHPCLPhases.includes(data.phase)) return { isValid: true };
       if (data.issueType === 'POWER ON OR SAT') return { isValid: true };
-      const isPMVisit = ['PM Visit','Issue & PM Visit','ATG & PM Visit'].includes(data.issueType);
+
       try {
-        const token = localStorage.getItem('token');
-        if (!token) return { isValid: true };
-        const response = await fetch(`${baseUrl}/getDailyPlans`, { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, credentials: 'include' });
-        if (!response.ok) return { isValid: true };
-        const plans = await response.json();
-        const roPlans = plans.filter(plan => {
-          const pd = new Date(plan.date), sd = new Date(HPCL_START_QTR_DATE), ed = new Date(HPCL_END_QTR_DATE);
-          return plan.roCode === data.roCode && ['PM Visit','Issue & PM Visit','ATG & PM Visit'].includes(plan.issueType) && pd >= sd && pd <= ed;
+        const params = new URLSearchParams({
+          roCode: data.roCode || '',
+          phase: data.phase || '',
+          issueType: data.issueType || '',
+          startDate: HPCL_START_QTR_DATE,
+          endDate: HPCL_END_QTR_DATE,
         });
-        if (roPlans.length === 0 && !isPMVisit) return { isValid: false, message: 'AMC Pending — Please select Issue & PM Visit or PM Visit.' };
-        if (roPlans.length > 0 && isPMVisit) {
-          const latest = roPlans.reduce((a,b) => new Date(a.date) > new Date(b.date) ? a : b);
-          return { isValid: false, message: `AMC Already Done on ${new Date(latest.date).toLocaleDateString('en-GB')}. Please change Issue Type.` };
-        }
+        const response = await fetch(`${baseUrl}/validateHPCLAMC?${params.toString()}`, {
+          credentials: 'include',
+        });
+        if (!response.ok) return { isValid: true };
+        return await response.json();
+      } catch {
         return { isValid: true };
-      } catch { return { isValid: true }; }
+      }
     }
 
     function validateForm() {
