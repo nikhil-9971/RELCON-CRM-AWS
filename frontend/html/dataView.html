@@ -1819,11 +1819,41 @@ function getExportCustomerAndPhase(phaseValue) {
   return { customer: rawCustomer.trim(), phase };
 }
 
+function normalizeDailyPlanExportValue(value) {
+  const raw = String(value ?? '').trim();
+  return raw.toUpperCase() === 'NO PLAN' ? 'HOLD' : raw;
+}
+
 function exportStyledExcel() {
   const wb=XLSX.utils.book_new(), date=new Date().toLocaleDateString('en-CA');
   const titleRow=[["Coordinator Name: Nikhil Trivedi","","","","","","","","","Date: "+date]];
   const headerRow=[["Customer","Phase","Zone","Region","RO Code","RO Name","Employee Id","Engineer Name","Incident Id","Issue Report/Visit Schedule For","Issue Type","AMC_QTR_DETAIL","Date of Visit","Arrival Time","Leave Time","Completion Status","Support Taken from","Final Status","Reason Of UnResolved","Reason - Reach at site at 2.30 Hours","Reason - Engg. At site after 6 PM",""]];
-  const tableRows=filteredData.map(d => { const mapped=getExportCustomerAndPhase(d.phase); return [mapped.customer,mapped.phase,(d.zone||'').trim(),(d.region||'').trim(),(d.roCode||'').trim(),(d.roName||'').trim(),(d.empId||'').trim(),(d.engineer||'').trim(),(d.incidentId||'').trim(),(d.purpose||'').trim(),normalizeIssueTypeForExcel(d.issueType),(d.amcQtr||'').trim(),(d.date||'').trim(),(d.arrivalTime||'').trim(),(d.leaveTime||'').trim(),(d.completionStatus||'').trim(),(d.supportTakenFrom||'').trim(),(d.incidentStatus||'').trim(),(d.whatDone||'').trim(),(d.reasonAfter12PM||'').trim(),(d.reasonAfter6PM||'').trim()]; });
+  const tableRows=filteredData.map(d => {
+    const mapped=getExportCustomerAndPhase(d.phase);
+    return [
+      mapped.customer,
+      mapped.phase,
+      normalizeDailyPlanExportValue(d.zone),
+      normalizeDailyPlanExportValue(d.region),
+      normalizeDailyPlanExportValue(d.roCode),
+      normalizeDailyPlanExportValue(d.roName),
+      normalizeDailyPlanExportValue(d.empId),
+      normalizeDailyPlanExportValue(d.engineer),
+      normalizeDailyPlanExportValue(d.incidentId),
+      normalizeDailyPlanExportValue(d.purpose),
+      normalizeDailyPlanExportValue(normalizeIssueTypeForExcel(d.issueType)),
+      normalizeDailyPlanExportValue(d.amcQtr),
+      normalizeDailyPlanExportValue(d.date),
+      normalizeDailyPlanExportValue(d.arrivalTime),
+      normalizeDailyPlanExportValue(d.leaveTime),
+      normalizeDailyPlanExportValue(d.completionStatus),
+      normalizeDailyPlanExportValue(d.supportTakenFrom),
+      normalizeDailyPlanExportValue(d.incidentStatus),
+      normalizeDailyPlanExportValue(d.whatDone),
+      normalizeDailyPlanExportValue(d.reasonAfter12PM),
+      normalizeDailyPlanExportValue(d.reasonAfter6PM),
+    ];
+  });
   const ws=XLSX.utils.aoa_to_sheet([...titleRow,...headerRow,...tableRows]);
   ws['!cols']=Array(10).fill({wch:25});
   const name=(loggedInUser.engineerName||loggedInUser.username||'User').replace(/\s+/g,'_');
