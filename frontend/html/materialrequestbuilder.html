@@ -257,6 +257,9 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
         <option>Patna</option>
         <option>Begusarai</option>
         <option>Lucknow</option>
+        <option>Barauni Territory</option>
+        <option>Patna Territory</option>
+        <option>Muzafferpur Territory</option>
       </select>
     </div>
     <div class="sf-filter-group" id="statusFilterWrap">
@@ -349,6 +352,9 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
             <option>Patna</option>
             <option>Begusarai</option>
             <option>Lucknow</option>
+            <option>Barauni Territory</option>
+            <option>Patna Territory</option>
+            <option>Muzafferpur Territory</option>
           </select>
         </div>
         <div class="form-field">
@@ -552,6 +558,13 @@ function statusClass(value){const v=String(value||"").toLowerCase(); if(v.includ
 function normalizeMasterItem(item={}){return { _id:item._id||"", materialName:String(item.materialName||item.name||"").trim(), materialType:String(item.materialType||item.type||"").trim(), updatedBy:item.updatedBy||"", createdAt:item.createdAt||"" }}
 function normalizeLineItem(item={}){return { materialName:String(item.materialName||"").trim(), materialType:String(item.materialType||materialTypeFor(item.materialName)||"").trim(), requestType:String(item.requestType||"Spare").trim(), quantity:Math.max(1,Number(item.quantity||1)||1), materialStatus:String(item.materialStatus||"Pending").trim(), challanNumber:String(item.challanNumber||"").trim(), challanCreationDate:String(item.challanCreationDate||"").trim(), dispatchCourier:String(item.dispatchCourier||"").trim(), docketNumber:String(item.docketNumber||"").trim(), dispatchDate:String(item.dispatchDate||"").trim(), deliveryStatus:String(item.deliveryStatus||"").trim(), deliveryDate:String(item.deliveryDate||"").trim(), poNumber:String(item.poNumber||"").trim(), poDate:String(item.poDate||"").trim(), notes:String(item.notes||"").trim() }}
 function summarizeLineItems(items=[]){const valid=items.filter(item=>item.materialName); return { count:valid.length, qty:valid.reduce((sum,item)=>sum+(Number(item.quantity)||0),0), summary:valid.slice(0,2).map(item=>`${item.materialName}${item.quantity>1?` x${item.quantity}`:""}`).join(", ") + (valid.length>2?` +${valid.length-2} more`:""), primaryStatus:valid.some(item=>String(item.deliveryStatus||"").toLowerCase().includes("deliver"))?"Delivered":(valid[0]?.materialStatus||"Pending"), primaryType:valid[0]?.requestType||"", deliveryDate:valid.map(item=>item.deliveryDate).filter(Boolean).sort().slice(-1)[0]||"" }}
+function summarizeLineField(items=[], key="", formatter=null){
+  const values = [...new Set((items||[]).map(item=>String(item?.[key]||"").trim()).filter(Boolean))];
+  if(!values.length) return "—";
+  const displayValues = formatter ? values.map(value=>formatter(value)) : values;
+  if(displayValues.length === 1) return displayValues[0];
+  return `${displayValues[0]} +${displayValues.length-1} more`;
+}
 function normalizeRequestRow(row={}){const lineItems=(Array.isArray(row.lineItems)?row.lineItems:[]).map(normalizeLineItem); const meta=summarizeLineItems(lineItems); return { ...row, lineItems, materialSummary:row.materialSummary||meta.summary, quantity:Number(row.quantity||meta.qty||0)||0, materialDispatchStatus:row.materialDispatchStatus||meta.primaryStatus, materialRequirementType:row.materialRequirementType||meta.primaryType, materialReceivedDate:row.materialReceivedDate||meta.deliveryDate, searchBlob:[row.engineer,row.engineerCode,row.region,row.roCode,row.roName,row.phase,row.materialSummary,row.materialRequestTo,row.createdByName,row.updatedByName,...lineItems.map(item=>`${item.materialName} ${item.materialType} ${item.docketNumber} ${item.poNumber}`)].join(" ").toLowerCase() }}
 function seedMasterList(){return fetchJson(`${API}/materialRequestMasterItems/seed-defaults`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({items:DEFAULT_MASTER})})}
 function loadMasterDatalist(){document.getElementById("masterNameList").innerHTML = masterRows.map(item=>`<option value="${esc(item.materialName)}">${esc(item.materialType)}</option>`).join("")}
@@ -730,7 +743,7 @@ function renderTable(){
   document.getElementById("countChip").textContent = `${total} record${total===1?"":"s"}`;
   if(activeTab === "requests"){
     head.innerHTML = `<tr>
-      <th>#</th><th>Engineer</th><th>Code</th><th>Region</th><th>RO Code</th><th>RO Name</th><th>Phase</th><th>Material Request Date</th><th>Request Summary</th><th>Qty</th><th>Status</th><th>Request To</th><th>Dispatch Follow-up Date</th><th>Updated By</th><th>Actions</th>
+      <th>#</th><th>Engineer</th><th>Code</th><th>Region</th><th>RO Code</th><th>RO Name</th><th>Phase</th><th>Material Request Date</th><th>Request Summary</th><th>Qty</th><th>Status</th><th>PO Number</th><th>PO Date</th><th>Request To</th><th>Dispatch Follow-up Date</th><th>Updated By</th><th>Actions</th>
     </tr>`;
   } else {
     head.innerHTML = `<tr>
@@ -738,7 +751,7 @@ function renderTable(){
     </tr>`;
   }
   if(!total){
-    body.innerHTML = `<tr><td colspan="${activeTab==="requests"?15:7}" class="empty-state">No ${activeTab==="requests"?"material requests":"material master items"} found.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="${activeTab==="requests"?17:7}" class="empty-state">No ${activeTab==="requests"?"material requests":"material master items"} found.</td></tr>`;
     document.getElementById("paginationWrap").style.display = "none";
     return;
   }
@@ -758,6 +771,8 @@ function renderTable(){
         <td><div class="summary-block"><div class="summary-title">${esc(row.materialSummary||"—")}</div><div class="summary-meta">${row.lineItems.length} line item(s)</div></div></td>
         <td><span class="qty-pill">${esc(row.quantity||0)}</span></td>
         <td><span class="sf-badge ${statusClass(row.materialDispatchStatus)}">${esc(row.materialDispatchStatus||"Pending")}</span></td>
+        <td>${esc(summarizeLineField(row.lineItems,"poNumber"))}</td>
+        <td>${esc(summarizeLineField(row.lineItems,"poDate",fmtDate))}</td>
         <td>${esc(row.materialRequestTo||"—")}</td>
         <td>${fmtDate(row.materialRequestDate)}</td>
         <td>${esc(row.updatedByName||row.createdByName||"—")}</td>
