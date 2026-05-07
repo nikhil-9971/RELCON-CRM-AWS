@@ -13,6 +13,14 @@ function isAdmin(req) {
   return String(req.user?.role || "").toLowerCase() === "admin";
 }
 
+function normalizeRequestMode(body = {}) {
+  const mode = String(body.requestMode || "").trim();
+  if (mode) return mode;
+  return String(body.materialUsedIn || "").trim().toLowerCase() === "engineer inventory"
+    ? "Engineer Inventory"
+    : "RO Site Request";
+}
+
 function normalizePayload(body = {}, req = {}) {
   const lineItems = Array.isArray(body.lineItems)
     ? body.lineItems
@@ -41,18 +49,22 @@ function normalizePayload(body = {}, req = {}) {
     .map((item) => `${item.materialName}${item.quantity > 1 ? ` x${item.quantity}` : ""}`)
     .join(", ");
 
+  const requestMode = normalizeRequestMode(body);
+  const inventoryMode = requestMode === "Engineer Inventory";
+
   return {
+    requestMode,
     engineer: String(body.engineer || "").trim(),
     engineerCode: String(body.engineerCode || "").trim(),
     engineerContactNumber: String(body.engineerContactNumber || "").trim(),
     engineerEmailId: String(body.engineerEmailId || "").trim(),
     region: String(body.region || "").trim(),
     customer: String(body.customer || "").trim(),
-    roCode: String(body.roCode || "").trim(),
-    roName: String(body.roName || "").trim(),
-    phase: String(body.phase || "").trim(),
+    roCode: inventoryMode ? "NA" : String(body.roCode || "").trim(),
+    roName: inventoryMode ? "NA" : String(body.roName || "").trim(),
+    phase: inventoryMode ? "NA" : String(body.phase || "").trim(),
     date: String(body.date || "").trim(),
-    materialUsedIn: String(body.materialUsedIn || "").trim(),
+    materialUsedIn: inventoryMode ? "Engineer Inventory" : String(body.materialUsedIn || "").trim(),
     materialRequestTo: String(body.materialRequestTo || "").trim(),
     materialRequestFromEmail: String(body.materialRequestFromEmail || "").trim(),
     materialRequestDate: String(body.materialRequestDate || "").trim(),

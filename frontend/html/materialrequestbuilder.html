@@ -136,6 +136,12 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
 .line-meta{font-size:11px;color:var(--txt3);margin-top:4px;line-height:1.45}
 .line-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
 .field-helper{font-size:10px;color:var(--txt4);line-height:1.4}
+.mode-note{display:flex;align-items:flex-start;gap:10px;padding:11px 12px;border-radius:10px;border:1px solid #d7e3f6;background:linear-gradient(135deg,#f8fbff,#eef5ff);color:var(--txt2)}
+.mode-note i{color:var(--sf-blue);margin-top:1px}
+.mode-note strong{display:block;font-size:11px;color:var(--txt)}
+.mode-note span{display:block;font-size:10.5px;color:var(--txt3);line-height:1.45}
+.mode-note.inventory{border-color:#cfe6d7;background:linear-gradient(135deg,#f5fcf7,#edf9f0)}
+.mode-note.inventory i{color:var(--sf-green)}
 .line-notes{min-height:72px}
 .line-item .sf-input,.line-item .sf-select,.line-item .sf-textarea{background:#fff}
 .detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
@@ -357,6 +363,13 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
           </select>
         </div>
         <div class="form-field">
+          <label>Request Mode</label>
+          <select id="fRequestMode" class="sf-select" onchange="handleRequestModeChange(this.value)">
+            <option value="RO Site Request">RO Site Request</option>
+            <option value="Engineer Inventory">Engineer Inventory</option>
+          </select>
+        </div>
+        <div class="form-field">
           <label>RO Code</label>
           <input id="fRoCode" class="sf-input" placeholder="Enter RO Code" oninput="handleRoCodeChange(this.value)"/>
         </div>
@@ -375,6 +388,15 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
         <div class="form-field full">
           <label>Material Used In</label>
           <input id="fMaterialUsedIn" class="sf-input" placeholder="Purpose / site context"/>
+        </div>
+        <div class="form-field full">
+          <div class="mode-note" id="requestModeNote">
+            <i class="fa-solid fa-circle-info"></i>
+            <div>
+              <strong>RO site request mode</strong>
+              <span>RO Code ke basis par latest plan se RO Name, Phase aur site context auto-pick ho sakta hai.</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -504,6 +526,16 @@ let currentPage = 1;
 let rowsPerPage = 20;
 let requestLineItems = [];
 let deleteTarget = { type:"", id:"" };
+let requestContextCache = { roCode:"", roName:"", phase:"", materialUsedIn:"" };
+
+const REQUEST_MODE_SITE = "RO Site Request";
+const REQUEST_MODE_INVENTORY = "Engineer Inventory";
+const INVENTORY_DEFAULTS = {
+  roCode: "NA",
+  roName: "NA",
+  phase: "NA",
+  materialUsedIn: REQUEST_MODE_INVENTORY,
+};
 
 document.getElementById("dateBadge").textContent = new Date().toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"});
 
@@ -528,7 +560,70 @@ function engineerOptions(){return engineerUsers.filter(user=>String(user.role||"
 function loadEngineerFilters(){const options='<option value="">All Engineers</option>'+engineerOptions().map(user=>{const name=user.engineerName||user.username||""; return `<option value="${esc(name)}">${esc(name)}</option>`}).join(""); document.getElementById("filterEngineer").innerHTML=options; document.getElementById("fEngineer").innerHTML='<option value="">Select Engineer</option>'+engineerOptions().map(user=>{const name=user.engineerName||user.username||""; return `<option value="${esc(name)}">${esc(name)}</option>`}).join("")}
 function loadMasterTypeFilter(){const types=[...new Set(masterRows.map(item=>item.materialType).filter(Boolean))].sort(); document.getElementById("filterMasterType").innerHTML='<option value="">All Types</option>'+types.map(type=>`<option>${esc(type)}</option>`).join("")}
 function handleEngineerSelection(name){const needle=String(name||"").trim().toLowerCase(); const user=engineerOptions().find(item=>String(item.engineerName||item.username||"").trim().toLowerCase()===needle); document.getElementById("fEngineerCode").value=user?.empId||""; document.getElementById("fEngineerContact").value=user?.contactNumber||""; document.getElementById("fEngineerEmail").value=user?.email||""}
-function handleRoCodeChange(roCode){const plan=latestPlanByRoCode(roCode); if(!plan) return; if(!document.getElementById("fRoName").value.trim()) document.getElementById("fRoName").value=plan.roName||""; document.getElementById("fPhase").value=plan.phase||""; if(!document.getElementById("fMaterialUsedIn").value.trim()) document.getElementById("fMaterialUsedIn").value=`${plan.roCode||""} - ${plan.roName||""} / ${plan.phase||""}`.trim()}
+function requestModeFromRow(row={}){
+  const mode = String(row.requestMode || "").trim();
+  if(mode) return mode;
+  const materialUsedIn = String(row.materialUsedIn || "").trim().toLowerCase();
+  const roCode = String(row.roCode || "").trim().toLowerCase();
+  const roName = String(row.roName || "").trim().toLowerCase();
+  const phase = String(row.phase || "").trim().toLowerCase();
+  return materialUsedIn === REQUEST_MODE_INVENTORY.toLowerCase() || (roCode === "na" && roName === "na" && phase === "na")
+    ? REQUEST_MODE_INVENTORY
+    : REQUEST_MODE_SITE;
+}
+function isEngineerInventoryMode(){return document.getElementById("fRequestMode")?.value === REQUEST_MODE_INVENTORY}
+function setFieldReadOnly(id, locked){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.readOnly = locked;
+  el.classList.toggle("ro", locked);
+}
+function updateRequestModeNote(mode){
+  const note = document.getElementById("requestModeNote");
+  if(!note) return;
+  const inventory = mode === REQUEST_MODE_INVENTORY;
+  note.classList.toggle("inventory", inventory);
+  note.innerHTML = inventory
+    ? `<i class="fa-solid fa-box-open"></i><div><strong>Engineer inventory request active</strong><span>RO Code, RO Name aur Phase auto-lock hokar <b>NA</b> rahenge, aur Material Used In me <b>Engineer Inventory</b> save hoga.</span></div>`
+    : `<i class="fa-solid fa-circle-info"></i><div><strong>RO site request mode</strong><span>RO Code ke basis par latest plan se RO Name, Phase aur site context auto-pick ho sakta hai.</span></div>`;
+}
+function applyRequestMode(mode,{restoreCached=true}={}){
+  const normalizedMode = mode === REQUEST_MODE_INVENTORY ? REQUEST_MODE_INVENTORY : REQUEST_MODE_SITE;
+  document.getElementById("fRequestMode").value = normalizedMode;
+  const locked = normalizedMode === REQUEST_MODE_INVENTORY;
+  ["fRoCode","fRoName","fPhase","fMaterialUsedIn"].forEach(id=>setFieldReadOnly(id, locked));
+  if(locked){
+    const currentRoCode = document.getElementById("fRoCode").value.trim();
+    const currentRoName = document.getElementById("fRoName").value.trim();
+    const currentPhase = document.getElementById("fPhase").value.trim();
+    const currentMaterialUsedIn = document.getElementById("fMaterialUsedIn").value.trim();
+    requestContextCache = {
+      roCode: currentRoCode === INVENTORY_DEFAULTS.roCode ? "" : currentRoCode,
+      roName: currentRoName === INVENTORY_DEFAULTS.roName ? "" : currentRoName,
+      phase: currentPhase === INVENTORY_DEFAULTS.phase ? "" : currentPhase,
+      materialUsedIn: currentMaterialUsedIn === INVENTORY_DEFAULTS.materialUsedIn ? "" : currentMaterialUsedIn,
+    };
+    document.getElementById("fRoCode").value = INVENTORY_DEFAULTS.roCode;
+    document.getElementById("fRoName").value = INVENTORY_DEFAULTS.roName;
+    document.getElementById("fPhase").value = INVENTORY_DEFAULTS.phase;
+    document.getElementById("fMaterialUsedIn").value = INVENTORY_DEFAULTS.materialUsedIn;
+  } else if(restoreCached){
+    if(document.getElementById("fRoCode").value.trim() === INVENTORY_DEFAULTS.roCode) document.getElementById("fRoCode").value = requestContextCache.roCode || "";
+    if(document.getElementById("fRoName").value.trim() === INVENTORY_DEFAULTS.roName) document.getElementById("fRoName").value = requestContextCache.roName || "";
+    if(document.getElementById("fPhase").value.trim() === INVENTORY_DEFAULTS.phase) document.getElementById("fPhase").value = requestContextCache.phase || "";
+    if(document.getElementById("fMaterialUsedIn").value.trim() === INVENTORY_DEFAULTS.materialUsedIn) document.getElementById("fMaterialUsedIn").value = requestContextCache.materialUsedIn || "";
+  }
+  updateRequestModeNote(normalizedMode);
+}
+function handleRequestModeChange(mode){applyRequestMode(mode)}
+function handleRoCodeChange(roCode){
+  if(isEngineerInventoryMode()) return;
+  const plan=latestPlanByRoCode(roCode);
+  if(!plan) return;
+  if(!document.getElementById("fRoName").value.trim()) document.getElementById("fRoName").value=plan.roName||"";
+  document.getElementById("fPhase").value=plan.phase||"";
+  if(!document.getElementById("fMaterialUsedIn").value.trim()) document.getElementById("fMaterialUsedIn").value=`${plan.roCode||""} - ${plan.roName||""} / ${plan.phase||""}`.trim()
+}
 
 async function loadData(){
   try{
@@ -719,12 +814,14 @@ function changePage(delta){
 function openRequestModal(index=null){
   if(!isAdmin()) return showToast("Only admin can manage material requests","error");
   document.getElementById("requestModalTitle").innerHTML = `<i class="fa-solid fa-plus-circle" style="color:var(--sf-blue);"></i> ${index===null?"Add Material Request":"Edit Material Request"}`;
+  requestContextCache = { roCode:"", roName:"", phase:"", materialUsedIn:"" };
   if(index===null){
     document.getElementById("requestEditId").value = "";
     ["fEngineerCode","fEngineerContact","fEngineerEmail","fRoCode","fRoName","fPhase","fMaterialUsedIn","fRequestTo","fArrangeFrom","fRemarks","fDestinationAddress"].forEach(id=>document.getElementById(id).value="");
     document.getElementById("fEngineer").value = "";
     document.getElementById("fRegion").value = "";
     document.getElementById("fCustomer").value = "";
+    document.getElementById("fRequestMode").value = REQUEST_MODE_SITE;
     document.getElementById("fDate").value = today();
     document.getElementById("fRequestDate").value = "";
     document.getElementById("fRequestFromEmail").value = "dispatch@relconsystems.com";
@@ -737,6 +834,7 @@ function openRequestModal(index=null){
     handleEngineerSelection(row.engineer || "");
     document.getElementById("fRegion").value = row.region || "";
     document.getElementById("fCustomer").value = row.customer || "";
+    document.getElementById("fRequestMode").value = requestModeFromRow(row);
     document.getElementById("fRoCode").value = row.roCode || "";
     document.getElementById("fRoName").value = row.roName || "";
     document.getElementById("fPhase").value = row.phase || "";
@@ -750,6 +848,7 @@ function openRequestModal(index=null){
     document.getElementById("fRemarks").value = row.remarks || "";
     requestLineItems = (row.lineItems || []).map(normalizeLineItem);
   }
+  applyRequestMode(document.getElementById("fRequestMode").value,{restoreCached:false});
   renderLineItems();
   openModal("requestModal");
 }
@@ -849,18 +948,21 @@ async function saveRequest(){
   if(!isAdmin()) return showToast("Only admin can save material requests","error");
   const lineItems = requestLineItems.map(normalizeLineItem).filter(item=>item.materialName);
   const meta = summarizeLineItems(lineItems);
+  const requestMode = document.getElementById("fRequestMode").value || REQUEST_MODE_SITE;
+  const inventoryMode = requestMode === REQUEST_MODE_INVENTORY;
   const payload = {
+    requestMode,
     engineer:document.getElementById("fEngineer").value.trim(),
     engineerCode:document.getElementById("fEngineerCode").value.trim(),
     engineerContactNumber:document.getElementById("fEngineerContact").value.trim(),
     engineerEmailId:document.getElementById("fEngineerEmail").value.trim(),
     region:document.getElementById("fRegion").value,
     customer:document.getElementById("fCustomer").value,
-    roCode:document.getElementById("fRoCode").value.trim(),
-    roName:document.getElementById("fRoName").value.trim(),
-    phase:document.getElementById("fPhase").value.trim(),
+    roCode:inventoryMode ? INVENTORY_DEFAULTS.roCode : document.getElementById("fRoCode").value.trim(),
+    roName:inventoryMode ? INVENTORY_DEFAULTS.roName : document.getElementById("fRoName").value.trim(),
+    phase:inventoryMode ? INVENTORY_DEFAULTS.phase : document.getElementById("fPhase").value.trim(),
     date:document.getElementById("fDate").value.trim(),
-    materialUsedIn:document.getElementById("fMaterialUsedIn").value.trim(),
+    materialUsedIn:inventoryMode ? INVENTORY_DEFAULTS.materialUsedIn : document.getElementById("fMaterialUsedIn").value.trim(),
     materialRequestTo:document.getElementById("fRequestTo").value.trim(),
     materialRequestFromEmail:document.getElementById("fRequestFromEmail").value.trim(),
     materialRequestDate:document.getElementById("fRequestDate").value.trim(),
@@ -876,7 +978,7 @@ async function saveRequest(){
     lineItems,
   };
   if(!payload.engineer || !payload.region || !payload.roCode || !payload.date || !lineItems.length){
-    return showToast("Engineer, region, RO code, visit date and at least one material line are required","error");
+    return showToast(`Engineer, region, ${inventoryMode ? "request mode" : "RO code"}, visit date and at least one material line are required`,"error");
   }
   try{
     const id = document.getElementById("requestEditId").value;

@@ -23,6 +23,7 @@ const materialRequestLineItemSchema = new mongoose.Schema(
 
 const MaterialRequestBuilderSchema = new mongoose.Schema(
   {
+    requestMode: { type: String, default: "RO Site Request" },
     engineer: { type: String, default: "" },
     engineerCode: { type: String, default: "" },
     engineerContactNumber: { type: String, default: "" },
