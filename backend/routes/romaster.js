@@ -205,6 +205,9 @@ router.get("/amcCountStatus", async (req, res) => {
     const engineerStats = new Map();
     const detailedData = []; // For CSV export
 
+    const isInactiveSite = (value = "") =>
+      String(value || "").trim().toLowerCase() === "inactive";
+
     roMasterData.forEach((ro) => {
       const engineer = ro.engineer || "Unknown";
       const roCode = ro.roCode;
@@ -219,11 +222,15 @@ router.get("/amcCountStatus", async (req, res) => {
           totalAMCAssigned: 0,
           totalAMCCompleted: 0,
           pendingAMC: 0,
+          inactiveSiteCount: 0,
         });
       }
 
       const stats = engineerStats.get(engineer);
       stats.totalAMCAssigned++;
+      if (isInactiveSite(siteActivestatus)) {
+        stats.inactiveSiteCount++;
+      }
 
       // Check if this RO has completed AMC visits
       const hasCompletedAMC = completedAMCVisits.has(roCode);
@@ -270,6 +277,10 @@ router.get("/amcCountStatus", async (req, res) => {
           0
         ),
         totalPending: result.reduce((sum, stat) => sum + stat.pendingAMC, 0),
+        totalInactiveSites: result.reduce(
+          (sum, stat) => sum + stat.inactiveSiteCount,
+          0
+        ),
       },
     });
   } catch (err) {

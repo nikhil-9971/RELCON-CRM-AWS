@@ -466,6 +466,7 @@ tbody tr.sf-total-row td{color:var(--txt)!important;font-weight:700!important;}
               <th>Total AMC Assigned</th>
               <th>Total AMC Completed</th>
               <th>Pending AMC</th>
+              <th>Inactive Site</th>
               <th>Completion %</th>
             </tr>
           </thead>
@@ -1114,25 +1115,27 @@ async function loadAMCVisitStatus() {
 
 function renderAMCVisitStatus(data, currentUser) {
   const tbody = document.getElementById("amcVisitStatusBody"); if (!tbody) return;
-  if (!data || data.length === 0) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--txt3);">No data available</td></tr>'; return; }
+  if (!data || data.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--txt3);">No data available</td></tr>'; return; }
   const role = String(currentUser.role || "").toLowerCase();
   const currentEngineer = (currentUser.engineerName || currentUser.username || "").trim();
   let filteredData = data.filter((item) => item.engineerName !== "NAVAL KISHOR PANDEY");
   if (role === "engineer" && currentEngineer) filteredData = filteredData.filter((item) => String(item.engineerName || "").toLowerCase() === currentEngineer.toLowerCase());
   filteredData.sort((a, b) => a.engineerName.localeCompare(b.engineerName));
-  let totalAssigned = 0, totalCompleted = 0, totalPending = 0;
+  let totalAssigned = 0, totalCompleted = 0, totalPending = 0, totalInactive = 0;
   tbody.innerHTML = filteredData.map((item) => {
-    totalAssigned += item.totalAMCAssigned; totalCompleted += item.totalAMCCompleted; totalPending += item.pendingAMC;
-    const completionPct = item.totalAMCAssigned > 0 ? ((item.totalAMCCompleted / item.totalAMCAssigned) * 100).toFixed(1) : "0.0";
+    totalAssigned += item.totalAMCAssigned; totalCompleted += item.totalAMCCompleted; totalPending += item.pendingAMC; totalInactive += item.inactiveSiteCount || 0;
+    const activeAssigned = Math.max(0, (item.totalAMCAssigned || 0) - (item.inactiveSiteCount || 0));
+    const completionPct = activeAssigned > 0 ? ((item.totalAMCCompleted / activeAssigned) * 100).toFixed(1) : "0.0";
     const badgeClass = completionPct >= 70 ? "badge-green" : completionPct >= 40 ? "badge-yellow" : "badge-red";
     const barClass = completionPct >= 70 ? "green" : completionPct >= 40 ? "yellow" : "red";
-    return `<tr><td>${item.engineerName}</td><td>${item.totalAMCAssigned}</td><td>${item.totalAMCCompleted}</td><td style="color:var(--sf-red);font-weight:600;">${item.pendingAMC}</td><td><div style="display:flex;align-items:center;gap:6px;"><div class="amc-bar"><div class="amc-bar-fill ${barClass}" style="width:${Math.min(100,completionPct)}%"></div></div><span class="sf-badge ${badgeClass}">${completionPct}%</span></div></td></tr>`;
+    return `<tr><td>${item.engineerName}</td><td>${item.totalAMCAssigned}</td><td>${item.totalAMCCompleted}</td><td style="color:var(--sf-red);font-weight:600;">${item.pendingAMC}</td><td style="font-weight:600;">${item.inactiveSiteCount || 0}</td><td><div style="display:flex;align-items:center;gap:6px;"><div class="amc-bar"><div class="amc-bar-fill ${barClass}" style="width:${Math.min(100,completionPct)}%"></div></div><span class="sf-badge ${badgeClass}">${completionPct}%</span></div></td></tr>`;
   }).join("");
   if (role === "admin") {
-    const totalPct = totalAssigned > 0 ? ((totalCompleted / totalAssigned) * 100).toFixed(1) : "0.0";
+    const totalActiveAssigned = Math.max(0, totalAssigned - totalInactive);
+    const totalPct = totalActiveAssigned > 0 ? ((totalCompleted / totalActiveAssigned) * 100).toFixed(1) : "0.0";
     const totalBadge = totalPct >= 70 ? "badge-green" : totalPct >= 40 ? "badge-yellow" : "badge-red";
     const totalBarClass = totalPct >= 70 ? "green" : totalPct >= 40 ? "yellow" : "red";
-    tbody.innerHTML += `<tr class="sf-total-row"><td>Total</td><td>${totalAssigned}</td><td>${totalCompleted}</td><td style="color:var(--sf-red);">${totalPending}</td><td><div style="display:flex;align-items:center;gap:6px;"><div class="amc-bar"><div class="amc-bar-fill ${totalBarClass}" style="width:${Math.min(100,totalPct)}%"></div></div><span class="sf-badge ${totalBadge}">${totalPct}%</span></div></td></tr>`;
+    tbody.innerHTML += `<tr class="sf-total-row"><td>Total</td><td>${totalAssigned}</td><td>${totalCompleted}</td><td style="color:var(--sf-red);">${totalPending}</td><td>${totalInactive}</td><td><div style="display:flex;align-items:center;gap:6px;"><div class="amc-bar"><div class="amc-bar-fill ${totalBarClass}" style="width:${Math.min(100,totalPct)}%"></div></div><span class="sf-badge ${totalBadge}">${totalPct}%</span></div></td></tr>`;
   }
 }
 
