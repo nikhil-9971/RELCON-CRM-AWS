@@ -53,6 +53,8 @@ if (
 
 axios.defaults.timeout = 30000;
 
+const DEFAULT_OUTGOING_MAIL_DISPLAY_NAME = "Nikhil Trivedi";
+
 const transporter = nodemailer.createTransport({
   host: SMTP_HOST,
   port: Number(SMTP_PORT),
@@ -171,7 +173,11 @@ function extractEmailAddress(value = "") {
 
 function buildFromHeader(displayName) {
   const fromAddress = extractEmailAddress(MAIL_FROM) || normalizeEmail(SMTP_USER) || "no-reply@relconsystems.com";
-  return `"${String(displayName || "Relcon CRM").replace(/"/g, "")}" <${fromAddress}>`;
+  return `"${String(displayName || DEFAULT_OUTGOING_MAIL_DISPLAY_NAME).replace(/"/g, "")}" <${fromAddress}>`;
+}
+
+function getDefaultOutgoingFromHeader() {
+  return buildFromHeader(DEFAULT_OUTGOING_MAIL_DISPLAY_NAME);
 }
 
 function formatDateTimeIST(value = new Date()) {
@@ -1477,7 +1483,7 @@ async function sendPendingStatusEmail({ forDateISO } = {}) {
     const subject = `Pending Status Report (15d) • ${fromDateISO} → ${endDateISO} • Total ${totalPending}`;
 
     const mailOptions = {
-      from: MAIL_FROM,
+      from: getDefaultOutgoingFromHeader(),
       to: MAIL_TO,
       subject,
       html: htmlBody,
@@ -1713,7 +1719,7 @@ async function sendUnverifiedStatusEmail() {
     const todayStr = new Date().toISOString().slice(0, 10);
 
     const mailOptions = {
-      from: MAIL_FROM,
+      from: getDefaultOutgoingFromHeader(),
       to: MAIL_TO,
       subject: `⚠️ Unverified Report | Total: ${total} | H:${summary.HPCL} R:${summary.RBML} B:${summary.BPCL}`,
       html: htmlBody,
@@ -1819,7 +1825,7 @@ async function sendHpclActionRequiredUnverifiedEmail() {
 
     const subject = `HPCL Status Verification Pending | Action Required Records | ${rows.length} Open`;
     const mailOptions = {
-      from: MAIL_FROM,
+      from: getDefaultOutgoingFromHeader(),
       to: toRecipients.join(", "),
       cc: ccRecipients.length ? ccRecipients.join(", ") : undefined,
       subject,
@@ -2020,7 +2026,7 @@ async function sendFaultyMaterialDispatchAlerts() {
 
       const subject = `Action Required: Faulty Material Dispatch | ${engineerName} | Qty ${faultyQty}`;
       const mailOptions = {
-        from: MAIL_FROM,
+        from: getDefaultOutgoingFromHeader(),
         to: engineerEmails.join(", "),
         cc: adminEmails.join(", "),
         subject,
@@ -2458,7 +2464,7 @@ async function sendWeeklyUserMailSummaryToAdmins({ baseDate = new Date() } = {})
 
     const subject = `Weekly User Mail Summary | ${startISO} to ${endISO} | Users ${uniqueUsers} | Mails ${totalMailDeliveries}`;
     const info = await transporter.sendMail({
-      from: buildFromHeader("Relcon CRM"),
+      from: getDefaultOutgoingFromHeader(),
       to: adminEmails.join(", "),
       subject,
       html,
@@ -2641,7 +2647,7 @@ async function sendDatabaseBackupArchiveToAdmins({ force = false } = {}) {
     `;
 
     const info = await transporter.sendMail({
-      from: buildFromHeader("Relcon CRM Backup"),
+      from: getDefaultOutgoingFromHeader(),
       to: adminEmails.join(", "),
       subject,
       html,
@@ -2806,7 +2812,7 @@ async function sendMonthlyAttendanceSheet({ baseDate = new Date() } = {}) {
     const subject = `Monthly Attendance Sheet | ${label} | ${fromDateISO} to ${toDateISO}`;
     const attachmentName = `attendance_sheet_${fromDateISO}_to_${toDateISO}.xlsx`;
     const info = await transporter.sendMail({
-      from: MAIL_FROM,
+      from: getDefaultOutgoingFromHeader(),
       to: adminEmails.join(", "),
       subject,
       html: htmlBody,
@@ -2985,7 +2991,7 @@ async function sendVerificationCorrectionEmail({
 
     const subject = `Correction Notice | ${category} Verified | ${roCode || "RO"} | ${roName || engineerName}`;
     const info = await transporter.sendMail({
-      from: MAIL_FROM,
+      from: getDefaultOutgoingFromHeader(),
       to: engineerEmails.join(", "),
       cc: adminEmails.join(", "),
       subject,
@@ -3136,7 +3142,7 @@ async function sendMissingMorningDataViewEntryAlert() {
     ].join("\n");
 
     const info = await transporter.sendMail({
-      from: MAIL_FROM,
+      from: getDefaultOutgoingFromHeader(),
       to: toRecipients.join(", "),
       subject,
       html,
@@ -3484,7 +3490,7 @@ async function sendDailyPlanCompletionSummaryToNikhil({ dateISO } = {}) {
     ].join("\n");
 
     const info = await transporter.sendMail({
-      from: buildFromHeader("Relcon CRM"),
+      from: getDefaultOutgoingFromHeader(),
       to: recipients.join(", "),
       subject,
       html,
@@ -3725,7 +3731,7 @@ async function sendMaterialSheetUploadReminder() {
     ].join("\n");
 
     const info = await transporter.sendMail({
-      from: MAIL_FROM,
+      from: getDefaultOutgoingFromHeader(),
       to: toRecipients.join(", "),
       cc: ccRecipients.length ? ccRecipients.join(", ") : undefined,
       subject,
@@ -3796,7 +3802,7 @@ async function runScheduledMaterialUpload() {
           <p>Please open Material Management and upload a corrected file manually.</p>
         </div>
       `;
-      await transporter.sendMail({ from: MAIL_FROM, to: MAIL_TO, subject, html });
+      await transporter.sendMail({ from: getDefaultOutgoingFromHeader(), to: MAIL_TO, subject, html });
       return { ok: false, skipped: false, reason: result.message || "upload_failed" };
     }
 
@@ -3872,7 +3878,7 @@ async function runScheduledMaterialUpload() {
       "Regards,",
       "Relcon CRM System",
     ].join("\n");
-    await transporter.sendMail({ from: MAIL_FROM, to: MAIL_TO, subject, html, text });
+    await transporter.sendMail({ from: getDefaultOutgoingFromHeader(), to: MAIL_TO, subject, html, text });
     console.log("✅ Scheduled material upload completed for", scheduleKey);
     return { ok: true, processed: true, scheduleKey, result };
   } catch (err) {
