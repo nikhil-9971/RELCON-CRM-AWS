@@ -40,6 +40,7 @@ const EXPORT_HEADERS = [
   "Invoice submission date to Account Department",
   "Invoice Number",
   "Invoice Date",
+  "VIT",
   "Invoice Submission date to region",
 ];
 
@@ -126,6 +127,7 @@ function parseSheetRows(sheet) {
       invoiceSubmissionDateToAccountDepartment: toISODateFromExcel(normalized.invoicesubmissiondatetoaccountdepartment),
       invoiceNumber: normalizeText(normalized.invoicenumber),
       invoiceDate: toISODateFromExcel(normalized.invoicedate),
+      vit: normalizeText(normalized.vit),
       invoiceSubmissionDateToRegion: toISODateFromExcel(normalized.invoicesubmissiondatetoregion),
     };
 
@@ -174,6 +176,7 @@ function normalizeInvoicePayload(body = {}, fallbackSno = 0) {
     invoiceSubmissionDateToAccountDepartment: toISODateFromExcel(body.invoiceSubmissionDateToAccountDepartment),
     invoiceNumber: normalizeText(body.invoiceNumber),
     invoiceDate: toISODateFromExcel(body.invoiceDate),
+    vit: normalizeText(body.vit),
     invoiceSubmissionDateToRegion: toISODateFromExcel(body.invoiceSubmissionDateToRegion),
   };
 }
@@ -239,6 +242,7 @@ function exportRows(records = []) {
     formatDateDDMMYYYY(item.invoiceSubmissionDateToAccountDepartment || ""),
     item.invoiceNumber || "",
     formatDateDDMMYYYY(item.invoiceDate || ""),
+    item.vit || "",
     formatDateDDMMYYYY(item.invoiceSubmissionDateToRegion || ""),
   ]));
 }
@@ -425,7 +429,7 @@ router.get("/export/excel", verifyToken, requireRole(["Admin"]), async (req, res
       { wch: 8 }, { wch: 16 }, { wch: 18 }, { wch: 14 }, { wch: 20 }, { wch: 12 },
       { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 16 }, { wch: 14 }, { wch: 16 },
       { wch: 10 }, { wch: 8 }, { wch: 14 }, { wch: 46 }, { wch: 20 }, { wch: 14 },
-      { wch: 24 }, { wch: 18 }, { wch: 16 }, { wch: 24 },
+      { wch: 24 }, { wch: 18 }, { wch: 16 }, { wch: 16 }, { wch: 24 },
     ];
     XLSX.utils.book_append_sheet(wb, ws, "Invoices");
 

@@ -23,6 +23,7 @@ const invoiceManagementSchema = new mongoose.Schema(
     invoiceSubmissionDateToAccountDepartment: { type: String, default: "" },
     invoiceNumber: { type: String, default: "" },
     invoiceDate: { type: String, default: "" },
+    vit: { type: String, default: "" },
     invoiceSubmissionDateToRegion: { type: String, default: "" },
     sourceFile: { type: String, default: "" },
     importedBy: { type: String, default: "" },

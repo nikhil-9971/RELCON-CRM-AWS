@@ -273,6 +273,7 @@
                   <th>Invoice Sub. To Account Dept.</th>
                   <th>Invoice Number</th>
                   <th>Invoice Date</th>
+                  <th>VIT</th>
                   <th>Invoice Sub. To Region</th>
                   <th>Imported By</th>
                   <th>Action</th>
@@ -310,7 +311,7 @@
 
         <div class="sf-panel">
           <div class="sf-panel-title"><i class="fa-solid fa-circle-info"></i> Expected Columns</div>
-          <div class="sf-panel-sub">SNO, Region, Callup_No, Callup_Date, Phase, No_of_Site, Available_Qty, Final_Qty, Per_qty_Rate, Amount, Tax(CGST), Final_amount, Year, Qtr, MONTH, Remark, Total_Billing_Month, Billing Type, Invoice submission date to Account Department, Invoice Number, Invoice Date, Invoice Submission date to region</div>
+          <div class="sf-panel-sub">SNO, Region, Callup_No, Callup_Date, Phase, No_of_Site, Available_Qty, Final_Qty, Per_qty_Rate, Amount, Tax(CGST), Final_amount, Year, Qtr, MONTH, Remark, Total_Billing_Month, Billing Type, Invoice submission date to Account Department, Invoice Number, Invoice Date, VIT, Invoice Submission date to region</div>
         </div>
       </div>
     </div>
@@ -344,6 +345,7 @@
           <div class="sf-modal-field"><div class="sf-modal-label">Invoice Submission Date To Account Department</div><input id="fInvoiceSubmissionDateToAccountDepartment" class="sf-modal-input" type="date"/></div>
           <div class="sf-modal-field"><div class="sf-modal-label">Invoice Number</div><input id="fInvoiceNumber" class="sf-modal-input"/></div>
           <div class="sf-modal-field"><div class="sf-modal-label">Invoice Date</div><input id="fInvoiceDate" class="sf-modal-input" type="date"/></div>
+          <div class="sf-modal-field"><div class="sf-modal-label">VIT</div><input id="fVit" class="sf-modal-input"/></div>
           <div class="sf-modal-field"><div class="sf-modal-label">Invoice Submission Date To Region</div><input id="fInvoiceSubmissionDateToRegion" class="sf-modal-input" type="date"/></div>
           <div class="sf-modal-field full"><div class="sf-modal-label">Remark</div><textarea id="fRemark" class="sf-modal-textarea auto-field" readonly></textarea></div>
         </div>
@@ -473,7 +475,7 @@
       document.getElementById("tabCount").textContent = totalRecords;
       const body = document.getElementById("tableBody");
       if (!rows.length) {
-        body.innerHTML = `<tr><td colspan="24" style="padding:28px;text-align:center;color:#706e6b;">No invoice records found for the current filters.</td></tr>`;
+        body.innerHTML = `<tr><td colspan="25" style="padding:28px;text-align:center;color:#706e6b;">No invoice records found for the current filters.</td></tr>`;
         renderPagination();
         return;
       }
@@ -500,6 +502,7 @@
           <td>${esc(formatDisplayDate(r.invoiceSubmissionDateToAccountDepartment))}</td>
           <td><span class="code-chip">${esc(r.invoiceNumber || "-")}</span></td>
           <td>${esc(formatDisplayDate(r.invoiceDate))}</td>
+          <td>${esc(r.vit || "-")}</td>
           <td>${esc(formatDisplayDate(r.invoiceSubmissionDateToRegion))}</td>
           <td>${esc(r.importedBy || "-")}</td>
           <td>
@@ -558,6 +561,7 @@
       document.getElementById("fInvoiceSubmissionDateToAccountDepartment").value = data.invoiceSubmissionDateToAccountDepartment ? String(data.invoiceSubmissionDateToAccountDepartment).slice(0, 10) : "";
       document.getElementById("fInvoiceNumber").value = data.invoiceNumber || "";
       document.getElementById("fInvoiceDate").value = data.invoiceDate ? String(data.invoiceDate).slice(0, 10) : "";
+      document.getElementById("fVit").value = data.vit || "";
       document.getElementById("fInvoiceSubmissionDateToRegion").value = data.invoiceSubmissionDateToRegion ? String(data.invoiceSubmissionDateToRegion).slice(0, 10) : "";
       if (mode === "add" || !data.remark) syncCalculatedFields();
       clearNote("formNote");
@@ -592,6 +596,7 @@
         invoiceSubmissionDateToAccountDepartment: document.getElementById("fInvoiceSubmissionDateToAccountDepartment").value,
         invoiceNumber: document.getElementById("fInvoiceNumber").value.trim(),
         invoiceDate: document.getElementById("fInvoiceDate").value,
+        vit: document.getElementById("fVit").value.trim(),
         invoiceSubmissionDateToRegion: document.getElementById("fInvoiceSubmissionDateToRegion").value,
       };
     }
