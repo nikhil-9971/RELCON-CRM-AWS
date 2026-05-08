@@ -1878,6 +1878,49 @@ function exportEarthingStatusExcel() {
 
 /* ── PDF ── */
 function cleanText(t) { return (t===null||t===undefined)?'':String(t).replace(/[\u0000-\u001F\u007F-\u009F]/g,''); }
+function cleanPdfValue(v, fallback='—') {
+  const text = cleanText(v).trim();
+  return text ? text : fallback;
+}
+function formatPdfDate(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '—';
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? raw : parsed.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+}
+function formatPdfDateTime(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '—';
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? raw : parsed.toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+}
+function asPdfList(value, fallback='—') {
+  if (Array.isArray(value)) {
+    const items = value.map(item => cleanText(item).trim()).filter(Boolean);
+    return items.length ? items.join(', ') : fallback;
+  }
+  return cleanPdfValue(value, fallback);
+}
+function addPdfSection(doc, title, rows, startY, pageWidth, accent=[22,163,74]) {
+  const validRows = (rows || []).filter(([label, value]) => cleanPdfValue(value, '').trim());
+  if (!validRows.length) return startY;
+  doc.autoTable({
+    startY,
+    head: [[title, ""]],
+    body: validRows.map(([label, value]) => [cleanPdfValue(label), cleanPdfValue(value)]),
+    styles: { fontSize: 8.5, cellPadding: 3, overflow: 'linebreak', valign: 'top' },
+    headStyles: { fillColor: accent, textColor: 255, halign: 'left', fontStyle: 'bold' },
+    bodyStyles: { textColor: [15, 23, 42] },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    columnStyles: {
+      0: { fontStyle: 'bold', cellWidth: 62, textColor: [51, 65, 85] },
+      1: { cellWidth: pageWidth - 92 },
+    },
+    margin: { left: 15, right: 15 },
+    theme: 'grid',
+  });
+  return doc.lastAutoTable.finalY + 6;
+}
 
 async function downloadPDF(planId) {
   try {
@@ -1891,22 +1934,143 @@ async function downloadPDF(planId) {
     else if (plan.phase?.toUpperCase().includes('BPCL')) { type='BPCL'; logo='./assets/BPCL.png'; }
     const loadLogo=async(url) => { const r=await fetch(url); const b=await r.blob(); return new Promise(res=>{const rd=new FileReader(); rd.onloadend=()=>res(rd.result); rd.readAsDataURL(b);}); };
     const lg=await loadLogo(logo);
-    doc.addImage(lg,'PNG',pw/2-15,10,30,20);
-    doc.setFont('helvetica','bold'); doc.setFontSize(14);
-    doc.text(`${type==='JIOBP'?'Jio BP':type} Visit Report`,pw/2,35,{align:'center'});
-    doc.line(15,43,pw-15,43);
-    const rows=[ ['Engineer',cleanText(plan.engineer)],['Zone',cleanText(plan.zone)],['Region',cleanText(plan.region)],['Phase',cleanText(plan.phase)],['RO Code',cleanText(plan.roCode)],['RO Name',cleanText(plan.roName)],['Date',cleanText(plan.date)],['AMC Qtr',cleanText(plan.amcQtr)],['Purpose',cleanText(plan.purpose)] ];
+    doc.addImage(lg,'PNG',15,10,30,20);
+    doc.setFont('helvetica','bold'); doc.setFontSize(16);
+    doc.text(`${type==='JIOBP'?'RBML / Jio BP':type} Status Report`,pw/2,20,{align:'center'});
+    doc.setFont('helvetica','normal'); doc.setFontSize(9);
+    doc.text(`Visit status summary with submitted field details`,pw/2,27,{align:'center'});
+    doc.setFontSize(8.5);
+    doc.text(`Generated on ${new Date().toLocaleString('en-IN')}`,pw-15,18,{align:'right'});
+    doc.line(15,35,pw-15,35);
+
     const statusUrl=type==='JIOBP'?`/jioBP/getJioBPStatusByPlan/${planId}`:type==='BPCL'?`/bpclStatus/getBPCLStatusByPlan/${planId}`:`/getStatusByPlan/${planId}`;
     const rSt=await fetch(baseUrl+statusUrl, {headers:{Authorization:`Bearer ${token}`}});
     if (!rSt.ok) { showToast('Failed to fetch status.','error'); return; }
     const st=await rSt.json();
-    if (type==='HPCL') { rows.push(['Probe Make',cleanText(st.probeMake)],['Product & Probe Size',cleanText(st.probeSize)],["Low Product Lock", cleanText(st.lowProductLock)],["High Water Lock", cleanText(st.highWaterSet)],["DU Serial Number Updated", cleanText(st.duSerialNumber)],["Outlet DG Status", cleanText(st.dgStatus)],["Connectivity Type", cleanText(st.connectivityType)],["SIM 1 (Provider / Number)",`${cleanText(st.sim1Provider)} / ${cleanText(st.sim1Number,)}`],["SIM 2 (Provider / Number)",`${cleanText(st.sim2Provider)} / ${cleanText(st.sim2Number,)}`],["IEMI Number", cleanText(st.iemiNumber)],['Work Completion',cleanText(st.workCompletion)],['Earthing Status',cleanText(st.earthingStatus)],['DU Offline',cleanText(st.duOffline)],['Tank Offline',cleanText(st.tankOffline)],['BOS IP',cleanText(st.bosIP)],['FCC IP',cleanText(st.fccIP)],['Location',cleanText(st.locationField)]); }
-    if (type==='JIOBP') { rows.push(['HPSM ID',cleanText(st.hpsdId)],['Diagnosis',cleanText(st.diagnosis)],['Solution',cleanText(st.solution)],['Status',cleanText(st.status)]); }
-    if (type==='BPCL') { rows.push(['JIO SIM',cleanText(st.jioSimNumber)],['Airtel SIM',cleanText(st.airtelSimNumber)]); }
-    doc.autoTable({ startY:48, head:[['Field','Value']], body:rows, styles:{fontSize:9,cellPadding:3}, columnStyles:{0:{fontStyle:'bold',cellWidth:60},1:{cellWidth:200}}, headStyles:{fillColor:[22,163,74],textColor:255}, theme:'grid' });
+
+    let y = 41;
+    y = addPdfSection(doc, 'Visit Overview', [
+      ['Engineer', plan.engineer],
+      ['Employee ID', plan.empId],
+      ['Zone', plan.zone],
+      ['Region', plan.region],
+      ['Customer / Phase', plan.phase],
+      ['RO Code', plan.roCode],
+      ['RO Name', plan.roName],
+      ['Visit Date', formatPdfDate(plan.date)],
+      ['Arrival Time', plan.arrivalTime],
+      ['Leave Time', plan.leaveTime],
+      ['AMC Quarter', plan.amcQtr],
+      ['Incident ID', plan.incidentId],
+      ['Purpose', plan.purpose],
+      ['Issue Type', plan.issueType],
+      ['Completion Status', plan.completionStatus],
+      ['Support Taken From', plan.supportTakenFrom],
+      ['Final Status', plan.incidentStatus],
+      ['What Done / Unresolved Reason', plan.whatDone],
+      ['Reason - Reach at site at 2.30 Hours', plan.reasonAfter12PM],
+      ['Reason - Engg. At site after 6 PM', plan.reasonAfter6PM],
+    ], y, pw, [30,64,175]);
+
+    y = addPdfSection(doc, 'Verification & Audit', [
+      ['Verified', st.isVerified ? 'Yes' : 'No'],
+      ['Verified By', st.verifiedBy],
+      ['Verified At', formatPdfDateTime(st.verifiedAt)],
+      ['Created By', st.createdBy],
+      ['Created At', formatPdfDateTime(st.createdAt)],
+      ['Updated At', formatPdfDateTime(st.updatedAt)],
+      ['Admin Remark', st.verificationEditLog?.adminRemark],
+    ], y, pw, [71,85,105]);
+
+    if (type==='HPCL') {
+      y = addPdfSection(doc, 'Device & Configuration', [
+        ['Probe Make', st.probeMake],
+        ['Product & Probe Size', st.probeSize],
+        ['Low Product Lock', st.lowProductLock],
+        ['High Water Lock', st.highWaterSet],
+        ['DU Serial Number Updated', st.duSerialNumber],
+        ['Outlet DG Status', st.dgStatus],
+        ['Connectivity Type', st.connectivityType],
+        ['SIM 1 (Provider / Number)', `${cleanPdfValue(st.sim1Provider,'')} / ${cleanPdfValue(st.sim1Number,'')}`.replace(/^ \/ | \/ $/g,'').trim()],
+        ['SIM 2 (Provider / Number)', `${cleanPdfValue(st.sim2Provider,'')} / ${cleanPdfValue(st.sim2Number,'')}`.replace(/^ \/ | \/ $/g,'').trim()],
+        ['IEMI Number', st.iemiNumber],
+        ['BOS Version', st.bosVersion],
+        ['FCC Version', st.fccVersion],
+        ['Wireless Slave', st.wirelessSlave],
+        ['SFTP Config', st.sftpConfig],
+        ['Admin Password', st.adminPassword],
+        ['BOS IP', st.bosIP],
+        ['FCC IP', st.fccIP],
+        ['Location', st.locationField],
+      ], y, pw, [22,163,74]);
+
+      y = addPdfSection(doc, 'Work Completion & Material', [
+        ['Work Completion', st.workCompletion],
+        ['OMS 03', st.oms03],
+        ['Spare Used', st.spareUsed],
+        ['Active Spare', st.activeSpare],
+        ['Faulty Spare', st.faultySpare],
+        ['Spare Requirement', st.spareRequirment],
+        ['Spare Requirement Name', st.spareRequirmentname],
+      ], y, pw, [217,119,6]);
+
+      y = addPdfSection(doc, 'Earthing / DU / Tank Status', [
+        ['Earthing Status', st.earthingStatus],
+        ['Voltage Reading', st.voltageReading],
+        ['DU Offline', st.duOffline],
+        ['DU Dependency', st.duDependency],
+        ['DU Remark', st.duRemark],
+        ['Tank Offline', st.tankOffline],
+        ['Tank Dependency', st.tankDependency],
+        ['Tank Remark', st.tankRemark],
+      ], y, pw, [220,38,38]);
+    }
+
+    if (type==='JIOBP') {
+      y = addPdfSection(doc, 'RBML / Jio BP Status Details', [
+        ['HPSD ID', st.hpsdId],
+        ['Diagnosis', st.diagnosis],
+        ['Solution', st.solution],
+        ['Active Material Used', st.activeMaterialUsed],
+        ['Used Material Details', st.usedMaterialDetails],
+        ['Faulty Material Details', st.faultyMaterialDetails],
+        ['Spare Required', st.spareRequired],
+        ['Observation Hours', st.observationHours],
+        ['Material Requirement', st.materialRequirement],
+        ['Relcon Support', st.relconsupport],
+        ['Inform to RBML Person', st.rbmlperson],
+        ['OMS 03', st.oms03],
+        ['Current Status', st.status],
+      ], y, pw, [217,119,6]);
+    }
+
+    if (type==='BPCL') {
+      y = addPdfSection(doc, 'BPCL Device Summary', [
+        ['Class 1 Device Count', st.class1DeviceCount],
+        ['Class 1 Devices', asPdfList(st.class1Devices)],
+        ['Class 1 Without SIM Count', st.class1WithoutSimCount],
+        ['Class 1 Without SIM Devices', asPdfList(st.class1WithoutSimDevices)],
+        ['Class 2 Device Count', st.class2DeviceCount],
+        ['Class 2 Devices', asPdfList(st.class2Devices)],
+        ['Relcon ATG Provided', st.relconAtgProvided],
+        ['Relcon ATG Count', st.relconAtgCount],
+        ['Relcon ATG Details', asPdfList(st.relconAtgDetails)],
+        ['JIO SIM Number', st.jioSimNumber],
+        ['Airtel SIM Number', st.airtelSimNumber],
+      ], y, pw, [14,116,144]);
+    }
+
     const now=new Date(), name=loggedInUser?.engineerName||'Unknown';
     const pc=doc.internal.getNumberOfPages();
-    for(let i=1;i<=pc;i++) { doc.setPage(i); doc.setFontSize(8); doc.text(`Page ${i} of ${pc}`,pw-15,200,{align:'right'}); doc.text(`Generated by ${name} on ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`,15,200); }
+    const pageHeight = doc.internal.pageSize.getHeight();
+    for(let i=1;i<=pc;i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(100,116,139);
+      doc.line(15,pageHeight-12,pw-15,pageHeight-12);
+      doc.text(`Generated by ${name} on ${now.toLocaleDateString('en-IN')} ${now.toLocaleTimeString('en-IN')}`,15,pageHeight-6);
+      doc.text(`Page ${i} of ${pc}`,pw-15,pageHeight-6,{align:'right'});
+    }
     doc.save(`${type}_Report_${plan.roCode}_${plan.roName}_${plan.date}.pdf`);
   } catch(err) { console.error(err); showToast('Error generating PDF.', 'error'); }
 }
