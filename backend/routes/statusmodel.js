@@ -28,10 +28,12 @@ function generateEmailContent({
   tankRemark,
   tankDependency,
 }) {
-  let observations = [];
+  const observationLines = [];
 
   if (earthingStatus === "NOT OK") {
-    observations.push(`⚡Earthing is NOT OK (${voltageReading || "N/A"})`);
+    observationLines.push(
+      `1. Earthing status is NOT OK${voltageReading ? ` (Voltage Reading: ${voltageReading})` : ""}.`,
+    );
   }
 
   if (
@@ -39,11 +41,9 @@ function generateEmailContent({
     duOffline !== "ALL OK" &&
     (duDependency === "HPCL" || duDependency === "BOTH")
   ) {
-    let duLine = `⛽ DU Offline Count: ${duOffline}`;
-    if (duRemark) {
-      duLine += `\n   🔹 Remark: ${duRemark}`;
-    }
-    observations.push(duLine);
+    observationLines.push(
+      `2. DU offline count observed: ${duOffline}${duRemark ? ` | Remark: ${duRemark}` : ""}.`,
+    );
   }
 
   if (
@@ -51,26 +51,58 @@ function generateEmailContent({
     tankOffline !== "ALL OK" &&
     (tankDependency === "HPCL" || tankDependency === "BOTH")
   ) {
-    let tankLine = `🛢️ Tank Offline Count: ${tankOffline}`;
-    if (tankRemark) {
-      tankLine += `\n   🔹 Remark: ${tankRemark}`;
-    }
-    observations.push(tankLine);
+    observationLines.push(
+      `3. Tank offline count observed: ${tankOffline}${tankRemark ? ` | Remark: ${tankRemark}` : ""}.`,
+    );
   }
 
-  const observationText = observations.length
-    ? observations.join("\n")
-    : "➡️ No major issues reported.";
-
-  let email = `Dear Sir/Ma'am,\n\nDuring the recent visit on dated ${date} at ${roName} (RO Code: ${roCode}), the engineer observed:\n\n${observationText}`;
-
+  const actionItems = [];
   if (earthingStatus === "NOT OK") {
-    email += `\n\nNote: We request to resolve earthing issue at most priority basis. If any automation device failure due to earthing issue then it will be replaced on chargeable basis. `;
+    actionItems.push(
+      "- Earthing issue may impact automation equipment performance. Kindly arrange rectification on priority.",
+    );
+    actionItems.push(
+      "- Any automation device failure caused by earthing issues may be treated as chargeable replacement.",
+    );
+  }
+  if (
+    (duOffline &&
+      duOffline !== "ALL OK" &&
+      (duDependency === "HPCL" || duDependency === "BOTH")) ||
+    (tankOffline &&
+      tankOffline !== "ALL OK" &&
+      (tankDependency === "HPCL" || tankDependency === "BOTH"))
+  ) {
+    actionItems.push(
+      "- Kindly resolve the listed HPCL dependency points and restore normal operation at the earliest.",
+    );
   }
 
-  email += `\n\nPlease resolve HPCL dependencies at the earliest and confirm on mail after resolution.`;
+  const observationText = observationLines.length
+    ? observationLines.join("\n")
+    : "No major HPCL dependency points were observed during the visit.";
 
-  return email;
+  const actionText = actionItems.length
+    ? actionItems.join("\n")
+    : "- No immediate corrective action is pending from HPCL side as per current observation.";
+
+  return [
+    "Dear Sir/Madam,",
+    "",
+    `This is with reference to the site visit carried out on ${date || "N/A"} at ${roName || "Site"} (RO Code: ${roCode || "N/A"}).`,
+    "During the visit, the following observations were recorded:",
+    "",
+    observationText,
+    "",
+    "Recommended action from HPCL side:",
+    actionText,
+    "",
+    "We request you to please take necessary action at the earliest and confirm closure by return email.",
+    "",
+    "Regards,",
+    "Nikhil Trivedi",
+    "RELCON Systems",
+  ].join("\n");
 }
 
 // Save Status Route
