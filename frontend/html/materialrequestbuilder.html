@@ -260,6 +260,7 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
         <option>Barauni Territory</option>
         <option>Patna Territory</option>
         <option>Muzafferpur Territory</option>
+        <option>Lucknow Territory</option>
       </select>
     </div>
     <div class="sf-filter-group" id="statusFilterWrap">
@@ -355,6 +356,7 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
             <option>Barauni Territory</option>
             <option>Patna Territory</option>
             <option>Muzafferpur Territory</option>
+            <option>Lucknow Territory</option>
           </select>
         </div>
         <div class="form-field">
@@ -373,6 +375,13 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
           <select id="fRequestMode" class="sf-select" onchange="handleRequestModeChange(this.value)">
             <option value="RO Site Request">RO Site Request</option>
             <option value="Engineer Inventory">Engineer Inventory</option>
+            <option value="Client Requirement">Client Requirement</option>
+          </select>
+        </div>
+        <div class="form-field hidden" id="clientRequirementWrap">
+          <label>Client Requirement</label>
+          <select id="fClientRequirement" class="sf-select" onchange="handleClientRequirementSelection(this.value)">
+            <option value="">Select Client</option>
           </select>
         </div>
         <div class="form-field">
@@ -536,6 +545,16 @@ let requestContextCache = { roCode:"", roName:"", phase:"", materialUsedIn:"" };
 
 const REQUEST_MODE_SITE = "RO Site Request";
 const REQUEST_MODE_INVENTORY = "Engineer Inventory";
+const REQUEST_MODE_CLIENT = "Client Requirement";
+const CLIENT_REQUIREMENTS = [
+  "HPCL Patna RO",
+  "HPCL Begusarai RO",
+  "HPCL Lucknow RO",
+  "Patna Territory",
+  "Barauni Territory",
+  "Muzafferpur Territory",
+  "Lucknow Territory",
+];
 const INVENTORY_DEFAULTS = {
   roCode: "NA",
   roName: "NA",
@@ -555,6 +574,7 @@ function showToast(message,type="success"){const w=document.getElementById("toas
 function fetchJson(url, options={}){return fetch(url,{...options,headers:{...(options.headers||{}),Authorization:`Bearer ${token}`}}).then(async res=>{const data=await res.json().catch(()=>[]); if(!res.ok) throw new Error(data.error||"Request failed"); return data})}
 function materialTypeFor(name){return masterRows.find(item=>String(item.materialName||"").trim().toLowerCase()===String(name||"").trim().toLowerCase())?.materialType || DEFAULT_MASTER.find(item=>String(item.name||"").trim().toLowerCase()===String(name||"").trim().toLowerCase())?.type || ""}
 function statusClass(value){const v=String(value||"").toLowerCase(); if(v.includes("deliver")) return "badge-done"; if(v.includes("dispatch")||v.includes("process")||v.includes("transit")) return "badge-process"; return "badge-pending"}
+function regionForClientRequirement(value=""){const v=String(value||"").toLowerCase(); if(v.includes("begusarai")) return "Begusarai"; if(v.includes("lucknow")) return "Lucknow"; if(v.includes("barauni")) return "Barauni Territory"; if(v.includes("muzafferpur")) return "Muzafferpur Territory"; if(v.includes("patna")) return v.includes("territory") ? "Patna Territory" : "Patna"; return ""}
 function normalizeMasterItem(item={}){return { _id:item._id||"", materialName:String(item.materialName||item.name||"").trim(), materialType:String(item.materialType||item.type||"").trim(), updatedBy:item.updatedBy||"", createdAt:item.createdAt||"" }}
 function normalizeLineItem(item={}){return { materialName:String(item.materialName||"").trim(), materialType:String(item.materialType||materialTypeFor(item.materialName)||"").trim(), requestType:String(item.requestType||"Spare").trim(), quantity:Math.max(1,Number(item.quantity||1)||1), materialStatus:String(item.materialStatus||"Pending").trim(), challanNumber:String(item.challanNumber||"").trim(), challanCreationDate:String(item.challanCreationDate||"").trim(), dispatchCourier:String(item.dispatchCourier||"").trim(), docketNumber:String(item.docketNumber||"").trim(), dispatchDate:String(item.dispatchDate||"").trim(), deliveryStatus:String(item.deliveryStatus||"").trim(), deliveryDate:String(item.deliveryDate||"").trim(), poNumber:String(item.poNumber||"").trim(), poDate:String(item.poDate||"").trim(), notes:String(item.notes||"").trim() }}
 function summarizeLineItems(items=[]){const valid=items.filter(item=>item.materialName); return { count:valid.length, qty:valid.reduce((sum,item)=>sum+(Number(item.quantity)||0),0), summary:valid.slice(0,2).map(item=>`${item.materialName}${item.quantity>1?` x${item.quantity}`:""}`).join(", ") + (valid.length>2?` +${valid.length-2} more`:""), primaryStatus:valid.some(item=>String(item.deliveryStatus||"").toLowerCase().includes("deliver"))?"Delivered":(valid[0]?.materialStatus||"Pending"), primaryType:valid[0]?.requestType||"", deliveryDate:valid.map(item=>item.deliveryDate).filter(Boolean).sort().slice(-1)[0]||"" }}
@@ -565,17 +585,28 @@ function summarizeLineField(items=[], key="", formatter=null){
   if(displayValues.length === 1) return displayValues[0];
   return `${displayValues[0]} +${displayValues.length-1} more`;
 }
-function normalizeRequestRow(row={}){const lineItems=(Array.isArray(row.lineItems)?row.lineItems:[]).map(normalizeLineItem); const meta=summarizeLineItems(lineItems); return { ...row, lineItems, materialSummary:row.materialSummary||meta.summary, quantity:Number(row.quantity||meta.qty||0)||0, materialDispatchStatus:row.materialDispatchStatus||meta.primaryStatus, materialRequirementType:row.materialRequirementType||meta.primaryType, materialReceivedDate:row.materialReceivedDate||meta.deliveryDate, searchBlob:[row.engineer,row.engineerCode,row.region,row.roCode,row.roName,row.phase,row.materialSummary,row.materialRequestTo,row.createdByName,row.updatedByName,...lineItems.map(item=>`${item.materialName} ${item.materialType} ${item.docketNumber} ${item.poNumber}`)].join(" ").toLowerCase() }}
+function normalizeRequestRow(row={}){const lineItems=(Array.isArray(row.lineItems)?row.lineItems:[]).map(normalizeLineItem); const meta=summarizeLineItems(lineItems); const clientRequirement=String(row.clientRequirement||"").trim(); return { ...row, clientRequirement, lineItems, materialSummary:row.materialSummary||meta.summary, quantity:Number(row.quantity||meta.qty||0)||0, materialDispatchStatus:row.materialDispatchStatus||meta.primaryStatus, materialRequirementType:row.materialRequirementType||meta.primaryType, materialReceivedDate:row.materialReceivedDate||meta.deliveryDate, searchBlob:[row.requestMode,clientRequirement,row.engineer,row.engineerCode,row.region,row.roCode,row.roName,row.phase,row.materialSummary,row.materialRequestTo,row.createdByName,row.updatedByName,...lineItems.map(item=>`${item.materialName} ${item.materialType} ${item.docketNumber} ${item.poNumber}`)].join(" ").toLowerCase() }}
 function seedMasterList(){return fetchJson(`${API}/materialRequestMasterItems/seed-defaults`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({items:DEFAULT_MASTER})})}
 function loadMasterDatalist(){document.getElementById("masterNameList").innerHTML = masterRows.map(item=>`<option value="${esc(item.materialName)}">${esc(item.materialType)}</option>`).join("")}
+function loadClientRequirementOptions(){document.getElementById("fClientRequirement").innerHTML='<option value="">Select Client</option>'+CLIENT_REQUIREMENTS.map(name=>`<option value="${esc(name)}">${esc(name)}</option>`).join("")}
 function latestPlanByRoCode(roCode){const needle=String(roCode||"").trim().toLowerCase(); const matches=dailyPlanData.filter(plan=>String(plan.roCode||"").trim().toLowerCase()===needle); if(!matches.length) return null; return matches.sort((a,b)=>String(b.date||"").localeCompare(String(a.date||"")))[0]}
 function engineerOptions(){return engineerUsers.filter(user=>String(user.role||"").toLowerCase()==="engineer").sort((a,b)=>String(a.engineerName||a.username||"").localeCompare(String(b.engineerName||b.username||"")))}
 function loadEngineerFilters(){const options='<option value="">All Engineers</option>'+engineerOptions().map(user=>{const name=user.engineerName||user.username||""; return `<option value="${esc(name)}">${esc(name)}</option>`}).join(""); document.getElementById("filterEngineer").innerHTML=options; document.getElementById("fEngineer").innerHTML='<option value="">Select Engineer</option>'+engineerOptions().map(user=>{const name=user.engineerName||user.username||""; return `<option value="${esc(name)}">${esc(name)}</option>`}).join("")}
 function loadMasterTypeFilter(){const types=[...new Set(masterRows.map(item=>item.materialType).filter(Boolean))].sort(); document.getElementById("filterMasterType").innerHTML='<option value="">All Types</option>'+types.map(type=>`<option>${esc(type)}</option>`).join("")}
 function handleEngineerSelection(name){const needle=String(name||"").trim().toLowerCase(); const user=engineerOptions().find(item=>String(item.engineerName||item.username||"").trim().toLowerCase()===needle); document.getElementById("fEngineerCode").value=user?.empId||""; document.getElementById("fEngineerContact").value=user?.contactNumber||""; document.getElementById("fEngineerEmail").value=user?.email||""}
+function handleClientRequirementSelection(name){
+  document.getElementById("fEngineer").value = "";
+  document.getElementById("fEngineerCode").value = "NA";
+  document.getElementById("fEngineerContact").value = "";
+  document.getElementById("fEngineerEmail").value = "";
+  document.getElementById("fCustomer").value = "HPCL";
+  document.getElementById("fRegion").value = regionForClientRequirement(name);
+  document.getElementById("fMaterialUsedIn").value = name || REQUEST_MODE_CLIENT;
+}
 function requestModeFromRow(row={}){
   const mode = String(row.requestMode || "").trim();
   if(mode) return mode;
+  if(String(row.clientRequirement || "").trim()) return REQUEST_MODE_CLIENT;
   const materialUsedIn = String(row.materialUsedIn || "").trim().toLowerCase();
   const roCode = String(row.roCode || "").trim().toLowerCase();
   const roName = String(row.roName || "").trim().toLowerCase();
@@ -585,6 +616,7 @@ function requestModeFromRow(row={}){
     : REQUEST_MODE_SITE;
 }
 function isEngineerInventoryMode(){return document.getElementById("fRequestMode")?.value === REQUEST_MODE_INVENTORY}
+function isClientRequirementMode(){return document.getElementById("fRequestMode")?.value === REQUEST_MODE_CLIENT}
 function setFieldReadOnly(id, locked){
   const el = document.getElementById(id);
   if(!el) return;
@@ -595,16 +627,23 @@ function updateRequestModeNote(mode){
   const note = document.getElementById("requestModeNote");
   if(!note) return;
   const inventory = mode === REQUEST_MODE_INVENTORY;
-  note.classList.toggle("inventory", inventory);
+  const client = mode === REQUEST_MODE_CLIENT;
+  note.classList.toggle("inventory", inventory || client);
   note.innerHTML = inventory
     ? `<i class="fa-solid fa-box-open"></i><div><strong>Engineer inventory request active</strong><span>RO Code, RO Name aur Phase auto-lock hokar <b>NA</b> rahenge, aur Material Used In me <b>Engineer Inventory</b> save hoga.</span></div>`
+    : client
+      ? `<i class="fa-solid fa-building-user"></i><div><strong>Client requirement request active</strong><span>Client list se HPCL RO/Territory select karo. Engineer aur RO fields auto-lock rahenge, requirement selected client ke naam par save hogi.</span></div>`
     : `<i class="fa-solid fa-circle-info"></i><div><strong>RO site request mode</strong><span>RO Code ke basis par latest plan se RO Name, Phase aur site context auto-pick ho sakta hai.</span></div>`;
 }
 function applyRequestMode(mode,{restoreCached=true}={}){
-  const normalizedMode = mode === REQUEST_MODE_INVENTORY ? REQUEST_MODE_INVENTORY : REQUEST_MODE_SITE;
+  const normalizedMode = mode === REQUEST_MODE_INVENTORY ? REQUEST_MODE_INVENTORY : mode === REQUEST_MODE_CLIENT ? REQUEST_MODE_CLIENT : REQUEST_MODE_SITE;
   document.getElementById("fRequestMode").value = normalizedMode;
-  const locked = normalizedMode === REQUEST_MODE_INVENTORY;
+  const locked = normalizedMode === REQUEST_MODE_INVENTORY || normalizedMode === REQUEST_MODE_CLIENT;
+  const clientMode = normalizedMode === REQUEST_MODE_CLIENT;
+  document.getElementById("clientRequirementWrap").classList.toggle("hidden", !clientMode);
   ["fRoCode","fRoName","fPhase","fMaterialUsedIn"].forEach(id=>setFieldReadOnly(id, locked));
+  ["fEngineerCode","fEngineerContact","fEngineerEmail"].forEach(id=>setFieldReadOnly(id, clientMode));
+  document.getElementById("fEngineer").disabled = clientMode;
   if(locked){
     const currentRoCode = document.getElementById("fRoCode").value.trim();
     const currentRoName = document.getElementById("fRoName").value.trim();
@@ -619,12 +658,14 @@ function applyRequestMode(mode,{restoreCached=true}={}){
     document.getElementById("fRoCode").value = INVENTORY_DEFAULTS.roCode;
     document.getElementById("fRoName").value = INVENTORY_DEFAULTS.roName;
     document.getElementById("fPhase").value = INVENTORY_DEFAULTS.phase;
-    document.getElementById("fMaterialUsedIn").value = INVENTORY_DEFAULTS.materialUsedIn;
+    document.getElementById("fMaterialUsedIn").value = clientMode ? (document.getElementById("fClientRequirement").value || REQUEST_MODE_CLIENT) : INVENTORY_DEFAULTS.materialUsedIn;
+    if(clientMode) handleClientRequirementSelection(document.getElementById("fClientRequirement").value);
   } else if(restoreCached){
     if(document.getElementById("fRoCode").value.trim() === INVENTORY_DEFAULTS.roCode) document.getElementById("fRoCode").value = requestContextCache.roCode || "";
     if(document.getElementById("fRoName").value.trim() === INVENTORY_DEFAULTS.roName) document.getElementById("fRoName").value = requestContextCache.roName || "";
     if(document.getElementById("fPhase").value.trim() === INVENTORY_DEFAULTS.phase) document.getElementById("fPhase").value = requestContextCache.phase || "";
     if(document.getElementById("fMaterialUsedIn").value.trim() === INVENTORY_DEFAULTS.materialUsedIn) document.getElementById("fMaterialUsedIn").value = requestContextCache.materialUsedIn || "";
+    document.getElementById("fEngineer").disabled = false;
   }
   updateRequestModeNote(normalizedMode);
 }
@@ -662,6 +703,7 @@ async function loadData(){
     loadEngineerFilters();
     loadMasterTypeFilter();
     loadMasterDatalist();
+    loadClientRequirementOptions();
     updateStats();
     switchTab(activeTab, document.getElementById(activeTab === "requests" ? "tabRequests" : "tabMaster"), true);
     document.getElementById("lastSyncTime").textContent = new Date().toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"});
@@ -743,7 +785,7 @@ function renderTable(){
   document.getElementById("countChip").textContent = `${total} record${total===1?"":"s"}`;
   if(activeTab === "requests"){
     head.innerHTML = `<tr>
-      <th>#</th><th>Engineer</th><th>Code</th><th>Region</th><th>RO Code</th><th>RO Name</th><th>Phase</th><th>Material Request Date</th><th>Request Summary</th><th>Qty</th><th>Status</th><th>PO Number</th><th>PO Date</th><th>Request To</th><th>Dispatch Follow-up Date</th><th>Updated By</th><th>Actions</th>
+      <th>#</th><th>Requirement For</th><th>Code</th><th>Region</th><th>RO Code</th><th>RO Name</th><th>Phase</th><th>Material Request Date</th><th>Request Summary</th><th>Qty</th><th>Status</th><th>PO Number</th><th>PO Date</th><th>Request To</th><th>Dispatch Follow-up Date</th><th>Updated By</th><th>Actions</th>
     </tr>`;
   } else {
     head.innerHTML = `<tr>
@@ -761,7 +803,7 @@ function renderTable(){
     body.innerHTML = pageRows.map((row,index)=>`
       <tr>
         <td>${start + index + 1}</td>
-        <td><div style="font-weight:700;">${esc(row.engineer||"—")}</div><div style="font-size:10px;color:var(--txt4);">${esc(row.engineerEmailId||"—")}</div></td>
+        <td><div style="font-weight:700;">${esc(row.clientRequirement||row.engineer||"—")}</div><div style="font-size:10px;color:var(--txt4);">${esc(row.clientRequirement ? "Client Requirement" : (row.engineerEmailId||"—"))}</div></td>
         <td><span class="sf-badge badge-type">${esc(row.engineerCode||"—")}</span></td>
         <td>${esc(row.region||"—")}</td>
         <td style="font-weight:700;color:var(--sf-blue);">${esc(row.roCode||"—")}</td>
@@ -834,6 +876,8 @@ function openRequestModal(index=null){
     document.getElementById("requestEditId").value = "";
     ["fEngineerCode","fEngineerContact","fEngineerEmail","fRoCode","fRoName","fPhase","fMaterialUsedIn","fRequestTo","fArrangeFrom","fRemarks","fDestinationAddress"].forEach(id=>document.getElementById(id).value="");
     document.getElementById("fEngineer").value = "";
+    document.getElementById("fEngineer").disabled = false;
+    document.getElementById("fClientRequirement").value = "";
     document.getElementById("fRegion").value = "";
     document.getElementById("fCustomer").value = "";
     document.getElementById("fRequestMode").value = REQUEST_MODE_SITE;
@@ -847,6 +891,7 @@ function openRequestModal(index=null){
     document.getElementById("requestEditId").value = row._id || "";
     document.getElementById("fEngineer").value = row.engineer || "";
     handleEngineerSelection(row.engineer || "");
+    document.getElementById("fClientRequirement").value = row.clientRequirement || "";
     document.getElementById("fRegion").value = row.region || "";
     document.getElementById("fCustomer").value = row.customer || "";
     document.getElementById("fRequestMode").value = requestModeFromRow(row);
@@ -965,19 +1010,22 @@ async function saveRequest(){
   const meta = summarizeLineItems(lineItems);
   const requestMode = document.getElementById("fRequestMode").value || REQUEST_MODE_SITE;
   const inventoryMode = requestMode === REQUEST_MODE_INVENTORY;
+  const clientMode = requestMode === REQUEST_MODE_CLIENT;
+  const clientRequirement = document.getElementById("fClientRequirement").value.trim();
   const payload = {
     requestMode,
-    engineer:document.getElementById("fEngineer").value.trim(),
-    engineerCode:document.getElementById("fEngineerCode").value.trim(),
-    engineerContactNumber:document.getElementById("fEngineerContact").value.trim(),
-    engineerEmailId:document.getElementById("fEngineerEmail").value.trim(),
+    clientRequirement,
+    engineer:clientMode ? clientRequirement : document.getElementById("fEngineer").value.trim(),
+    engineerCode:clientMode ? "NA" : document.getElementById("fEngineerCode").value.trim(),
+    engineerContactNumber:clientMode ? "" : document.getElementById("fEngineerContact").value.trim(),
+    engineerEmailId:clientMode ? "" : document.getElementById("fEngineerEmail").value.trim(),
     region:document.getElementById("fRegion").value,
-    customer:document.getElementById("fCustomer").value,
-    roCode:inventoryMode ? INVENTORY_DEFAULTS.roCode : document.getElementById("fRoCode").value.trim(),
-    roName:inventoryMode ? INVENTORY_DEFAULTS.roName : document.getElementById("fRoName").value.trim(),
-    phase:inventoryMode ? INVENTORY_DEFAULTS.phase : document.getElementById("fPhase").value.trim(),
+    customer:document.getElementById("fCustomer").value || (clientMode ? "HPCL" : ""),
+    roCode:inventoryMode || clientMode ? INVENTORY_DEFAULTS.roCode : document.getElementById("fRoCode").value.trim(),
+    roName:inventoryMode || clientMode ? INVENTORY_DEFAULTS.roName : document.getElementById("fRoName").value.trim(),
+    phase:inventoryMode || clientMode ? INVENTORY_DEFAULTS.phase : document.getElementById("fPhase").value.trim(),
     date:document.getElementById("fDate").value.trim(),
-    materialUsedIn:inventoryMode ? INVENTORY_DEFAULTS.materialUsedIn : document.getElementById("fMaterialUsedIn").value.trim(),
+    materialUsedIn:inventoryMode ? INVENTORY_DEFAULTS.materialUsedIn : clientMode ? clientRequirement : document.getElementById("fMaterialUsedIn").value.trim(),
     materialRequestTo:document.getElementById("fRequestTo").value.trim(),
     materialRequestFromEmail:document.getElementById("fRequestFromEmail").value.trim(),
     materialRequestDate:document.getElementById("fRequestDate").value.trim(),
@@ -993,7 +1041,7 @@ async function saveRequest(){
     lineItems,
   };
   if(!payload.engineer || !payload.region || !payload.roCode || !payload.date || !lineItems.length){
-    return showToast(`Engineer, region, ${inventoryMode ? "request mode" : "RO code"}, visit date and at least one material line are required`,"error");
+    return showToast(`${clientMode ? "Client" : "Engineer"}, region, ${inventoryMode || clientMode ? "request mode" : "RO code"}, visit date and at least one material line are required`,"error");
   }
   try{
     const id = document.getElementById("requestEditId").value;
@@ -1042,7 +1090,8 @@ function openDetail(index){
   if(!row) return;
   document.getElementById("detailBody").innerHTML = `
     <div class="detail-grid">
-      <div class="detail-field"><div class="detail-label">Engineer</div><div class="detail-value">${esc(row.engineer||"—")}</div></div>
+      <div class="detail-field"><div class="detail-label">Requirement For</div><div class="detail-value">${esc(row.clientRequirement||row.engineer||"—")}</div></div>
+      <div class="detail-field"><div class="detail-label">Request Mode</div><div class="detail-value">${esc(row.requestMode||"—")}</div></div>
       <div class="detail-field"><div class="detail-label">Engineer Code</div><div class="detail-value">${esc(row.engineerCode||"—")}</div></div>
       <div class="detail-field"><div class="detail-label">Contact</div><div class="detail-value">${esc(row.engineerContactNumber||"—")}</div></div>
       <div class="detail-field"><div class="detail-label">Email</div><div class="detail-value">${esc(row.engineerEmailId||"—")}</div></div>
@@ -1111,7 +1160,7 @@ async function confirmDelete(){
 
 function exportExcel(){
   const rows = filteredRows.flatMap(row => (row.lineItems||[]).map(item => ({
-    Engineer:row.engineer, EngineerCode:row.engineerCode, Contact:row.engineerContactNumber, Email:row.engineerEmailId,
+    RequestMode:row.requestMode, ClientRequirement:row.clientRequirement, Engineer:row.engineer, EngineerCode:row.engineerCode, Contact:row.engineerContactNumber, Email:row.engineerEmailId,
     Region:row.region, Customer:row.customer, ROCode:row.roCode, ROName:row.roName, Phase:row.phase, VisitDate:row.date,
     RequestTo:row.materialRequestTo, HQOEmail:row.materialRequestFromEmail, RequestDate:row.materialRequestDate, ArrangeFrom:row.materialArrangeFrom,
     DestinationAddress:row.destinationAddress,

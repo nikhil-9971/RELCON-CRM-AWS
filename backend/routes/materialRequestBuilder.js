@@ -16,6 +16,7 @@ function isAdmin(req) {
 function normalizeRequestMode(body = {}) {
   const mode = String(body.requestMode || "").trim();
   if (mode) return mode;
+  if (String(body.clientRequirement || "").trim()) return "Client Requirement";
   return String(body.materialUsedIn || "").trim().toLowerCase() === "engineer inventory"
     ? "Engineer Inventory"
     : "RO Site Request";
@@ -51,20 +52,23 @@ function normalizePayload(body = {}, req = {}) {
 
   const requestMode = normalizeRequestMode(body);
   const inventoryMode = requestMode === "Engineer Inventory";
+  const clientMode = requestMode === "Client Requirement";
+  const clientRequirement = String(body.clientRequirement || "").trim();
 
   return {
     requestMode,
-    engineer: String(body.engineer || "").trim(),
-    engineerCode: String(body.engineerCode || "").trim(),
-    engineerContactNumber: String(body.engineerContactNumber || "").trim(),
-    engineerEmailId: String(body.engineerEmailId || "").trim(),
+    clientRequirement,
+    engineer: clientMode ? clientRequirement : String(body.engineer || "").trim(),
+    engineerCode: clientMode ? "NA" : String(body.engineerCode || "").trim(),
+    engineerContactNumber: clientMode ? "" : String(body.engineerContactNumber || "").trim(),
+    engineerEmailId: clientMode ? "" : String(body.engineerEmailId || "").trim(),
     region: String(body.region || "").trim(),
-    customer: String(body.customer || "").trim(),
-    roCode: inventoryMode ? "NA" : String(body.roCode || "").trim(),
-    roName: inventoryMode ? "NA" : String(body.roName || "").trim(),
-    phase: inventoryMode ? "NA" : String(body.phase || "").trim(),
+    customer: String(body.customer || "").trim() || (clientMode ? "HPCL" : ""),
+    roCode: inventoryMode || clientMode ? "NA" : String(body.roCode || "").trim(),
+    roName: inventoryMode || clientMode ? "NA" : String(body.roName || "").trim(),
+    phase: inventoryMode || clientMode ? "NA" : String(body.phase || "").trim(),
     date: String(body.date || "").trim(),
-    materialUsedIn: inventoryMode ? "Engineer Inventory" : String(body.materialUsedIn || "").trim(),
+    materialUsedIn: inventoryMode ? "Engineer Inventory" : clientMode ? clientRequirement : String(body.materialUsedIn || "").trim(),
     materialRequestTo: String(body.materialRequestTo || "").trim(),
     materialRequestFromEmail: String(body.materialRequestFromEmail || "").trim(),
     materialRequestDate: String(body.materialRequestDate || "").trim(),
