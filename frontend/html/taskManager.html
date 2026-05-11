@@ -830,29 +830,32 @@ function taskByRowIndex(rowIndex){
 }
 function buildEmailDraft(task,mode='action'){
   const subject = mode==='closure' ? (task.closureSubject||task.subject||'Task Closure') : mode==='escalation' ? (task.escalationSubject||task.subject||'Task Escalation') : (task.currentSubject||task.subject||'Task Update');
+  const siteLine = `${task.roName || 'the site'}${task.roCode ? ` (${task.roCode})` : ''}${task.region ? `, ${task.region}` : ''}`;
+  const intro = mode==='closure'
+    ? `We are pleased to share that the reported observation at ${siteLine} has been attended and marked for closure.`
+    : mode==='escalation'
+      ? `This is a priority follow-up for the observation at ${siteLine}, which is still awaiting closure support.`
+      : `During our site review at ${siteLine}, an operational observation was noted and requires your support.`;
   const lines=[
     `Subject: ${subject}`,
     '',
     'Dear Sir/Madam,',
     '',
-    mode==='closure' ? 'Please find the closure update for the below task.' : mode==='escalation' ? 'This is an escalation reminder for the below pending task.' : 'Please find below the site observation requiring your action.',
+    intro,
     '',
-    `Customer: ${taskCustomer(task)}`,
-    `RO Code: ${task.roCode||'—'}`,
-    `RO Name: ${task.roName||'—'}`,
-    `Region: ${task.region||'—'}`,
-    `Visit Date: ${fmtDate(task.date)}`,
-    `Engineer: ${task.engineer||'—'}`,
-    `Issue Type: ${taskIssueType(task)}`,
-    `Priority: ${taskPriority(task)}`,
-    `Status: ${task.status||'Pending'}`,
-    `Reply Status: ${taskReply(task)}`,
-    '',
-    'Observation Summary:',
+    'Observation:',
     task.emailContent || task.issue || 'No additional remarks shared.',
   ];
   if(mode==='closure' && task.closureSummary) lines.push('', 'Closure Summary:', task.closureSummary);
-  lines.push('', 'Regards,', 'RELCON Systems');
+  lines.push(
+    '',
+    mode==='closure'
+      ? 'Kindly acknowledge the closure update for our records.'
+      : 'Kindly arrange the necessary corrective action and share closure confirmation by return email.',
+    '',
+    'Regards,',
+    'RELCON Systems'
+  );
   return lines.join('\n');
 }
 function getPriorityBadge(priority){
