@@ -89,35 +89,59 @@ function normalizePayload(body = {}, req = {}) {
   };
 }
 
+function getMaterialWorkflowStatuses(request = {}) {
+  const values = [
+    request.materialDispatchStatus,
+    request.deliveryStatus,
+    ...(Array.isArray(request.lineItems)
+      ? request.lineItems.flatMap((item) => [item.materialStatus, item.deliveryStatus])
+      : []),
+  ];
+  return new Set(values.map(normalizeStatusLabel).filter(Boolean));
+}
+
+function hasWorkflowStatus(request = {}, status = "") {
+  return getMaterialWorkflowStatuses(request).has(normalizeStatusLabel(status));
+}
+
 async function triggerMaterialRequestCreateNotifications(created) {
   try {
-    if (isRequirementGivenToHQOStatus(created?.materialDispatchStatus)) {
+    if (hasWorkflowStatus(created, "Delivered")) {
+      await sendMaterialDispatchNotification(created, "delivered");
+    } else if (hasWorkflowStatus(created, "In Transit")) {
+      await sendMaterialDispatchNotification(created, "transit");
+    } else if (hasWorkflowStatus(created, "Dispatched")) {
+      await sendMaterialDispatchNotification(created, "dispatch");
+    } else if (hasWorkflowStatus(created, "In Process")) {
+      await sendMaterialDispatchNotification(created, "process");
+    } else if (isRequirementGivenToHQOStatus(created?.materialDispatchStatus) || hasWorkflowStatus(created, "Requiment given to HQO")) {
       await sendMaterialRequestNotification(created);
     }
   } catch (err) {
-    console.error("Material request HQO notification error:", err?.message || err);
+    console.error("Material request create notification error:", err?.message || err);
   }
 }
 
 function shouldNotifyRequirement(previous = {}, next = {}) {
-  const before = isRequirementGivenToHQOStatus(previous.materialDispatchStatus);
-  const after = isRequirementGivenToHQOStatus(next.materialDispatchStatus);
+  const before = isRequirementGivenToHQOStatus(previous.materialDispatchStatus) || hasWorkflowStatus(previous, "Requiment given to HQO");
+  const after = isRequirementGivenToHQOStatus(next.materialDispatchStatus) || hasWorkflowStatus(next, "Requiment given to HQO");
   return !before && after;
 }
 
+function shouldNotifyInProcess(previous = {}, next = {}) {
+  return !hasWorkflowStatus(previous, "In Process") && hasWorkflowStatus(next, "In Process");
+}
+
 function shouldNotifyDispatch(previous = {}, next = {}) {
-  const before = normalizeStatusLabel(previous.materialDispatchStatus);
-  const after = normalizeStatusLabel(next.materialDispatchStatus);
-  return before !== "dispatched" && after === "dispatched";
+  return !hasWorkflowStatus(previous, "Dispatched") && hasWorkflowStatus(next, "Dispatched");
+}
+
+function shouldNotifyTransit(previous = {}, next = {}) {
+  return !hasWorkflowStatus(previous, "In Transit") && hasWorkflowStatus(next, "In Transit");
 }
 
 function shouldNotifyDelivered(previous = {}, next = {}) {
-  const beforeDispatch = normalizeStatusLabel(previous.materialDispatchStatus);
-  const afterDispatch = normalizeStatusLabel(next.materialDispatchStatus);
-  const beforeDelivery = normalizeStatusLabel(previous.deliveryStatus);
-  const afterDelivery = normalizeStatusLabel(next.deliveryStatus);
-  return (beforeDispatch !== "delivered" && afterDispatch === "delivered")
-    || (beforeDelivery !== "delivered" && afterDelivery === "delivered");
+  return !hasWorkflowStatus(previous, "Delivered") && hasWorkflowStatus(next, "Delivered");
 }
 
 async function triggerMaterialRequestUpdateNotifications(previous, updated) {
@@ -125,11 +149,14 @@ async function triggerMaterialRequestUpdateNotifications(previous, updated) {
     if (shouldNotifyRequirement(previous, updated)) {
       await sendMaterialRequestNotification(updated);
     }
-    if (shouldNotifyDispatch(previous, updated)) {
-      await sendMaterialDispatchNotification(updated, "dispatch");
-    }
     if (shouldNotifyDelivered(previous, updated)) {
       await sendMaterialDispatchNotification(updated, "delivered");
+    } else if (shouldNotifyTransit(previous, updated)) {
+      await sendMaterialDispatchNotification(updated, "transit");
+    } else if (shouldNotifyDispatch(previous, updated)) {
+      await sendMaterialDispatchNotification(updated, "dispatch");
+    } else if (shouldNotifyInProcess(previous, updated)) {
+      await sendMaterialDispatchNotification(updated, "process");
     }
   } catch (err) {
     console.error("Material request status notification error:", err?.message || err);

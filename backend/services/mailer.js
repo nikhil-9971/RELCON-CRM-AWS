@@ -1167,24 +1167,39 @@ async function sendMaterialRequestNotification(request = {}) {
 
 async function sendMaterialDispatchNotification(request = {}, notificationType = "dispatch") {
   const { adminEmails, engineerEmails } = await getMaterialRequestNotificationRecipients(request);
-  if (!engineerEmails.length) {
+  const hqoEmail = normalizeEmail(request.materialRequestFromEmail);
+  const fallbackRecipients = [...new Set([hqoEmail, ...adminEmails].filter(Boolean))];
+  const toRecipients = engineerEmails.length ? engineerEmails : fallbackRecipients;
+  if (!toRecipients.length) {
     return { ok: false, skipped: true, reason: "missing_engineer_email" };
   }
 
-  const statusLabel = notificationType === "delivered" ? "Delivered" : "Dispatched";
+  const statusLabel = notificationType === "delivered" ? "Delivered" : notificationType === "transit" ? "In Transit" : notificationType === "process" ? "In Process" : "Dispatched";
   const displayName = notificationType === "delivered"
     ? `Material Delivered Notification <${extractEmailAddress(MAIL_FROM) || extractEmailAddress(SMTP_USER)}>`
+    : notificationType === "transit"
+      ? `Material Transit Notification <${extractEmailAddress(MAIL_FROM) || extractEmailAddress(SMTP_USER)}>`
+    : notificationType === "process"
+      ? `Material Process Notification <${extractEmailAddress(MAIL_FROM) || extractEmailAddress(SMTP_USER)}>`
     : `Material Dispatch Notification <${extractEmailAddress(MAIL_FROM) || extractEmailAddress(SMTP_USER)}>`;
   const subjectPrefix = notificationType === "delivered"
     ? "Material Delivery Confirmation"
+    : notificationType === "transit"
+      ? "Material In Transit Update"
+    : notificationType === "process"
+      ? "Material In Process Update"
     : "Material Dispatch Notification";
   const subject = `${subjectPrefix} | ${request.roCode || "RO"} | ${request.engineer || "Engineer"}`;
   const html = buildMaterialRequestProfessionalEmailHtml({
     request,
     salutation: request.engineer || "Team",
-    title: notificationType === "delivered" ? "Material Delivery Confirmation" : "Material Dispatch Update",
+    title: notificationType === "delivered" ? "Material Delivery Confirmation" : notificationType === "transit" ? "Material In Transit" : notificationType === "process" ? "Material Request In Process" : "Material Dispatch Update",
     intro: notificationType === "delivered"
       ? "This is to confirm that the material request referenced below has been updated to Delivered status. Please review the delivery details and line-wise material information for record confirmation."
+      : notificationType === "transit"
+        ? "This is to inform you that the material request referenced below has been updated to In Transit status. Please review the transit details, courier references, and line-wise material information shared below."
+      : notificationType === "process"
+        ? "This is to inform you that the material request referenced below has been updated to In Process status. Please review the request details and line-wise material information shared below."
       : "This is to inform you that the material request referenced below has been updated to Dispatched status. Please review the dispatch details, courier references, and docket information shared below.",
     statusLabel,
   });
@@ -1193,37 +1208,42 @@ async function sendMaterialDispatchNotification(request = {}, notificationType =
     greeting: request.engineer || "Team",
     intro: notificationType === "delivered"
       ? "This is to confirm that the material request below has been marked as Delivered. Please find the request details, dispatch references, and line-wise status below."
+      : notificationType === "transit"
+        ? "This is to inform you that the material request below has been marked as In Transit. Please find the transit references, docket details, and line-wise material details below."
+      : notificationType === "process"
+        ? "This is to inform you that the material request below has been marked as In Process. Please find the request details and line-wise status below."
       : "This is to inform you that the material request below has been marked as Dispatched. Please find the dispatch references, docket details, and line-wise material details below.",
     statusLabel,
   });
+  const ccRecipients = [...new Set(adminEmails.filter((email) => !toRecipients.includes(email)))];
 
   const mailOptions = {
     from: buildFromHeader(displayName),
-    to: engineerEmails.join(", "),
-    cc: adminEmails.length ? adminEmails.join(", ") : undefined,
+    to: toRecipients.join(", "),
+    cc: ccRecipients.length ? ccRecipients.join(", ") : undefined,
     subject,
     html,
     text,
-    attachments: [buildMaterialRequestCsvAttachment(request, notificationType === "delivered" ? "material_delivered" : "material_dispatch")],
+    attachments: [buildMaterialRequestCsvAttachment(request, notificationType === "delivered" ? "material_delivered" : notificationType === "transit" ? "material_in_transit" : notificationType === "process" ? "material_in_process" : "material_dispatch")],
   };
 
   try {
     const info = await transporter.sendMail(mailOptions);
     await logMaterialWorkflowEmail({
-      type: notificationType === "delivered" ? "Material Delivered Notification" : "Material Dispatch Notification",
+      type: notificationType === "delivered" ? "Material Delivered Notification" : notificationType === "transit" ? "Material In Transit Notification" : notificationType === "process" ? "Material In Process Notification" : "Material Dispatch Notification",
       subject,
-      to: engineerEmails,
-      cc: adminEmails,
+      to: toRecipients,
+      cc: ccRecipients,
       status: "success",
       request,
     });
     return { ok: true, messageId: info?.messageId || "" };
   } catch (err) {
     await logMaterialWorkflowEmail({
-      type: notificationType === "delivered" ? "Material Delivered Notification" : "Material Dispatch Notification",
+      type: notificationType === "delivered" ? "Material Delivered Notification" : notificationType === "transit" ? "Material In Transit Notification" : notificationType === "process" ? "Material In Process Notification" : "Material Dispatch Notification",
       subject,
-      to: engineerEmails,
-      cc: adminEmails,
+      to: toRecipients,
+      cc: ccRecipients,
       status: "failure",
       request,
       error: err?.message || err,
