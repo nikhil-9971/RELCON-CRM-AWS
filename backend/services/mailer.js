@@ -336,9 +336,36 @@ function buildTaskObservationList(task = {}) {
   return items;
 }
 
+function cleanTaskEmailContent(value = "") {
+  const lines = String(value || "")
+    .replace(/\r/g, "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const cleaned = [];
+  for (const line of lines) {
+    const normalized = line.toLowerCase().replace(/\s+/g, " ");
+    if (/^subject\s*:/i.test(line)) continue;
+    if (/^dear\b/i.test(line)) continue;
+    if (/^regards[,\s]*$/i.test(line)) break;
+    if (/^(relcon systems|nikhil trivedi)$/i.test(line)) continue;
+    if (/^(customer|ro code|ro name|region|visit date|engineer|issue type|priority|status|reply status|assigned to|mail date|next follow-up)\s*:/i.test(line)) continue;
+    if (normalized.includes("please find below the site observation requiring your action")) continue;
+    if (normalized.includes("during our site review") && normalized.includes("requires your support")) continue;
+    if (normalized.includes("kindly arrange the necessary corrective action")) continue;
+    if (normalized.includes("we request you to kindly arrange")) continue;
+    if (/^observation summary\s*:?\s*$/i.test(line)) continue;
+    if (/^observation\s*:?\s*$/i.test(line)) continue;
+    cleaned.push(line);
+  }
+  return cleaned.join("\n").trim();
+}
+
 function generateTaskPlainEmail(task = {}, mode = "action") {
   const customer = getTaskCustomer(task);
   const observations = buildTaskObservationList(task);
+  const cleanContent = cleanTaskEmailContent(task.emailContent);
   const salutation = customer === "HPCL" ? "Dear Sir/Madam," : "Dear Team,";
   const siteLine = `${task.roName || "the site"}${task.roCode ? ` (${task.roCode})` : ""}${task.region ? `, ${task.region}` : ""}`;
   const intro = mode === "closure"
@@ -346,7 +373,7 @@ function generateTaskPlainEmail(task = {}, mode = "action") {
     : mode === "escalation"
       ? `This is a priority follow-up for the observation at ${siteLine}, which is still awaiting closure support.`
       : `During our site review at ${siteLine}, the following observation was noted and requires your support for timely closure.`;
-  const body = task.emailContent || observations.map((item, idx) => `${idx + 1}. ${item}`).join("\n") || "No additional remarks shared.";
+  const body = cleanContent || observations.map((item, idx) => `${idx + 1}. ${item}`).join("\n") || "No additional remarks shared.";
   const closureText = mode === "closure" && task.closureSummary
     ? `\nClosure Summary:\n${task.closureSummary}\n`
     : "";
@@ -387,7 +414,8 @@ function buildTaskHtmlEmail(task = {}, mode = "action") {
   const observations = buildTaskObservationList(task)
     .map((item) => `<li style="margin:0 0 10px;padding-left:2px;">${htmlEscape(item)}</li>`)
     .join("");
-  const bodyText = htmlEscape(task.emailContent || "").replace(/\n/g, "<br/>");
+  const cleanContent = cleanTaskEmailContent(task.emailContent);
+  const bodyText = htmlEscape(cleanContent || "").replace(/\n/g, "<br/>");
   const heroTitle = mode === "closure"
     ? "Closure Update"
     : mode === "escalation"
@@ -436,7 +464,6 @@ function buildTaskHtmlEmail(task = {}, mode = "action") {
         <div style="padding:20px 22px;border-radius:16px;background:#f8fafc;border:1px solid #e2e8f0;">
           <div style="font-size:12px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#475569;margin-bottom:12px;">Observation</div>
           ${observations ? `<ol style="margin:0;padding-left:20px;font-size:14px;color:#0f172a;line-height:1.75;">${observations}</ol>` : `<div style="font-size:14px;color:#334155;line-height:1.75;">${bodyText || "Observation details are available with the field team."}</div>`}
-          ${bodyText ? `<div style="margin-top:14px;padding-top:14px;border-top:1px dashed #cbd5e1;font-size:14px;color:#334155;line-height:1.75;">${bodyText}</div>` : ""}
           ${mode === "closure" && task.closureSummary ? `<div style="margin-top:16px;padding:15px;border-radius:12px;background:#ecfdf5;border:1px solid #bbf7d0;font-size:14px;color:#14532d;line-height:1.75;"><strong>Closure Summary:</strong><br/>${htmlEscape(task.closureSummary).replace(/\n/g, "<br/>")}</div>` : ""}
         </div>
 

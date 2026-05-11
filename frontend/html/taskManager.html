@@ -828,6 +828,26 @@ function taskReply(task){return task.replyStatus||'No Response';}
 function taskByRowIndex(rowIndex){
   return filteredTasks[Number(rowIndex)] || null;
 }
+function cleanTaskEmailContent(value=''){
+  const lines=String(value||'').replace(/\r/g,'').split('\n').map(line=>line.trim()).filter(Boolean);
+  const cleaned=[];
+  for(const line of lines){
+    const normalized=line.toLowerCase().replace(/\s+/g,' ');
+    if(/^subject\s*:/i.test(line)) continue;
+    if(/^dear\b/i.test(line)) continue;
+    if(/^regards[,\s]*$/i.test(line)) break;
+    if(/^(relcon systems|nikhil trivedi)$/i.test(line)) continue;
+    if(/^(customer|ro code|ro name|region|visit date|engineer|issue type|priority|status|reply status|assigned to|mail date|next follow-up)\s*:/i.test(line)) continue;
+    if(normalized.includes('please find below the site observation requiring your action')) continue;
+    if(normalized.includes('during our site review') && normalized.includes('requires your support')) continue;
+    if(normalized.includes('kindly arrange the necessary corrective action')) continue;
+    if(normalized.includes('we request you to kindly arrange')) continue;
+    if(/^observation summary\s*:?\s*$/i.test(line)) continue;
+    if(/^observation\s*:?\s*$/i.test(line)) continue;
+    cleaned.push(line);
+  }
+  return cleaned.join('\n').trim();
+}
 function buildEmailDraft(task,mode='action'){
   const subject = mode==='closure' ? (task.closureSubject||task.subject||'Task Closure') : mode==='escalation' ? (task.escalationSubject||task.subject||'Task Escalation') : (task.currentSubject||task.subject||'Task Update');
   const siteLine = `${task.roName || 'the site'}${task.roCode ? ` (${task.roCode})` : ''}${task.region ? `, ${task.region}` : ''}`;
@@ -844,7 +864,7 @@ function buildEmailDraft(task,mode='action'){
     intro,
     '',
     'Observation:',
-    task.emailContent || task.issue || 'No additional remarks shared.',
+    cleanTaskEmailContent(task.emailContent) || task.issue || 'No additional remarks shared.',
   ];
   if(mode==='closure' && task.closureSummary) lines.push('', 'Closure Summary:', task.closureSummary);
   lines.push(
