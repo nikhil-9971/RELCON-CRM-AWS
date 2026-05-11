@@ -8,7 +8,14 @@ const jwt = require("jsonwebtoken");
 // models required at top
 const Task = require("../models/Task");
 const DailyPlan = require("../models/DailyPlan"); // if not already imported
-const { sendVerificationCorrectionEmail } = require("../services/mailer");
+const {
+  sendVerificationCorrectionEmail,
+  buildTaskSubject,
+  getTaskPriority,
+  getTaskDefaultAssignee,
+  detectTaskIssueType,
+  getTaskCustomer,
+} = require("../services/mailer");
 
 const verifyToken = require("../middleware/authMiddleware");
 
@@ -599,6 +606,7 @@ router.put("/verifyStatus/:id", verifyToken, async (req, res) => {
     let taskCreated = false;
 
     if (
+      !updated.taskGenerated &&
       (earthingStatus === "NOT OK" ||
         (duOffline &&
           duOffline !== "ALL OK" &&
@@ -626,13 +634,14 @@ router.put("/verifyStatus/:id", verifyToken, async (req, res) => {
 
       const issueSummary = issues.join(" + ");
 
-      const task = new Task({
+      const taskPayload = {
         statusId: updated._id,
         roCode: plan.roCode,
         region: plan.region,
         roName: plan.roName,
         date: plan.date,
         engineer: plan.engineer,
+        customer: "HPCL",
         issue: issueSummary,
         emailContent: generateEmailContent({
           roName: plan.roName,
@@ -655,7 +664,14 @@ router.put("/verifyStatus/:id", verifyToken, async (req, res) => {
         tankOffline,
         tankRemark,
         tankDependency,
-      });
+      };
+      taskPayload.customer = getTaskCustomer(taskPayload);
+      taskPayload.issueType = detectTaskIssueType(taskPayload);
+      taskPayload.priority = getTaskPriority(taskPayload);
+      taskPayload.assignedTo = getTaskDefaultAssignee(taskPayload);
+      taskPayload.subject = buildTaskSubject(taskPayload, "action");
+
+      const task = new Task(taskPayload);
 
       await task.save();
       taskCreated = true;

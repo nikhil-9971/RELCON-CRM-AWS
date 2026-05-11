@@ -144,6 +144,11 @@
     .badge-inprocess{background:var(--sf-orange-lt);color:var(--sf-orange);}
     .badge-resolved{background:var(--sf-green-lt);color:var(--sf-green);}
     .badge-followup{background:var(--sf-purple-lt);color:var(--sf-purple);}
+    .badge-critical{background:#fff1f2;color:#be123c;}
+    .badge-high{background:#fff7ed;color:#c2410c;}
+    .badge-medium{background:#eff6ff;color:#1d4ed8;}
+    .badge-low{background:#ecfdf5;color:#047857;}
+    .badge-overdue{background:#fee2e2;color:#991b1b;}
     .badge-obs-earth{background:#fef1ee;color:#ba0517;font-size:9px;padding:1px 6px;}
     .badge-obs-du{background:#fff8e6;color:#b8860b;font-size:9px;padding:1px 6px;}
     .badge-obs-tank{background:var(--sf-blue-lt);color:var(--sf-blue);font-size:9px;padding:1px 6px;}
@@ -159,6 +164,12 @@
     .sf-ab-copy:hover{background:#e8d8ff;}
     .sf-ab-delete{background:var(--sf-red-lt);color:var(--sf-red);border:1px solid #f5c6c3;}
     .sf-ab-delete:hover{background:#fbd5d0;}
+    .sf-ab-mail{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;}
+    .sf-ab-mail:hover{background:#dbeafe;}
+    .sf-ab-escalate{background:#fff7ed;color:#c2410c;border:1px solid #fdba74;}
+    .sf-ab-escalate:hover{background:#ffedd5;}
+    .sf-ab-close{background:#ecfdf5;color:#047857;border:1px solid #86efac;}
+    .sf-ab-close:hover{background:#dcfce7;}
 
     /* PAGINATION */
     .sf-pagination{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--border);background:var(--surface2);flex-wrap:wrap;gap:8px;}
@@ -447,6 +458,9 @@
       <button class="sf-btn sf-btn-neutral" onclick="fetchTasks()">
         <i class="fa-solid fa-rotate-right"></i> Sync Data
       </button>
+      <button class="sf-btn sf-btn-warn" onclick="runEscalationSweep()">
+        <i class="fa-solid fa-bell"></i> Run Escalation
+      </button>
       <button class="sf-btn sf-btn-success" onclick="openAddModal()">
         <i class="fa-solid fa-plus"></i> Add Task
       </button>
@@ -503,6 +517,35 @@
         <option value="earth">⚡ Earthing Issue</option>
         <option value="du">⛽ DU Offline</option>
         <option value="tank">🛢 Tank Offline</option>
+      </select>
+    </div>
+    <div class="sf-filter-group">
+      <label class="sf-filter-label">Customer</label>
+      <select id="filterCustomer" class="sf-input sf-select" style="width:120px;" onchange="applyFilter()">
+        <option value="">All Customers</option>
+        <option value="HPCL">HPCL</option>
+        <option value="BPCL">BPCL</option>
+        <option value="RBML">RBML</option>
+      </select>
+    </div>
+    <div class="sf-filter-group">
+      <label class="sf-filter-label">Priority</label>
+      <select id="filterPriority" class="sf-input sf-select" style="width:120px;" onchange="applyFilter()">
+        <option value="">All Priorities</option>
+        <option value="Critical">Critical</option>
+        <option value="High">High</option>
+        <option value="Medium">Medium</option>
+        <option value="Low">Low</option>
+      </select>
+    </div>
+    <div class="sf-filter-group">
+      <label class="sf-filter-label">Reply</label>
+      <select id="filterReply" class="sf-input sf-select" style="width:130px;" onchange="applyFilter()">
+        <option value="">All Reply</option>
+        <option value="Awaiting Reply">Awaiting Reply</option>
+        <option value="No Response">No Response</option>
+        <option value="Reply Received">Reply Received</option>
+        <option value="Resolved">Resolved</option>
       </select>
     </div>
     <div class="sf-filter-group">
@@ -570,10 +613,12 @@
             <th style="width:32px;"></th>
             <th onclick="sortBy('roCode')" style="cursor:pointer;">Site Details <span id="sort-roCode"></span></th>
             <th onclick="sortBy('date')" style="cursor:pointer;">Visit Date <span id="sort-date"></span></th>
+            <th onclick="sortBy('priority')" style="cursor:pointer;">Priority <span id="sort-priority"></span></th>
             <th>Critical Observations</th>
             <th onclick="sortBy('engineer')" style="cursor:pointer;">Engineer <span id="sort-engineer"></span></th>
             <th>Mail Date</th>
             <th>Status</th>
+            <th>Reply / Follow-up</th>
             <th>Assignee</th>
             <th style="text-align:center;">Actions</th>
           </tr>
@@ -621,9 +666,21 @@
           <select id="mEngineer" class="sf-modal-select"></select>
         </div>
         <div class="sf-modal-field">
+          <label class="sf-modal-label">Customer</label>
+          <select id="mCustomer" class="sf-modal-select">
+            <option>HPCL</option><option>BPCL</option><option>RBML</option>
+          </select>
+        </div>
+        <div class="sf-modal-field">
           <label class="sf-modal-label">Status</label>
           <select id="mStatus" class="sf-modal-select">
             <option>Pending</option><option>Mailed</option><option>Inprocess</option><option>Follow-up</option><option>Resolved</option>
+          </select>
+        </div>
+        <div class="sf-modal-field">
+          <label class="sf-modal-label">Priority</label>
+          <select id="mPriority" class="sf-modal-select">
+            <option>Critical</option><option>High</option><option selected>Medium</option><option>Low</option>
           </select>
         </div>
         <div class="sf-modal-field">
@@ -631,11 +688,37 @@
           <input type="date" id="mMailDate" class="sf-modal-input"/>
         </div>
         <div class="sf-modal-field">
-          <label class="sf-modal-label">Completed By</label>
-          <select id="mCompletedBy" class="sf-modal-select">
+          <label class="sf-modal-label">Reply Status</label>
+          <select id="mReplyStatus" class="sf-modal-select">
+            <option>No Response</option><option>Awaiting Reply</option><option>Reply Received</option><option>Resolved</option>
+          </select>
+        </div>
+        <div class="sf-modal-field">
+          <label class="sf-modal-label">Assigned To</label>
+          <select id="mAssignedTo" class="sf-modal-select">
             <option value="">— Select —</option>
             <option>Anurag Mishra</option><option>Nikhil Trivedi</option>
           </select>
+        </div>
+        <div class="sf-modal-field">
+          <label class="sf-modal-label">SLA Days</label>
+          <input type="number" id="mSlaDays" class="sf-modal-input" min="1" value="2"/>
+        </div>
+        <div class="sf-modal-field">
+          <label class="sf-modal-label">Next Follow-up</label>
+          <input type="date" id="mNextFollowUp" class="sf-modal-input"/>
+        </div>
+        <div class="sf-modal-field">
+          <label class="sf-modal-label">Customer Email</label>
+          <input type="email" id="mCustomerEmail" class="sf-modal-input" placeholder="client@example.com"/>
+        </div>
+        <div class="sf-modal-field">
+          <label class="sf-modal-label">CC Emails</label>
+          <input type="text" id="mCcEmails" class="sf-modal-input" placeholder="a@x.com, b@y.com"/>
+        </div>
+        <div class="sf-modal-field">
+          <label class="sf-modal-label">Issue Type</label>
+          <input type="text" id="mIssueType" class="sf-modal-input" placeholder="Earthing / DU Offline / Tank Offline"/>
         </div>
         <div class="sf-modal-field">
           <label class="sf-modal-label">Earthing Status</label>
@@ -649,9 +732,24 @@
           <label class="sf-modal-label">Tank Offline</label>
           <input type="text" id="mTank" class="sf-modal-input" placeholder="ALL OK / count…"/>
         </div>
+        <div class="sf-modal-field">
+          <label class="sf-modal-label">Completed By</label>
+          <select id="mCompletedBy" class="sf-modal-select">
+            <option value="">— Select —</option>
+            <option>Anurag Mishra</option><option>Nikhil Trivedi</option>
+          </select>
+        </div>
+        <div class="sf-modal-field full">
+          <label class="sf-modal-label">Issue Summary</label>
+          <input type="text" id="mIssue" class="sf-modal-input" placeholder="Short issue summary"/>
+        </div>
         <div class="sf-modal-field full">
           <label class="sf-modal-label">Email Content / Remarks</label>
           <textarea id="mEmailContent" class="sf-modal-textarea" placeholder="Paste email draft or remarks here…"></textarea>
+        </div>
+        <div class="sf-modal-field full">
+          <label class="sf-modal-label">Closure Summary</label>
+          <textarea id="mClosureSummary" class="sf-modal-textarea" placeholder="Closure note for final mail…"></textarea>
         </div>
       </div>
     </div>
@@ -722,6 +820,60 @@ function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function today(){return new Date().toISOString().slice(0,10);}
 function fmtDate(d){if(!d)return '—';try{return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return d;}}
 function getUser(){try{return JSON.parse(localStorage.getItem('user'))||{};}catch(e){return{};}}
+function taskPriority(task){return task.priority||task.computedPriority||'Medium';}
+function taskCustomer(task){return task.customer||task.computedCustomer||'HPCL';}
+function taskIssueType(task){return task.issueType||task.computedIssueType||task.issue||'Site Observation';}
+function taskAssignee(task){return task.assignedTo||task.completedBy||'—';}
+function taskReply(task){return task.replyStatus||'No Response';}
+function taskByRowIndex(rowIndex){
+  return filteredTasks[Number(rowIndex)] || null;
+}
+function buildEmailDraft(task,mode='action'){
+  const subject = mode==='closure' ? (task.closureSubject||task.subject||'Task Closure') : mode==='escalation' ? (task.escalationSubject||task.subject||'Task Escalation') : (task.currentSubject||task.subject||'Task Update');
+  const lines=[
+    `Subject: ${subject}`,
+    '',
+    'Dear Sir/Madam,',
+    '',
+    mode==='closure' ? 'Please find the closure update for the below task.' : mode==='escalation' ? 'This is an escalation reminder for the below pending task.' : 'Please find below the site observation requiring your action.',
+    '',
+    `Customer: ${taskCustomer(task)}`,
+    `RO Code: ${task.roCode||'—'}`,
+    `RO Name: ${task.roName||'—'}`,
+    `Region: ${task.region||'—'}`,
+    `Visit Date: ${fmtDate(task.date)}`,
+    `Engineer: ${task.engineer||'—'}`,
+    `Issue Type: ${taskIssueType(task)}`,
+    `Priority: ${taskPriority(task)}`,
+    `Status: ${task.status||'Pending'}`,
+    `Reply Status: ${taskReply(task)}`,
+    '',
+    'Observation Summary:',
+    task.emailContent || task.issue || 'No additional remarks shared.',
+  ];
+  if(mode==='closure' && task.closureSummary) lines.push('', 'Closure Summary:', task.closureSummary);
+  lines.push('', 'Regards,', 'RELCON Systems');
+  return lines.join('\n');
+}
+function getPriorityBadge(priority){
+  const cls={Critical:'badge-critical',High:'badge-high',Medium:'badge-medium',Low:'badge-low'};
+  return `<span class="sf-badge ${cls[priority]||'badge-medium'}">${esc(priority||'Medium')}</span>`;
+}
+function getAgingBadge(task){
+  const aging=Number(task.agingDays||0);
+  const overdue=task.overdue;
+  return `<span class="sf-badge ${overdue?'badge-overdue':'badge-medium'}">${aging}d${overdue?' overdue':''}</span>`;
+}
+function historyHtml(history=[]){
+  if(!Array.isArray(history)||!history.length) return '<div style="color:var(--txt4);font-size:11px;">No mail history available.</div>';
+  return `<div style="display:grid;gap:8px;">${history.slice().reverse().map(item=>`
+    <div style="border:1px solid var(--border);border-radius:8px;padding:10px;background:var(--surface2);">
+      <div style="font-size:11px;font-weight:700;color:var(--txt);">${esc(item.action||'send')} • ${esc(item.status||'success')}</div>
+      <div style="font-size:10px;color:var(--txt3);margin-top:3px;">${esc(item.subject||'—')}</div>
+      <div style="font-size:10px;color:var(--txt3);margin-top:3px;">To: ${esc(item.to||'—')}${item.cc?` | CC: ${esc(item.cc)}`:''}</div>
+      <div style="font-size:10px;color:var(--txt4);margin-top:3px;">${fmtDate(item.sentAt)}${item.note?` | ${esc(item.note)}`:''}</div>
+    </div>`).join('')}</div>`;
+}
 
 function populateEngineerSelect(el,sel=''){
   el.innerHTML='<option value="">— Select —</option>'+ENGINEERS.map(n=>`<option value="${n}"${n===sel?' selected':''}>${n}</option>`).join('');
@@ -809,6 +961,9 @@ function applyFilter(){
   const eng = document.getElementById('filterEngineer').value;
   const reg = document.getElementById('filterRegion').value;
   const obs = document.getElementById('filterObs').value;
+  const customer = document.getElementById('filterCustomer').value;
+  const priority = document.getElementById('filterPriority').value;
+  const reply = document.getElementById('filterReply').value;
   const fr  = document.getElementById('filterFrom').value;
   const to  = document.getElementById('filterTo').value;
 
@@ -825,13 +980,16 @@ function applyFilter(){
     // Field filters
     if(eng && task.engineer!==eng) return false;
     if(reg && task.region!==reg) return false;
+    if(customer && taskCustomer(task)!==customer) return false;
+    if(priority && taskPriority(task)!==priority) return false;
+    if(reply && taskReply(task)!==reply) return false;
     if(obs==='earth' && (task.earthingStatus==='OK'||!task.earthingStatus)) return false;
     if(obs==='du'    && (!task.duOffline||task.duOffline==='ALL OK')) return false;
     if(obs==='tank'  && (!task.tankOffline||task.tankOffline==='ALL OK')) return false;
     if(fr && (task.date||'')<fr) return false;
     if(to && (task.date||'')>to) return false;
     if(q){
-      const fields=[task.roCode,task.roName,task.region,task.engineer,task.status];
+      const fields=[task.roCode,task.roName,task.region,task.engineer,task.status,taskCustomer(task),taskIssueType(task),taskReply(task)];
       if(!fields.some(v=>String(v||'').toLowerCase().includes(q))) return false;
     }
     return true;
@@ -845,7 +1003,7 @@ function applyFilter(){
 }
 
 function clearFilters(){
-  ['taskSearch','filterEngineer','filterRegion','filterObs','filterFrom','filterTo'].forEach(id=>document.getElementById(id).value='');
+  ['taskSearch','filterEngineer','filterRegion','filterObs','filterCustomer','filterPriority','filterReply','filterFrom','filterTo'].forEach(id=>document.getElementById(id).value='');
   currentKPI=''; document.querySelectorAll('.kpi-card').forEach(c=>c.classList.remove('active-filter'));
   applyFilter();
 }
@@ -869,7 +1027,7 @@ function renderTable(){
   document.getElementById('pageInfo').textContent=`Showing ${Math.min(start+1,filteredTasks.length)||0}–${Math.min(start+rowsPerPage,filteredTasks.length)} of ${filteredTasks.length}`;
 
   const tbody=document.getElementById('taskTableBody');
-  if(!page.length){ tbody.innerHTML=`<tr><td colspan="9" style="text-align:center;padding:28px;color:var(--txt3);">No tasks found.</td></tr>`; renderPagination(filteredTasks.length); return; }
+  if(!page.length){ tbody.innerHTML=`<tr><td colspan="11" style="text-align:center;padding:28px;color:var(--txt3);">No tasks found.</td></tr>`; renderPagination(filteredTasks.length); return; }
 
   const statusBadge=s=>{
     const map={Pending:'badge-pending',Mailed:'badge-mailed',Inprocess:'badge-inprocess','Follow-up':'badge-followup',Resolved:'badge-resolved',Done:'badge-resolved'};
@@ -893,8 +1051,12 @@ function renderTable(){
         <div style="font-weight:700;color:var(--sf-blue);font-size:11px;">${esc(task.roCode||'')}</div>
         <div style="font-size:10px;color:var(--txt3);white-space:normal;max-width:130px;">${esc((task.roName||'').slice(0,30))}${(task.roName||'').length>30?'…':''}</div>
         ${task.region?`<div style="font-size:9px;color:var(--sf-purple);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">${esc(task.region)}</div>`:''}
+        <div style="font-size:9px;color:var(--txt4);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">${esc(taskCustomer(task))}</div>
       </td>
       <td style="color:var(--txt3);font-size:11px;">${fmtDate(task.date)}</td>
+      <td style="min-width:120px;">
+        <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;">${getPriorityBadge(taskPriority(task))}${getAgingBadge(task)}</div>
+      </td>
       <td style="white-space:normal;min-width:160px;">${obs.join(' ')||'<span style="color:var(--txt4);font-size:10px;">—</span>'}</td>
       <td><span style="background:var(--surface2);border:1px solid var(--border);padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;">${esc(task.engineer||'—')}</span></td>
       <td>
@@ -907,18 +1069,29 @@ function renderTable(){
         </select>
       </td>
       <td>
+        <div style="display:flex;flex-direction:column;gap:4px;min-width:125px;">
+          <select class="td-select" onchange="updateTaskField('${task._id}','replyStatus',this.value)">
+            ${['No Response','Awaiting Reply','Reply Received','Resolved'].map(s=>`<option value="${s}"${taskReply(task)===s?' selected':''}>${s}</option>`).join('')}
+          </select>
+          <input type="date" value="${esc(task.nextFollowUpDate||'')}" class="td-input" onchange="updateTaskField('${task._id}','nextFollowUpDate',this.value)"/>
+        </div>
+      </td>
+      <td>
         ${task.status==='Resolved'||task.status==='Done'
           ?`<span class="sf-badge badge-resolved"><i class="fa-solid fa-circle-check" style="font-size:8px;"></i> ${esc(task.completedBy||'Done')}</span>`
-          :`<select class="td-select" style="width:110px;" onchange="updateTaskField('${task._id}','completedBy',this.value)">
+          :`<select class="td-select" style="width:110px;" onchange="updateTaskField('${task._id}','assignedTo',this.value)">
               <option value="">Assignee</option>
-              <option value="Anurag Mishra"${task.completedBy==='Anurag Mishra'?' selected':''}>Anurag Mishra</option>
-              <option value="Nikhil Trivedi"${task.completedBy==='Nikhil Trivedi'?' selected':''}>Nikhil Trivedi</option>
+              <option value="Anurag Mishra"${taskAssignee(task)==='Anurag Mishra'?' selected':''}>Anurag Mishra</option>
+              <option value="Nikhil Trivedi"${taskAssignee(task)==='Nikhil Trivedi'?' selected':''}>Nikhil Trivedi</option>
             </select>`}
       </td>
       <td>
         <div class="sf-ab">
           <button class="sf-action-btn sf-ab-view" onclick="viewDetail(${idx})" title="View Details"><i class="fa-solid fa-eye"></i></button>
+          <button class="sf-action-btn sf-ab-mail" onclick="sendTaskMail('${task._id}')" title="Send Mail"><i class="fa-solid fa-envelope"></i></button>
           <button class="sf-action-btn sf-ab-copy" onclick="copyEmail('${task._id}')" title="Copy Email Draft"><i class="fa-solid fa-copy"></i></button>
+          ${task.status!=='Resolved'&&task.status!=='Done'?`<button class="sf-action-btn sf-ab-escalate" onclick="escalateTask('${task._id}')" title="Escalate"><i class="fa-solid fa-bell"></i></button>`:''}
+          ${task.status!=='Resolved'&&task.status!=='Done'?`<button class="sf-action-btn sf-ab-close" onclick="sendClosureMail('${task._id}')" title="Send Closure"><i class="fa-solid fa-circle-check"></i></button>`:''}
           ${isPendingRow?`<button class="sf-action-btn sf-ab-submit" onclick="submitToActive('${task._id}')" title="Submit to Active"><i class="fa-solid fa-paper-plane"></i></button>`:''}
           <button class="sf-action-btn sf-ab-delete" onclick="promptDelete('${task._id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
         </div>
@@ -992,6 +1165,7 @@ function renderPagination(total){
 async function updateTaskStatus(id,status){
   await fetch(`${baseUrl}/updateTask/${id}`,{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({status})});
   const t=allTasks.find(x=>x._id===id); if(t) t.status=status;
+  if(status==='Resolved' && t) t.replyStatus='Resolved';
   updateStats(); applyFilter(); showToast(`Status → ${status}`,'info');
 }
 async function updateTaskField(id,field,value){
@@ -1003,19 +1177,87 @@ async function submitToActive(id){
   const t=allTasks.find(x=>x._id===id);
   if(!t?.mailDate){ showToast('Mail Date Required','warn','Please set a mail date first.'); return; }
   showLoader('Submitting…');
-  await fetch(`${baseUrl}/updateTask/${id}`,{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({status:'Mailed',followUp:true})});
+  await fetch(`${baseUrl}/updateTask/${id}`,{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({status:'Mailed',replyStatus:'Awaiting Reply',followUp:true})});
   hideLoader(); showToast('Pushed to Active Queue','success'); fetchTasks();
 }
 async function copyEmail(id){
   const task=allTasks.find(t=>t._id===id);
-  if(task?.emailContent){ await navigator.clipboard.writeText(task.emailContent); showToast('Draft Copied','info','Email content copied to clipboard.'); }
+  if(task){ await navigator.clipboard.writeText(buildEmailDraft(task)); showToast('Draft Copied','info','Email draft copied to clipboard.'); }
   else showToast('No Draft Available','warn','This task has no email content.');
+}
+
+async function sendTaskMail(id){
+  const task=allTasks.find(t=>t._id===id);
+  if(!task?.customerEmail){ showToast('Customer Email Missing','warn','Please add customer email first.'); return; }
+  showLoader('Sending task mail…');
+  try{
+    const res=await fetch(`${baseUrl}/sendTaskMail/${id}`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
+      body:JSON.stringify({
+        to:task.customerEmail,
+        cc:task.ccEmails||'',
+        mailDate:task.mailDate||today(),
+        replyStatus:'Awaiting Reply'
+      })
+    });
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.error||`HTTP ${res.status}`);
+    hideLoader(); showToast('Mail sent','success',data.result?.subject||'Professional task mail delivered.');
+    fetchTasks();
+  }catch(err){ hideLoader(); showToast('Mail send failed','error',err.message); }
+}
+
+async function escalateTask(id){
+  const task=allTasks.find(t=>t._id===id);
+  if(!task?.customerEmail){ showToast('Customer Email Missing','warn','Please add customer email first.'); return; }
+  showLoader('Escalating task…');
+  try{
+    const res=await fetch(`${baseUrl}/escalateTask/${id}`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
+      body:JSON.stringify({ to:task.customerEmail, cc:task.ccEmails||'' })
+    });
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.error||`HTTP ${res.status}`);
+    hideLoader(); showToast('Escalation sent','success',data.result?.subject||'Escalation mail sent.');
+    fetchTasks();
+  }catch(err){ hideLoader(); showToast('Escalation failed','error',err.message); }
+}
+
+async function sendClosureMail(id){
+  const task=allTasks.find(t=>t._id===id);
+  if(!task?.customerEmail){ showToast('Customer Email Missing','warn','Please add customer email first.'); return; }
+  const closureSummary=prompt('Closure summary for this task:', task.closureSummary||task.emailContent||'');
+  if(closureSummary===null) return;
+  showLoader('Sending closure mail…');
+  try{
+    const res=await fetch(`${baseUrl}/sendTaskClosureMail/${id}`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
+      body:JSON.stringify({ to:task.customerEmail, cc:task.ccEmails||'', closureSummary })
+    });
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.error||`HTTP ${res.status}`);
+    hideLoader(); showToast('Closure sent','success',data.result?.subject||'Closure mail sent.');
+    fetchTasks();
+  }catch(err){ hideLoader(); showToast('Closure failed','error',err.message); }
+}
+
+async function runEscalationSweep(){
+  showLoader('Running pending escalation sweep…');
+  try{
+    const res=await fetch(`${baseUrl}/runTaskEscalations`,{method:'POST',headers:{Authorization:`Bearer ${token}`}});
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.error||`HTTP ${res.status}`);
+    hideLoader(); showToast('Escalation complete','success',`${data.escalated||0} task(s) processed.`);
+    fetchTasks();
+  }catch(err){ hideLoader(); showToast('Escalation sweep failed','error',err.message); }
 }
 
 /* ── Detail View ── */
 function viewDetail(idx){
-  const start=(currentPage-1)*rowsPerPage;
-  const task=filteredTasks[start+idx]||filteredTasks[idx];
+  const task=taskByRowIndex(idx);
   if(!task) return;
   let obs=[];
   if(task.earthingStatus&&task.earthingStatus!=='OK') obs.push(`<span class="sf-badge badge-obs-earth">⚡ Earth: ${esc(task.earthingStatus)}</span>`);
@@ -1036,16 +1278,34 @@ function viewDetail(idx){
       <div class="det-section-title">Task Status</div>
       <div class="det-grid">
         <div class="det-field"><div class="det-label">Status</div><div class="det-value"><span class="sf-badge ${statusMap[task.status]||'badge-pending'}">${esc(task.status||'Pending')}</span></div></div>
+        <div class="det-field"><div class="det-label">Priority</div><div class="det-value">${getPriorityBadge(taskPriority(task))}</div></div>
+        <div class="det-field"><div class="det-label">Issue Type</div><div class="det-value">${esc(taskIssueType(task))}</div></div>
+        <div class="det-field"><div class="det-label">Customer</div><div class="det-value">${esc(taskCustomer(task))}</div></div>
         <div class="det-field"><div class="det-label">Engineer</div><div class="det-value">${esc(task.engineer||'—')}</div></div>
+        <div class="det-field"><div class="det-label">Assigned To</div><div class="det-value">${esc(taskAssignee(task))}</div></div>
+        <div class="det-field"><div class="det-label">Reply Status</div><div class="det-value">${esc(taskReply(task))}</div></div>
+        <div class="det-field"><div class="det-label">Next Follow-up</div><div class="det-value">${fmtDate(task.nextFollowUpDate)}</div></div>
+        <div class="det-field"><div class="det-label">SLA</div><div class="det-value">${esc(task.slaDays||2)} days</div></div>
         <div class="det-field"><div class="det-label">Mail Date</div><div class="det-value">${fmtDate(task.mailDate)}</div></div>
         <div class="det-field"><div class="det-label">Completed By</div><div class="det-value">${esc(task.completedBy||'—')}</div></div>
       </div>
     </div>
+    <div class="det-section">
+      <div class="det-section-title">Communication</div>
+      <div class="det-grid">
+        <div class="det-field"><div class="det-label">Customer Email</div><div class="det-value">${esc(task.customerEmail||'—')}</div></div>
+        <div class="det-field"><div class="det-label">CC Emails</div><div class="det-value">${esc(task.ccEmails||'—')}</div></div>
+        <div class="det-field"><div class="det-label">Last Subject</div><div class="det-value">${esc(task.lastMailSubject||task.currentSubject||'—')}</div></div>
+        <div class="det-field"><div class="det-label">Escalation Level</div><div class="det-value">${esc(task.escalatedLevel||0)}</div></div>
+      </div>
+    </div>
     ${obs.length?`<div class="det-section"><div class="det-section-title">Critical Observations</div><div style="display:flex;gap:6px;flex-wrap:wrap;">${obs.join('')}</div></div>`:''}
-    ${task.emailContent?`<div class="det-section"><div class="det-section-title">Email Draft</div><div class="det-box">${esc(task.emailContent)}</div></div>`:''}`;
+    <div class="det-section"><div class="det-section-title">Email Draft</div><div class="det-box">${esc(buildEmailDraft(task))}</div></div>
+    ${task.closureSummary?`<div class="det-section"><div class="det-section-title">Closure Summary</div><div class="det-box">${esc(task.closureSummary)}</div></div>`:''}
+    <div class="det-section"><div class="det-section-title">Mail History</div>${historyHtml(task.mailHistory)}</div>`;
   document.getElementById('detailFooter').innerHTML=`
     <button class="sf-btn sf-btn-neutral" onclick="closeDetailModal()"><i class="fa-solid fa-xmark"></i> Close</button>
-    ${task.emailContent?`<button class="sf-btn sf-btn-purple" onclick="copyEmail('${task._id}');closeDetailModal()"><i class="fa-solid fa-copy"></i> Copy Draft</button>`:''}
+    <button class="sf-btn sf-btn-purple" onclick="copyEmail('${task._id}');closeDetailModal()"><i class="fa-solid fa-copy"></i> Copy Draft</button>
     <button class="sf-btn sf-btn-warn" onclick="closeDetailModal();openEditModal(${idx})"><i class="fa-solid fa-pen"></i> Edit</button>`;
   document.getElementById('detailModal').classList.add('open');
 }
@@ -1056,17 +1316,22 @@ function openAddModal(){
   editMode=false;
   document.getElementById('editTaskId').value='';
   document.getElementById('taskModalTitle').innerHTML=`<i class="fa-solid fa-plus" style="color:var(--sf-green);"></i> Add New Task`;
-  ['mRoCode','mRoName','mRegion','mEarth','mDu','mTank','mEmailContent'].forEach(id=>document.getElementById(id).value='');
+  ['mRoCode','mRoName','mRegion','mEarth','mDu','mTank','mIssue','mIssueType','mEmailContent','mClosureSummary','mCustomerEmail','mCcEmails'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('mDate').value=today();
   document.getElementById('mMailDate').value='';
+  document.getElementById('mNextFollowUp').value='';
+  document.getElementById('mCustomer').value='HPCL';
   document.getElementById('mStatus').value='Pending';
+  document.getElementById('mPriority').value='Medium';
+  document.getElementById('mReplyStatus').value='No Response';
+  document.getElementById('mAssignedTo').value='';
+  document.getElementById('mSlaDays').value='2';
   populateEngineerSelect(document.getElementById('mEngineer'));
   document.getElementById('mCompletedBy').value='';
   document.getElementById('taskModal').classList.add('open');
 }
 function openEditModal(idx){
-  const start=(currentPage-1)*rowsPerPage;
-  const task=filteredTasks[start+idx]||filteredTasks[idx];
+  const task=taskByRowIndex(idx);
   if(!task) return;
   editMode=true;
   document.getElementById('editTaskId').value=task._id||'';
@@ -1076,11 +1341,22 @@ function openEditModal(idx){
   document.getElementById('mRegion').value=task.region||'';
   document.getElementById('mDate').value=task.date||'';
   document.getElementById('mMailDate').value=task.mailDate||'';
+  document.getElementById('mNextFollowUp').value=task.nextFollowUpDate||'';
+  document.getElementById('mCustomer').value=taskCustomer(task);
   document.getElementById('mStatus').value=task.status||'Pending';
+  document.getElementById('mPriority').value=taskPriority(task);
+  document.getElementById('mReplyStatus').value=taskReply(task);
+  document.getElementById('mAssignedTo').value=task.assignedTo||'';
+  document.getElementById('mSlaDays').value=task.slaDays||2;
+  document.getElementById('mCustomerEmail').value=task.customerEmail||'';
+  document.getElementById('mCcEmails').value=task.ccEmails||'';
+  document.getElementById('mIssueType').value=task.issueType||task.computedIssueType||'';
+  document.getElementById('mIssue').value=task.issue||'';
   document.getElementById('mEarth').value=task.earthingStatus||'';
   document.getElementById('mDu').value=task.duOffline||'';
   document.getElementById('mTank').value=task.tankOffline||'';
   document.getElementById('mEmailContent').value=task.emailContent||'';
+  document.getElementById('mClosureSummary').value=task.closureSummary||'';
   document.getElementById('mCompletedBy').value=task.completedBy||'';
   populateEngineerSelect(document.getElementById('mEngineer'),task.engineer||'');
   document.getElementById('taskModal').classList.add('open');
@@ -1094,13 +1370,24 @@ async function saveTaskModal(){
     region:document.getElementById('mRegion').value.trim(),
     date:document.getElementById('mDate').value,
     engineer:document.getElementById('mEngineer').value,
+    customer:document.getElementById('mCustomer').value,
     status:document.getElementById('mStatus').value,
+    priority:document.getElementById('mPriority').value,
+    replyStatus:document.getElementById('mReplyStatus').value,
     mailDate:document.getElementById('mMailDate').value,
+    nextFollowUpDate:document.getElementById('mNextFollowUp').value,
+    customerEmail:document.getElementById('mCustomerEmail').value.trim(),
+    ccEmails:document.getElementById('mCcEmails').value.trim(),
+    issueType:document.getElementById('mIssueType').value.trim(),
+    issue:document.getElementById('mIssue').value.trim(),
     earthingStatus:document.getElementById('mEarth').value.trim(),
     duOffline:document.getElementById('mDu').value.trim(),
     tankOffline:document.getElementById('mTank').value.trim(),
     emailContent:document.getElementById('mEmailContent').value.trim(),
+    closureSummary:document.getElementById('mClosureSummary').value.trim(),
     completedBy:document.getElementById('mCompletedBy').value,
+    assignedTo:document.getElementById('mAssignedTo').value,
+    slaDays:Number(document.getElementById('mSlaDays').value||2),
   };
   if(!payload.roCode||!payload.engineer){showToast('Validation Error','warn','RO Code and Engineer are required.');return;}
   showLoader(editMode?'Updating…':'Adding…');
@@ -1135,7 +1422,7 @@ function exportToExcel(){
   showToast('Excel exported','success'); toggleExportMenu();
 }
 function exportFiltered(){
-  const keys=['roCode','roName','region','date','engineer','status','mailDate','earthingStatus','duOffline','tankOffline','completedBy'];
+  const keys=['roCode','roName','region','date','engineer','customer','issueType','priority','status','replyStatus','assignedTo','mailDate','nextFollowUpDate','customerEmail','ccEmails','earthingStatus','duOffline','tankOffline','completedBy','closureSummary'];
   const csv=[keys.join(','),...filteredTasks.map(r=>keys.map(k=>`"${String(r[k]??'').replaceAll('"','""')}"`).join(','))].join('\n');
   const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
   a.download=`Tasks_Filtered_${today()}.csv`;a.click();

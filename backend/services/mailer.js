@@ -225,6 +225,348 @@ function getCurrentISTDateParts(baseDate = new Date()) {
   };
 }
 
+function formatTaskLabel(value = "") {
+  return String(value || "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getTaskCustomer(task = {}) {
+  const explicit = formatTaskLabel(task.customer);
+  if (explicit) return explicit.toUpperCase();
+  const issue = `${task.issue || ""} ${task.issueType || ""}`.toUpperCase();
+  if (issue.includes("RBML") || issue.includes("JIO")) return "RBML";
+  if (issue.includes("BPCL")) return "BPCL";
+  return "HPCL";
+}
+
+function detectTaskIssueType(task = {}) {
+  const flags = [];
+  if (normalizeStatusLabel(task.earthingStatus) && normalizeStatusLabel(task.earthingStatus) !== "ok") {
+    flags.push("Earthing");
+  }
+  if (normalizeStatusLabel(task.duOffline) && normalizeStatusLabel(task.duOffline) !== "allok") {
+    flags.push("DU Offline");
+  }
+  if (normalizeStatusLabel(task.tankOffline) && normalizeStatusLabel(task.tankOffline) !== "allok") {
+    flags.push("Tank Offline");
+  }
+  if (task.issueType) return formatTaskLabel(task.issueType);
+  if (flags.length) return flags.join(" + ");
+  return formatTaskLabel(task.issue || "Site Observation");
+}
+
+function getTaskPriority(task = {}) {
+  const hasEarthingIssue = normalizeStatusLabel(task.earthingStatus) && normalizeStatusLabel(task.earthingStatus) !== "ok";
+  const hasDuIssue = normalizeStatusLabel(task.duOffline) && normalizeStatusLabel(task.duOffline) !== "allok";
+  const hasTankIssue = normalizeStatusLabel(task.tankOffline) && normalizeStatusLabel(task.tankOffline) !== "allok";
+  const duCount = Number.parseInt(String(task.duOffline || "").match(/\d+/)?.[0] || "0", 10);
+  const tankCount = Number.parseInt(String(task.tankOffline || "").match(/\d+/)?.[0] || "0", 10);
+
+  if (hasEarthingIssue && (hasDuIssue || hasTankIssue)) return "Critical";
+  if ((hasDuIssue && duCount >= 4) || (hasTankIssue && tankCount >= 4)) return "Critical";
+  if (hasEarthingIssue || hasDuIssue || hasTankIssue) return "High";
+  if (task.status === "Resolved" || task.status === "Done") return "Low";
+  return "Medium";
+}
+
+function getTaskDefaultAssignee(task = {}) {
+  const priority = task.priority || getTaskPriority(task);
+  if (priority === "Critical") return "Nikhil Trivedi";
+  if (priority === "High") return "Anurag Mishra";
+  return task.assignedTo || task.completedBy || "";
+}
+
+function buildTaskSubject(task = {}, mode = "action") {
+  const customer = getTaskCustomer(task);
+  const issueType = detectTaskIssueType(task);
+  const roCode = task.roCode || "RO";
+  const roName = task.roName || "Site";
+  const visitDate = formatDateOnlyIST(task.date);
+
+  if (mode === "closure") {
+    return `Closure Update | ${customer} | ${roCode} | ${roName} | ${visitDate}`;
+  }
+  if (mode === "escalation") {
+    return `Escalation | ${customer} Task Pending | ${roCode} | ${roName} | ${issueType}`;
+  }
+  return `Action Required | ${customer} | ${roCode} | ${roName} | ${visitDate} | ${issueType}`;
+}
+
+function getTaskAgingDays(task = {}) {
+  if (!task.date) return 0;
+  const start = new Date(`${String(task.date).slice(0, 10)}T00:00:00+05:30`);
+  if (Number.isNaN(start.getTime())) return 0;
+  return Math.max(0, Math.floor((Date.now() - start.getTime()) / 86400000));
+}
+
+function formatTaskMailRows(task = {}) {
+  return [
+    ["Customer", getTaskCustomer(task)],
+    ["RO Code", task.roCode || "—"],
+    ["RO Name", task.roName || "—"],
+    ["Region", task.region || "—"],
+    ["Visit Date", formatDateOnlyIST(task.date)],
+    ["Engineer", task.engineer || "—"],
+    ["Issue Type", detectTaskIssueType(task)],
+    ["Priority", task.priority || getTaskPriority(task)],
+    ["Task Status", task.status || "Pending"],
+    ["Reply Status", task.replyStatus || "No Response"],
+    ["Assigned To", task.assignedTo || task.completedBy || getTaskDefaultAssignee(task) || "—"],
+    ["Mail Date", formatDateOnlyIST(task.mailDate)],
+    ["Next Follow-up", formatDateOnlyIST(task.nextFollowUpDate)],
+  ];
+}
+
+function buildTaskObservationList(task = {}) {
+  const items = [];
+  if (normalizeStatusLabel(task.earthingStatus) && normalizeStatusLabel(task.earthingStatus) !== "ok") {
+    items.push(`Earthing status is ${task.earthingStatus}${task.voltageReading ? ` (Voltage Reading: ${task.voltageReading})` : ""}.`);
+  }
+  if (normalizeStatusLabel(task.duOffline) && normalizeStatusLabel(task.duOffline) !== "allok") {
+    items.push(`DU offline observation: ${task.duOffline}${task.duRemark ? ` | Remark: ${task.duRemark}` : ""}.`);
+  }
+  if (normalizeStatusLabel(task.tankOffline) && normalizeStatusLabel(task.tankOffline) !== "allok") {
+    items.push(`Tank offline observation: ${task.tankOffline}${task.tankRemark ? ` | Remark: ${task.tankRemark}` : ""}.`);
+  }
+  if (!items.length && task.issue) {
+    items.push(task.issue);
+  }
+  return items;
+}
+
+function generateTaskPlainEmail(task = {}, mode = "action") {
+  const customer = getTaskCustomer(task);
+  const observations = buildTaskObservationList(task);
+  const summaryRows = formatTaskMailRows(task);
+  const salutation = customer === "HPCL" ? "Dear Sir/Madam," : "Dear Team,";
+  const intro = mode === "closure"
+    ? "Please find below the closure update against the below site issue."
+    : mode === "escalation"
+      ? "This is an escalation reminder for the below pending task."
+      : "Please find below the site observation requiring your action.";
+  const body = task.emailContent || observations.map((item, idx) => `${idx + 1}. ${item}`).join("\n") || "No additional remarks shared.";
+  const closureText = mode === "closure" && task.closureSummary
+    ? `\nClosure Summary:\n${task.closureSummary}\n`
+    : "";
+
+  return [
+    salutation,
+    "",
+    intro,
+    "",
+    ...summaryRows.map(([label, value]) => `${label}: ${value || "—"}`),
+    "",
+    "Observation Summary:",
+    body,
+    closureText,
+    mode === "closure"
+      ? "Kindly note the issue closure and update your records accordingly."
+      : "We request you to please take necessary action at the earliest and confirm closure by return email.",
+    "",
+    "Regards,",
+    DEFAULT_OUTGOING_MAIL_DISPLAY_NAME,
+    "RELCON Systems",
+  ].join("\n");
+}
+
+function buildTaskHtmlEmail(task = {}, mode = "action") {
+  const subject = buildTaskSubject(task, mode);
+  const priority = task.priority || getTaskPriority(task);
+  const priorityColors = {
+    Critical: ["#fff1f2", "#be123c"],
+    High: ["#fff7ed", "#c2410c"],
+    Medium: ["#eff6ff", "#1d4ed8"],
+    Low: ["#ecfdf5", "#047857"],
+  };
+  const [badgeBg, badgeColor] = priorityColors[priority] || priorityColors.Medium;
+  const rows = formatTaskMailRows(task)
+    .map(([label, value]) => `
+      <tr>
+        <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;width:180px;font-size:12px;font-weight:700;color:#334155;background:#f8fafc;">${htmlEscape(label)}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#0f172a;">${htmlEscape(value || "—")}</td>
+      </tr>`)
+    .join("");
+  const observations = buildTaskObservationList(task)
+    .map((item) => `<li style="margin:0 0 8px;">${htmlEscape(item)}</li>`)
+    .join("");
+  const bodyText = htmlEscape(task.emailContent || "").replace(/\n/g, "<br/>");
+  const footerNote = mode === "closure"
+    ? "Kindly treat this task as closed from RELCON side."
+    : mode === "escalation"
+      ? "This issue is still open and requires immediate attention."
+      : "Please review the observations below and support closure on priority.";
+
+  return `
+  <div style="margin:0;padding:24px;background:#f1f5f9;font-family:Arial,sans-serif;color:#0f172a;">
+    <div style="max-width:900px;margin:0 auto;background:#ffffff;border:1px solid #dbe3ee;border-radius:18px;overflow:hidden;box-shadow:0 20px 45px rgba(15,23,42,0.08);">
+      <div style="padding:24px 28px;background:linear-gradient(135deg,#0f172a,#1d4ed8);color:#ffffff;">
+        <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;opacity:.78;">RELCON Systems</div>
+        <div style="margin-top:10px;font-size:24px;font-weight:800;line-height:1.2;">${htmlEscape(subject)}</div>
+        <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;">
+          <span style="display:inline-flex;align-items:center;padding:6px 12px;border-radius:999px;background:${badgeBg};color:${badgeColor};font-size:12px;font-weight:700;">Priority: ${htmlEscape(priority)}</span>
+          <span style="display:inline-flex;align-items:center;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.15);font-size:12px;font-weight:600;">Status: ${htmlEscape(task.status || "Pending")}</span>
+          <span style="display:inline-flex;align-items:center;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.15);font-size:12px;font-weight:600;">Reply: ${htmlEscape(task.replyStatus || "No Response")}</span>
+        </div>
+      </div>
+      <div style="padding:26px 28px 30px;">
+        <p style="margin:0 0 14px;font-size:13px;color:#334155;">Dear Sir/Madam,</p>
+        <p style="margin:0 0 18px;font-size:13px;color:#334155;line-height:1.7;">${htmlEscape(footerNote)}</p>
+
+        <div style="border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;background:#ffffff;">
+          <table style="width:100%;border-collapse:collapse;">${rows}</table>
+        </div>
+
+        <div style="margin-top:22px;padding:18px 20px;border-radius:14px;background:#f8fafc;border:1px solid #e2e8f0;">
+          <div style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#475569;margin-bottom:10px;">Observation Summary</div>
+          ${observations ? `<ol style="margin:0;padding-left:18px;font-size:13px;color:#0f172a;line-height:1.7;">${observations}</ol>` : `<div style="font-size:13px;color:#334155;line-height:1.7;">${bodyText || "No additional observations shared."}</div>`}
+          ${bodyText ? `<div style="margin-top:14px;padding-top:14px;border-top:1px dashed #cbd5e1;font-size:13px;color:#334155;line-height:1.7;">${bodyText}</div>` : ""}
+          ${mode === "closure" && task.closureSummary ? `<div style="margin-top:14px;padding:14px;border-radius:12px;background:#ecfdf5;border:1px solid #bbf7d0;font-size:13px;color:#14532d;line-height:1.7;"><strong>Closure Summary:</strong><br/>${htmlEscape(task.closureSummary).replace(/\n/g, "<br/>")}</div>` : ""}
+        </div>
+
+        <div style="margin-top:22px;padding:18px 20px;border-radius:14px;background:#fff7ed;border:1px solid #fed7aa;">
+          <div style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#9a3412;margin-bottom:8px;">Required Action</div>
+          <div style="font-size:13px;color:#7c2d12;line-height:1.7;">${mode === "closure" ? "Please acknowledge the closure for our records." : "Please arrange corrective action at the earliest and share confirmation by return email once the issue is resolved."}</div>
+        </div>
+
+        <div style="margin-top:24px;font-size:12px;color:#64748b;line-height:1.7;">
+          Regards,<br/>
+          <strong style="color:#0f172a;">${htmlEscape(DEFAULT_OUTGOING_MAIL_DISPLAY_NAME)}</strong><br/>
+          RELCON Systems
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function logTaskEmail(task = {}, payload = {}) {
+  if (!task?._id) return;
+  task.mailHistory = Array.isArray(task.mailHistory) ? task.mailHistory : [];
+  task.mailHistory.push({
+    action: payload.action || "send",
+    subject: payload.subject || "",
+    to: payload.to || "",
+    cc: payload.cc || "",
+    status: payload.status || "success",
+    messageId: payload.messageId || "",
+    note: payload.note || "",
+    sentAt: payload.sentAt || new Date(),
+  });
+  task.lastMailSentAt = payload.sentAt || new Date();
+  task.lastMailSubject = payload.subject || task.lastMailSubject || "";
+  await task.save();
+}
+
+async function sendTaskWorkflowEmail({
+  task,
+  to,
+  cc,
+  mode = "action",
+  note = "",
+} = {}) {
+  if (!task) throw new Error("Task is required.");
+  const recipient = normalizeEmail(to || task.customerEmail);
+  if (!recipient) throw new Error("Recipient email missing.");
+  const ccList = String(cc || task.ccEmails || "")
+    .split(/[,\s;]+/)
+    .map(normalizeEmail)
+    .filter(Boolean)
+    .join(", ");
+  const subject = buildTaskSubject(task, mode);
+  const html = buildTaskHtmlEmail(task, mode);
+  const text = generateTaskPlainEmail(task, mode);
+  const info = await transporter.sendMail({
+    from: getDefaultOutgoingFromHeader(),
+    to: recipient,
+    cc: ccList || undefined,
+    subject,
+    html,
+    text,
+  });
+
+  await EmailLog.create({
+    type: `Task ${mode} mail`,
+    subject,
+    to: recipient,
+    status: "success",
+    meta: {
+      taskId: String(task._id || ""),
+      roCode: task.roCode || "",
+      roName: task.roName || "",
+      mode,
+      cc: ccList,
+    },
+  });
+
+  await logTaskEmail(task, {
+    action: mode,
+    subject,
+    to: recipient,
+    cc: ccList,
+    status: "success",
+    messageId: info?.messageId || "",
+    note,
+    sentAt: new Date(),
+  });
+
+  return {
+    ok: true,
+    subject,
+    to: recipient,
+    cc: ccList,
+    messageId: info?.messageId || "",
+  };
+}
+
+async function sendTaskNotificationEmail(options = {}) {
+  return sendTaskWorkflowEmail({ ...options, mode: "action" });
+}
+
+async function sendTaskClosureEmail(options = {}) {
+  return sendTaskWorkflowEmail({ ...options, mode: "closure" });
+}
+
+async function sendTaskEscalationEmail(options = {}) {
+  return sendTaskWorkflowEmail({ ...options, mode: "escalation" });
+}
+
+async function processPendingTaskEscalations() {
+  const todayISO = getCurrentISTDateParts().dateISO;
+  const openTasks = await Task.find({
+    status: { $nin: ["Resolved", "Done"] },
+  }).sort({ createdAt: -1 });
+
+  let escalated = 0;
+  for (const task of openTasks) {
+    const agingDays = getTaskAgingDays(task);
+    const nextFollowUp = String(task.nextFollowUpDate || "").slice(0, 10);
+    const dueForReminder = nextFollowUp && nextFollowUp <= todayISO;
+    const dueForEscalation = agingDays >= Number(task.slaDays || 2);
+    if (!dueForReminder && !dueForEscalation) continue;
+    if (!task.customerEmail) continue;
+    const result = await sendTaskEscalationEmail({
+      task,
+      to: task.customerEmail,
+      cc: task.ccEmails,
+      note: dueForEscalation ? "Auto escalation due to SLA aging." : "Auto follow-up reminder.",
+    });
+    task.escalatedAt = new Date();
+    task.escalatedLevel = Number(task.escalatedLevel || 0) + 1;
+    task.status = task.status === "Pending" ? "Follow-up" : task.status;
+    if (dueForReminder || dueForEscalation) {
+      const next = new Date();
+      next.setDate(next.getDate() + 2);
+      task.nextFollowUpDate = next.toISOString().slice(0, 10);
+    }
+    task.lastMailSubject = result.subject;
+    await task.save();
+    escalated += 1;
+  }
+
+  return { ok: true, escalated };
+}
+
 function parseISTDateTime(dateISO = "", timeValue = "") {
   const [year, month, day] = String(dateISO || "").split("-").map(Number);
   const [hour, minute] = String(timeValue || "").split(":").map(Number);
@@ -4112,6 +4454,16 @@ module.exports = {
   sendDailyPlanCompletionSummaryToNikhil,
   sendMaterialRequestNotification,
   sendMaterialDispatchNotification,
+  sendTaskNotificationEmail,
+  sendTaskClosureEmail,
+  sendTaskEscalationEmail,
+  processPendingTaskEscalations,
+  buildTaskSubject,
+  getTaskPriority,
+  getTaskDefaultAssignee,
+  detectTaskIssueType,
+  getTaskCustomer,
+  getTaskAgingDays,
   normalizeStatusLabel,
   isRequirementGivenToHQOStatus,
 };
