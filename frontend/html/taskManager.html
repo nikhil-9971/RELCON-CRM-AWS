@@ -189,7 +189,7 @@
     .sf-modal-title{font-size:15px;font-weight:700;color:var(--txt);display:flex;align-items:center;gap:8px;}
     .sf-modal-close{background:none;border:none;cursor:pointer;color:var(--txt3);font-size:16px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:var(--r-sm);}
     .sf-modal-close:hover{background:var(--sf-red-lt);color:var(--sf-red);}
-    .sf-modal-body{flex:1;overflow-y:auto;padding:20px;}
+    .sf-modal-body{flex:1;min-height:0;overflow-y:auto;padding:20px;}
     .sf-modal-footer{padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;background:var(--surface2);flex-shrink:0;}
     .sf-modal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;}
     .sf-modal-field{display:flex;flex-direction:column;gap:4px;}
@@ -268,7 +268,7 @@
   .dv-strip-title{font-size:13px;}
 
   /* Body */
-  .sf-body{padding:10px 12px;}
+  .sf-body{padding:10px 12px 18px;}
 
   /* Breadcrumb */
   .sf-bc{display:none;}
@@ -281,26 +281,30 @@
   .kpi-icon{width:32px;height:32px;font-size:13px;}
 
   /* Page header */
-  .sf-page-header{padding:10px 14px;gap:10px;}
+  .sf-page-header{padding:12px 14px;gap:10px;border-radius:10px;}
   .sf-page-icon{width:36px;height:36px;font-size:15px;}
   .sf-page-title{font-size:15px;}
-  .sf-page-meta{font-size:10px;}
-  .sf-page-actions{margin-left:0;width:100%;justify-content:flex-end;}
+  .sf-page-meta{font-size:10px;line-height:1.4;}
+  .sf-page-actions{margin-left:0;width:100%;display:grid;grid-template-columns:1fr;gap:8px;}
+  .sf-page-actions .sf-btn{width:100%;justify-content:center;height:38px;}
 
   /* Toolbar — stack vertically */
   .sf-toolbar{
     flex-direction:column;align-items:stretch;
-    padding:10px 12px;gap:8px;
+    padding:12px;gap:9px;
   }
   .sf-filter-group{width:100%;}
   .sf-filter-group .sf-input,
-  .sf-filter-group .sf-select{width:100%;height:36px;}
+  .sf-filter-group .sf-select{width:100%!important;height:38px;font-size:12px;}
   .sf-search-input{width:100%!important;}
   .sf-toolbar-spacer{display:none;}
   .sf-dropdown{width:100%;}
   .sf-dropdown .sf-btn{width:100%;justify-content:center;}
 
   /* Tab row */
+  .sf-tabs{overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap;padding:0 8px;}
+  .sf-tabs::-webkit-scrollbar{display:none;}
+  .sf-tab{padding:10px 12px;font-size:11px;flex:0 0 auto;}
   .tab-row{overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap;padding-bottom:2px;}
   .tab-row::-webkit-scrollbar{height:3px;}
 
@@ -309,13 +313,14 @@
   .src-tab{font-size:11px;padding:3px 10px;height:26px;}
 
   /* Table */
-  .sf-table-wrap{max-height:50vh;}
+  .sf-table-wrap{max-height:52vh;border-top:1px solid var(--border);}
   table{font-size:11px;}
   thead th{padding:7px 8px!important;font-size:9px!important;}
   tbody td{padding:6px 8px!important;font-size:11px!important;}
 
   /* Table header — hide less important cols hint via overflow scroll */
   .sf-table-card,.sf-table-wrap{-webkit-overflow-scrolling:touch;}
+  .sf-table-header{padding:10px 12px;}
 
   /* Section cards */
   .sf-section-header{padding:10px 14px;flex-wrap:wrap;gap:6px;}
@@ -323,7 +328,7 @@
   .sf-section-title{font-size:12px;}
 
   /* Buttons */
-  .sf-btn{font-size:11px;padding:0 10px;height:30px;}
+  .sf-btn{font-size:11px;padding:0 10px;height:32px;border-radius:6px;}
   .sf-btn-primary,.sf-btn-success,.sf-btn-neutral{height:34px;}
 
   /* Charts */
@@ -338,16 +343,60 @@
   .cust-count{font-size:14px;}
 
   /* Modals */
-  .sf-overlay{align-items:flex-end;padding-bottom:0;}
+  .sf-overlay{align-items:flex-end;padding:0;overflow:hidden;}
   .sf-modal{
     width:100%!important;max-width:100%!important;
-    border-radius:16px 16px 0 0;
-    max-height:90vh;
+    border-radius:18px 18px 0 0;
+    max-height:92vh;
+    max-height:92dvh;
+    min-height:0;
+    box-shadow:0 -18px 45px rgba(8,7,7,0.22);
   }
   .sf-modal-grid{grid-template-columns:1fr!important;}
-  .sf-modal-header{padding:14px 16px;}
-  .sf-modal-body{padding:14px 16px;}
-  .sf-modal-footer{padding:10px 16px;}
+  .sf-modal-header{
+    padding:14px 16px 12px;
+    position:relative;
+    background:#fff;
+  }
+  .sf-modal-header::before{
+    content:"";
+    position:absolute;
+    top:7px;
+    left:50%;
+    width:42px;
+    height:4px;
+    border-radius:999px;
+    background:#d8dde6;
+    transform:translateX(-50%);
+  }
+  .sf-modal-title{font-size:14px;padding-top:6px;}
+  .sf-modal-close{width:34px;height:34px;background:var(--surface2);border:1px solid var(--border);}
+  .sf-modal-body{
+    padding:14px 16px 18px;
+    min-height:0;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
+  }
+  .sf-modal-label{font-size:9px;}
+  .sf-modal-input,.sf-modal-select,.sf-modal-textarea{
+    height:40px;
+    border-radius:7px;
+    font-size:13px;
+    padding:8px 11px;
+  }
+  .sf-modal-textarea{min-height:92px;line-height:1.45;}
+  .sf-modal-footer{
+    position:sticky;
+    bottom:0;
+    z-index:2;
+    padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+    gap:10px;
+    background:rgba(255,255,255,0.96);
+    box-shadow:0 -10px 22px rgba(8,7,7,0.08);
+    backdrop-filter:saturate(160%) blur(10px);
+  }
+  .sf-modal-footer .sf-btn{flex:1;height:42px;justify-content:center;font-size:12px;font-weight:700;}
 
   /* Pagination */
   .sf-pagination{flex-direction:column;align-items:center;gap:6px;padding:8px 12px;}
@@ -377,9 +426,14 @@
   .dv-strip{height:44px;}
   .dv-strip-title{font-size:12px;}
   .dv-strip-icon{width:24px;height:24px;font-size:11px;}
-  .sf-body{padding:8px 10px;}
+  .sf-body{padding:8px 10px 16px;}
   .sf-page-title{font-size:13px;}
   .sf-page-icon{width:32px;height:32px;font-size:13px;}
+  .sf-page-header{align-items:flex-start;}
+  .sf-page-header > div:nth-child(2){flex:1;min-width:0;}
+  .sf-page-actions{grid-template-columns:1fr 1fr;}
+  .sf-page-actions .sf-btn:first-child{grid-column:1/-1;}
+  .sf-page-actions .sf-btn{height:36px;padding:0 8px;}
   .customer-cards{grid-template-columns:repeat(2,1fr);}
 
   /* Table font smaller */
@@ -391,6 +445,7 @@
 @media(max-width:768px){
   .bulk-bar{padding:8px 12px;gap:8px;}
   .bulk-bar .sf-btn{height:30px;font-size:10px;padding:0 8px;}
+  .bulk-bar.show{position:sticky;bottom:0;z-index:120;box-shadow:0 -8px 18px rgba(8,7,7,0.12);}
 }
 </style>
   <script src="config.js"></script>
