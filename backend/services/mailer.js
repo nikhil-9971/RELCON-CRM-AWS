@@ -1369,6 +1369,240 @@ async function getUserEmailsByUsernames(usernames = []) {
   )];
 }
 
+function getISTDayRangeUTC(dateISO = getCurrentISTDateParts().dateISO) {
+  const start = new Date(`${dateISO}T00:00:00+05:30`);
+  const end = new Date(`${dateISO}T23:59:59.999+05:30`);
+  return { start, end, dateISO };
+}
+
+function flattenForExcel(value = {}) {
+  const out = {};
+  for (const [key, raw] of Object.entries(value || {})) {
+    if (key === "planId" || key === "verificationEditLog") continue;
+    if (raw instanceof Date) out[key] = formatDateTimeIST(raw);
+    else if (raw && typeof raw === "object") out[key] = JSON.stringify(raw);
+    else out[key] = raw ?? "";
+  }
+  return out;
+}
+
+function buildCorrectionReportRows(records = [], category = "") {
+  const rows = [];
+  for (const record of records) {
+    const plan = record.planId || {};
+    const log = record.verificationEditLog || {};
+    const changes = Array.isArray(log.changes) ? log.changes : [];
+    const base = {
+      Category: category,
+      ROCode: plan.roCode || "",
+      ROName: plan.roName || "",
+      Region: plan.region || "",
+      Phase: plan.phase || "",
+      VisitDate: plan.date || "",
+      Engineer: plan.engineer || "",
+      EngineerCode: plan.empId || "",
+      IssueType: plan.issueType || "",
+      CorrectedBy: log.editedBy || "",
+      CorrectedAt: log.editedAt ? formatDateTimeIST(log.editedAt) : "",
+      VerifiedCorrectionMailSentAt: log.notificationSentAt ? formatDateTimeIST(log.notificationSentAt) : "",
+      AdminRemark: log.adminRemark || "",
+      TotalChangedFields: changes.length,
+    };
+    const recordFields = flattenForExcel(record);
+    if (changes.length) {
+      changes.forEach((change, index) => {
+        rows.push({
+          ...base,
+          ChangeNo: index + 1,
+          ChangedField: prettifyFieldName(change.field),
+          SubmittedByEngineer: change.before || "",
+          CorrectedByAdmin: change.after || "",
+          ...recordFields,
+        });
+      });
+    } else {
+      rows.push({
+        ...base,
+        ChangeNo: "",
+        ChangedField: "",
+        SubmittedByEngineer: "",
+        CorrectedByAdmin: "",
+        ...recordFields,
+      });
+    }
+  }
+  return rows;
+}
+
+function autosizeWorksheetColumns(worksheet, rows = []) {
+  const headers = Object.keys(rows[0] || {});
+  worksheet["!cols"] = headers.map((header) => ({
+    wch: Math.min(
+      48,
+      Math.max(
+        String(header).length + 2,
+        ...rows.slice(0, 250).map((row) => String(row[header] ?? "").length + 2)
+      )
+    ),
+  }));
+}
+
+function buildVerificationCorrectionReportWorkbook({
+  hpclRows = [],
+  rbmlRows = [],
+  bpclRows = [],
+  hpclRecordCount = 0,
+  rbmlRecordCount = 0,
+  bpclRecordCount = 0,
+  dateISO = "",
+} = {}) {
+  const allRows = [...hpclRows, ...rbmlRows, ...bpclRows];
+  const summaryRows = [
+    { Metric: "Report Date", Value: dateISO },
+    { Metric: "HPCL Corrected & Verified Records", Value: hpclRecordCount },
+    { Metric: "RBML Corrected & Verified Records", Value: rbmlRecordCount },
+    { Metric: "BPCL Corrected & Verified Records", Value: bpclRecordCount },
+    { Metric: "Total Corrected & Verified Records", Value: hpclRecordCount + rbmlRecordCount + bpclRecordCount },
+    { Metric: "Total Correction Rows", Value: allRows.length },
+  ];
+  const wb = XLSX.utils.book_new();
+  const summarySheet = XLSX.utils.json_to_sheet(summaryRows);
+  autosizeWorksheetColumns(summarySheet, summaryRows);
+  XLSX.utils.book_append_sheet(wb, summarySheet, "Summary");
+
+  const detailRows = allRows.length ? allRows : [{
+    Category: "",
+    ROCode: "",
+    ROName: "",
+    Region: "",
+    VisitDate: "",
+    Engineer: "",
+    CorrectedBy: "",
+    CorrectedAt: "",
+    AdminRemark: "",
+    ChangedField: "",
+    SubmittedByEngineer: "",
+    CorrectedByAdmin: "",
+    Note: "No corrected verified status records found for this report date.",
+  }];
+  const detailSheet = XLSX.utils.json_to_sheet(detailRows);
+  autosizeWorksheetColumns(detailSheet, detailRows);
+  XLSX.utils.book_append_sheet(wb, detailSheet, "Correction Details");
+
+  return XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+}
+
+async function sendDailyVerificationCorrectionReportToNikhil({ dateISO = getCurrentISTDateParts().dateISO } = {}) {
+  const reportType = "Daily Verification Correction Report";
+  const { start, end } = getISTDayRangeUTC(dateISO);
+  const recipients = await getUserEmailsByUsernames(["nikhil.trivedi"]);
+  if (!recipients.length) {
+    await EmailLog.create({
+      type: reportType,
+      subject: `Skipped: Nikhil email missing for ${dateISO}`,
+      to: "",
+      status: "failure",
+      meta: { dateISO, reason: "nikhil.trivedi email not found" },
+    });
+    return { ok: false, reason: "missing_nikhil_email" };
+  }
+
+  const baseQuery = {
+    isVerified: true,
+    "verificationEditLog.notificationSentAt": { $gte: start, $lte: end },
+    $or: [
+      { "verificationEditLog.changes.0": { $exists: true } },
+      { "verificationEditLog.adminRemark": { $nin: ["", null] } },
+    ],
+  };
+
+  const [hpcl, rbml, bpcl] = await Promise.all([
+    Status.find(baseQuery).populate("planId").lean(),
+    JioBPStatus.find(baseQuery).populate("planId").lean(),
+    BPCLStatus.find(baseQuery).populate("planId").lean(),
+  ]);
+
+  const hpclRows = buildCorrectionReportRows(hpcl, "HPCL");
+  const rbmlRows = buildCorrectionReportRows(rbml, "RBML");
+  const bpclRows = buildCorrectionReportRows(bpcl, "BPCL");
+  const totalRecords = hpcl.length + rbml.length + bpcl.length;
+  const totalRows = hpclRows.length + rbmlRows.length + bpclRows.length;
+  const generatedAt = formatDateTimeIST(new Date());
+  const subject = `Daily Corrected Verification Report | ${dateISO} | Records ${totalRecords}`;
+  const attachment = buildVerificationCorrectionReportWorkbook({
+    hpclRows,
+    rbmlRows,
+    bpclRows,
+    hpclRecordCount: hpcl.length,
+    rbmlRecordCount: rbml.length,
+    bpclRecordCount: bpcl.length,
+    dateISO,
+  });
+  const html = `
+    <div style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;font-size:14px;line-height:1.7;">
+      <p>Dear Nikhil,</p>
+      <p>Please find attached the daily report for status records that were edited by admin and then verified on <strong>${htmlEscape(dateISO)}</strong>.</p>
+      <table style="border-collapse:collapse;margin:14px 0;font-size:13px;">
+        <tr><td style="border:1px solid #d0d7de;padding:8px 12px;font-weight:700;">HPCL Records</td><td style="border:1px solid #d0d7de;padding:8px 12px;">${hpcl.length}</td></tr>
+        <tr><td style="border:1px solid #d0d7de;padding:8px 12px;font-weight:700;">RBML Records</td><td style="border:1px solid #d0d7de;padding:8px 12px;">${rbml.length}</td></tr>
+        <tr><td style="border:1px solid #d0d7de;padding:8px 12px;font-weight:700;">BPCL Records</td><td style="border:1px solid #d0d7de;padding:8px 12px;">${bpcl.length}</td></tr>
+        <tr><td style="border:1px solid #d0d7de;padding:8px 12px;font-weight:700;">Correction Detail Rows</td><td style="border:1px solid #d0d7de;padding:8px 12px;">${totalRows}</td></tr>
+      </table>
+      <p>The Excel file contains full plan context, correction fields, submitted values, corrected values, admin remark, and status record details.</p>
+      <p>Regards,<br/><strong>Relcon CRM</strong><br/><span style="color:#64748b;font-size:12px;">Generated on ${htmlEscape(generatedAt)} IST.</span></p>
+    </div>
+  `;
+  const text = [
+    "Dear Nikhil,",
+    "",
+    `Please find attached the daily corrected verification report for ${dateISO}.`,
+    "",
+    `HPCL Records: ${hpcl.length}`,
+    `RBML Records: ${rbml.length}`,
+    `BPCL Records: ${bpcl.length}`,
+    `Correction Detail Rows: ${totalRows}`,
+    "",
+    "The Excel file contains full plan context, correction fields, submitted values, corrected values, admin remark, and status record details.",
+    "",
+    "Regards,",
+    "Relcon CRM",
+    `Generated on ${generatedAt} IST.`,
+  ].join("\n");
+
+  try {
+    const info = await transporter.sendMail({
+      from: getDefaultOutgoingFromHeader(),
+      to: recipients.join(", "),
+      subject,
+      html,
+      text,
+      attachments: [{
+        filename: `daily_corrected_verification_report_${dateISO}.xlsx`,
+        content: attachment,
+        contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      }],
+    });
+    await EmailLog.create({
+      type: reportType,
+      subject,
+      to: recipients.join(", "),
+      status: "success",
+      meta: { dateISO, hpcl: hpcl.length, rbml: rbml.length, bpcl: bpcl.length, totalRecords, totalRows, messageId: info?.messageId || "" },
+    });
+    return { ok: true, dateISO, totalRecords, totalRows, messageId: info?.messageId || "" };
+  } catch (err) {
+    await EmailLog.create({
+      type: reportType,
+      subject,
+      to: recipients.join(", "),
+      status: "failure",
+      error: err.message,
+      meta: { dateISO, hpcl: hpcl.length, rbml: rbml.length, bpcl: bpcl.length, totalRecords, totalRows },
+    });
+    throw err;
+  }
+}
+
 function isHpclActionRequiredStatusRecord(record = {}) {
   const plan = record.planId || {};
   const phase = String(plan.phase || record.phase || "").trim().toUpperCase();
@@ -4423,6 +4657,19 @@ cron.schedule(
   { timezone: "Asia/Kolkata" }
 );
 
+// ─── Scheduler: daily 19:00 IST except Sunday for corrected verified statuses ─
+
+cron.schedule(
+  "0 19 * * 1-6",
+  () => {
+    console.log("🔔 Daily corrected verification report CRON TRIGGERED:", new Date().toISOString());
+    sendDailyVerificationCorrectionReportToNikhil().catch((e) =>
+      console.error("Daily corrected verification report job error:", e)
+    );
+  },
+  { timezone: "Asia/Kolkata" }
+);
+
 // ─── Manual run ───────────────────────────────────────────────────────────────
 
 // if (require.main === module) {
@@ -4491,6 +4738,11 @@ if (require.main === module) {
       .then((r) => { console.log("Database backup archive done:", r); process.exit(r.ok ? 0 : 1); })
       .catch((e) => { console.error("❌ error:", e); process.exit(1); });
 
+  } else if (type === "daily-correction-report") {
+    sendDailyVerificationCorrectionReportToNikhil({ dateISO: dateArg || getCurrentISTDateParts().dateISO })
+      .then((r) => { console.log("Daily corrected verification report done:", r); process.exit(r.ok ? 0 : 1); })
+      .catch((e) => { console.error("❌ error:", e); process.exit(1); });
+
   } else {
     // default = pending
     sendPendingStatusEmail({ forDateISO: dateArg })
@@ -4517,6 +4769,7 @@ module.exports = {
   sendDailyPlanCompletionSummaryToNikhil,
   sendMaterialRequestNotification,
   sendMaterialDispatchNotification,
+  sendDailyVerificationCorrectionReportToNikhil,
   sendTaskNotificationEmail,
   sendTaskClosureEmail,
   sendTaskEscalationEmail,
