@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const mongoose = require("mongoose");
 const DailyPlan = require("../models/DailyPlan");
 const Status = require("../models/Status");
 const verifyToken = require("../middleware/authMiddleware");
@@ -34,6 +35,23 @@ function formatDateForMessage(value = "") {
   const parsed = new Date(`${isoDate}T00:00:00`);
   if (Number.isNaN(parsed.getTime())) return isoDate;
   return parsed.toLocaleDateString("en-GB");
+}
+
+function sanitizeDailyPlanUpdatePayload(body = {}) {
+  const blockedFields = new Set([
+    "_id",
+    "__v",
+    "createdAt",
+    "updatedAt",
+    "statusSaved",
+    "jioBPStatusSaved",
+  ]);
+  const payload = {};
+  for (const [key, value] of Object.entries(body || {})) {
+    if (blockedFields.has(key)) continue;
+    payload[key] = value === null || value === undefined ? "" : value;
+  }
+  return payload;
 }
 
 async function getHPCLAMCValidationResult({
@@ -218,22 +236,24 @@ router.get("/getStatusByPlan/:id", async (req, res) => {
 //Plan edit
 router.put("/updateDailyPlan/:id", async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).send("Invalid Daily Plan ID");
+    }
+    const payload = sanitizeDailyPlanUpdatePayload(req.body);
     const validation = await getHPCLAMCValidationResult({
-      ...(req.body || {}),
+      ...payload,
       excludePlanId: req.params.id,
     });
     if (!validation.isValid) {
       return res.status(400).json(validation);
     }
 
-    const updated = await DailyPlan.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-    });
+    const updated = await DailyPlan.findByIdAndUpdate(req.params.id, { $set: payload }, { new: true, runValidators: true });
     if (!updated) return res.status(404).send("Plan not found");
-    res.send("✅ Record updated");
+    res.json({ ok: true, message: "Record updated", data: updated });
   } catch (err) {
     console.error("Error updating plan:", err);
-    res.status(500).send("Server error");
+    res.status(500).send(`Server error: ${err.message}`);
   }
 });
 

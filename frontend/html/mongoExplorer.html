@@ -887,9 +887,22 @@ function editR(enc) {
   openM();
 }
 
+function parseEditValue(raw) {
+  const value = String(raw ?? '').trim();
+  if (value === '') return '';
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  if (value === 'null') return null;
+  if (/^-?\d+(\.\d+)?$/.test(value)) return Number(value);
+  if ((value.startsWith('{') && value.endsWith('}')) || (value.startsWith('[') && value.endsWith(']'))) {
+    try { return JSON.parse(value); } catch(e) {}
+  }
+  return raw;
+}
+
 async function saveE() {
   const ins = document.getElementById('mb').querySelectorAll('input[name]'), u = {};
-  ins.forEach(i => { if (!['_id','__v','createdAt','updatedAt'].includes(i.name)) u[i.name] = i.value; });
+  ins.forEach(i => { if (!['_id','__v','createdAt','updatedAt','statusSaved','jioBPStatusSaved'].includes(i.name)) u[i.name] = parseEditValue(i.value); });
   try {
     const r = await callApi(`${S.active.put}/${S.editRec._id}`, { method: 'PUT', body: JSON.stringify(u) });
     if (r.ok) { toast('Record updated successfully', 's'); closeM(); loadColl(S.active); }
