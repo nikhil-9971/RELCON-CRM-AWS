@@ -733,6 +733,87 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
   .dv-user-pill { max-width: 132px; padding-right: 8px; }
   .dv-user-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .dv-logout-btn { width: 38px; height: 38px; font-size: 14px; }
+
+  /* Mobile status forms: centered modal, scrollable body, visible footer */
+  .dv-modal-overlay {
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 12px !important;
+    overflow: hidden !important;
+  }
+  .dv-modal {
+    width: 100% !important;
+    max-width: 560px !important;
+    max-height: calc(100vh - 24px) !important;
+    max-height: calc(100dvh - 24px) !important;
+    min-height: 0 !important;
+    border-radius: 16px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    animation: fadeScale 0.22s ease !important;
+  }
+  .dv-modal-header {
+    flex-shrink: 0 !important;
+    padding: 11px 14px !important;
+  }
+  .dv-modal-header-title {
+    min-width: 0;
+    font-size: 13px !important;
+    line-height: 1.25;
+  }
+  .dv-modal-header-icon {
+    width: 30px !important;
+    height: 30px !important;
+    font-size: 13px !important;
+    flex-shrink: 0;
+  }
+  .dv-close-btn {
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+  }
+  .dv-modal-body {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: 12px 14px !important;
+  }
+  .dv-modal-footer {
+    flex-shrink: 0 !important;
+    flex-grow: 0 !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1.6fr !important;
+    gap: 9px !important;
+    padding: 10px 14px !important;
+    padding-bottom: max(12px, env(safe-area-inset-bottom, 12px)) !important;
+    border-top: 1px solid var(--border) !important;
+    background: var(--surface) !important;
+    box-shadow: 0 -6px 18px rgba(15,23,42,0.10) !important;
+    position: relative !important;
+    z-index: 2 !important;
+  }
+  .dv-modal-footer .dv-btn {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 44px !important;
+    justify-content: center !important;
+    border-radius: 9px !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    padding: 0 8px !important;
+  }
+  .dv-form-grid,
+  .dv-form-grid-3 {
+    grid-template-columns: 1fr !important;
+    gap: 9px !important;
+  }
+  .dv-section-hd {
+    padding: 11px 0 6px;
+    margin-bottom: 9px;
+  }
 }
 
 /* =====================================================
