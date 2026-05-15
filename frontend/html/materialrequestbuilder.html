@@ -101,9 +101,14 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
 .act-btn.view{background:#edf6ff;color:#155eef;border:1px solid #c7d7fe}
 .act-btn.edit{background:var(--sf-blue-lt);color:var(--sf-blue);border:1px solid #c5dff5}
 .act-btn.del{background:var(--sf-red-lt);color:var(--sf-red);border:1px solid #f5c6c3}
-.summary-block{display:flex;flex-direction:column;gap:4px;max-width:260px;white-space:normal}
+.summary-block{display:flex;flex-direction:column;gap:6px;min-width:340px;max-width:520px;white-space:normal}
 .summary-title{font-weight:700;color:var(--txt)}
 .summary-meta{font-size:10px;color:var(--txt4)}
+.material-lines{display:flex;flex-direction:column;gap:5px;margin-top:2px}
+.material-line-row{display:grid;grid-template-columns:minmax(160px,1.4fr) minmax(74px,.7fr) 44px minmax(92px,.8fr) minmax(118px,1fr);gap:6px;align-items:center;padding:6px 8px;border:1px solid var(--border-lt);border-radius:6px;background:#fff}
+.material-line-name{font-weight:700;color:var(--txt);line-height:1.25;overflow-wrap:anywhere}
+.material-line-cell{font-size:10px;color:var(--txt3);line-height:1.25;overflow-wrap:anywhere}
+.material-line-empty{font-size:10px;color:var(--txt4);padding:6px 8px;border:1px dashed var(--border);border-radius:6px;background:var(--surface2)}
 .pagination{padding:10px 16px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--surface2);flex-wrap:wrap}
 .pag-info{font-size:11px;color:var(--txt3);flex:1}
 .pag-btn{width:30px;height:30px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--surface);color:var(--txt2);font-size:12px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .12s;font-family:'Inter',sans-serif}
@@ -585,6 +590,25 @@ function summarizeLineField(items=[], key="", formatter=null){
   if(displayValues.length === 1) return displayValues[0];
   return `${displayValues[0]} +${displayValues.length-1} more`;
 }
+function renderMaterialLineItems(items=[]){
+  const valid = (items || []).filter(item=>item.materialName || item.materialType || item.quantity || item.materialStatus);
+  if(!valid.length) return `<div class="material-line-empty">No material line items saved.</div>`;
+  return `<div class="material-lines">${valid.map((item,index)=>`
+    <div class="material-line-row">
+      <div>
+        <div class="material-line-name">${index+1}. ${esc(item.materialName||"—")}</div>
+        <div class="material-line-cell">${esc(item.requestType||"—")}</div>
+      </div>
+      <div class="material-line-cell">${esc(item.materialType||"—")}</div>
+      <div><span class="qty-pill">${esc(item.quantity||0)}</span></div>
+      <div><span class="sf-badge ${statusClass(item.deliveryStatus || item.materialStatus)}">${esc(item.deliveryStatus || item.materialStatus || "Pending")}</span></div>
+      <div class="material-line-cell">
+        PO: ${esc(item.poNumber||"—")}<br>
+        Docket: ${esc(item.docketNumber||"—")}
+      </div>
+    </div>
+  `).join("")}</div>`;
+}
 function normalizeRequestRow(row={}){const lineItems=(Array.isArray(row.lineItems)?row.lineItems:[]).map(normalizeLineItem); const meta=summarizeLineItems(lineItems); const clientRequirement=String(row.clientRequirement||"").trim(); return { ...row, clientRequirement, lineItems, materialSummary:row.materialSummary||meta.summary, quantity:Number(row.quantity||meta.qty||0)||0, materialDispatchStatus:row.materialDispatchStatus||meta.primaryStatus, materialRequirementType:row.materialRequirementType||meta.primaryType, materialReceivedDate:row.materialReceivedDate||meta.deliveryDate, searchBlob:[row.requestMode,clientRequirement,row.engineer,row.engineerCode,row.region,row.roCode,row.roName,row.phase,row.materialSummary,row.materialRequestTo,row.createdByName,row.updatedByName,...lineItems.map(item=>`${item.materialName} ${item.materialType} ${item.docketNumber} ${item.poNumber}`)].join(" ").toLowerCase() }}
 function seedMasterList(){return fetchJson(`${API}/materialRequestMasterItems/seed-defaults`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({items:DEFAULT_MASTER})})}
 function loadMasterDatalist(){document.getElementById("masterNameList").innerHTML = masterRows.map(item=>`<option value="${esc(item.materialName)}">${esc(item.materialType)}</option>`).join("")}
@@ -786,7 +810,7 @@ function renderTable(){
   document.getElementById("countChip").textContent = `${total} record${total===1?"":"s"}`;
   if(activeTab === "requests"){
     head.innerHTML = `<tr>
-      <th>#</th><th>Requirement For</th><th>Code</th><th>Region</th><th>RO Code</th><th>RO Name</th><th>Phase</th><th>Material Request Date</th><th>Request Summary</th><th>Qty</th><th>Status</th><th>PO Number</th><th>PO Date</th><th>Request To</th><th>Dispatch Follow-up Date</th><th>Updated By</th><th>Actions</th>
+      <th>#</th><th>Requirement For</th><th>Code</th><th>Region</th><th>RO Code</th><th>RO Name</th><th>Phase</th><th>Material Request Date</th><th>Material Line Items</th><th>Total Qty</th><th>Status</th><th>PO Number</th><th>PO Date</th><th>Request To</th><th>Dispatch Follow-up Date</th><th>Updated By</th><th>Actions</th>
     </tr>`;
   } else {
     head.innerHTML = `<tr>
@@ -811,7 +835,7 @@ function renderTable(){
         <td>${esc(row.roName||"—")}</td>
         <td>${esc(row.phase||"—")}</td>
         <td>${fmtDate(row.date)}</td>
-        <td><div class="summary-block"><div class="summary-title">${esc(row.materialSummary||"—")}</div><div class="summary-meta">${row.lineItems.length} line item(s)</div></div></td>
+        <td><div class="summary-block"><div class="summary-title">${esc(row.lineItems.length)} material line item${row.lineItems.length===1?"":"s"}</div>${renderMaterialLineItems(row.lineItems)}</div></td>
         <td><span class="qty-pill">${esc(row.quantity||0)}</span></td>
         <td><span class="sf-badge ${statusClass(row.materialDispatchStatus)}">${esc(row.materialDispatchStatus||"Pending")}</span></td>
         <td>${esc(summarizeLineField(row.lineItems,"poNumber"))}</td>
