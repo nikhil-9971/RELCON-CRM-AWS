@@ -225,6 +225,29 @@ function getCurrentISTDateParts(baseDate = new Date()) {
   };
 }
 
+function getCurrentISTTimeParts(baseDate = new Date()) {
+  const formatter = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const parts = formatter.formatToParts(new Date(baseDate));
+  const map = {};
+  for (const part of parts) {
+    if (part.type !== "literal") map[part.type] = part.value;
+  }
+  return {
+    hour: Number(map.hour || 0),
+    minute: Number(map.minute || 0),
+  };
+}
+
+function isAtOrAfterISTTime(hour = 0, minute = 0, baseDate = new Date()) {
+  const now = getCurrentISTTimeParts(baseDate);
+  return now.hour > hour || (now.hour === hour && now.minute >= minute);
+}
+
 function formatTaskLabel(value = "") {
   return String(value || "")
     .replace(/[_-]+/g, " ")
@@ -3829,6 +3852,158 @@ async function sendMissingMorningDataViewEntryAlert() {
   }
 }
 
+async function sendLateDataViewEntryAlert({
+  category = "Data View",
+  plan = {},
+  status = {},
+  submittedBy = "",
+  createdAt = new Date(),
+} = {}) {
+  const reportType = "Late Data View Entry Alert";
+
+  try {
+    if (!isAtOrAfterISTTime(11, 0, createdAt)) {
+      return { ok: true, skipped: true, reason: "before_11_am" };
+    }
+
+    const entryId = String(status?._id || plan?._id || "");
+    if (entryId) {
+      const alreadySent = await EmailLog.findOne({
+        type: reportType,
+        status: "success",
+        $or: [
+          { "meta.entryId": entryId },
+          { "meta.planId": entryId },
+          { "meta.statusId": entryId },
+        ],
+      }).lean();
+      if (alreadySent) {
+        return { ok: true, skipped: true, reason: "already_sent", entryId };
+      }
+    }
+
+    const users = await User.find({}, "email role engineerName username").lean();
+    const adminEmails = [...new Set(
+      users
+        .filter((user) => String(user.role || "").trim().toLowerCase() === "admin")
+        .map((user) => normalizeEmail(user.email))
+        .filter(Boolean)
+    )];
+    const toRecipients = adminEmails.length ? adminEmails : [normalizeEmail(MAIL_TO)].filter(Boolean);
+
+    if (!toRecipients.length) {
+      await EmailLog.create({
+        type: reportType,
+        subject: "Skipped: admin recipient email missing",
+        to: "",
+        status: "failure",
+        sentAt: new Date(),
+        meta: {
+          entryId,
+          planId: String(plan?._id || ""),
+          category,
+          reason: "admin_email_missing",
+        },
+      });
+      return { ok: false, reason: "admin_email_missing" };
+    }
+
+    const entryTime = formatDateTimeIST(createdAt);
+    const engineerName = plan.engineer || submittedBy || "User";
+    const subject = `Late Data View Entry | ${category} | ${plan.roCode || "RO"} | ${engineerName}`;
+    const rows = [
+      ["Entry Type", category],
+      ["Submitted By", submittedBy || engineerName],
+      ["Engineer", engineerName],
+      ["Region", plan.region || "—"],
+      ["RO Code", plan.roCode || "—"],
+      ["RO Name", plan.roName || "—"],
+      ["Phase", plan.phase || "—"],
+      ["Visit Date", formatDateOnlyIST(plan.date)],
+      ["Entry Time", `${entryTime} IST`],
+    ];
+
+    const rowsHtml = rows.map(([label, value]) => `
+      <tr>
+        <td style="border:1px solid #d1d5db;padding:8px;font-weight:700;background:#f8fafc;">${htmlEscape(label)}</td>
+        <td style="border:1px solid #d1d5db;padding:8px;">${htmlEscape(value)}</td>
+      </tr>
+    `).join("");
+
+    const html = `
+      <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:#111827;">
+        <p>Dear <b>Admin Team</b>,</p>
+        <p>A new Data View entry has been submitted after <b>11:00 AM IST</b>. Please review the details below.</p>
+        <table style="border-collapse:collapse;width:100%;max-width:760px;font-size:13px;">
+          <tbody>${rowsHtml}</tbody>
+        </table>
+        <p style="margin-top:16px;">Regards,<br><b>Relcon CRM System</b></p>
+      </div>
+    `;
+
+    const text = [
+      "Dear Admin Team,",
+      "",
+      "A new Data View entry has been submitted after 11:00 AM IST.",
+      "",
+      ...rows.map(([label, value]) => `${label}: ${value}`),
+      "",
+      "Regards,",
+      "Relcon CRM System",
+    ].join("\n");
+
+    const info = await transporter.sendMail({
+      from: getDefaultOutgoingFromHeader(),
+      to: toRecipients.join(", "),
+      subject,
+      html,
+      text,
+    });
+
+    await EmailLog.create({
+      type: reportType,
+      subject,
+      to: toRecipients.join(", "),
+      status: "success",
+      sentAt: new Date(),
+      meta: {
+        entryId,
+        planId: String(plan?._id || ""),
+        category,
+        engineer: engineerName,
+        roCode: plan.roCode || "",
+        roName: plan.roName || "",
+        visitDate: plan.date || "",
+        submittedBy: submittedBy || "",
+        entryTime,
+        messageId: info?.messageId || "",
+      },
+    });
+
+    return { ok: true, entryId, recipientCount: toRecipients.length };
+  } catch (err) {
+    console.error("❌ Late data view entry alert error:", err.message);
+    try {
+      await EmailLog.create({
+        type: reportType,
+        subject: "Late data view entry alert - failure",
+        to: "",
+        status: "failure",
+        sentAt: new Date(),
+        error: err.message,
+        meta: {
+          category,
+          entryId: String(status?._id || plan?._id || ""),
+          planId: String(plan?._id || ""),
+        },
+      });
+    } catch (logErr) {
+      console.error("Failed to write EmailLog for late data view entry alert:", logErr?.message || logErr);
+    }
+    return { ok: false, error: err };
+  }
+}
+
 function isEngineerRole(value = "") {
   return ["engineer", "user"].includes(String(value || "").trim().toLowerCase());
 }
@@ -4786,6 +4961,7 @@ module.exports = {
   sendMaterialSheetUploadReminder,
   runScheduledMaterialUpload,
   sendMissingMorningDataViewEntryAlert,
+  sendLateDataViewEntryAlert,
   sendDailyPlanCompletionSummaryToNikhil,
   sendMaterialRequestNotification,
   sendMaterialDispatchNotification,

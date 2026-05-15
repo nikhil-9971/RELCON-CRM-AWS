@@ -153,7 +153,7 @@ router.post("/saveStatus", async (req, res) => {
       locationField,
     } = req.body;
 
-    const savedStatus = await Status.findOneAndUpdate(
+    await Status.findOneAndUpdate(
       { planId },
       {
         planId,
@@ -196,7 +196,7 @@ router.post("/saveStatus", async (req, res) => {
     );
 
     // ✅ Mark DailyPlan as statusSaved = true
-    await DailyPlan.findByIdAndUpdate(planId, { statusSaved: true });
+    await DailyPlan.findByIdAndUpdate(planId, { statusSaved: true }, { new: true }).lean();
 
     res.send("Status saved");
   } catch (err) {
