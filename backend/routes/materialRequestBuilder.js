@@ -104,16 +104,98 @@ function hasWorkflowStatus(request = {}, status = "") {
   return getMaterialWorkflowStatuses(request).has(normalizeStatusLabel(status));
 }
 
+const NOTIFICATION_STATUS_BY_TYPE = {
+  delivered: "Delivered",
+  transit: "In Transit",
+  dispatch: "Dispatched",
+  process: "In Process",
+};
+
+function lineHasStatus(item = {}, status = "") {
+  const normalizedStatus = normalizeStatusLabel(status);
+  return [item.materialStatus, item.deliveryStatus]
+    .map(normalizeStatusLabel)
+    .includes(normalizedStatus);
+}
+
+function lineHasDispatchReference(item = {}) {
+  return Boolean(
+    String(item.docketNumber || "").trim() ||
+    String(item.dispatchDate || "").trim() ||
+    String(item.dispatchCourier || "").trim() ||
+    String(item.challanNumber || "").trim()
+  );
+}
+
+function lineChangedForNotification(previousItem = {}, nextItem = {}, notificationType = "") {
+  const fields = notificationType === "delivered"
+    ? ["materialStatus", "deliveryStatus", "deliveryDate", "poNumber", "poDate", "docketNumber"]
+    : ["materialStatus", "deliveryStatus", "dispatchCourier", "docketNumber", "dispatchDate", "challanNumber", "challanCreationDate"];
+
+  return fields.some((field) => String(previousItem?.[field] || "").trim() !== String(nextItem?.[field] || "").trim());
+}
+
+function getNotificationLineItems(previous = {}, next = {}, notificationType = "") {
+  const status = NOTIFICATION_STATUS_BY_TYPE[notificationType];
+  const nextItems = Array.isArray(next.lineItems) ? next.lineItems : [];
+  const previousItems = Array.isArray(previous.lineItems) ? previous.lineItems : [];
+  if (!status || !nextItems.length) return nextItems;
+
+  const matchingItems = nextItems.filter((item) => {
+    if (!lineHasStatus(item, status)) return false;
+    if (["dispatch", "transit"].includes(notificationType) && !lineHasDispatchReference(item)) return false;
+    return true;
+  });
+
+  const changedItems = matchingItems.filter((item, index) => {
+    const originalIndex = nextItems.indexOf(item);
+    return lineChangedForNotification(previousItems[originalIndex] || {}, item, notificationType);
+  });
+
+  return changedItems.length ? changedItems : matchingItems;
+}
+
+function buildNotificationRequest(previous = {}, next = {}, notificationType = "") {
+  const lineItems = getNotificationLineItems(previous, next, notificationType);
+  if (!lineItems.length) return null;
+  return {
+    ...next,
+    lineItems,
+    quantity: lineItems.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0),
+    materialSummary: lineItems
+      .slice(0, 2)
+      .map((item) => `${item.materialName || "Material"}${Number(item.quantity || 0) > 1 ? ` x${item.quantity}` : ""}`)
+      .join(", "),
+  };
+}
+
+function hasNotificationLineChange(previous = {}, next = {}, notificationType = "") {
+  const status = NOTIFICATION_STATUS_BY_TYPE[notificationType];
+  const nextItems = Array.isArray(next.lineItems) ? next.lineItems : [];
+  const previousItems = Array.isArray(previous.lineItems) ? previous.lineItems : [];
+  if (!status || !nextItems.length) return false;
+
+  return nextItems.some((item, index) => {
+    if (!lineHasStatus(item, status)) return false;
+    if (["dispatch", "transit"].includes(notificationType) && !lineHasDispatchReference(item)) return false;
+    return lineChangedForNotification(previousItems[index] || {}, item, notificationType);
+  });
+}
+
 async function triggerMaterialRequestCreateNotifications(created) {
   try {
     if (hasWorkflowStatus(created, "Delivered")) {
-      await sendMaterialDispatchNotification(created, "delivered");
+      const request = buildNotificationRequest({}, created, "delivered");
+      if (request) await sendMaterialDispatchNotification(request, "delivered");
     } else if (hasWorkflowStatus(created, "In Transit")) {
-      await sendMaterialDispatchNotification(created, "transit");
+      const request = buildNotificationRequest({}, created, "transit");
+      if (request) await sendMaterialDispatchNotification(request, "transit");
     } else if (hasWorkflowStatus(created, "Dispatched")) {
-      await sendMaterialDispatchNotification(created, "dispatch");
+      const request = buildNotificationRequest({}, created, "dispatch");
+      if (request) await sendMaterialDispatchNotification(request, "dispatch");
     } else if (hasWorkflowStatus(created, "In Process")) {
-      await sendMaterialDispatchNotification(created, "process");
+      const request = buildNotificationRequest({}, created, "process");
+      if (request) await sendMaterialDispatchNotification(request, "process");
     } else if (isRequirementGivenToHQOStatus(created?.materialDispatchStatus) || hasWorkflowStatus(created, "Requiment given to HQO")) {
       await sendMaterialRequestNotification(created);
     }
@@ -129,19 +211,19 @@ function shouldNotifyRequirement(previous = {}, next = {}) {
 }
 
 function shouldNotifyInProcess(previous = {}, next = {}) {
-  return !hasWorkflowStatus(previous, "In Process") && hasWorkflowStatus(next, "In Process");
+  return (!hasWorkflowStatus(previous, "In Process") && hasWorkflowStatus(next, "In Process")) || hasNotificationLineChange(previous, next, "process");
 }
 
 function shouldNotifyDispatch(previous = {}, next = {}) {
-  return !hasWorkflowStatus(previous, "Dispatched") && hasWorkflowStatus(next, "Dispatched");
+  return (!hasWorkflowStatus(previous, "Dispatched") && hasWorkflowStatus(next, "Dispatched")) || hasNotificationLineChange(previous, next, "dispatch");
 }
 
 function shouldNotifyTransit(previous = {}, next = {}) {
-  return !hasWorkflowStatus(previous, "In Transit") && hasWorkflowStatus(next, "In Transit");
+  return (!hasWorkflowStatus(previous, "In Transit") && hasWorkflowStatus(next, "In Transit")) || hasNotificationLineChange(previous, next, "transit");
 }
 
 function shouldNotifyDelivered(previous = {}, next = {}) {
-  return !hasWorkflowStatus(previous, "Delivered") && hasWorkflowStatus(next, "Delivered");
+  return (!hasWorkflowStatus(previous, "Delivered") && hasWorkflowStatus(next, "Delivered")) || hasNotificationLineChange(previous, next, "delivered");
 }
 
 async function triggerMaterialRequestUpdateNotifications(previous, updated) {
@@ -150,13 +232,17 @@ async function triggerMaterialRequestUpdateNotifications(previous, updated) {
       await sendMaterialRequestNotification(updated);
     }
     if (shouldNotifyDelivered(previous, updated)) {
-      await sendMaterialDispatchNotification(updated, "delivered");
+      const request = buildNotificationRequest(previous, updated, "delivered");
+      if (request) await sendMaterialDispatchNotification(request, "delivered");
     } else if (shouldNotifyTransit(previous, updated)) {
-      await sendMaterialDispatchNotification(updated, "transit");
+      const request = buildNotificationRequest(previous, updated, "transit");
+      if (request) await sendMaterialDispatchNotification(request, "transit");
     } else if (shouldNotifyDispatch(previous, updated)) {
-      await sendMaterialDispatchNotification(updated, "dispatch");
+      const request = buildNotificationRequest(previous, updated, "dispatch");
+      if (request) await sendMaterialDispatchNotification(request, "dispatch");
     } else if (shouldNotifyInProcess(previous, updated)) {
-      await sendMaterialDispatchNotification(updated, "process");
+      const request = buildNotificationRequest(previous, updated, "process");
+      if (request) await sendMaterialDispatchNotification(request, "process");
     }
   } catch (err) {
     console.error("Material request status notification error:", err?.message || err);
