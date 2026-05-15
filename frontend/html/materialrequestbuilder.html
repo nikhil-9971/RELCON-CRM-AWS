@@ -84,6 +84,7 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var
 .sf-record-count{background:var(--sf-blue-lt);color:var(--sf-blue);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px}
 .sf-table-wrap{overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 360px)}
 table{width:100%;border-collapse:collapse;font-size:11px;min-width:1120px}
+table.request-line-table{min-width:1780px}
 thead th{background:var(--sf-navy)!important;color:#e8f4fd!important;font-size:10px!important;font-weight:600!important;text-transform:uppercase!important;letter-spacing:.6px!important;padding:9px 12px!important;text-align:left!important;white-space:nowrap!important;border:none!important;border-right:1px solid #253d5b!important;position:sticky;top:0;z-index:10}
 thead th:last-child{border-right:none!important}
 tbody tr{border-bottom:1px solid var(--border-lt);transition:background .1s}
@@ -803,14 +804,24 @@ function clearFilters(skipRender=false){
   if(!skipRender) applyFilters();
 }
 
+function getRequestLineRows(){
+  return filteredRows.flatMap((row, rowIndex)=>{
+    const items = Array.isArray(row.lineItems) && row.lineItems.length ? row.lineItems : [normalizeLineItem({})];
+    return items.map((item, lineIndex)=>({ row, item, rowIndex, lineIndex }));
+  });
+}
+
 function renderTable(){
   const head = document.getElementById("tableHead");
   const body = document.getElementById("tableBody");
-  const total = filteredRows.length;
-  document.getElementById("countChip").textContent = `${total} record${total===1?"":"s"}`;
+  const table = head.closest("table");
+  table?.classList.toggle("request-line-table", activeTab === "requests");
+  const requestLineRows = activeTab === "requests" ? getRequestLineRows() : [];
+  const total = activeTab === "requests" ? requestLineRows.length : filteredRows.length;
+  document.getElementById("countChip").textContent = `${total} ${activeTab==="requests" ? "line item" : "record"}${total===1?"":"s"}`;
   if(activeTab === "requests"){
     head.innerHTML = `<tr>
-      <th>#</th><th>Requirement For</th><th>Code</th><th>Region</th><th>RO Code</th><th>RO Name</th><th>Phase</th><th>Material Request Date</th><th>Material Line Items</th><th>Total Qty</th><th>Status</th><th>PO Number</th><th>PO Date</th><th>Request To</th><th>Dispatch Follow-up Date</th><th>Updated By</th><th>Actions</th>
+      <th>#</th><th>Requirement For</th><th>Code</th><th>Region</th><th>RO Code</th><th>RO Name</th><th>Phase</th><th>Material Request Date</th><th>Material Name</th><th>Material Type</th><th>Request Type</th><th>Qty</th><th>Material Status</th><th>Delivery Status</th><th>PO Number</th><th>PO Date</th><th>Docket Number</th><th>Request To</th><th>Dispatch Follow-up Date</th><th>Updated By</th><th>Actions</th>
     </tr>`;
   } else {
     head.innerHTML = `<tr>
@@ -818,14 +829,14 @@ function renderTable(){
     </tr>`;
   }
   if(!total){
-    body.innerHTML = `<tr><td colspan="${activeTab==="requests"?17:7}" class="empty-state">No ${activeTab==="requests"?"material requests":"material master items"} found.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="${activeTab==="requests"?21:7}" class="empty-state">No ${activeTab==="requests"?"material line items":"material master items"} found.</td></tr>`;
     document.getElementById("paginationWrap").style.display = "none";
     return;
   }
   const start = (currentPage - 1) * rowsPerPage;
-  const pageRows = filteredRows.slice(start, start + rowsPerPage);
   if(activeTab === "requests"){
-    body.innerHTML = pageRows.map((row,index)=>`
+    const pageRows = requestLineRows.slice(start, start + rowsPerPage);
+    body.innerHTML = pageRows.map(({ row, item, rowIndex, lineIndex },index)=>`
       <tr>
         <td>${start + index + 1}</td>
         <td><div style="font-weight:700;">${esc(row.clientRequirement||row.engineer||"—")}</div><div style="font-size:10px;color:var(--txt4);">${esc(row.clientRequirement ? "Client Requirement" : (row.engineerEmailId||"—"))}</div></td>
@@ -835,21 +846,26 @@ function renderTable(){
         <td>${esc(row.roName||"—")}</td>
         <td>${esc(row.phase||"—")}</td>
         <td>${fmtDate(row.date)}</td>
-        <td><div class="summary-block"><div class="summary-title">${esc(row.lineItems.length)} material line item${row.lineItems.length===1?"":"s"}</div>${renderMaterialLineItems(row.lineItems)}</div></td>
-        <td><span class="qty-pill">${esc(row.quantity||0)}</span></td>
-        <td><span class="sf-badge ${statusClass(row.materialDispatchStatus)}">${esc(row.materialDispatchStatus||"Pending")}</span></td>
-        <td>${esc(summarizeLineField(row.lineItems,"poNumber"))}</td>
-        <td>${esc(summarizeLineField(row.lineItems,"poDate",fmtDate))}</td>
+        <td><div style="font-weight:700;color:var(--txt);">${lineIndex+1}. ${esc(item.materialName||"—")}</div><div style="font-size:10px;color:var(--txt4);">${esc(item.notes||"")}</div></td>
+        <td>${esc(item.materialType||"—")}</td>
+        <td>${esc(item.requestType||"—")}</td>
+        <td><span class="qty-pill">${esc(item.quantity||0)}</span></td>
+        <td><span class="sf-badge ${statusClass(item.materialStatus)}">${esc(item.materialStatus||"Pending")}</span></td>
+        <td>${item.deliveryStatus ? `<span class="sf-badge ${statusClass(item.deliveryStatus)}">${esc(item.deliveryStatus)}</span>` : "—"}</td>
+        <td>${esc(item.poNumber||"—")}</td>
+        <td>${fmtDate(item.poDate)}</td>
+        <td>${esc(item.docketNumber||"—")}</td>
         <td>${esc(row.materialRequestTo||"—")}</td>
         <td>${fmtDate(row.materialRequestDate)}</td>
         <td>${esc(row.updatedByName||row.createdByName||"—")}</td>
         <td><div class="action-group">
-          <button class="act-btn view" title="View" onclick="openDetail(${start + index})"><i class="fa-solid fa-eye"></i></button>
-          ${isAdmin()?`<button class="act-btn edit" title="Edit" onclick="openRequestModal(${start + index})"><i class="fa-solid fa-pen"></i></button><button class="act-btn del" title="Delete" onclick="prepareDelete('request','${row._id}')"><i class="fa-solid fa-trash"></i></button>`:""}
+          <button class="act-btn view" title="View" onclick="openDetail(${rowIndex})"><i class="fa-solid fa-eye"></i></button>
+          ${isAdmin()?`<button class="act-btn edit" title="Edit" onclick="openRequestModal(${rowIndex})"><i class="fa-solid fa-pen"></i></button><button class="act-btn del" title="Delete" onclick="prepareDelete('request','${row._id}')"><i class="fa-solid fa-trash"></i></button>`:""}
         </div></td>
       </tr>
     `).join("");
   } else {
+    const pageRows = filteredRows.slice(start, start + rowsPerPage);
     body.innerHTML = pageRows.map((row,index)=>`
       <tr>
         <td>${start + index + 1}</td>
@@ -888,7 +904,8 @@ function renderPagination(total){
 }
 
 function changePage(delta){
-  const totalPages = Math.max(1, Math.ceil(filteredRows.length / rowsPerPage));
+  const total = activeTab === "requests" ? getRequestLineRows().length : filteredRows.length;
+  const totalPages = Math.max(1, Math.ceil(total / rowsPerPage));
   currentPage = Math.min(totalPages, Math.max(1, currentPage + delta));
   renderTable();
 }
