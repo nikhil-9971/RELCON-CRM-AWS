@@ -670,7 +670,7 @@ document.getElementById('dateBadge').textContent =
 function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function fmtDate(d){if(!d)return '—';const dt=new Date(d);return isNaN(dt)?String(d):dt.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}
 function today(){return new Date().toISOString().slice(0,10);}
-function getUserFromToken(tkn){try{if(!tkn)return{};const p=JSON.parse(atob(tkn.split('.')[1]));return{username:(p.username||p.name||'').toString(),role:(p.role||'').toString().toLowerCase()};}catch{return{};}}
+function getUserFromToken(tkn){try{if(!tkn)return{};const p=JSON.parse(atob(tkn.split('.')[1]));const role=(p.role||'').toString().toLowerCase()==='user'?'engineer':(p.role||'').toString().toLowerCase();return{username:(p.username||p.name||'').toString(),engineerName:(p.engineerName||p.username||p.name||'').toString(),role};}catch{return{};}}
 
 function showLoader(msg='Loading…'){document.querySelector('.sf-loader-text').textContent=msg;document.getElementById('loader').classList.remove('hidden');}
 function hideLoader(){document.getElementById('loader').classList.add('hidden');}
@@ -738,9 +738,10 @@ async function reloadData(){
 function populateEngineerSelect(){
   const sel=document.getElementById('engineerFilter');
   const uniq=[...new Set([...hpclData.map(d=>d.engineer),...jioData.map(d=>d.engineer)].filter(Boolean))].sort();
-  if(currentUser.role==='engineer'&&currentUser.username){
-    sel.innerHTML=`<option value="${esc(currentUser.username)}">${esc(currentUser.username)}</option>`;
-    sel.value=currentUser.username; sel.disabled=true; return;
+  const myEngineerName = currentUser.engineerName || currentUser.username;
+  if(currentUser.role==='engineer'&&myEngineerName){
+    sel.innerHTML=`<option value="${esc(myEngineerName)}">${esc(myEngineerName)}</option>`;
+    sel.value=myEngineerName; sel.disabled=true; return;
   }
   sel.disabled=false;
   sel.innerHTML='<option value="ALL">All Engineers</option>'+uniq.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
@@ -772,7 +773,8 @@ function buildRows(){
   const to=document.getElementById('toDate').value||null;
   const f=from?new Date(from):null, t=to?new Date(to):null;
   let eng=document.getElementById('engineerFilter').value||'ALL';
-  if(currentUser.role==='engineer'&&currentUser.username) eng=currentUser.username;
+  const myEngineerName = currentUser.engineerName || currentUser.username;
+  if(currentUser.role==='engineer'&&myEngineerName) eng=myEngineerName;
   const q=(document.getElementById('globalSearch').value||'').toLowerCase().trim();
   const omsVal=document.getElementById('omsFilter').value||'ALL';
 
@@ -1045,7 +1047,8 @@ document.getElementById('clearFilters').addEventListener('click',()=>{
   document.getElementById('engineerFilter').value='ALL';
   document.getElementById('omsFilter').value='ALL';
   activeKPI=''; document.querySelectorAll('.kpi-card').forEach(c=>c.classList.remove('active-kpi'));
-  if(currentUser.role==='engineer'&&currentUser.username){document.getElementById('engineerFilter').value=currentUser.username;}
+  const myEngineerName = currentUser.engineerName || currentUser.username;
+  if(currentUser.role==='engineer'&&myEngineerName){document.getElementById('engineerFilter').value=myEngineerName;}
   applyFiltersAndRender();
 });
 

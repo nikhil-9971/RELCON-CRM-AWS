@@ -737,7 +737,7 @@ async function loadOverview() {
     window.__statusRecords = Array.isArray(hpcl) ? hpcl : [];
     window.__currentUser = currentUser || {};
     window.__engineerUsers = Array.isArray(engineerUsers)
-      ? engineerUsers.filter((u) => String(u.role || "").trim().toLowerCase() === "engineer")
+      ? engineerUsers.filter((u) => ["engineer","user"].includes(String(u.role || "").trim().toLowerCase()))
       : [];
     buildMonthDropdown(window.__allPlans);
     const sel = document.getElementById("monthSelect");

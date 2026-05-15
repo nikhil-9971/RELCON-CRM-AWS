@@ -830,7 +830,7 @@ function isAdminUser(){
 function loadEngineerOptions(){
   const select = document.getElementById('fEngineer');
   const engineers = engineerUsers
-    .filter(user => String(user.role || '').toLowerCase() === 'engineer')
+    .filter(user => ['engineer','user'].includes(String(user.role || '').toLowerCase()))
     .sort((a,b)=>String(a.engineerName || a.username || '').localeCompare(String(b.engineerName || b.username || '')));
   select.innerHTML = '<option value="">Select Engineer</option>' + engineers.map(user=>{
     const name = user.engineerName || user.username || '';

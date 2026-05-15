@@ -3377,7 +3377,7 @@ async function sendMonthlyAttendanceSheet({ baseDate = new Date() } = {}) {
 
     const engineerNames = [...new Set([
       ...users
-        .filter((user) => String(user.role || "").trim().toLowerCase() === "engineer")
+        .filter((user) => isEngineerRole(user.role))
         .map((user) => String(user.engineerName || user.username || "").trim())
         .filter(Boolean),
       ...attendanceRecords
@@ -3527,7 +3527,7 @@ async function sendVerificationCorrectionEmail({
         .filter((user) => {
           const role = String(user.role || "").trim().toLowerCase();
           const name = String(user.engineerName || user.username || "").trim().toLowerCase();
-          return role === "engineer" && name === String(engineerName).trim().toLowerCase();
+          return ["engineer", "user"].includes(role) && name === String(engineerName).trim().toLowerCase();
         })
         .map((user) => normalizeEmail(user.email))
         .filter(Boolean)
@@ -3555,88 +3555,106 @@ async function sendVerificationCorrectionEmail({
     const generatedAt = formatDateTimeIST(new Date());
     const correctionReason = "The record was corrected during admin verification because one or more submitted values did not match the required reporting standard or final site observations.";
     const remarkText = String(adminRemark || "").trim();
-    const textBody = [
-      `Dear ${engineerName},`,
-      "",
-      `This is to inform you that your submitted ${category} record has been reviewed during verification, and certain entries were corrected by the admin team before final approval.`,
-      "",
-      "Please review the corrected details below and ensure future submissions are entered accurately at the time of reporting.",
-      "",
-      "Record Details:",
-      `RO Code: ${roCode || "-"}`,
-      `Site Name: ${roName || "-"}`,
-      `Visit Date: ${visitDate || "-"}`,
-      `Corrected By: ${correctedBy || "Admin"}`,
-      "",
-      `Reason for Correction: ${correctionReason}`,
-      ...(remarkText ? ["", `Admin Verification Remark: ${remarkText}`] : []),
-      "",
-      "Correction Summary:",
-      changes.length ? buildCorrectionSummaryText(changes) : "No field-level correction was captured. Please review the admin verification remark carefully.",
-      "",
-      "Please take care to submit future records correctly to avoid verification delays and rework.",
-      "",
-      "Regards,",
-      "Relcon CRM Team",
-      "",
-      `Generated on ${generatedAt} IST`,
-    ].join("\n");
-    const htmlBody = `
-      <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:#111;">
-        <p>Dear <b>${htmlEscape(engineerName)}</b>,</p>
-        <p>
-          This is to inform you that your submitted <b>${htmlEscape(category)}</b> record has been reviewed during verification,
-          and certain entries were corrected by the admin team before final approval.
-        </p>
-        <p>
-          Please review the corrected details below and ensure future submissions are entered accurately at the time of reporting.
-        </p>
-        <p style="margin:16px 0 8px;"><b>Record Details</b></p>
-        <table style="border-collapse:collapse;width:100%;font-size:13px;">
-          <tbody>
-            <tr>
-              <td style="border:1px solid #000;padding:8px;width:25%;"><b>RO Code</b></td>
-              <td style="border:1px solid #000;padding:8px;">${htmlEscape(roCode || "-")}</td>
-              <td style="border:1px solid #000;padding:8px;width:25%;"><b>Site Name</b></td>
-              <td style="border:1px solid #000;padding:8px;">${htmlEscape(roName || "-")}</td>
-            </tr>
-            <tr>
-              <td style="border:1px solid #000;padding:8px;"><b>Visit Date</b></td>
-              <td style="border:1px solid #000;padding:8px;">${htmlEscape(visitDate || "-")}</td>
-              <td style="border:1px solid #000;padding:8px;"><b>Corrected By</b></td>
-              <td style="border:1px solid #000;padding:8px;">${htmlEscape(correctedBy || "Admin")}</td>
-            </tr>
-          </tbody>
-        </table>
-        <p style="margin:16px 0 0;"><b>Reason for Correction:</b> ${htmlEscape(correctionReason)}</p>
-        ${remarkText ? `
-          <div style="margin:16px 0 0;padding:12px 14px;border:2px solid #dc2626;background:#fef2f2;border-radius:8px;">
-            <div style="color:#991b1b;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">Admin Verification Remark</div>
-            <div style="color:#dc2626;font-size:15px;font-weight:800;line-height:1.7;">${htmlEscape(remarkText)}</div>
-          </div>
-        ` : ""}
-        <p style="margin:16px 0 8px;"><b>Correction Summary</b></p>
-        ${changes.length ? buildCorrectionSummaryHtml(changes) : `<p style="margin:8px 0 0;">No field-level correction was captured. Please review the admin verification remark carefully.</p>`}
-        <p style="margin-top:16px;">
-          Please take care to submit future records correctly to avoid verification delays and rework.
-        </p>
-        <p style="margin-top:16px;">
-          Regards,<br>
-          <b>Relcon CRM Team</b>
-        </p>
-        <p style="margin-top:16px;">Generated on ${htmlEscape(generatedAt)} IST</p>
-      </div>
-    `;
+    const buildBodies = (salutation) => {
+      const textBody = [
+        `Dear ${salutation},`,
+        "",
+        `This is to inform you that your submitted ${category} record has been reviewed during verification, and certain entries were corrected by the admin team before final approval.`,
+        "",
+        "Please review the corrected details below and ensure future submissions are entered accurately at the time of reporting.",
+        "",
+        "Record Details:",
+        `RO Code: ${roCode || "-"}`,
+        `Site Name: ${roName || "-"}`,
+        `Visit Date: ${visitDate || "-"}`,
+        `Corrected By: ${correctedBy || "Admin"}`,
+        "",
+        `Reason for Correction: ${correctionReason}`,
+        ...(remarkText ? ["", `Admin Verification Remark: ${remarkText}`] : []),
+        "",
+        "Correction Summary:",
+        changes.length ? buildCorrectionSummaryText(changes) : "No field-level correction was captured. Please review the admin verification remark carefully.",
+        "",
+        "Please take care to submit future records correctly to avoid verification delays and rework.",
+        "",
+        "Regards,",
+        "Relcon CRM Team",
+        "",
+        `Generated on ${generatedAt} IST`,
+      ].join("\n");
+
+      const htmlBody = `
+        <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:#111;">
+          <p>Dear <b>${htmlEscape(salutation)}</b>,</p>
+          <p>
+            This is to inform you that your submitted <b>${htmlEscape(category)}</b> record has been reviewed during verification,
+            and certain entries were corrected by the admin team before final approval.
+          </p>
+          <p>
+            Please review the corrected details below and ensure future submissions are entered accurately at the time of reporting.
+          </p>
+          <p style="margin:16px 0 8px;"><b>Record Details</b></p>
+          <table style="border-collapse:collapse;width:100%;font-size:13px;">
+            <tbody>
+              <tr>
+                <td style="border:1px solid #000;padding:8px;width:25%;"><b>RO Code</b></td>
+                <td style="border:1px solid #000;padding:8px;">${htmlEscape(roCode || "-")}</td>
+                <td style="border:1px solid #000;padding:8px;width:25%;"><b>Site Name</b></td>
+                <td style="border:1px solid #000;padding:8px;">${htmlEscape(roName || "-")}</td>
+              </tr>
+              <tr>
+                <td style="border:1px solid #000;padding:8px;"><b>Visit Date</b></td>
+                <td style="border:1px solid #000;padding:8px;">${htmlEscape(visitDate || "-")}</td>
+                <td style="border:1px solid #000;padding:8px;"><b>Corrected By</b></td>
+                <td style="border:1px solid #000;padding:8px;">${htmlEscape(correctedBy || "Admin")}</td>
+              </tr>
+            </tbody>
+          </table>
+          <p style="margin:16px 0 0;"><b>Reason for Correction:</b> ${htmlEscape(correctionReason)}</p>
+          ${remarkText ? `
+            <div style="margin:16px 0 0;padding:12px 14px;border:2px solid #dc2626;background:#fef2f2;border-radius:8px;">
+              <div style="color:#991b1b;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">Admin Verification Remark</div>
+              <div style="color:#dc2626;font-size:15px;font-weight:800;line-height:1.7;">${htmlEscape(remarkText)}</div>
+            </div>
+          ` : ""}
+          <p style="margin:16px 0 8px;"><b>Correction Summary</b></p>
+          ${changes.length ? buildCorrectionSummaryHtml(changes) : `<p style="margin:8px 0 0;">No field-level correction was captured. Please review the admin verification remark carefully.</p>`}
+          <p style="margin-top:16px;">
+            Please take care to submit future records correctly to avoid verification delays and rework.
+          </p>
+          <p style="margin-top:16px;">
+            Regards,<br>
+            <b>Relcon CRM Team</b>
+          </p>
+          <p style="margin-top:16px;">Generated on ${htmlEscape(generatedAt)} IST</p>
+        </div>
+      `;
+
+      return { htmlBody, textBody };
+    };
 
     const subject = `Correction Notice | ${category} Verified | ${roCode || "RO"} | ${roName || engineerName}`;
+    const engineerSalutation = engineerEmails.map((email) => `@${email}`).join(", ") || engineerName;
+    const engineerBodies = buildBodies(engineerSalutation);
     const info = await transporter.sendMail({
       from: getDefaultOutgoingFromHeader(),
       to: engineerEmails.join(", "),
-      cc: adminEmails.join(", "),
       subject,
-      html: htmlBody,
-      text: textBody,
+      html: engineerBodies.htmlBody,
+      text: engineerBodies.textBody,
     });
+
+    let adminInfo = null;
+    if (adminEmails.length) {
+      const adminBodies = buildBodies(engineerName);
+      adminInfo = await transporter.sendMail({
+        from: getDefaultOutgoingFromHeader(),
+        to: adminEmails.join(", "),
+        subject,
+        html: adminBodies.htmlBody,
+        text: adminBodies.textBody,
+      });
+    }
 
     await EmailLog.create({
       type: reportType,
@@ -3645,8 +3663,9 @@ async function sendVerificationCorrectionEmail({
       status: "success",
       sentAt: new Date(),
       meta: {
-        cc: adminEmails.join(", "),
+        adminTo: adminEmails.join(", "),
         engineerName,
+        engineerSalutation,
         roCode,
         roName,
         visitDate,
@@ -3654,6 +3673,7 @@ async function sendVerificationCorrectionEmail({
         adminRemark: remarkText,
         changeCount: changes.length,
         messageId: info?.messageId || "",
+        adminMessageId: adminInfo?.messageId || "",
       },
     });
 
@@ -3687,7 +3707,7 @@ async function sendMissingMorningDataViewEntryAlert() {
       DailyPlan.find({ date: todayISO }).lean(),
     ]);
 
-    const engineerUsers = users.filter((user) => String(user.role || "").trim().toLowerCase() === "engineer");
+    const engineerUsers = users.filter((user) => isEngineerRole(user.role));
     const submittedEngineers = new Set(
       todayPlans
         .map((plan) => normalizePlanKeyPart(plan.engineer || ""))
@@ -3810,7 +3830,7 @@ async function sendMissingMorningDataViewEntryAlert() {
 }
 
 function isEngineerRole(value = "") {
-  return String(value || "").trim().toLowerCase() === "engineer";
+  return ["engineer", "user"].includes(String(value || "").trim().toLowerCase());
 }
 
 function getDailyPlanSummaryCategory(plan = {}) {
@@ -4235,7 +4255,7 @@ async function sendPendingStatusReminderAlerts() {
           .filter((user) => {
             const role = String(user.role || "").trim().toLowerCase();
             const name = String(user.engineerName || user.username || "").trim().toLowerCase();
-            return role === "engineer" && name === engineerName.toLowerCase();
+            return isEngineerRole(role) && name === engineerName.toLowerCase();
           })
           .map((user) => normalizeEmail(user.email))
           .filter(Boolean)

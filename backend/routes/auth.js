@@ -17,9 +17,10 @@ router.post("/login", async (req, res) => {
     return res.status(401).json({ error: "Invalid credentials" });
   }
 
+  const normalizedRole = normalizeUserRole(user.role);
   const payload = {
     username: user.username,
-    role: user.role,
+    role: normalizedRole,
     engineerName: user.engineerName,
   };
 
@@ -58,7 +59,7 @@ router.post("/login", async (req, res) => {
     await LoginLog.create({
       engineerName: user.engineerName || user.name || "Unknown",
       username: user.username,
-      role: user.role,
+      role: normalizedRole,
       ip: ipAddress,
       location,
     });
@@ -71,7 +72,7 @@ router.post("/login", async (req, res) => {
     token,
     user: {
       username: user.username,
-      role: user.role,
+      role: normalizedRole,
       engineerName: user.engineerName,
     },
   });
@@ -118,7 +119,7 @@ router.get("/user", verifyToken, async (req, res) => {
     if (!user) return res.json(req.user);
     res.json({
       username: user.username || req.user?.username || "",
-      role: user.role || req.user?.role || "",
+      role: normalizeUserRole(user.role || req.user?.role || ""),
       engineerName: user.engineerName || req.user?.engineerName || "",
       email: user.email || "",
       contactNumber: user.contactNumber || "",
