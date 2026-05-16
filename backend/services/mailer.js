@@ -3729,31 +3729,21 @@ async function sendVerificationCorrectionEmail({
     const info = await transporter.sendMail({
       from: getDefaultOutgoingFromHeader(),
       to: engineerEmails.join(", "),
+      cc: adminEmails.join(", "),
       subject,
       html: engineerBodies.htmlBody,
       text: engineerBodies.textBody,
     });
 
-    let adminInfo = null;
-    if (adminEmails.length) {
-      const adminBodies = buildBodies(engineerName);
-      adminInfo = await transporter.sendMail({
-        from: getDefaultOutgoingFromHeader(),
-        to: adminEmails.join(", "),
-        subject,
-        html: adminBodies.htmlBody,
-        text: adminBodies.textBody,
-      });
-    }
-
     await EmailLog.create({
       type: reportType,
       subject,
       to: engineerEmails.join(", "),
+      cc: adminEmails.join(", "),
       status: "success",
       sentAt: new Date(),
       meta: {
-        adminTo: adminEmails.join(", "),
+        adminCc: adminEmails.join(", "),
         engineerName,
         engineerSalutation,
         engineerEmails: engineerEmails.join(", "),
@@ -3764,7 +3754,6 @@ async function sendVerificationCorrectionEmail({
         adminRemark: remarkText,
         changeCount: changes.length,
         messageId: info?.messageId || "",
-        adminMessageId: adminInfo?.messageId || "",
       },
     });
 
