@@ -159,34 +159,60 @@ function normalizePersonKey(value = "") {
     .trim();
 }
 
+function compactPersonKey(value = "") {
+  return normalizePersonKey(value).replace(/\s+/g, "");
+}
+
+function personKeyTokens(value = "") {
+  return normalizePersonKey(value).split(" ").filter(Boolean);
+}
+
 function userMatchesEngineer(user = {}, engineerName = "") {
   const target = normalizePersonKey(engineerName);
   if (!target) return false;
 
   const candidates = [
     user.engineerName,
+    user.name,
     user.username,
     user.email,
     String(user.email || "").split("@")[0],
   ].map(normalizePersonKey).filter(Boolean);
 
-  return candidates.some((candidate) =>
-    candidate === target ||
-    candidate.includes(target) ||
-    target.includes(candidate)
-  );
+  const targetCompact = compactPersonKey(target);
+  const targetTokens = personKeyTokens(target);
+
+  return candidates.some((candidate) => {
+    const candidateCompact = compactPersonKey(candidate);
+    const candidateTokens = personKeyTokens(candidate);
+
+    if (
+      candidate === target ||
+      candidate.includes(target) ||
+      target.includes(candidate) ||
+      (candidateCompact && candidateCompact === targetCompact)
+    ) {
+      return true;
+    }
+
+    if (targetTokens.length < 2 || candidateTokens.length < 2) return false;
+
+    return (
+      targetTokens.every((token) => candidateTokens.includes(token)) ||
+      candidateTokens.every((token) => targetTokens.includes(token))
+    );
+  });
 }
 
 function getEngineerEmailsFromUsers(users = [], engineerName = "") {
-  return [...new Set(
-    users
-      .filter((user) => {
-        const role = String(user.role || "").trim().toLowerCase();
-        return ["engineer", "user"].includes(role) && userMatchesEngineer(user, engineerName);
-      })
-      .map((user) => normalizeEmail(user.email))
-      .filter(Boolean)
-  )];
+  const matchingUsers = users.filter((user) => userMatchesEngineer(user, engineerName));
+  const preferredRoleMatches = matchingUsers.filter((user) => {
+    const role = String(user.role || "").trim().toLowerCase();
+    return ["engineer", "user"].includes(role);
+  });
+  const sourceUsers = preferredRoleMatches.length ? preferredRoleMatches : matchingUsers;
+
+  return [...new Set(sourceUsers.map((user) => normalizeEmail(user.email)).filter(Boolean))];
 }
 
 function normalizeStatusLabel(value = "") {
@@ -3588,7 +3614,7 @@ async function sendVerificationCorrectionEmail({
       return { ok: false, reason: "missing_engineer_changes_and_remark" };
     }
 
-    const users = await User.find({}, "email role engineerName username").lean();
+    const users = await User.find({}, "email role engineerName username name").lean();
     const engineerEmails = getEngineerEmailsFromUsers(users, engineerName);
 
     const adminEmails = [...new Set(
@@ -3613,6 +3639,7 @@ async function sendVerificationCorrectionEmail({
     const generatedAt = formatDateTimeIST(new Date());
     const correctionReason = "The record was corrected during admin verification because one or more submitted values did not match the required reporting standard or final site observations.";
     const remarkText = String(adminRemark || "").trim();
+    const engineerEmailText = engineerEmails.join(", ");
     const buildBodies = (salutation) => {
       const textBody = [
         `Dear ${salutation},`,
@@ -3625,6 +3652,7 @@ async function sendVerificationCorrectionEmail({
         `RO Code: ${roCode || "-"}`,
         `Site Name: ${roName || "-"}`,
         `Visit Date: ${visitDate || "-"}`,
+        `Engineer Email: ${engineerEmailText || "-"}`,
         `Corrected By: ${correctedBy || "Admin"}`,
         "",
         `Reason for Correction: ${correctionReason}`,
@@ -3663,8 +3691,12 @@ async function sendVerificationCorrectionEmail({
               <tr>
                 <td style="border:1px solid #000;padding:8px;"><b>Visit Date</b></td>
                 <td style="border:1px solid #000;padding:8px;">${htmlEscape(visitDate || "-")}</td>
+                <td style="border:1px solid #000;padding:8px;"><b>Engineer Email</b></td>
+                <td style="border:1px solid #000;padding:8px;">${htmlEscape(engineerEmailText || "-")}</td>
+              </tr>
+              <tr>
                 <td style="border:1px solid #000;padding:8px;"><b>Corrected By</b></td>
-                <td style="border:1px solid #000;padding:8px;">${htmlEscape(correctedBy || "Admin")}</td>
+                <td style="border:1px solid #000;padding:8px;" colspan="3">${htmlEscape(correctedBy || "Admin")}</td>
               </tr>
             </tbody>
           </table>
@@ -3724,6 +3756,7 @@ async function sendVerificationCorrectionEmail({
         adminTo: adminEmails.join(", "),
         engineerName,
         engineerSalutation,
+        engineerEmails: engineerEmails.join(", "),
         roCode,
         roName,
         visitDate,
