@@ -149,6 +149,46 @@ function normalizeEmail(value) {
   return String(value || "").trim().toLowerCase();
 }
 
+function normalizePersonKey(value = "") {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function userMatchesEngineer(user = {}, engineerName = "") {
+  const target = normalizePersonKey(engineerName);
+  if (!target) return false;
+
+  const candidates = [
+    user.engineerName,
+    user.username,
+    user.email,
+    String(user.email || "").split("@")[0],
+  ].map(normalizePersonKey).filter(Boolean);
+
+  return candidates.some((candidate) =>
+    candidate === target ||
+    candidate.includes(target) ||
+    target.includes(candidate)
+  );
+}
+
+function getEngineerEmailsFromUsers(users = [], engineerName = "") {
+  return [...new Set(
+    users
+      .filter((user) => {
+        const role = String(user.role || "").trim().toLowerCase();
+        return ["engineer", "user"].includes(role) && userMatchesEngineer(user, engineerName);
+      })
+      .map((user) => normalizeEmail(user.email))
+      .filter(Boolean)
+  )];
+}
+
 function normalizeStatusLabel(value = "") {
   return String(value || "")
     .trim()
@@ -534,11 +574,15 @@ async function sendTaskWorkflowEmail({
   if (!task) throw new Error("Task is required.");
   const recipient = normalizeEmail(to || task.customerEmail);
   if (!recipient) throw new Error("Recipient email missing.");
-  const ccList = String(cc || task.ccEmails || "")
-    .split(/[,\s;]+/)
-    .map(normalizeEmail)
-    .filter(Boolean)
-    .join(", ");
+  const users = await User.find({}, "email role engineerName username").lean();
+  const engineerEmails = getEngineerEmailsFromUsers(users, task.engineer);
+  const ccList = [...new Set([
+    ...String(cc || task.ccEmails || "")
+      .split(/[,\s;]+/)
+      .map(normalizeEmail)
+      .filter(Boolean),
+    ...engineerEmails,
+  ].filter((email) => email && email !== recipient))].join(", ");
   const subject = buildTaskSubject(task, mode);
   const html = buildTaskHtmlEmail(task, mode);
   const text = generateTaskPlainEmail(task, mode);
@@ -3545,16 +3589,7 @@ async function sendVerificationCorrectionEmail({
     }
 
     const users = await User.find({}, "email role engineerName username").lean();
-    const engineerEmails = [...new Set(
-      users
-        .filter((user) => {
-          const role = String(user.role || "").trim().toLowerCase();
-          const name = String(user.engineerName || user.username || "").trim().toLowerCase();
-          return ["engineer", "user"].includes(role) && name === String(engineerName).trim().toLowerCase();
-        })
-        .map((user) => normalizeEmail(user.email))
-        .filter(Boolean)
-    )];
+    const engineerEmails = getEngineerEmailsFromUsers(users, engineerName);
 
     const adminEmails = [...new Set(
       users
@@ -3657,7 +3692,7 @@ async function sendVerificationCorrectionEmail({
     };
 
     const subject = `Correction Notice | ${category} Verified | ${roCode || "RO"} | ${roName || engineerName}`;
-    const engineerSalutation = engineerEmails.map((email) => `@${email}`).join(", ") || engineerName;
+    const engineerSalutation = engineerName;
     const engineerBodies = buildBodies(engineerSalutation);
     const info = await transporter.sendMail({
       from: getDefaultOutgoingFromHeader(),
