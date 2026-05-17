@@ -3,47 +3,74 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Admin Daily Worksheet - RELCON CRM</title>
+  <title>Admin Worksheet - RELCON CRM</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
   <script src="config.js"></script>
   <style>
     :root{
-      --blue:#0176d3;--blue-lt:#e8f4fd;--green:#2e844a;--green-lt:#eaf5ea;--red:#ba0517;
+      --blue:#0176d3;--blue-dk:#014486;--blue-lt:#e8f4fd;--green:#2e844a;--green-lt:#eaf5ea;
+      --red:#ba0517;--red-lt:#fef1ee;--orange:#dd5a0c;--orange-lt:#fff3e0;
       --bg:#f3f2f2;--surface:#fff;--surface2:#f9f9f9;--border:#dddbda;--border-lt:#f3f2f2;
-      --txt:#080707;--txt2:#3e3e3c;--txt3:#706e6b;--txt4:#aeaeac;--r-sm:4px;--r:6px;--r-lg:8px;
-      --sh-sm:0 2px 4px rgba(0,0,0,.09);--sh-md:0 8px 24px rgba(0,0,0,.12);
+      --txt:#080707;--txt2:#3e3e3c;--txt3:#706e6b;--txt4:#aeaeac;
+      --r-sm:4px;--r:6px;--r-lg:8px;--sh-sm:0 2px 4px rgba(0,0,0,.09);--sh-md:0 8px 24px rgba(0,0,0,.12);
     }
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--txt);font-size:13px;min-height:100vh}
     button,input,textarea{font-family:inherit}
-    .strip{height:52px;background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0 1px 3px rgba(15,23,42,.07);display:flex;align-items:center;gap:12px;padding:0 20px;position:sticky;top:0;z-index:40}
+    ::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:#c8c6c4;border-radius:4px}
+
+    .top-strip{height:52px;background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0 1px 3px rgba(15,23,42,.07);display:flex;align-items:center;gap:12px;padding:0 20px;position:sticky;top:0;z-index:30}
     .strip-icon{width:30px;height:30px;border-radius:6px;background:var(--blue-lt);color:var(--blue);display:flex;align-items:center;justify-content:center}
-    .strip-title{font-weight:800;font-size:14px}.strip-meta{font-size:10px;color:var(--txt4);font-weight:800;text-transform:uppercase;letter-spacing:.6px}.spacer{flex:1}
-    .body{padding:16px 20px;max-width:1180px;margin:0 auto}
+    .strip-title{font-size:14px;font-weight:800}.strip-meta{font-size:10px;color:var(--txt4);font-weight:800;text-transform:uppercase;letter-spacing:.65px}.spacer{flex:1}
+    .body{padding:16px 20px;max-width:1240px;margin:0 auto}
+
     .page-head{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);padding:16px 20px;margin-bottom:12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
     .page-icon{width:46px;height:46px;border-radius:10px;background:linear-gradient(135deg,#0e7490,#0176d3);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 2px 10px rgba(1,118,211,.32);flex-shrink:0}
-    .page-title{font-size:19px;font-weight:800;letter-spacing:-.35px}.page-sub{font-size:12px;color:var(--txt3);margin-top:2px}.page-actions{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .btn{height:32px;padding:0 13px;border-radius:var(--r-sm);font-size:12px;font-weight:700;border:1px solid transparent;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:.15s}
-    .btn-primary{background:var(--blue);color:#fff}.btn-primary:hover{background:#0b5faa}.btn-neutral{background:#fff;border-color:var(--border);color:var(--txt2)}.btn-neutral:hover{background:var(--surface2)}.btn-success{background:var(--green);color:#fff}.btn-danger{background:var(--red);color:#fff}
-    .form-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);padding:16px;margin-bottom:12px}
-    .form-grid{display:grid;grid-template-columns:1fr 150px 150px auto;gap:12px;align-items:end}
-    .field{display:flex;flex-direction:column;gap:4px}.label{font-size:10px;font-weight:800;color:var(--txt3);text-transform:uppercase;letter-spacing:.55px}
-    .input,.textarea{border:1px solid var(--border);border-radius:var(--r-sm);background:#fff;color:var(--txt);font-size:12px;outline:none}.input{height:34px;padding:5px 9px}.textarea{min-height:34px;max-height:110px;padding:8px 10px;resize:vertical;line-height:1.45}
+    .page-title{font-size:19px;font-weight:800;letter-spacing:-.35px}.page-sub{font-size:12px;color:var(--txt3);margin-top:2px}
+    .page-actions{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+    .btn{height:32px;padding:0 13px;border-radius:var(--r-sm);font-size:12px;font-weight:700;border:1px solid transparent;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;transition:.15s}
+    .btn:disabled{opacity:.58;cursor:not-allowed}.btn-primary{background:var(--blue);color:#fff}.btn-primary:hover:not(:disabled){background:#0b5faa}.btn-neutral{background:#fff;border-color:var(--border);color:var(--txt2)}.btn-neutral:hover:not(:disabled){background:var(--surface2)}.btn-success{background:var(--green);color:#fff}.btn-success:hover:not(:disabled){background:#1f6b3c}
+    .btn-danger{background:var(--red);color:#fff}
+
+    .summary-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:12px}
+    .summary{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);padding:12px 14px;border-left:3px solid var(--blue)}
+    .summary.green{border-left-color:var(--green)}.summary.orange{border-left-color:var(--orange)}
+    .summary-num{font-size:22px;font-weight:800;line-height:1;color:var(--blue)}.summary.green .summary-num{color:var(--green)}.summary.orange .summary-num{color:var(--orange)}
+    .summary-label{font-size:10px;color:var(--txt3);font-weight:800;text-transform:uppercase;letter-spacing:.55px;margin-top:5px}
+
+    .editor-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);overflow:hidden;margin-bottom:12px}
+    .editor-head{height:42px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;padding:0 16px}
+    .editor-title{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.45px;display:flex;align-items:center;gap:7px}
+    .edit-chip{display:none;background:var(--orange-lt);color:#9a3412;border:1px solid #fed7aa;border-radius:999px;padding:3px 9px;font-size:10px;font-weight:800}.edit-chip.show{display:inline-flex}
+    .editor-body{padding:16px}.form-grid{display:grid;grid-template-columns:minmax(320px,1fr) 145px 145px auto;gap:12px;align-items:end}
+    .field{display:flex;flex-direction:column;gap:5px}.label{font-size:10px;font-weight:800;color:var(--txt3);text-transform:uppercase;letter-spacing:.55px;display:flex;align-items:center;gap:5px}
+    .input,.textarea{border:1px solid var(--border);border-radius:var(--r-sm);background:#fff;color:var(--txt);font-size:12px;outline:none;transition:.15s}.input{height:34px;padding:5px 9px}.textarea{height:62px;padding:8px 10px;resize:vertical;line-height:1.45}
     .input:focus,.textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(1,118,211,.12)}
-    .table-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);overflow:hidden}.table-head{height:42px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;padding:0 16px}.table-title{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.45px;display:flex;align-items:center;gap:7px}.count{background:var(--blue-lt);color:var(--blue);border:1px solid #c5dff5;border-radius:999px;padding:2px 8px;font-size:10px;font-weight:800}
-    .table-wrap{overflow:auto;max-height:calc(100vh - 280px)}table{width:100%;min-width:760px;border-collapse:collapse}th{position:sticky;top:0;z-index:5;background:#1a2e4a;color:#e8f4fd;text-align:left;padding:9px 12px;border-right:1px solid #253d5b;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;white-space:nowrap}td{padding:10px 12px;border-bottom:1px solid var(--border-lt);vertical-align:top;font-size:12px;color:var(--txt2)}tr:hover td{background:#f8fbff}
-    .desc{font-weight:600;color:var(--txt);white-space:pre-wrap;line-height:1.45}.time{font-weight:800;color:var(--blue)}.muted{font-size:10px;color:var(--txt3);margin-top:3px}.actions{display:flex;gap:4px;justify-content:center}.icon-btn{width:28px;height:28px;border:1px solid var(--border);background:#fff;border-radius:var(--r-sm);cursor:pointer;color:var(--txt3);display:inline-flex;align-items:center;justify-content:center}.icon-btn:hover{background:var(--blue-lt);color:var(--blue);border-color:#c5dff5}
-    .empty{padding:34px;text-align:center;color:var(--txt3)}.empty i{font-size:24px;color:var(--txt4);margin-bottom:8px}
-    .toast{position:fixed;right:18px;top:66px;background:#fff;border:1px solid var(--border);box-shadow:var(--sh-md);border-radius:var(--r-lg);padding:12px 14px;min-width:250px;display:none;align-items:flex-start;gap:10px;z-index:120;font-size:12px}.toast.show{display:flex;animation:toastIn .2s ease}.toast.success .toast-ico{color:var(--green)}.toast.error .toast-ico{color:var(--red)}.toast-title{font-weight:800;margin-bottom:2px}.toast-msg{color:var(--txt3)}@keyframes toastIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+    .input.error,.textarea.error{border-color:var(--red);box-shadow:0 0 0 3px rgba(186,5,23,.10)}
+    .form-actions{display:flex;gap:8px;align-items:center}.helper-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;color:var(--txt3);font-size:11px}
+    .quick-actions{display:flex;gap:6px;flex-wrap:wrap}.mini-btn{height:26px;padding:0 9px;border:1px solid var(--border);background:#fff;color:var(--txt2);border-radius:var(--r-sm);font-size:11px;font-weight:700;cursor:pointer}.mini-btn:hover{background:var(--blue-lt);border-color:#c5dff5;color:var(--blue)}
+
+    .table-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);overflow:hidden}
+    .table-head{height:42px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;padding:0 16px}.table-title{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.45px;display:flex;align-items:center;gap:7px}
+    .count{background:var(--blue-lt);color:var(--blue);border:1px solid #c5dff5;border-radius:999px;padding:2px 8px;font-size:10px;font-weight:800}.table-wrap{overflow:auto;max-height:calc(100vh - 390px)}
+    table{width:100%;min-width:820px;border-collapse:collapse}th{position:sticky;top:0;z-index:5;background:#1a2e4a;color:#e8f4fd;text-align:left;padding:9px 12px;border-right:1px solid #253d5b;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;white-space:nowrap}td{padding:11px 12px;border-bottom:1px solid var(--border-lt);vertical-align:top;font-size:12px;color:var(--txt2)}tr:hover td{background:#f8fbff}
+    .desc{font-weight:600;color:var(--txt);white-space:pre-wrap;line-height:1.45}.time-pill{display:inline-flex;align-items:center;gap:5px;background:var(--blue-lt);color:var(--blue-dk);border:1px solid #c5dff5;border-radius:999px;padding:3px 9px;font-size:11px;font-weight:800}.duration-pill{display:inline-flex;background:var(--green-lt);color:var(--green);border:1px solid #b7dfc3;border-radius:999px;padding:3px 9px;font-size:11px;font-weight:800}.muted{font-size:10px;color:var(--txt3);margin-top:4px}
+    .actions{display:flex;gap:4px;justify-content:center}.icon-btn{width:28px;height:28px;border:1px solid var(--border);background:#fff;border-radius:var(--r-sm);cursor:pointer;color:var(--txt3);display:inline-flex;align-items:center;justify-content:center}.icon-btn:hover{background:var(--blue-lt);color:var(--blue);border-color:#c5dff5}.icon-btn.danger:hover{background:var(--red-lt);color:var(--red);border-color:#f5c6c3}
+    .empty{padding:36px;text-align:center;color:var(--txt3)}.empty i{font-size:28px;color:var(--txt4);margin-bottom:9px}
+    .toast{position:fixed;right:18px;top:66px;background:#fff;border:1px solid var(--border);box-shadow:var(--sh-md);border-radius:var(--r-lg);padding:12px 14px;min-width:280px;max-width:420px;display:none;align-items:flex-start;gap:10px;z-index:120;font-size:12px}.toast.show{display:flex;animation:toastIn .2s ease}.toast.success .toast-ico{color:var(--green)}.toast.error .toast-ico{color:var(--red)}.toast.info .toast-ico{color:var(--blue)}.toast-title{font-weight:800;margin-bottom:2px}.toast-msg{color:var(--txt3);line-height:1.45}@keyframes toastIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
     .loader{position:fixed;inset:0;background:rgba(243,242,242,.72);display:none;align-items:center;justify-content:center;z-index:90}.loader.show{display:flex}.spin{width:34px;height:34px;border:3px solid #d8dde6;border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
-    @media(max-width:760px){.body{padding:12px}.page-actions{width:100%;margin-left:0}.btn{justify-content:center}.form-grid{grid-template-columns:1fr}.table-wrap{max-height:calc(100vh - 400px)}}
+    @media(max-width:820px){.body{padding:12px}.page-actions{width:100%;margin-left:0}.form-grid{grid-template-columns:1fr}.form-actions{width:100%}.form-actions .btn{flex:1}.table-wrap{max-height:calc(100vh - 460px)}}
   </style>
 </head>
 <body>
-  <header class="strip">
+  <header class="top-strip">
     <div class="strip-icon"><i class="fa-solid fa-clipboard-check"></i></div>
-    <div><div class="strip-title">Admin Daily Worksheet</div><div class="strip-meta" id="dateBadge">Loading</div></div>
+    <div>
+      <div class="strip-title">Admin Worksheet</div>
+      <div class="strip-meta" id="dateBadge">Loading</div>
+    </div>
     <div class="spacer"></div>
     <button class="btn btn-neutral" onclick="loadEntries()"><i class="fa-solid fa-rotate-right"></i> Sync</button>
   </header>
@@ -53,35 +80,67 @@
       <div class="page-icon"><i class="fa-solid fa-briefcase"></i></div>
       <div>
         <div class="page-title">Daily Admin Work Log</div>
-        <div class="page-sub">Sirf work description, start time aur end time update karein.</div>
+        <div class="page-sub">Work description, start time aur end time ko clean daily worksheet mein maintain karein.</div>
       </div>
       <div class="page-actions">
         <button class="btn btn-primary" onclick="exportCSV()"><i class="fa-solid fa-file-export"></i> Export CSV</button>
       </div>
     </section>
 
-    <section class="form-card">
-      <input type="hidden" id="entryId"/>
-      <div class="form-grid">
-        <div class="field">
-          <label class="label">Work Description</label>
-          <textarea id="workDescription" class="textarea" placeholder="Aaj kya kaam kiya..."></textarea>
+    <section class="summary-row">
+      <div class="summary">
+        <div class="summary-num" id="totalEntries">0</div>
+        <div class="summary-label">Entries Today</div>
+      </div>
+      <div class="summary green">
+        <div class="summary-num" id="totalDuration">0h</div>
+        <div class="summary-label">Total Time</div>
+      </div>
+      <div class="summary orange">
+        <div class="summary-num" id="lastSaved">--</div>
+        <div class="summary-label">Last Update</div>
+      </div>
+    </section>
+
+    <section class="editor-card">
+      <div class="editor-head">
+        <div class="editor-title"><i class="fa-solid fa-pen-to-square" style="color:var(--green)"></i> Add Work Entry</div>
+        <span class="edit-chip" id="editChip"><i class="fa-solid fa-pen"></i> Editing</span>
+      </div>
+      <div class="editor-body">
+        <input type="hidden" id="entryId"/>
+        <div class="form-grid">
+          <div class="field">
+            <label class="label" for="workDescription"><i class="fa-solid fa-align-left"></i> Work Description</label>
+            <textarea id="workDescription" class="textarea" placeholder="Aaj ka kaam likhein..."></textarea>
+          </div>
+          <div class="field">
+            <label class="label" for="startTime"><i class="fa-solid fa-clock"></i> Start Time</label>
+            <input id="startTime" type="time" class="input"/>
+          </div>
+          <div class="field">
+            <label class="label" for="endTime"><i class="fa-solid fa-clock"></i> End Time</label>
+            <input id="endTime" type="time" class="input"/>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-success" id="saveBtn" onclick="saveEntry()"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+            <button class="btn btn-neutral" id="cancelBtn" onclick="clearForm()" style="display:none"><i class="fa-solid fa-xmark"></i> Cancel</button>
+          </div>
         </div>
-        <div class="field">
-          <label class="label">Start Time</label>
-          <input id="startTime" type="time" class="input"/>
+        <div class="helper-row">
+          <div id="durationPreview">Duration: --</div>
+          <div class="quick-actions">
+            <button class="mini-btn" onclick="setStartNow()">Start now</button>
+            <button class="mini-btn" onclick="setEndNow()">End now</button>
+            <button class="mini-btn" onclick="clearForm()">Clear</button>
+          </div>
         </div>
-        <div class="field">
-          <label class="label">End Time</label>
-          <input id="endTime" type="time" class="input"/>
-        </div>
-        <button class="btn btn-success" onclick="saveEntry()"><i class="fa-solid fa-floppy-disk"></i> Save</button>
       </div>
     </section>
 
     <section class="table-card">
       <div class="table-head">
-        <div class="table-title"><i class="fa-solid fa-table-cells-large" style="color:var(--blue)"></i> Work Sheet</div>
+        <div class="table-title"><i class="fa-solid fa-table-cells-large" style="color:var(--blue)"></i> Today Worksheet</div>
         <span class="count" id="rowCount">0 records</span>
       </div>
       <div class="table-wrap">
@@ -91,6 +150,7 @@
               <th>Work Description</th>
               <th>Start Time</th>
               <th>End Time</th>
+              <th>Duration</th>
               <th style="text-align:center">Actions</th>
             </tr>
           </thead>
@@ -101,127 +161,229 @@
   </main>
 
   <div class="loader" id="loader"><div class="spin"></div></div>
-  <div class="toast" id="toast"><div class="toast-ico"><i class="fa-solid fa-circle-check"></i></div><div><div class="toast-title" id="toastTitle">Saved</div><div class="toast-msg" id="toastMsg"></div></div></div>
+  <div class="toast" id="toast">
+    <div class="toast-ico"><i class="fa-solid fa-circle-check"></i></div>
+    <div><div class="toast-title" id="toastTitle">Saved</div><div class="toast-msg" id="toastMsg"></div></div>
+  </div>
 
   <script>
     const baseUrl = window.BACKEND_URL || "/api";
-    const token = localStorage.getItem("token") || new URLSearchParams(location.search).get("token") || "";
+    const urlToken = new URLSearchParams(location.search).get("token") || "";
+    if (urlToken) localStorage.setItem("token", urlToken);
+    const token = urlToken || localStorage.getItem("token") || "";
     const todayISO = new Date().toLocaleDateString("en-CA");
     let rows = [];
+    let saving = false;
 
     document.getElementById("dateBadge").textContent = new Date().toLocaleDateString("en-IN",{weekday:"short",day:"2-digit",month:"short",year:"numeric"});
+    ["startTime","endTime"].forEach(id=>document.getElementById(id).addEventListener("input", updateDurationPreview));
 
     function esc(v){return String(v ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
     function description(row){return row.workDescription || [row.workTitle,row.workDetails].filter(Boolean).join(" - ")}
+    function minutesBetween(start,end){
+      if(!start || !end) return 0;
+      const [sh,sm]=start.split(":").map(Number), [eh,em]=end.split(":").map(Number);
+      if([sh,sm,eh,em].some(Number.isNaN)) return 0;
+      let s=sh*60+sm, e=eh*60+em;
+      if(e<s) e+=1440;
+      return Math.max(0,e-s);
+    }
+    function durationText(minutes){
+      const m=Number(minutes||0);
+      if(!m) return "--";
+      const h=Math.floor(m/60), mm=m%60;
+      return h ? `${h}h${mm ? ` ${mm}m` : ""}` : `${mm}m`;
+    }
+    function nowHHMM(){return new Date().toTimeString().slice(0,5)}
     function showLoader(show){document.getElementById("loader").classList.toggle("show",!!show)}
-    function showToast(message,type="success",title){const t=document.getElementById("toast");t.className="toast "+type;document.getElementById("toastTitle").textContent=title || (type==="error"?"Action Failed":"Success");document.getElementById("toastMsg").textContent=message;t.querySelector(".toast-ico").innerHTML=type==="error"?'<i class="fa-solid fa-circle-xmark"></i>':'<i class="fa-solid fa-circle-check"></i>';t.classList.add("show");setTimeout(()=>t.classList.remove("show"),3000)}
-    function clearForm(){document.getElementById("entryId").value="";document.getElementById("workDescription").value="";document.getElementById("startTime").value="";document.getElementById("endTime").value=""}
+    function setSaving(value){
+      saving = value;
+      const btn=document.getElementById("saveBtn");
+      btn.disabled=value;
+      btn.innerHTML=value?'<i class="fa-solid fa-circle-notch fa-spin"></i> Saving':'<i class="fa-solid fa-floppy-disk"></i> Save';
+    }
+    function showToast(message,type="success",title){
+      const t=document.getElementById("toast");
+      t.className="toast "+type;
+      document.getElementById("toastTitle").textContent=title || (type==="error"?"Action Failed":type==="info"?"Info":"Success");
+      document.getElementById("toastMsg").textContent=message;
+      t.querySelector(".toast-ico").innerHTML=type==="error"?'<i class="fa-solid fa-circle-xmark"></i>':type==="info"?'<i class="fa-solid fa-circle-info"></i>':'<i class="fa-solid fa-circle-check"></i>';
+      t.classList.add("show");
+      setTimeout(()=>t.classList.remove("show"),4200);
+    }
+    async function readError(res){
+      let text="";
+      try{
+        const data=await res.clone().json();
+        text=data.error || data.message || JSON.stringify(data);
+      }catch{
+        text=await res.text().catch(()=>"");
+      }
+      if(res.status===401) return "Login token missing/expired hai. Please login again.";
+      if(res.status===403) return "Admin access required hai. Current user admin nahi lag raha.";
+      if(res.status===404) return "Backend route nahi mila. Server restart/deploy required ho sakta hai.";
+      return text || `HTTP ${res.status} ${res.statusText}`;
+    }
+    async function api(path, options={}){
+      const headers={Accept:"application/json", ...(options.headers || {})};
+      if(token) headers.Authorization=`Bearer ${token}`;
+      const res=await fetch(`${baseUrl}${path}`, {...options, headers, credentials:"include"});
+      if(!res.ok) throw new Error(await readError(res));
+      if(res.status===204) return null;
+      return res.json();
+    }
+
+    function markValidation(){
+      const desc=document.getElementById("workDescription");
+      const hasDesc=desc.value.trim().length>0;
+      desc.classList.toggle("error", !hasDesc);
+      return hasDesc;
+    }
+    function updateDurationPreview(){
+      const mins=minutesBetween(document.getElementById("startTime").value, document.getElementById("endTime").value);
+      document.getElementById("durationPreview").textContent=`Duration: ${durationText(mins)}`;
+    }
+    function setStartNow(){document.getElementById("startTime").value=nowHHMM();updateDurationPreview()}
+    function setEndNow(){document.getElementById("endTime").value=nowHHMM();updateDurationPreview()}
+    function clearForm(){
+      document.getElementById("entryId").value="";
+      document.getElementById("workDescription").value="";
+      document.getElementById("startTime").value="";
+      document.getElementById("endTime").value="";
+      document.getElementById("workDescription").classList.remove("error");
+      document.getElementById("editChip").classList.remove("show");
+      document.getElementById("cancelBtn").style.display="none";
+      document.querySelector(".editor-title").innerHTML='<i class="fa-solid fa-pen-to-square" style="color:var(--green)"></i> Add Work Entry';
+      updateDurationPreview();
+    }
 
     async function loadEntries(){
       showLoader(true);
       try{
-        const res = await fetch(`${baseUrl}/dailyWorksheet?date=${encodeURIComponent(todayISO)}`, { headers:{Authorization:`Bearer ${token}`}, credentials:"include" });
-        if(!res.ok) throw new Error("Failed");
-        rows = await res.json();
+        rows = await api(`/dailyWorksheet?date=${encodeURIComponent(todayISO)}`);
         rows = Array.isArray(rows) ? rows : [];
         renderTable();
+        renderSummary();
       }catch(err){
         console.error(err);
-        showToast("Worksheet load nahi ho paya. Admin login/session check karein.", "error");
-        renderEmpty("No worksheet entries available.");
-      }finally{showLoader(false)}
+        rows=[];
+        renderTable();
+        renderSummary();
+        showToast(err.message || "Worksheet load nahi ho paya.", "error");
+      }finally{
+        showLoader(false);
+      }
     }
 
+    function renderSummary(){
+      document.getElementById("totalEntries").textContent=rows.length;
+      const total=rows.reduce((sum,row)=>sum + (Number(row.durationMinutes) || minutesBetween(row.startTime,row.endTime)), 0);
+      document.getElementById("totalDuration").textContent=durationText(total).replace("--","0h");
+      const latest=[...rows].sort((a,b)=>new Date(b.updatedAt||b.createdAt||0)-new Date(a.updatedAt||a.createdAt||0))[0];
+      document.getElementById("lastSaved").textContent=latest ? new Date(latest.updatedAt || latest.createdAt).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"}) : "--";
+    }
     function renderEmpty(msg){
-      document.getElementById("worksheetBody").innerHTML=`<tr><td colspan="4"><div class="empty"><i class="fa-solid fa-clipboard-list"></i><div>${esc(msg)}</div></div></td></tr>`;
+      document.getElementById("worksheetBody").innerHTML=`<tr><td colspan="5"><div class="empty"><i class="fa-solid fa-clipboard-list"></i><div>${esc(msg)}</div></div></td></tr>`;
       document.getElementById("rowCount").textContent="0 records";
     }
-
     function renderTable(){
       document.getElementById("rowCount").textContent=`${rows.length} records`;
       if(!rows.length) return renderEmpty("Aaj ke liye koi worksheet entry nahi hai.");
-      document.getElementById("worksheetBody").innerHTML = rows
+      document.getElementById("worksheetBody").innerHTML = [...rows]
         .sort((a,b)=>String(a.startTime||"").localeCompare(String(b.startTime||"")))
-        .map(row=>`
-          <tr>
-            <td><div class="desc">${esc(description(row))}</div></td>
-            <td><span class="time">${esc(row.startTime || "-")}</span></td>
-            <td><span class="time">${esc(row.endTime || "-")}</span></td>
+        .map(row=>{
+          const mins=Number(row.durationMinutes) || minutesBetween(row.startTime,row.endTime);
+          return `<tr>
+            <td><div class="desc">${esc(description(row))}</div><div class="muted">${new Date(row.updatedAt || row.createdAt || Date.now()).toLocaleString("en-IN",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}</div></td>
+            <td><span class="time-pill"><i class="fa-solid fa-play"></i>${esc(row.startTime || "--")}</span></td>
+            <td><span class="time-pill"><i class="fa-solid fa-stop"></i>${esc(row.endTime || "--")}</span></td>
+            <td><span class="duration-pill">${esc(durationText(mins))}</span></td>
             <td>
               <div class="actions">
                 <button class="icon-btn" title="Edit" onclick="editEntry('${row._id}')"><i class="fa-solid fa-pen"></i></button>
-                <button class="icon-btn" title="Delete" onclick="deleteEntry('${row._id}')"><i class="fa-solid fa-trash"></i></button>
+                <button class="icon-btn danger" title="Delete" onclick="deleteEntry('${row._id}')"><i class="fa-solid fa-trash"></i></button>
               </div>
             </td>
-          </tr>`).join("");
+          </tr>`;
+        }).join("");
     }
 
     function editEntry(id){
-      const row = rows.find(item=>item._id===id);
+      const row=rows.find(item=>item._id===id);
       if(!row) return;
-      document.getElementById("entryId").value = row._id;
-      document.getElementById("workDescription").value = description(row);
-      document.getElementById("startTime").value = row.startTime || "";
-      document.getElementById("endTime").value = row.endTime || "";
+      document.getElementById("entryId").value=row._id;
+      document.getElementById("workDescription").value=description(row);
+      document.getElementById("startTime").value=row.startTime || "";
+      document.getElementById("endTime").value=row.endTime || "";
+      document.getElementById("editChip").classList.add("show");
+      document.getElementById("cancelBtn").style.display="inline-flex";
+      document.querySelector(".editor-title").innerHTML='<i class="fa-solid fa-pen" style="color:var(--blue)"></i> Edit Work Entry';
+      updateDurationPreview();
       document.getElementById("workDescription").focus();
     }
 
     async function saveEntry(){
-      const id = document.getElementById("entryId").value;
-      const payload = {
+      if(saving) return;
+      if(!markValidation()) return showToast("Work description required hai.", "error");
+      const id=document.getElementById("entryId").value;
+      const payload={
         date: todayISO,
         workDescription: document.getElementById("workDescription").value.trim(),
         startTime: document.getElementById("startTime").value,
         endTime: document.getElementById("endTime").value,
       };
-      if(!payload.workDescription) return showToast("Work description required hai.", "error");
-      showLoader(true);
+      setSaving(true);
       try{
-        const res = await fetch(`${baseUrl}/dailyWorksheet${id ? `/${id}` : ""}`, {
+        await api(`/dailyWorksheet${id ? `/${id}` : ""}`, {
           method: id ? "PUT" : "POST",
-          headers: {"Content-Type":"application/json", Authorization:`Bearer ${token}`},
-          credentials:"include",
+          headers: {"Content-Type":"application/json"},
           body: JSON.stringify(payload),
         });
-        if(!res.ok) throw new Error("Save failed");
         clearForm();
-        showToast("Worksheet saved.");
+        showToast("Worksheet saved successfully.");
         await loadEntries();
       }catch(err){
         console.error(err);
-        showToast("Worksheet save nahi ho paya.", "error");
-      }finally{showLoader(false)}
+        showToast(err.message || "Worksheet save nahi ho paya.", "error");
+      }finally{
+        setSaving(false);
+      }
     }
 
     async function deleteEntry(id){
       if(!confirm("Is worksheet entry ko delete karna hai?")) return;
       showLoader(true);
       try{
-        const res = await fetch(`${baseUrl}/dailyWorksheet/${id}`, { method:"DELETE", headers:{Authorization:`Bearer ${token}`}, credentials:"include" });
-        if(!res.ok) throw new Error("Delete failed");
+        await api(`/dailyWorksheet/${id}`, {method:"DELETE"});
         clearForm();
         showToast("Worksheet entry deleted.");
         await loadEntries();
       }catch(err){
         console.error(err);
-        showToast("Delete nahi ho paya.", "error");
-      }finally{showLoader(false)}
+        showToast(err.message || "Delete nahi ho paya.", "error");
+      }finally{
+        showLoader(false);
+      }
     }
 
     function exportCSV(){
-      const csvRows = [["Work Description","Start Time","End Time"]];
-      rows.forEach(row=>csvRows.push([description(row), row.startTime || "", row.endTime || ""]));
-      const csv = csvRows.map(row=>row.map(cell=>`"${String(cell).replace(/"/g,'""')}"`).join(",")).join("\n");
-      const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = `admin-daily-worksheet-${todayISO}.csv`;
+      const csvRows=[["Work Description","Start Time","End Time","Duration"]];
+      rows.forEach(row=>{
+        const mins=Number(row.durationMinutes) || minutesBetween(row.startTime,row.endTime);
+        csvRows.push([description(row), row.startTime || "", row.endTime || "", durationText(mins)]);
+      });
+      const csv=csvRows.map(row=>row.map(cell=>`"${String(cell).replace(/"/g,'""')}"`).join(",")).join("\n");
+      const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+      const a=document.createElement("a");
+      a.href=URL.createObjectURL(blob);
+      a.download=`admin-daily-worksheet-${todayISO}.csv`;
       document.body.appendChild(a);
       a.click();
       a.remove();
       URL.revokeObjectURL(a.href);
     }
 
+    updateDurationPreview();
     loadEntries();
   </script>
   <script src="errorLogger.js"></script>
