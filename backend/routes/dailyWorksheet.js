@@ -33,20 +33,15 @@ function calculateDurationMinutes(startTime, endTime) {
 function normalizeWorksheetPayload(body = {}, user = {}, current = {}) {
   const startTime = normalizeTime(body.startTime ?? current.startTime);
   const endTime = normalizeTime(body.endTime ?? current.endTime);
+  const legacyDescription = [current.workTitle, current.workDetails].filter(Boolean).join(" - ");
   return {
     date: String(body.date ?? current.date ?? "").slice(0, 10),
     adminName: current.adminName || currentAdminName(user),
     adminUserId: current.adminUserId || String(user.id || user._id || user.userId || user.username || ""),
-    workTitle: String(body.workTitle ?? current.workTitle ?? "").trim(),
-    workType: String(body.workType ?? current.workType ?? "Operations").trim() || "Operations",
+    workDescription: String(body.workDescription ?? current.workDescription ?? legacyDescription ?? "").trim(),
     startTime,
     endTime,
     durationMinutes: calculateDurationMinutes(startTime, endTime),
-    status: String(body.status ?? current.status ?? "In Progress").trim() || "In Progress",
-    priority: String(body.priority ?? current.priority ?? "Medium").trim() || "Medium",
-    workDetails: String(body.workDetails ?? current.workDetails ?? "").trim(),
-    outcome: String(body.outcome ?? current.outcome ?? "").trim(),
-    blockers: String(body.blockers ?? current.blockers ?? "").trim(),
   };
 }
 
@@ -66,8 +61,8 @@ router.get("/dailyWorksheet", authMiddleware, requireAdmin, async (req, res) => 
 router.post("/dailyWorksheet", authMiddleware, requireAdmin, async (req, res) => {
   try {
     const payload = normalizeWorksheetPayload(req.body, req.user);
-    if (!payload.date || !payload.workTitle) {
-      return res.status(400).json({ error: "Date and work title are required" });
+    if (!payload.date || !payload.workDescription) {
+      return res.status(400).json({ error: "Date and work description are required" });
     }
     const row = await DailyWorksheet.create(payload);
     res.status(201).json({ message: "Worksheet entry saved", row });
@@ -85,8 +80,8 @@ router.put("/dailyWorksheet/:id", authMiddleware, requireAdmin, async (req, res)
     const current = await DailyWorksheet.findById(req.params.id);
     if (!current) return res.status(404).json({ error: "Worksheet entry not found" });
     const payload = normalizeWorksheetPayload(req.body, req.user, current.toObject());
-    if (!payload.date || !payload.workTitle) {
-      return res.status(400).json({ error: "Date and work title are required" });
+    if (!payload.date || !payload.workDescription) {
+      return res.status(400).json({ error: "Date and work description are required" });
     }
     Object.assign(current, payload);
     await current.save();
