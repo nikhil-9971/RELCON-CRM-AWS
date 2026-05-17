@@ -26,6 +26,7 @@ const invoiceManagement        = require("./routes/invoiceManagement");
 const chatRoutes               = require("./routes/chatRoutes");
 const incidentRoutes           = require("./routes/incidentRoutes");
 const aiAgentRoutes            = require("./routes/aiAgent");
+const dailyWorksheetRoutes     = require("./routes/dailyWorksheet");
 const errorLogRoutes           = require('./routes/errorLogs');
 const { serverLogsRouter }     = require('./routes/serverLogs');  // ✅ NEW
 const { httpLogger }           = require('./utils/logger');       // ✅ NEW
@@ -100,6 +101,7 @@ app.use("/api/materialRequestMasterItems", materialRequestMasterItemsRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api", incidentRoutes);
 app.use("/api/ai", aiAgentRoutes);
+app.use("/api", dailyWorksheetRoutes);
 app.use("/api/materialManagement", materialManagement);
 app.use("/api/invoiceManagement", invoiceManagement);
 app.use("/api/attendance", attendance);

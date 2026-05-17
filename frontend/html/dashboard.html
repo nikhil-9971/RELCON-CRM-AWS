@@ -741,6 +741,7 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
       </div>
 
       <div class="nav-label">Operations</div>
+      <button id="dailyWorksheetLink" class="nav-item" style="display:none" onclick="loadPage('dailyWorksheet.html', this)"><i class="fa-solid fa-clipboard-check"></i><span class="nav-txt">Admin Worksheet</span></button>
       <button id="taskManagementLink" class="nav-item" style="display:none" onclick="loadPage('taskManager.html', this)"><i class="fa-solid fa-list-check"></i><span class="nav-txt">Task Management</span></button>
       <button class="nav-item" onclick="loadPage('attendance.html', this)" id="attendanceLink"><i class="fa-solid fa-calendar-check"></i><span class="nav-txt">Attendance</span></button>
       <button class="nav-item" onclick="loadPage('materialrequirement.html', this)"><i class="fa-solid fa-boxes-packing"></i><span class="nav-txt">Material Requirement</span></button>
@@ -1040,7 +1041,7 @@ const pageNames = {
   'statusRecords.html':'HPCL Status','bpclVisitReport.html':'BPCL Visit Report',
   'jioBPreport.html':'JioBP Status','bpclStatusreport.html':'BPCL Status Report',
   'atgRecords.html':'ATG Report','taskReport.html':'Task Report',
-  'earthingReport.html':'Earthing Report','taskManager.html':'Task Management',
+  'earthingReport.html':'Earthing Report','dailyWorksheet.html':'Admin Worksheet','taskManager.html':'Task Management',
   'auditReport.html':'Audit Report','mongoExplorer.html':'DB Explorer',
   'materialrequirement.html':'Material Requirement','incident.html':'Incident Manager',
   'materialrequestbuilder.html':'Material Request Builder',
@@ -1063,6 +1064,7 @@ const pageSlugs = {
   'atgRecords.html':'atg-report',
   'taskReport.html':'task-report',
   'earthingReport.html':'earthing-report',
+  'dailyWorksheet.html':'daily-worksheet',
   'taskManager.html':'task-management',
   'auditReport.html':'audit-report',
   'mongoExplorer.html':'db-explorer',
@@ -1247,6 +1249,7 @@ async function fetchUser(){
       document.getElementById("statusLink").style.display="flex";
       document.getElementById("tasklink").style.display="flex";
       document.getElementById("addSiteBtn").classList.remove("hidden");
+      document.getElementById("dailyWorksheetLink").style.display="flex";
       document.getElementById("taskManagementLink").style.display="flex";
       document.getElementById("invoiceManagementLink").style.display="flex";
       document.getElementById("incidentId").style.display="flex";

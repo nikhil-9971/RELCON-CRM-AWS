@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Daily Worksheet - RELCON CRM</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <script src="config.js"></script>
+  <style>
+    :root{
+      --blue:#0176d3;--blue-lt:#e8f4fd;--green:#2e844a;--green-lt:#eaf5ea;--red:#ba0517;--red-lt:#fef1ee;
+      --orange:#dd5a0c;--orange-lt:#fff3e0;--purple:#6b3fa0;--purple-lt:#f5f0ff;--bg:#f3f2f2;
+      --surface:#fff;--surface2:#f9f9f9;--border:#dddbda;--border-lt:#f3f2f2;--txt:#080707;--txt2:#3e3e3c;--txt3:#706e6b;--txt4:#aeaeac;
+      --r-sm:4px;--r:6px;--r-lg:8px;--sh-sm:0 2px 4px rgba(0,0,0,.09);--sh-md:0 8px 24px rgba(0,0,0,.12);
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--txt);font-size:13px;min-height:100vh}
+    button,input,select,textarea{font-family:inherit}::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:#c8c6c4;border-radius:4px}
+    .strip{height:52px;background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0 1px 3px rgba(15,23,42,.07);display:flex;align-items:center;gap:12px;padding:0 20px;position:sticky;top:0;z-index:40}
+    .strip-icon{width:30px;height:30px;border-radius:6px;background:var(--blue-lt);color:var(--blue);display:flex;align-items:center;justify-content:center}.strip-title{font-weight:800;font-size:14px}.strip-meta{font-size:10px;color:var(--txt4);font-weight:800;text-transform:uppercase;letter-spacing:.6px}.spacer{flex:1}
+    .body{padding:16px 20px;max-width:1500px;margin:0 auto}
+    .page-head{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);padding:16px 20px;margin-bottom:12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+    .page-icon{width:46px;height:46px;border-radius:10px;background:linear-gradient(135deg,#0e7490,#0176d3);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 2px 10px rgba(1,118,211,.32);flex-shrink:0}
+    .page-title{font-size:19px;font-weight:800;letter-spacing:-.35px}.page-sub{font-size:12px;color:var(--txt3);margin-top:2px}.page-actions{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:12px}.kpi{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:var(--r-lg);box-shadow:var(--sh-sm);padding:12px 14px}.kpi.green{border-left-color:var(--green)}.kpi.orange{border-left-color:var(--orange)}.kpi.red{border-left-color:var(--red)}.kpi.purple{border-left-color:var(--purple)}
+    .kpi-num{font-size:24px;font-weight:800;line-height:1;color:var(--blue)}.kpi.green .kpi-num{color:var(--green)}.kpi.orange .kpi-num{color:var(--orange)}.kpi.red .kpi-num{color:var(--red)}.kpi.purple .kpi-num{color:var(--purple)}.kpi-label{margin-top:5px;font-size:10px;color:var(--txt3);font-weight:800;text-transform:uppercase;letter-spacing:.55px}
+    .toolbar{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg) var(--r-lg) 0 0;box-shadow:var(--sh-sm);padding:12px 16px;display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}.field{display:flex;flex-direction:column;gap:4px}.label{font-size:10px;font-weight:800;color:var(--txt3);text-transform:uppercase;letter-spacing:.55px}
+    .input,.select,.textarea{border:1px solid var(--border);border-radius:var(--r-sm);background:#fff;color:var(--txt);font-size:12px;outline:none}.input,.select{height:32px;padding:5px 9px}.textarea{min-height:82px;padding:8px 10px;resize:vertical;line-height:1.45}.input:focus,.select:focus,.textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(1,118,211,.12)}
+    .select{-webkit-appearance:none;appearance:none;padding-right:28px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath fill='%23706e6b' d='M0 0l5 7 5-7z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center}
+    .search-wrap{position:relative}.search-wrap i{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--txt4);font-size:11px}.search-wrap .input{padding-left:28px;width:260px}
+    .btn{height:32px;padding:0 13px;border-radius:var(--r-sm);font-size:12px;font-weight:700;border:1px solid transparent;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:.15s}.btn-primary{background:var(--blue);color:#fff}.btn-primary:hover{background:#0b5faa}.btn-neutral{background:#fff;border-color:var(--border);color:var(--txt2)}.btn-neutral:hover{background:var(--surface2)}.btn-success{background:var(--green);color:#fff}.btn-danger{background:var(--red);color:#fff}
+    .table-card{background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--r-lg) var(--r-lg);box-shadow:var(--sh-sm);overflow:hidden}.table-head{height:42px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;padding:0 16px}.table-title{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.45px;display:flex;align-items:center;gap:7px}.count{background:var(--blue-lt);color:var(--blue);border:1px solid #c5dff5;border-radius:999px;padding:2px 8px;font-size:10px;font-weight:800}
+    .table-wrap{overflow:auto;max-height:calc(100vh - 345px)}table{width:100%;min-width:1120px;border-collapse:collapse}th{position:sticky;top:0;z-index:5;background:#1a2e4a;color:#e8f4fd;text-align:left;padding:9px 10px;border-right:1px solid #253d5b;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;white-space:nowrap}td{padding:9px 10px;border-bottom:1px solid var(--border-lt);vertical-align:top;font-size:11px;color:var(--txt2)}tr:hover td{background:#f8fbff}
+    .work-title{font-weight:800;color:var(--txt);font-size:12px}.work-detail{margin-top:3px;color:var(--txt3);max-width:360px;white-space:normal;line-height:1.45}.muted{color:var(--txt3)}.badge{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:2px 8px;font-size:10px;font-weight:800;white-space:nowrap}.done{background:var(--green-lt);color:var(--green)}.progress{background:var(--orange-lt);color:var(--orange)}.hold{background:var(--red-lt);color:var(--red)}.planned{background:var(--blue-lt);color:var(--blue)}.priority{background:var(--purple-lt);color:var(--purple)}
+    .actions{display:flex;gap:4px;justify-content:center}.icon-btn{width:28px;height:28px;border:1px solid var(--border);background:#fff;border-radius:var(--r-sm);cursor:pointer;color:var(--txt3);display:inline-flex;align-items:center;justify-content:center}.icon-btn:hover{background:var(--blue-lt);color:var(--blue);border-color:#c5dff5}.empty{padding:34px;text-align:center;color:var(--txt3)}.empty i{font-size:24px;color:var(--txt4);margin-bottom:8px}
+    .overlay{position:fixed;inset:0;background:rgba(15,23,42,.5);display:none;align-items:center;justify-content:center;z-index:100;padding:16px}.overlay.open{display:flex}.modal{width:min(760px,100%);max-height:90vh;background:var(--surface);border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.25);display:flex;flex-direction:column;overflow:hidden}.modal-head{padding:15px 18px;border-bottom:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;justify-content:space-between}.modal-title{font-weight:800;font-size:15px;display:flex;align-items:center;gap:8px}.modal-body{padding:18px;overflow:auto}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.full{grid-column:1/-1}.modal-foot{padding:12px 18px;border-top:1px solid var(--border);background:var(--surface2);display:flex;justify-content:flex-end;gap:8px}
+    .toast{position:fixed;right:18px;top:66px;background:#fff;border:1px solid var(--border);box-shadow:var(--sh-md);border-radius:var(--r-lg);padding:12px 14px;min-width:250px;display:none;align-items:flex-start;gap:10px;z-index:120;font-size:12px}.toast.show{display:flex;animation:toastIn .2s ease}.toast.success .toast-ico{color:var(--green)}.toast.error .toast-ico{color:var(--red)}.toast.info .toast-ico{color:var(--blue)}.toast-title{font-weight:800;margin-bottom:2px}.toast-msg{color:var(--txt3)}@keyframes toastIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+    .loader{position:fixed;inset:0;background:rgba(243,242,242,.72);display:none;align-items:center;justify-content:center;z-index:90}.loader.show{display:flex}.spin{width:34px;height:34px;border:3px solid #d8dde6;border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+    @media(max-width:760px){.body{padding:12px}.page-actions{width:100%;margin-left:0}.btn{flex:1;justify-content:center}.field,.search-wrap,.search-wrap .input{width:100%}.grid{grid-template-columns:1fr}.table-wrap{max-height:calc(100vh - 430px)}}
+  </style>
+</head>
+<body>
+  <header class="strip">
+    <div class="strip-icon"><i class="fa-solid fa-clipboard-check"></i></div>
+    <div><div class="strip-title">Admin Daily Worksheet</div><div class="strip-meta" id="dateBadge">Loading</div></div>
+    <div class="spacer"></div>
+    <button class="btn btn-neutral" onclick="loadEntries()"><i class="fa-solid fa-rotate-right"></i> Sync</button>
+  </header>
+  <main class="body">
+    <section class="page-head">
+      <div class="page-icon"><i class="fa-solid fa-briefcase"></i></div>
+      <div><div class="page-title">Daily Admin Work Log</div><div class="page-sub">Admin apne pure din ke kaam, follow-ups, reporting aur outcomes yahan update kar sakta hai.</div></div>
+      <div class="page-actions">
+        <button class="btn btn-success" onclick="openModal()"><i class="fa-solid fa-plus"></i> Add Work</button>
+        <button class="btn btn-primary" onclick="exportCSV()"><i class="fa-solid fa-file-export"></i> Export CSV</button>
+      </div>
+    </section>
+    <section class="kpis">
+      <div class="kpi"><div class="kpi-num" id="kpiTotal">0</div><div class="kpi-label">Total Work</div></div>
+      <div class="kpi green"><div class="kpi-num" id="kpiDone">0</div><div class="kpi-label">Completed</div></div>
+      <div class="kpi orange"><div class="kpi-num" id="kpiHours">0h</div><div class="kpi-label">Time Logged</div></div>
+      <div class="kpi red"><div class="kpi-num" id="kpiHold">0</div><div class="kpi-label">Hold Items</div></div>
+      <div class="kpi purple"><div class="kpi-num" id="kpiTypes">0</div><div class="kpi-label">Work Types</div></div>
+    </section>
+    <section class="toolbar">
+      <div class="field"><label class="label">Search</label><div class="search-wrap"><i class="fa-solid fa-magnifying-glass"></i><input id="searchInput" class="input" placeholder="Work, details, outcome..." oninput="applyFilters()"/></div></div>
+      <div class="field"><label class="label">Date</label><input id="dateFilter" type="date" class="input" onchange="applyFilters()"/></div>
+      <div class="field"><label class="label">Type</label><select id="typeFilter" class="select" onchange="applyFilters()"><option value="">All Types</option></select></div>
+      <div class="field"><label class="label">Status</label><select id="statusFilter" class="select" onchange="applyFilters()"><option value="">All Status</option><option>Planned</option><option>In Progress</option><option>Completed</option><option>Hold</option></select></div>
+      <button class="btn btn-neutral" onclick="clearFilters()"><i class="fa-solid fa-filter-circle-xmark"></i> Clear</button>
+    </section>
+    <section class="table-card">
+      <div class="table-head"><div class="table-title"><i class="fa-solid fa-table-cells-large" style="color:var(--blue)"></i> Work Sheet</div><span class="count" id="rowCount">0 records</span></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Date</th><th>Work</th><th>Type</th><th>Time</th><th>Status</th><th>Priority</th><th>Outcome / Blockers</th><th>Updated By</th><th>Actions</th></tr></thead>
+          <tbody id="worksheetBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div class="overlay" id="entryModal">
+    <div class="modal">
+      <div class="modal-head"><div class="modal-title" id="modalTitle"><i class="fa-solid fa-plus" style="color:var(--green)"></i> Add Work</div><button class="icon-btn" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button></div>
+      <div class="modal-body">
+        <input type="hidden" id="entryId"/>
+        <div class="grid">
+          <div class="field"><label class="label">Date</label><input id="mDate" type="date" class="input"/></div>
+          <div class="field"><label class="label">Work Type</label><select id="mWorkType" class="select"><option>Operations</option><option>Follow-up</option><option>Reporting</option><option>Customer Call</option><option>Internal</option><option>Other</option></select></div>
+          <div class="field full"><label class="label">Work Title</label><input id="mWorkTitle" class="input" placeholder="e.g. Daily closure summary, customer follow-up, team coordination"/></div>
+          <div class="field"><label class="label">Start Time</label><input id="mStartTime" type="time" class="input"/></div>
+          <div class="field"><label class="label">End Time</label><input id="mEndTime" type="time" class="input"/></div>
+          <div class="field"><label class="label">Status</label><select id="mStatus" class="select"><option>Planned</option><option selected>In Progress</option><option>Completed</option><option>Hold</option></select></div>
+          <div class="field"><label class="label">Priority</label><select id="mPriority" class="select"><option>High</option><option selected>Medium</option><option>Low</option></select></div>
+          <div class="field full"><label class="label">Work Details</label><textarea id="mWorkDetails" class="textarea" placeholder="Pure din ka kaam, calls, approvals, coordination, checks..."></textarea></div>
+          <div class="field full"><label class="label">Outcome</label><textarea id="mOutcome" class="textarea" placeholder="Result / next action"></textarea></div>
+          <div class="field full"><label class="label">Blockers</label><textarea id="mBlockers" class="textarea" placeholder="Pending dependency, issue, blocker"></textarea></div>
+        </div>
+      </div>
+      <div class="modal-foot"><button class="btn btn-neutral" onclick="closeModal()"><i class="fa-solid fa-xmark"></i> Cancel</button><button class="btn btn-success" onclick="saveEntry()"><i class="fa-solid fa-floppy-disk"></i> Save Work</button></div>
+    </div>
+  </div>
+  <div class="loader" id="loader"><div class="spin"></div></div>
+  <div class="toast" id="toast"><div class="toast-ico"><i class="fa-solid fa-circle-check"></i></div><div><div class="toast-title" id="toastTitle">Saved</div><div class="toast-msg" id="toastMsg"></div></div></div>
+
+  <script>
+    const baseUrl = window.BACKEND_URL || "/api";
+    const token = localStorage.getItem("token") || new URLSearchParams(location.search).get("token") || "";
+    const todayISO = new Date().toLocaleDateString("en-CA");
+    let allRows = [], filteredRows = [];
+    const WORK_TYPES = ["Operations","Follow-up","Reporting","Customer Call","Internal","Other"];
+
+    document.getElementById("dateBadge").textContent = new Date().toLocaleDateString("en-IN",{weekday:"short",day:"2-digit",month:"short",year:"numeric"});
+    document.getElementById("dateFilter").value = todayISO;
+    document.getElementById("mDate").value = todayISO;
+    document.getElementById("typeFilter").innerHTML = '<option value="">All Types</option>' + WORK_TYPES.map(t=>`<option>${t}</option>`).join("");
+
+    function esc(v){return String(v ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
+    function fmtDate(v){if(!v)return "";const d=new Date(String(v).slice(0,10)+"T00:00:00");return Number.isNaN(d.getTime())?v:d.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})}
+    function timeRange(r){return [r.startTime,r.endTime].filter(Boolean).join(" - ") || "-"}
+    function durationText(minutes){const m=Number(minutes||0);if(!m)return "-";const h=Math.floor(m/60), mm=m%60;return h ? `${h}h ${mm ? `${mm}m` : ""}` : `${mm}m`}
+    function statusClass(s){return s==="Completed"?"done":s==="Hold"?"hold":s==="Planned"?"planned":"progress"}
+    function showLoader(show){document.getElementById("loader").classList.toggle("show",!!show)}
+    function showToast(message,type="success",title){const t=document.getElementById("toast");t.className="toast "+type;document.getElementById("toastTitle").textContent=title || (type==="error"?"Action Failed":"Success");document.getElementById("toastMsg").textContent=message;t.querySelector(".toast-ico").innerHTML=type==="error"?'<i class="fa-solid fa-circle-xmark"></i>':'<i class="fa-solid fa-circle-check"></i>';t.classList.add("show");setTimeout(()=>t.classList.remove("show"),3200)}
+
+    async function loadEntries(){
+      showLoader(true);
+      try{
+        const res = await fetch(`${baseUrl}/dailyWorksheet`, { headers:{Authorization:`Bearer ${token}`}, credentials:"include" });
+        if(!res.ok) throw new Error("Failed");
+        allRows = await res.json();
+        allRows = Array.isArray(allRows) ? allRows : [];
+        applyFilters();
+      }catch(err){
+        console.error(err);
+        showToast("Worksheet load nahi ho paya. Admin login/session check karein.", "error");
+        renderEmpty("No admin work entries available.");
+      }finally{showLoader(false)}
+    }
+    function applyFilters(){
+      const q=document.getElementById("searchInput").value.trim().toLowerCase(), date=document.getElementById("dateFilter").value, type=document.getElementById("typeFilter").value, status=document.getElementById("statusFilter").value;
+      filteredRows = allRows.filter(r=>{
+        if(date && r.date!==date) return false;
+        if(type && r.workType!==type) return false;
+        if(status && r.status!==status) return false;
+        if(q && ![r.workTitle,r.workDetails,r.outcome,r.blockers,r.adminName].join(" ").toLowerCase().includes(q)) return false;
+        return true;
+      }).sort((a,b)=>String(a.startTime||"").localeCompare(String(b.startTime||"")) || String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
+      renderTable(); renderKpis();
+    }
+    function clearFilters(){document.getElementById("searchInput").value="";document.getElementById("dateFilter").value=todayISO;document.getElementById("typeFilter").value="";document.getElementById("statusFilter").value="";applyFilters()}
+    function renderKpis(){
+      document.getElementById("kpiTotal").textContent=filteredRows.length;
+      document.getElementById("kpiDone").textContent=filteredRows.filter(r=>r.status==="Completed").length;
+      document.getElementById("kpiHold").textContent=filteredRows.filter(r=>r.status==="Hold").length;
+      document.getElementById("kpiTypes").textContent=new Set(filteredRows.map(r=>r.workType).filter(Boolean)).size;
+      const mins=filteredRows.reduce((sum,r)=>sum+Number(r.durationMinutes||0),0);
+      document.getElementById("kpiHours").textContent=mins ? `${Math.floor(mins/60)}h ${mins%60}m` : "0h";
+    }
+    function renderEmpty(msg){document.getElementById("worksheetBody").innerHTML=`<tr><td colspan="9"><div class="empty"><i class="fa-solid fa-clipboard-list"></i><div>${esc(msg)}</div></div></td></tr>`;document.getElementById("rowCount").textContent="0 records";renderKpis()}
+    function renderTable(){
+      document.getElementById("rowCount").textContent=`${filteredRows.length} records`;
+      if(!filteredRows.length) return renderEmpty("Selected filters ke liye koi admin work entry nahi hai.");
+      document.getElementById("worksheetBody").innerHTML=filteredRows.map(r=>`
+        <tr>
+          <td>${fmtDate(r.date)}</td>
+          <td><div class="work-title">${esc(r.workTitle)}</div><div class="work-detail">${esc(r.workDetails || "")}</div></td>
+          <td><span class="badge planned">${esc(r.workType)}</span></td>
+          <td><div>${esc(timeRange(r))}</div><div class="muted">${esc(durationText(r.durationMinutes))}</div></td>
+          <td><span class="badge ${statusClass(r.status)}">${esc(r.status)}</span></td>
+          <td><span class="badge priority">${esc(r.priority)}</span></td>
+          <td><div><strong>Outcome:</strong> ${esc(r.outcome || "-")}</div><div class="muted" style="margin-top:4px"><strong>Blockers:</strong> ${esc(r.blockers || "-")}</div></td>
+          <td><div>${esc(r.adminName || "Admin")}</div><div class="muted">${new Date(r.updatedAt || r.createdAt || Date.now()).toLocaleString("en-IN",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}</div></td>
+          <td><div class="actions"><button class="icon-btn" title="Edit" onclick="openModal('${r._id}')"><i class="fa-solid fa-pen"></i></button><button class="icon-btn" title="Delete" onclick="deleteEntry('${r._id}')"><i class="fa-solid fa-trash"></i></button></div></td>
+        </tr>`).join("");
+    }
+    function openModal(id=""){
+      const r = id ? allRows.find(x=>x._id===id) : null;
+      document.getElementById("entryId").value = r?._id || "";
+      document.getElementById("modalTitle").innerHTML = r ? '<i class="fa-solid fa-pen" style="color:var(--blue)"></i> Edit Work' : '<i class="fa-solid fa-plus" style="color:var(--green)"></i> Add Work';
+      document.getElementById("mDate").value = r?.date || document.getElementById("dateFilter").value || todayISO;
+      document.getElementById("mWorkType").value = r?.workType || "Operations";
+      document.getElementById("mWorkTitle").value = r?.workTitle || "";
+      document.getElementById("mStartTime").value = r?.startTime || "";
+      document.getElementById("mEndTime").value = r?.endTime || "";
+      document.getElementById("mStatus").value = r?.status || "In Progress";
+      document.getElementById("mPriority").value = r?.priority || "Medium";
+      document.getElementById("mWorkDetails").value = r?.workDetails || "";
+      document.getElementById("mOutcome").value = r?.outcome || "";
+      document.getElementById("mBlockers").value = r?.blockers || "";
+      document.getElementById("entryModal").classList.add("open");
+    }
+    function closeModal(){document.getElementById("entryModal").classList.remove("open")}
+    function modalPayload(){return{date:document.getElementById("mDate").value,workType:document.getElementById("mWorkType").value,workTitle:document.getElementById("mWorkTitle").value,startTime:document.getElementById("mStartTime").value,endTime:document.getElementById("mEndTime").value,status:document.getElementById("mStatus").value,priority:document.getElementById("mPriority").value,workDetails:document.getElementById("mWorkDetails").value,outcome:document.getElementById("mOutcome").value,blockers:document.getElementById("mBlockers").value}}
+    async function saveEntry(){
+      const id=document.getElementById("entryId").value, payload=modalPayload();
+      if(!payload.date || !payload.workTitle.trim()) return showToast("Date aur work title required hai.", "error");
+      showLoader(true);
+      try{
+        const res=await fetch(`${baseUrl}/dailyWorksheet${id?`/${id}`:""}`,{method:id?"PUT":"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},credentials:"include",body:JSON.stringify(payload)});
+        if(!res.ok) throw new Error("Save failed");
+        closeModal(); showToast("Admin work entry saved."); await loadEntries();
+      }catch(err){console.error(err);showToast("Work entry save nahi ho payi.", "error")}finally{showLoader(false)}
+    }
+    async function deleteEntry(id){
+      if(!confirm("Is work entry ko delete karna hai?")) return;
+      showLoader(true);
+      try{
+        const res=await fetch(`${baseUrl}/dailyWorksheet/${id}`,{method:"DELETE",headers:{Authorization:`Bearer ${token}`},credentials:"include"});
+        if(!res.ok) throw new Error("Delete failed");
+        showToast("Work entry deleted."); await loadEntries();
+      }catch(err){console.error(err);showToast("Delete nahi ho paya.", "error")}finally{showLoader(false)}
+    }
+    function exportCSV(){
+      const rows=[["Date","Admin","Work Type","Work Title","Start","End","Duration Minutes","Status","Priority","Details","Outcome","Blockers"]];
+      filteredRows.forEach(r=>rows.push([r.date,r.adminName,r.workType,r.workTitle,r.startTime,r.endTime,r.durationMinutes,r.status,r.priority,r.workDetails,r.outcome,r.blockers].map(v=>String(v??""))));
+      const csv=rows.map(row=>row.map(cell=>`"${String(cell).replace(/"/g,'""')}"`).join(",")).join("\n");
+      const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"}), a=document.createElement("a");
+      a.href=URL.createObjectURL(blob);a.download=`admin-daily-worksheet-${document.getElementById("dateFilter").value || todayISO}.csv`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(a.href);
+    }
+    loadEntries();
+  </script>
+  <script src="errorLogger.js"></script>
+</body>
+</html>
