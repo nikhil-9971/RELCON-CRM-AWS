@@ -49,11 +49,12 @@ function normalizeWorksheetPayload(body = {}, user = {}, current = {}) {
   const totalMinutes = calculateDurationMinutes(startTime, endTime);
   const lunchBreakMinutes = calculateDurationMinutes(lunchStartTime, lunchEndTime);
   const legacyDescription = [current.workTitle, current.workDetails].filter(Boolean).join(" - ");
+  const workDescription = String(body.workDescription ?? current.workDescription ?? legacyDescription ?? "").trim();
   return {
     date: String(body.date ?? current.date ?? "").slice(0, 10),
     adminName: current.adminName || currentAdminName(user),
     adminUserId: current.adminUserId || String(user.id || user._id || user.userId || user.username || ""),
-    workDescription: String(body.workDescription ?? current.workDescription ?? legacyDescription ?? "").trim(),
+    workDescription: workDescription || (lunchStartTime && lunchEndTime ? "Lunch Break" : ""),
     startTime,
     endTime,
     lunchStartTime,
@@ -79,7 +80,7 @@ router.post("/dailyWorksheet", authMiddleware, requireAdmin, async (req, res) =>
   try {
     const payload = normalizeWorksheetPayload(req.body, req.user);
     if (!payload.date || !payload.workDescription) {
-      return res.status(400).json({ error: "Date and work description are required" });
+      return res.status(400).json({ error: "Date and work description or lunch break time are required" });
     }
     const row = await DailyWorksheet.create(payload);
     res.status(201).json({ message: "Worksheet entry saved", row });
@@ -98,7 +99,7 @@ router.put("/dailyWorksheet/:id", authMiddleware, requireAdmin, async (req, res)
     if (!current) return res.status(404).json({ error: "Worksheet entry not found" });
     const payload = normalizeWorksheetPayload(req.body, req.user, current.toObject());
     if (!payload.date || !payload.workDescription) {
-      return res.status(400).json({ error: "Date and work description are required" });
+      return res.status(400).json({ error: "Date and work description or lunch break time are required" });
     }
     Object.assign(current, payload);
     await current.save();

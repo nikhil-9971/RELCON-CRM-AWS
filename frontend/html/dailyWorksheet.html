@@ -296,8 +296,9 @@
     function markValidation(){
       const desc=document.getElementById("workDescription");
       const hasDesc=desc.value.trim().length>0;
-      desc.classList.toggle("error", !hasDesc);
-      return hasDesc;
+      const hasLunch=document.getElementById("lunchStartTime").value && document.getElementById("lunchEndTime").value;
+      desc.classList.toggle("error", !hasDesc && !hasLunch);
+      return hasDesc || hasLunch;
     }
     function updateDurationPreview(){
       const total=minutesBetween(document.getElementById("startTime").value, document.getElementById("endTime").value);
@@ -468,11 +469,11 @@
 
     async function saveEntry(){
       if(saving) return;
-      if(!markValidation()) return showToast("Work description is required.", "error");
+      if(!markValidation()) return showToast("Work description or complete lunch break time is required.", "error");
       const id=document.getElementById("entryId").value;
       const payload={
         date: selectedDate,
-        workDescription: document.getElementById("workDescription").value.trim(),
+        workDescription: document.getElementById("workDescription").value.trim() || "Lunch Break",
         startTime: document.getElementById("startTime").value,
         endTime: document.getElementById("endTime").value,
         lunchStartTime: document.getElementById("lunchStartTime").value,
