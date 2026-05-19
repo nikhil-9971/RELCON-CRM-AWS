@@ -594,6 +594,8 @@
     let filteredData = [];
     let currentPage = 1;
     const rowsPerPage = 50;
+    const roMasterCacheKey = "romasterListCache:v1";
+    const roMasterCacheTTL = 5 * 60 * 1000;
     let latestStatusMap = {};
 
     // Date badge
@@ -670,7 +672,7 @@
     }
 
     async function fetchROMasterList() {
-      const paths = ["/romaster/list","/romaster/all","/romaster","/api/romaster","/api/romaster/list","/romaster/getAll"];
+      const paths = ["/romaster/list","/romaster/all"];
       for (const path of paths) {
         try {
           const res = await fetchWithTimeout(baseUrl + path, { headers: { Authorization: `Bearer ${token}` } });
@@ -681,6 +683,23 @@
         } catch (e) { console.warn('fetchROMasterList path failed:', path, e.message); }
       }
       return null;
+    }
+
+    function readCachedROMasterList() {
+      try {
+        const cached = JSON.parse(localStorage.getItem(roMasterCacheKey) || "null");
+        if (!cached || !Array.isArray(cached.data)) return null;
+        if (Date.now() - Number(cached.savedAt || 0) > roMasterCacheTTL) return null;
+        return cached.data;
+      } catch(e) {
+        return null;
+      }
+    }
+
+    function writeCachedROMasterList(data) {
+      try {
+        localStorage.setItem(roMasterCacheKey, JSON.stringify({ savedAt: Date.now(), data }));
+      } catch(e) {}
     }
 
     async function fetchLatestStatusMap() {
@@ -733,11 +752,17 @@
       showLoader();
       currentPage = 1;
       try {
-        // Run all 3 API calls in parallel for speed
-        const [user, data, statusMap] = await Promise.all([
+        const cachedData = readCachedROMasterList();
+        if (cachedData?.length) {
+          allData = cachedData;
+          populateFilters(allData);
+          filteredData = allData.slice();
+          renderTable(filteredData, { silent: true });
+        }
+
+        const [user, data] = await Promise.all([
           getCurrentUser(),
           fetchROMasterList(),
-          fetchLatestStatusMap()
         ]);
 
         if (!user) {
@@ -753,7 +778,7 @@
           return;
         }
         allData = data;
-        latestStatusMap = statusMap;
+        writeCachedROMasterList(allData);
         populateFilters(allData);
 
         const isAdmin = user.role === "admin";
@@ -765,6 +790,12 @@
         }
 
         renderTable(filteredData);
+        fetchLatestStatusMap()
+          .then((statusMap) => {
+            latestStatusMap = statusMap || {};
+            renderTable(filteredData, { silent: true });
+          })
+          .catch((e) => console.warn("latest status map background load failed:", e.message));
       } catch(e) {
         showToast('Data load failed: ' + e.message, 'error');
         console.error('loadData failed:', e);
@@ -832,8 +863,8 @@
     }
 
     /* ── Render Table ── */
-    function renderTable(data) {
-      showLoader();
+    function renderTable(data, options = {}) {
+      if (!options.silent) showLoader();
       requestAnimationFrame(() => {
         setTimeout(() => {
           const start = (currentPage - 1) * rowsPerPage;
@@ -843,7 +874,7 @@
           document.getElementById("recordCountBadge").textContent = `${data.length} records`;
           document.getElementById("paginationInfo").textContent =
             `Showing ${Math.min(start + 1, data.length)}–${Math.min(start + rowsPerPage, data.length)} of ${data.length} records`;
-          hideLoader();
+          if (!options.silent) hideLoader();
         }, 0);
       });
     }
@@ -999,6 +1030,7 @@
       if (success) {
         showToast("Record updated successfully.");
         closeEditModal();
+        localStorage.removeItem(roMasterCacheKey);
         await loadData();
       } else {
         showToast("Update failed. Endpoint not found.", "error");
@@ -1028,6 +1060,7 @@
       document.getElementById("deleteModal").classList.add("hidden");
       if (deleted) {
         showToast("Record deleted successfully.");
+        localStorage.removeItem(roMasterCacheKey);
         await loadData();
       } else {
         showToast("Delete failed. Endpoint not found.", "error");
