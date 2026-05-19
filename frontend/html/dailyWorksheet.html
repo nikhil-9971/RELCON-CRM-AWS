@@ -45,7 +45,7 @@
     .editor-head{height:42px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;padding:0 16px}
     .editor-title{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.45px;display:flex;align-items:center;gap:7px}
     .edit-chip{display:none;background:var(--orange-lt);color:#9a3412;border:1px solid #fed7aa;border-radius:999px;padding:3px 9px;font-size:10px;font-weight:800}.edit-chip.show{display:inline-flex}
-    .editor-body{padding:16px}.form-grid{display:grid;grid-template-columns:minmax(320px,1fr) 145px 145px auto;gap:12px;align-items:end}
+    .editor-body{padding:16px}.form-grid{display:grid;grid-template-columns:minmax(280px,1fr) repeat(4,128px) auto;gap:12px;align-items:end}
     .field{display:flex;flex-direction:column;gap:5px}.label{font-size:10px;font-weight:800;color:var(--txt3);text-transform:uppercase;letter-spacing:.55px;display:flex;align-items:center;gap:5px}
     .input,.textarea,.select{border:1px solid var(--border);border-radius:var(--r-sm);background:#fff;color:var(--txt);font-size:12px;outline:none;transition:.15s}.input,.select{height:34px;padding:5px 9px}.textarea{height:62px;padding:8px 10px;resize:vertical;line-height:1.45}
     .input:focus,.textarea:focus,.select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(1,118,211,.12)}
@@ -57,7 +57,7 @@
     .table-head{min-height:42px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;padding:8px 16px;flex-wrap:wrap}.table-title{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.45px;display:flex;align-items:center;gap:7px}
     .table-tools{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}.search-box{position:relative}.search-box i{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--txt4);font-size:11px}.search-box .input{width:220px;padding-left:29px}.status-badge{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:3px 9px;font-size:10px;font-weight:800;border:1px solid}.status-done{background:var(--green-lt);color:var(--green);border-color:#b7dfc3}.status-open{background:var(--orange-lt);color:#9a3412;border-color:#fed7aa}
     .count{background:var(--blue-lt);color:var(--blue);border:1px solid #c5dff5;border-radius:999px;padding:2px 8px;font-size:10px;font-weight:800}.table-wrap{overflow:auto;max-height:calc(100vh - 390px)}
-    table{width:100%;min-width:820px;border-collapse:collapse}th{position:sticky;top:0;z-index:5;background:#1a2e4a;color:#e8f4fd;text-align:left;padding:9px 12px;border-right:1px solid #253d5b;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;white-space:nowrap}td{padding:11px 12px;border-bottom:1px solid var(--border-lt);vertical-align:top;font-size:12px;color:var(--txt2)}tr:hover td{background:#f8fbff}
+    table{width:100%;min-width:1040px;border-collapse:collapse}th{position:sticky;top:0;z-index:5;background:#1a2e4a;color:#e8f4fd;text-align:left;padding:9px 12px;border-right:1px solid #253d5b;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;white-space:nowrap}td{padding:11px 12px;border-bottom:1px solid var(--border-lt);vertical-align:top;font-size:12px;color:var(--txt2)}tr:hover td{background:#f8fbff}
     .desc{font-weight:600;color:var(--txt);white-space:pre-wrap;line-height:1.45}.time-pill{display:inline-flex;align-items:center;gap:5px;background:var(--blue-lt);color:var(--blue-dk);border:1px solid #c5dff5;border-radius:999px;padding:3px 9px;font-size:11px;font-weight:800}.duration-pill{display:inline-flex;background:var(--green-lt);color:var(--green);border:1px solid #b7dfc3;border-radius:999px;padding:3px 9px;font-size:11px;font-weight:800}.muted{font-size:10px;color:var(--txt3);margin-top:4px}
     .actions{display:flex;gap:4px;justify-content:center}.icon-btn{width:28px;height:28px;border:1px solid var(--border);background:#fff;border-radius:var(--r-sm);cursor:pointer;color:var(--txt3);display:inline-flex;align-items:center;justify-content:center}.icon-btn:hover{background:var(--blue-lt);color:var(--blue);border-color:#c5dff5}.icon-btn.danger:hover{background:var(--red-lt);color:var(--red);border-color:#f5c6c3}
     .empty{padding:36px;text-align:center;color:var(--txt3)}.empty i{font-size:28px;color:var(--txt4);margin-bottom:9px}
@@ -83,7 +83,7 @@
       <div class="page-icon"><i class="fa-solid fa-briefcase"></i></div>
       <div>
         <div class="page-title">Daily Admin Work Log</div>
-        <div class="page-sub">Maintain work descriptions, start times, and end times in a clean daily worksheet.</div>
+        <div class="page-sub">Maintain your own work descriptions, start times, lunch breaks, and end times in a clean daily worksheet.</div>
       </div>
       <div class="page-actions">
         <input id="worksheetDate" type="date" class="input" onchange="changeDate(this.value)"/>
@@ -132,6 +132,14 @@
             <label class="label" for="endTime"><i class="fa-solid fa-clock"></i> End Time</label>
             <input id="endTime" type="time" class="input"/>
           </div>
+          <div class="field">
+            <label class="label" for="lunchStartTime"><i class="fa-solid fa-mug-saucer"></i> Lunch Start</label>
+            <input id="lunchStartTime" type="time" class="input"/>
+          </div>
+          <div class="field">
+            <label class="label" for="lunchEndTime"><i class="fa-solid fa-mug-hot"></i> Lunch End</label>
+            <input id="lunchEndTime" type="time" class="input"/>
+          </div>
           <div class="form-actions">
             <button class="btn btn-success" id="saveBtn" onclick="saveEntry()"><i class="fa-solid fa-floppy-disk"></i> Save</button>
             <button class="btn btn-neutral" id="cancelBtn" onclick="clearForm()" style="display:none"><i class="fa-solid fa-xmark"></i> Cancel</button>
@@ -142,6 +150,8 @@
           <div class="quick-actions">
             <button class="mini-btn" onclick="setStartNow()">Start now</button>
             <button class="mini-btn" onclick="setEndNow()">End now</button>
+            <button class="mini-btn" onclick="setLunchStartNow()">Lunch start</button>
+            <button class="mini-btn" onclick="setLunchEndNow()">Lunch end</button>
             <button class="mini-btn" onclick="applyTemplate('Follow-up calls and coordination')">Follow-up</button>
             <button class="mini-btn" onclick="applyTemplate('Report preparation and data update')">Report</button>
             <button class="mini-btn" onclick="applyTemplate('Material / site issue coordination')">Material</button>
@@ -180,6 +190,7 @@
               <th>Work Description</th>
               <th>Start Time</th>
               <th>End Time</th>
+              <th>Lunch Break</th>
               <th>Duration</th>
               <th>Status</th>
               <th style="text-align:center">Actions</th>
@@ -210,8 +221,8 @@
 
     document.getElementById("dateBadge").textContent = new Date().toLocaleDateString("en-IN",{weekday:"short",day:"2-digit",month:"short",year:"numeric"});
     document.getElementById("worksheetDate").value = selectedDate;
-    ["startTime","endTime"].forEach(id=>document.getElementById(id).addEventListener("input", updateDurationPreview));
-    ["workDescription","startTime","endTime"].forEach(id=>document.getElementById(id).addEventListener("input", saveDraft));
+    ["startTime","endTime","lunchStartTime","lunchEndTime"].forEach(id=>document.getElementById(id).addEventListener("input", updateDurationPreview));
+    ["workDescription","startTime","endTime","lunchStartTime","lunchEndTime"].forEach(id=>document.getElementById(id).addEventListener("input", saveDraft));
 
     function esc(v){return String(v ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
     function description(row){return row.workDescription || [row.workTitle,row.workDetails].filter(Boolean).join(" - ")}
@@ -228,6 +239,18 @@
       if(!m) return "--";
       const h=Math.floor(m/60), mm=m%60;
       return h ? `${h}h${mm ? ` ${mm}m` : ""}` : `${mm}m`;
+    }
+    function lunchText(row){
+      const mins=Number(row.lunchBreakMinutes) || minutesBetween(row.lunchStartTime,row.lunchEndTime);
+      if(!row.lunchStartTime && !row.lunchEndTime) return "--";
+      const range=[row.lunchStartTime || "--", row.lunchEndTime || "--"].join(" - ");
+      return `${range}${mins ? ` (${durationText(mins)})` : ""}`;
+    }
+    function netMinutes(row){
+      const saved=Number(row.durationMinutes);
+      if(saved > 0) return saved;
+      const lunch=Number(row.lunchBreakMinutes) || minutesBetween(row.lunchStartTime,row.lunchEndTime);
+      return Math.max(0, minutesBetween(row.startTime,row.endTime) - lunch);
     }
     function entryStatus(row){return row.endTime ? "completed" : "open"}
     function statusText(row){return entryStatus(row)==="completed" ? "Completed" : "Open"}
@@ -277,11 +300,14 @@
       return hasDesc;
     }
     function updateDurationPreview(){
-      const mins=minutesBetween(document.getElementById("startTime").value, document.getElementById("endTime").value);
-      document.getElementById("durationPreview").textContent=`Duration: ${durationText(mins)}`;
+      const total=minutesBetween(document.getElementById("startTime").value, document.getElementById("endTime").value);
+      const lunch=minutesBetween(document.getElementById("lunchStartTime").value, document.getElementById("lunchEndTime").value);
+      document.getElementById("durationPreview").textContent=`Duration: ${durationText(Math.max(0,total-lunch))} (Lunch: ${durationText(lunch)})`;
     }
-    function setStartNow(){document.getElementById("startTime").value=nowHHMM();updateDurationPreview()}
-    function setEndNow(){document.getElementById("endTime").value=nowHHMM();updateDurationPreview()}
+    function setStartNow(){document.getElementById("startTime").value=nowHHMM();updateDurationPreview();saveDraft()}
+    function setEndNow(){document.getElementById("endTime").value=nowHHMM();updateDurationPreview();saveDraft()}
+    function setLunchStartNow(){document.getElementById("lunchStartTime").value=nowHHMM();updateDurationPreview();saveDraft()}
+    function setLunchEndNow(){document.getElementById("lunchEndTime").value=nowHHMM();updateDurationPreview();saveDraft()}
     function applyTemplate(text){
       const desc=document.getElementById("workDescription");
       desc.value = desc.value.trim() ? `${desc.value.trim()}\n${text}` : text;
@@ -294,8 +320,10 @@
         workDescription:document.getElementById("workDescription").value,
         startTime:document.getElementById("startTime").value,
         endTime:document.getElementById("endTime").value,
+        lunchStartTime:document.getElementById("lunchStartTime").value,
+        lunchEndTime:document.getElementById("lunchEndTime").value,
       };
-      if(draft.workDescription || draft.startTime || draft.endTime) localStorage.setItem(storageKey, JSON.stringify(draft));
+      if(draft.workDescription || draft.startTime || draft.endTime || draft.lunchStartTime || draft.lunchEndTime) localStorage.setItem(storageKey, JSON.stringify(draft));
       else localStorage.removeItem(storageKey);
     }
     function restoreDraft(){
@@ -305,6 +333,8 @@
         document.getElementById("workDescription").value=draft.workDescription || "";
         document.getElementById("startTime").value=draft.startTime || "";
         document.getElementById("endTime").value=draft.endTime || "";
+        document.getElementById("lunchStartTime").value=draft.lunchStartTime || "";
+        document.getElementById("lunchEndTime").value=draft.lunchEndTime || "";
         updateDurationPreview();
       }catch{}
     }
@@ -313,6 +343,8 @@
       document.getElementById("workDescription").value="";
       document.getElementById("startTime").value="";
       document.getElementById("endTime").value="";
+      document.getElementById("lunchStartTime").value="";
+      document.getElementById("lunchEndTime").value="";
       document.getElementById("workDescription").classList.remove("error");
       document.getElementById("editChip").classList.remove("show");
       document.getElementById("cancelBtn").style.display="none";
@@ -350,14 +382,14 @@
 
     function renderSummary(){
       document.getElementById("totalEntries").textContent=rows.length;
-      const total=rows.reduce((sum,row)=>sum + (Number(row.durationMinutes) || minutesBetween(row.startTime,row.endTime)), 0);
+      const total=rows.reduce((sum,row)=>sum + netMinutes(row), 0);
       document.getElementById("totalDuration").textContent=durationText(total).replace("--","0h");
       const latest=[...rows].sort((a,b)=>new Date(b.updatedAt||b.createdAt||0)-new Date(a.updatedAt||a.createdAt||0))[0];
       document.getElementById("lastSaved").textContent=latest ? new Date(latest.updatedAt || latest.createdAt).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"}) : "--";
       document.getElementById("openEntries").textContent=rows.filter(row=>entryStatus(row)==="open").length;
     }
     function renderEmpty(msg,countText="0 records"){
-      document.getElementById("worksheetBody").innerHTML=`<tr><td colspan="6"><div class="empty"><i class="fa-solid fa-clipboard-list"></i><div>${esc(msg)}</div></div></td></tr>`;
+      document.getElementById("worksheetBody").innerHTML=`<tr><td colspan="7"><div class="empty"><i class="fa-solid fa-clipboard-list"></i><div>${esc(msg)}</div></div></td></tr>`;
       document.getElementById("rowCount").textContent=countText;
     }
     function visibleRows(){
@@ -370,7 +402,7 @@
         .sort((a,b)=>{
           if(sort==="startDesc") return String(b.startTime||"").localeCompare(String(a.startTime||""));
           if(sort==="updatedDesc") return new Date(b.updatedAt||b.createdAt||0)-new Date(a.updatedAt||a.createdAt||0);
-          if(sort==="durationDesc") return (Number(b.durationMinutes)||minutesBetween(b.startTime,b.endTime))-(Number(a.durationMinutes)||minutesBetween(a.startTime,a.endTime));
+          if(sort==="durationDesc") return netMinutes(b)-netMinutes(a);
           return String(a.startTime||"").localeCompare(String(b.startTime||""));
         });
     }
@@ -381,12 +413,13 @@
       if(!data.length) return renderEmpty("No records match the current search or filter.", `0 of ${rows.length} records`);
       document.getElementById("worksheetBody").innerHTML = data
         .map(row=>{
-          const mins=Number(row.durationMinutes) || minutesBetween(row.startTime,row.endTime);
+          const mins=netMinutes(row);
           const status=entryStatus(row);
           return `<tr>
             <td><div class="desc">${esc(description(row))}</div><div class="muted">${new Date(row.updatedAt || row.createdAt || Date.now()).toLocaleString("en-IN",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}</div></td>
             <td><span class="time-pill"><i class="fa-solid fa-play"></i>${esc(row.startTime || "--")}</span></td>
             <td><span class="time-pill"><i class="fa-solid fa-stop"></i>${esc(row.endTime || "--")}</span></td>
+            <td><span class="time-pill"><i class="fa-solid fa-mug-saucer"></i>${esc(lunchText(row))}</span></td>
             <td><span class="duration-pill">${esc(durationText(mins))}</span></td>
             <td><span class="status-badge ${status==="completed" ? "status-done" : "status-open"}"><i class="fa-solid ${status==="completed" ? "fa-circle-check" : "fa-circle"}"></i>${statusText(row)}</span></td>
             <td>
@@ -407,6 +440,8 @@
       document.getElementById("workDescription").value=description(row);
       document.getElementById("startTime").value=row.startTime || "";
       document.getElementById("endTime").value=row.endTime || "";
+      document.getElementById("lunchStartTime").value=row.lunchStartTime || "";
+      document.getElementById("lunchEndTime").value=row.lunchEndTime || "";
       document.getElementById("editChip").classList.add("show");
       document.getElementById("cancelBtn").style.display="inline-flex";
       document.querySelector(".editor-title").innerHTML='<i class="fa-solid fa-pen" style="color:var(--blue)"></i> Edit Work Entry';
@@ -420,6 +455,8 @@
       document.getElementById("workDescription").value=description(row);
       document.getElementById("startTime").value=row.startTime || "";
       document.getElementById("endTime").value=row.endTime || "";
+      document.getElementById("lunchStartTime").value=row.lunchStartTime || "";
+      document.getElementById("lunchEndTime").value=row.lunchEndTime || "";
       document.getElementById("editChip").classList.remove("show");
       document.getElementById("cancelBtn").style.display="none";
       document.querySelector(".editor-title").innerHTML='<i class="fa-solid fa-copy" style="color:var(--green)"></i> Duplicate Work Entry';
@@ -438,6 +475,8 @@
         workDescription: document.getElementById("workDescription").value.trim(),
         startTime: document.getElementById("startTime").value,
         endTime: document.getElementById("endTime").value,
+        lunchStartTime: document.getElementById("lunchStartTime").value,
+        lunchEndTime: document.getElementById("lunchEndTime").value,
       };
       setSaving(true);
       try{
@@ -474,10 +513,10 @@
     }
 
     function exportCSV(){
-      const csvRows=[["Work Description","Start Time","End Time","Duration","Status"]];
+      const csvRows=[["Work Description","Start Time","End Time","Lunch Break","Duration","Status"]];
       visibleRows().forEach(row=>{
-        const mins=Number(row.durationMinutes) || minutesBetween(row.startTime,row.endTime);
-        csvRows.push([description(row), row.startTime || "", row.endTime || "", durationText(mins), statusText(row)]);
+        const mins=netMinutes(row);
+        csvRows.push([description(row), row.startTime || "", row.endTime || "", lunchText(row), durationText(mins), statusText(row)]);
       });
       const csv=csvRows.map(row=>row.map(cell=>`"${String(cell).replace(/"/g,'""')}"`).join(",")).join("\n");
       const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});

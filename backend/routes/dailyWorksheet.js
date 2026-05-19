@@ -30,9 +30,24 @@ function calculateDurationMinutes(startTime, endTime) {
   return Math.max(0, end - start);
 }
 
+function buildCurrentAdminQuery(user = {}) {
+  const adminUserId = String(user.id || user._id || user.userId || user.username || "");
+  const adminName = currentAdminName(user);
+  return {
+    $or: [
+      ...(adminUserId ? [{ adminUserId }] : []),
+      ...(adminName ? [{ adminName }] : []),
+    ],
+  };
+}
+
 function normalizeWorksheetPayload(body = {}, user = {}, current = {}) {
   const startTime = normalizeTime(body.startTime ?? current.startTime);
   const endTime = normalizeTime(body.endTime ?? current.endTime);
+  const lunchStartTime = normalizeTime(body.lunchStartTime ?? current.lunchStartTime);
+  const lunchEndTime = normalizeTime(body.lunchEndTime ?? current.lunchEndTime);
+  const totalMinutes = calculateDurationMinutes(startTime, endTime);
+  const lunchBreakMinutes = calculateDurationMinutes(lunchStartTime, lunchEndTime);
   const legacyDescription = [current.workTitle, current.workDetails].filter(Boolean).join(" - ");
   return {
     date: String(body.date ?? current.date ?? "").slice(0, 10),
@@ -41,15 +56,17 @@ function normalizeWorksheetPayload(body = {}, user = {}, current = {}) {
     workDescription: String(body.workDescription ?? current.workDescription ?? legacyDescription ?? "").trim(),
     startTime,
     endTime,
-    durationMinutes: calculateDurationMinutes(startTime, endTime),
+    lunchStartTime,
+    lunchEndTime,
+    lunchBreakMinutes,
+    durationMinutes: Math.max(0, totalMinutes - lunchBreakMinutes),
   };
 }
 
 router.get("/dailyWorksheet", authMiddleware, requireAdmin, async (req, res) => {
   try {
-    const query = {};
+    const query = buildCurrentAdminQuery(req.user);
     if (req.query.date) query.date = String(req.query.date).slice(0, 10);
-    if (req.query.mine === "true") query.adminName = currentAdminName(req.user);
     const rows = await DailyWorksheet.find(query).sort({ date: -1, startTime: 1, createdAt: -1 }).lean();
     res.json(rows);
   } catch (err) {
@@ -77,7 +94,7 @@ router.put("/dailyWorksheet/:id", authMiddleware, requireAdmin, async (req, res)
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ error: "Invalid worksheet entry id" });
     }
-    const current = await DailyWorksheet.findById(req.params.id);
+    const current = await DailyWorksheet.findOne({ _id: req.params.id, ...buildCurrentAdminQuery(req.user) });
     if (!current) return res.status(404).json({ error: "Worksheet entry not found" });
     const payload = normalizeWorksheetPayload(req.body, req.user, current.toObject());
     if (!payload.date || !payload.workDescription) {
@@ -97,7 +114,8 @@ router.delete("/dailyWorksheet/:id", authMiddleware, requireAdmin, async (req, r
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ error: "Invalid worksheet entry id" });
     }
-    await DailyWorksheet.findByIdAndDelete(req.params.id);
+    const deleted = await DailyWorksheet.findOneAndDelete({ _id: req.params.id, ...buildCurrentAdminQuery(req.user) });
+    if (!deleted) return res.status(404).json({ error: "Worksheet entry not found" });
     res.json({ message: "Worksheet entry deleted" });
   } catch (err) {
     console.error("dailyWorksheet delete error:", err);
