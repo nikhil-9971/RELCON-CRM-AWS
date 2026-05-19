@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Notes Task - RELCON CRM</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <script src="config.js"></script>
+  <style>
+    :root{--blue:#0176d3;--blue-dk:#014486;--blue-lt:#e8f4fd;--green:#2e844a;--green-lt:#eaf5ea;--red:#ba0517;--red-lt:#fef1ee;--orange:#dd5a0c;--orange-lt:#fff3e0;--purple:#7b3ff2;--purple-lt:#f3efff;--bg:#f3f2f2;--surface:#fff;--surface2:#f9f9f9;--border:#dddbda;--border-lt:#f3f2f2;--txt:#080707;--txt2:#3e3e3c;--txt3:#706e6b;--txt4:#aeaeac;--r-sm:4px;--r:6px;--r-lg:8px;--sh-sm:0 2px 4px rgba(0,0,0,.09);--sh-md:0 8px 24px rgba(0,0,0,.12)}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--txt);font-size:13px;min-height:100vh}
+    button,input,textarea,select{font-family:inherit}
+    .top-strip{height:52px;background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0 1px 3px rgba(15,23,42,.07);display:flex;align-items:center;gap:12px;padding:0 20px;position:sticky;top:0;z-index:30}
+    .strip-icon{width:30px;height:30px;border-radius:6px;background:var(--purple-lt);color:var(--purple);display:flex;align-items:center;justify-content:center}
+    .strip-title{font-size:14px;font-weight:800}.strip-meta{font-size:10px;color:var(--txt4);font-weight:800;text-transform:uppercase;letter-spacing:.65px}.spacer{flex:1}
+    .body{padding:16px 20px;max-width:1280px;margin:0 auto}
+    .page-head{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);padding:16px 20px;margin-bottom:12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+    .page-icon{width:46px;height:46px;border-radius:10px;background:linear-gradient(135deg,#1d4ed8,#7b3ff2);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 2px 10px rgba(123,63,242,.28)}
+    .page-title{font-size:19px;font-weight:800;letter-spacing:-.35px}.page-sub{font-size:12px;color:var(--txt3);margin-top:2px}.page-actions{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .btn{height:32px;padding:0 13px;border-radius:var(--r-sm);font-size:12px;font-weight:700;border:1px solid transparent;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;transition:.15s}
+    .btn:disabled{opacity:.58;cursor:not-allowed}.btn-primary{background:var(--blue);color:#fff}.btn-primary:hover:not(:disabled){background:#0b5faa}.btn-neutral{background:#fff;border-color:var(--border);color:var(--txt2)}.btn-neutral:hover:not(:disabled){background:var(--surface2)}.btn-success{background:var(--green);color:#fff}.btn-danger{background:var(--red);color:#fff}
+    .summary-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:12px}
+    .summary{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);padding:12px 14px;border-left:3px solid var(--blue)}
+    .summary.green{border-left-color:var(--green)}.summary.orange{border-left-color:var(--orange)}.summary.red{border-left-color:var(--red)}
+    .summary-num{font-size:22px;font-weight:800;line-height:1;color:var(--blue)}.summary.green .summary-num{color:var(--green)}.summary.orange .summary-num{color:var(--orange)}.summary.red .summary-num{color:var(--red)}
+    .summary-label{font-size:10px;color:var(--txt3);font-weight:800;text-transform:uppercase;letter-spacing:.55px;margin-top:5px}
+    .workbench{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:12px;align-items:start}
+    .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);overflow:hidden}
+    .panel-head{min-height:42px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;padding:8px 16px;flex-wrap:wrap}
+    .panel-title{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.45px;display:flex;align-items:center;gap:7px}.panel-tools{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .input,.textarea,.select{border:1px solid var(--border);border-radius:var(--r-sm);background:#fff;color:var(--txt);font-size:12px;outline:none;transition:.15s}.input,.select{height:34px;padding:5px 9px}.textarea{height:130px;padding:9px 10px;resize:vertical;line-height:1.5}
+    .input:focus,.textarea:focus,.select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(1,118,211,.12)}.input.error,.textarea.error{border-color:var(--red);box-shadow:0 0 0 3px rgba(186,5,23,.1)}
+    .search-box{position:relative}.search-box i{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--txt4);font-size:11px}.search-box .input{width:230px;padding-left:29px}
+    .board{padding:12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;max-height:calc(100vh - 285px);overflow:auto}
+    .task-card{border:1px solid var(--border);border-radius:var(--r-lg);background:#fff;padding:12px;min-height:148px;display:flex;flex-direction:column;gap:9px;transition:.15s}
+    .task-card:hover{border-color:#b8c6d9;box-shadow:0 4px 14px rgba(15,23,42,.08);transform:translateY(-1px)}.task-card.pinned{border-color:#d8c7ff;background:linear-gradient(180deg,#fff,#fbf9ff)}
+    .task-top{display:flex;gap:8px;align-items:flex-start}.task-title{font-weight:800;color:var(--txt);line-height:1.35;flex:1;word-break:break-word}.pin{color:var(--purple);font-size:12px;margin-top:2px}
+    .task-note{color:var(--txt2);font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-word;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+    .task-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto}.badge{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:3px 8px;font-size:10px;font-weight:800;border:1px solid}.b-open{background:var(--blue-lt);color:var(--blue-dk);border-color:#c5dff5}.b-progress{background:var(--orange-lt);color:#9a3412;border-color:#fed7aa}.b-done{background:var(--green-lt);color:var(--green);border-color:#b7dfc3}.b-archived{background:#f1f5f9;color:#475569;border-color:#cbd5e1}.p-low{background:#f1f5f9;color:#475569;border-color:#cbd5e1}.p-medium{background:var(--blue-lt);color:var(--blue-dk);border-color:#c5dff5}.p-high{background:var(--orange-lt);color:#9a3412;border-color:#fed7aa}.p-urgent{background:var(--red-lt);color:var(--red);border-color:#f5c6c3}
+    .card-actions{display:flex;gap:5px;justify-content:flex-end;border-top:1px solid var(--border-lt);padding-top:8px}.icon-btn{width:28px;height:28px;border:1px solid var(--border);background:#fff;border-radius:var(--r-sm);cursor:pointer;color:var(--txt3);display:inline-flex;align-items:center;justify-content:center}.icon-btn:hover{background:var(--blue-lt);color:var(--blue);border-color:#c5dff5}.icon-btn.danger:hover{background:var(--red-lt);color:var(--red);border-color:#f5c6c3}
+    .form{padding:16px;display:flex;flex-direction:column;gap:12px}.field{display:flex;flex-direction:column;gap:5px}.label{font-size:10px;font-weight:800;color:var(--txt3);text-transform:uppercase;letter-spacing:.55px;display:flex;align-items:center;gap:5px}.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.form-actions{display:flex;gap:8px;align-items:center}.form-actions .btn{flex:1}.empty{grid-column:1/-1;padding:44px 20px;text-align:center;color:var(--txt3)}.empty i{font-size:30px;color:var(--txt4);margin-bottom:10px}
+    .toast{position:fixed;right:18px;top:66px;background:#fff;border:1px solid var(--border);box-shadow:var(--sh-md);border-radius:var(--r-lg);padding:12px 14px;min-width:280px;max-width:420px;display:none;align-items:flex-start;gap:10px;z-index:120;font-size:12px}.toast.show{display:flex;animation:toastIn .2s ease}.toast.success .toast-ico{color:var(--green)}.toast.error .toast-ico{color:var(--red)}.toast.info .toast-ico{color:var(--blue)}.toast-title{font-weight:800;margin-bottom:2px}.toast-msg{color:var(--txt3);line-height:1.45}@keyframes toastIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+    .loader{position:fixed;inset:0;background:rgba(243,242,242,.72);display:none;align-items:center;justify-content:center;z-index:90}.loader.show{display:flex}.spin{width:34px;height:34px;border:3px solid #d8dde6;border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+    @media(max-width:980px){.workbench{grid-template-columns:1fr}.board{grid-template-columns:1fr;max-height:none}.panel-tools,.page-actions{width:100%;margin-left:0}.search-box,.search-box .input,.panel-tools .select{width:100%}}
+  </style>
+</head>
+<body>
+  <header class="top-strip">
+    <div class="strip-icon"><i class="fa-solid fa-note-sticky"></i></div>
+    <div>
+      <div class="strip-title">Notes Task</div>
+      <div class="strip-meta" id="dateBadge">Loading</div>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn btn-neutral" onclick="loadTasks()"><i class="fa-solid fa-rotate-right"></i> Sync</button>
+  </header>
+
+  <main class="body">
+    <section class="page-head">
+      <div class="page-icon"><i class="fa-solid fa-clipboard-list"></i></div>
+      <div>
+        <div class="page-title">Admin Notes Task</div>
+        <div class="page-sub">Plan, prioritize, and close your own admin notes with a focused task board.</div>
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-primary" onclick="clearForm(true)"><i class="fa-solid fa-plus"></i> New Note</button>
+        <button class="btn btn-neutral" onclick="exportCSV()"><i class="fa-solid fa-file-export"></i> Export CSV</button>
+      </div>
+    </section>
+
+    <section class="summary-row">
+      <div class="summary"><div class="summary-num" id="totalCount">0</div><div class="summary-label">Total Notes</div></div>
+      <div class="summary orange"><div class="summary-num" id="openCount">0</div><div class="summary-label">Open</div></div>
+      <div class="summary red"><div class="summary-num" id="urgentCount">0</div><div class="summary-label">Urgent</div></div>
+      <div class="summary green"><div class="summary-num" id="doneCount">0</div><div class="summary-label">Done</div></div>
+    </section>
+
+    <section class="workbench">
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title"><i class="fa-solid fa-table-cells-large" style="color:var(--blue)"></i> My Notes Board</div>
+          <div class="panel-tools">
+            <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input id="searchInput" class="input" placeholder="Search notes..." oninput="renderBoard()"/></div>
+            <select id="statusFilter" class="select" onchange="renderBoard()">
+              <option value="all">All status</option><option value="open">Open</option><option value="in-progress">In progress</option><option value="done">Done</option><option value="archived">Archived</option>
+            </select>
+            <select id="priorityFilter" class="select" onchange="renderBoard()">
+              <option value="all">All priority</option><option value="urgent">Urgent</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option>
+            </select>
+          </div>
+        </div>
+        <div class="board" id="taskBoard"></div>
+      </div>
+
+      <aside class="panel">
+        <div class="panel-head">
+          <div class="panel-title" id="formTitle"><i class="fa-solid fa-pen-to-square" style="color:var(--green)"></i> Create Note Task</div>
+        </div>
+        <div class="form">
+          <input type="hidden" id="taskId"/>
+          <div class="field">
+            <label class="label" for="title"><i class="fa-solid fa-heading"></i> Title</label>
+            <input id="title" class="input" maxlength="120" placeholder="Follow up on pending dispatch"/>
+          </div>
+          <div class="field">
+            <label class="label" for="note"><i class="fa-solid fa-align-left"></i> Note</label>
+            <textarea id="note" class="textarea" placeholder="Add context, next action, customer reference, or internal reminder..."></textarea>
+          </div>
+          <div class="grid-2">
+            <div class="field">
+              <label class="label" for="status"><i class="fa-solid fa-circle-check"></i> Status</label>
+              <select id="status" class="select"><option value="open">Open</option><option value="in-progress">In progress</option><option value="done">Done</option><option value="archived">Archived</option></select>
+            </div>
+            <div class="field">
+              <label class="label" for="priority"><i class="fa-solid fa-flag"></i> Priority</label>
+              <select id="priority" class="select"><option value="medium">Medium</option><option value="low">Low</option><option value="high">High</option><option value="urgent">Urgent</option></select>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="field">
+              <label class="label" for="dueDate"><i class="fa-solid fa-calendar"></i> Due Date</label>
+              <input id="dueDate" type="date" class="input"/>
+            </div>
+            <div class="field">
+              <label class="label" for="reminderTime"><i class="fa-solid fa-clock"></i> Reminder</label>
+              <input id="reminderTime" type="time" class="input"/>
+            </div>
+          </div>
+          <div class="field">
+            <label class="label" for="category"><i class="fa-solid fa-tag"></i> Category</label>
+            <input id="category" class="input" maxlength="60" placeholder="Dispatch, Verification, Billing"/>
+          </div>
+          <label class="label" style="flex-direction:row;text-transform:none;font-size:12px;color:var(--txt2);letter-spacing:0">
+            <input id="pinned" type="checkbox"/> Pin this note
+          </label>
+          <div class="form-actions">
+            <button class="btn btn-success" id="saveBtn" onclick="saveTask()"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+            <button class="btn btn-neutral" onclick="clearForm()"><i class="fa-solid fa-xmark"></i> Clear</button>
+          </div>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <div class="loader" id="loader"><div class="spin"></div></div>
+  <div class="toast" id="toast"><div class="toast-ico"><i class="fa-solid fa-circle-check"></i></div><div><div class="toast-title" id="toastTitle">Saved</div><div class="toast-msg" id="toastMsg"></div></div></div>
+
+  <script>
+    const baseUrl = window.BACKEND_URL || "/api";
+    const token = localStorage.getItem("token") || "";
+    const todayISO = new Date().toLocaleDateString("en-CA");
+    let rows = [];
+    let saving = false;
+
+    document.getElementById("dateBadge").textContent = new Date().toLocaleDateString("en-IN",{weekday:"short",day:"2-digit",month:"short",year:"numeric"});
+
+    function esc(v){return String(v ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
+    function showLoader(show=true){document.getElementById("loader").classList.toggle("show",!!show)}
+    function showToast(message,type="success",title){
+      const t=document.getElementById("toast");
+      t.className="toast "+type;
+      document.getElementById("toastTitle").textContent=title || (type==="error"?"Action Failed":type==="info"?"Info":"Success");
+      document.getElementById("toastMsg").textContent=message;
+      t.querySelector(".toast-ico").innerHTML=type==="error"?'<i class="fa-solid fa-circle-xmark"></i>':type==="info"?'<i class="fa-solid fa-circle-info"></i>':'<i class="fa-solid fa-circle-check"></i>';
+      t.classList.add("show");
+      setTimeout(()=>t.classList.remove("show"),3800);
+    }
+    async function readError(res){
+      const data=await res.json().catch(()=>null);
+      if(res.status===401) return "Login token is missing or expired.";
+      if(res.status===403) return "Admin access is required for Notes Task.";
+      return data?.error || data?.message || `HTTP ${res.status}`;
+    }
+    async function api(path, options={}){
+      const headers={Accept:"application/json", ...(options.headers || {})};
+      if(token) headers.Authorization=`Bearer ${token}`;
+      const res=await fetch(`${baseUrl}${path}`, {...options, headers, credentials:"include"});
+      if(!res.ok) throw new Error(await readError(res));
+      if(res.status===204) return null;
+      return res.json();
+    }
+    function setSaving(value){
+      saving=value;
+      const btn=document.getElementById("saveBtn");
+      btn.disabled=value;
+      btn.innerHTML=value?'<i class="fa-solid fa-circle-notch fa-spin"></i> Saving':'<i class="fa-solid fa-floppy-disk"></i> Save';
+    }
+    function statusLabel(value){return ({open:"Open","in-progress":"In progress",done:"Done",archived:"Archived"}[value] || value)}
+    function statusClass(value){return value==="in-progress" ? "b-progress" : `b-${value || "open"}`}
+    function priorityLabel(value){return ({low:"Low",medium:"Medium",high:"High",urgent:"Urgent"}[value] || value)}
+    function dueText(row){
+      if(!row.dueDate) return "No due date";
+      const date = new Date(`${row.dueDate}T00:00:00`);
+      const label = Number.isNaN(date.getTime()) ? row.dueDate : date.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"});
+      return `${label}${row.reminderTime ? " at " + row.reminderTime : ""}`;
+    }
+    function filteredRows(){
+      const q=document.getElementById("searchInput").value.trim().toLowerCase();
+      const status=document.getElementById("statusFilter").value;
+      const priority=document.getElementById("priorityFilter").value;
+      return [...rows]
+        .filter(row=>status==="all" || row.status===status)
+        .filter(row=>priority==="all" || row.priority===priority)
+        .filter(row=>{
+          if(!q) return true;
+          return `${row.title||""} ${row.note||""} ${row.category||""}`.toLowerCase().includes(q);
+        })
+        .sort((a,b)=>Number(b.pinned)-Number(a.pinned) || String(a.dueDate||"9999").localeCompare(String(b.dueDate||"9999")) || new Date(b.updatedAt||0)-new Date(a.updatedAt||0));
+    }
+    function renderSummary(){
+      document.getElementById("totalCount").textContent=rows.length;
+      document.getElementById("openCount").textContent=rows.filter(r=>["open","in-progress"].includes(r.status)).length;
+      document.getElementById("urgentCount").textContent=rows.filter(r=>r.priority==="urgent" && r.status!=="done").length;
+      document.getElementById("doneCount").textContent=rows.filter(r=>r.status==="done").length;
+    }
+    function renderBoard(){
+      const data=filteredRows();
+      const board=document.getElementById("taskBoard");
+      if(!rows.length){
+        board.innerHTML='<div class="empty"><i class="fa-solid fa-note-sticky"></i><div>No note tasks yet.</div></div>';
+        return;
+      }
+      if(!data.length){
+        board.innerHTML='<div class="empty"><i class="fa-solid fa-filter-circle-xmark"></i><div>No notes match the current filters.</div></div>';
+        return;
+      }
+      board.innerHTML=data.map(row=>`
+        <article class="task-card ${row.pinned ? "pinned" : ""}">
+          <div class="task-top">
+            ${row.pinned ? '<i class="fa-solid fa-thumbtack pin"></i>' : ""}
+            <div class="task-title">${esc(row.title)}</div>
+          </div>
+          <div class="task-note">${esc(row.note || "No note added.")}</div>
+          <div class="task-meta">
+            <span class="badge ${esc(statusClass(row.status))}"><i class="fa-solid fa-circle"></i>${esc(statusLabel(row.status))}</span>
+            <span class="badge p-${esc(row.priority)}"><i class="fa-solid fa-flag"></i>${esc(priorityLabel(row.priority))}</span>
+            <span class="badge p-low"><i class="fa-solid fa-calendar"></i>${esc(dueText(row))}</span>
+            ${row.category ? `<span class="badge p-medium"><i class="fa-solid fa-tag"></i>${esc(row.category)}</span>` : ""}
+          </div>
+          <div class="card-actions">
+            <button class="icon-btn" title="Pin" onclick="togglePin('${row._id}')"><i class="fa-solid fa-thumbtack"></i></button>
+            <button class="icon-btn" title="Mark done" onclick="quickDone('${row._id}')"><i class="fa-solid fa-check"></i></button>
+            <button class="icon-btn" title="Edit" onclick="editTask('${row._id}')"><i class="fa-solid fa-pen"></i></button>
+            <button class="icon-btn danger" title="Delete" onclick="deleteTask('${row._id}')"><i class="fa-solid fa-trash"></i></button>
+          </div>
+        </article>
+      `).join("");
+    }
+    async function loadTasks(){
+      showLoader(true);
+      try{
+        rows=await api("/noteTasks");
+        rows=Array.isArray(rows)?rows:[];
+        renderSummary();
+        renderBoard();
+      }catch(err){
+        console.error(err);
+        rows=[];
+        renderSummary();
+        renderBoard();
+        showToast(err.message || "Unable to load note tasks.","error");
+      }finally{
+        showLoader(false);
+      }
+    }
+    function clearForm(focus=false){
+      document.getElementById("taskId").value="";
+      document.getElementById("title").value="";
+      document.getElementById("note").value="";
+      document.getElementById("status").value="open";
+      document.getElementById("priority").value="medium";
+      document.getElementById("dueDate").value=todayISO;
+      document.getElementById("reminderTime").value="";
+      document.getElementById("category").value="";
+      document.getElementById("pinned").checked=false;
+      document.getElementById("title").classList.remove("error");
+      document.getElementById("formTitle").innerHTML='<i class="fa-solid fa-pen-to-square" style="color:var(--green)"></i> Create Note Task';
+      if(focus) document.getElementById("title").focus();
+    }
+    function editTask(id){
+      const row=rows.find(item=>item._id===id);
+      if(!row) return;
+      document.getElementById("taskId").value=row._id;
+      document.getElementById("title").value=row.title || "";
+      document.getElementById("note").value=row.note || "";
+      document.getElementById("status").value=row.status || "open";
+      document.getElementById("priority").value=row.priority || "medium";
+      document.getElementById("dueDate").value=row.dueDate || "";
+      document.getElementById("reminderTime").value=row.reminderTime || "";
+      document.getElementById("category").value=row.category || "";
+      document.getElementById("pinned").checked=!!row.pinned;
+      document.getElementById("formTitle").innerHTML='<i class="fa-solid fa-pen" style="color:var(--blue)"></i> Edit Note Task';
+      document.getElementById("title").focus();
+    }
+    function formPayload(){
+      return {
+        title: document.getElementById("title").value.trim(),
+        note: document.getElementById("note").value.trim(),
+        status: document.getElementById("status").value,
+        priority: document.getElementById("priority").value,
+        dueDate: document.getElementById("dueDate").value,
+        reminderTime: document.getElementById("reminderTime").value,
+        category: document.getElementById("category").value.trim(),
+        pinned: document.getElementById("pinned").checked,
+      };
+    }
+    async function saveTask(){
+      if(saving) return;
+      const title=document.getElementById("title");
+      if(!title.value.trim()){
+        title.classList.add("error");
+        return showToast("Title is required.","error");
+      }
+      title.classList.remove("error");
+      const id=document.getElementById("taskId").value;
+      setSaving(true);
+      try{
+        await api(`/noteTasks${id ? `/${id}` : ""}`, {
+          method: id ? "PUT" : "POST",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify(formPayload()),
+        });
+        clearForm();
+        showToast("Note task saved.");
+        await loadTasks();
+      }catch(err){
+        console.error(err);
+        showToast(err.message || "Unable to save note task.","error");
+      }finally{
+        setSaving(false);
+      }
+    }
+    async function patchTask(id, patch){
+      const row=rows.find(item=>item._id===id);
+      if(!row) return;
+      await api(`/noteTasks/${id}`, {
+        method:"PUT",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({...row, ...patch}),
+      });
+      await loadTasks();
+    }
+    function togglePin(id){
+      const row=rows.find(item=>item._id===id);
+      if(row) patchTask(id,{pinned:!row.pinned}).catch(err=>showToast(err.message,"error"));
+    }
+    function quickDone(id){patchTask(id,{status:"done"}).catch(err=>showToast(err.message,"error"))}
+    async function deleteTask(id){
+      if(!confirm("Delete this note task?")) return;
+      showLoader(true);
+      try{
+        await api(`/noteTasks/${id}`, {method:"DELETE"});
+        showToast("Note task deleted.");
+        await loadTasks();
+      }catch(err){
+        showToast(err.message || "Unable to delete note task.","error");
+      }finally{
+        showLoader(false);
+      }
+    }
+    function exportCSV(){
+      const data=filteredRows();
+      if(!data.length) return showToast("No notes to export.","error");
+      const csvRows=[["Title","Note","Status","Priority","Due Date","Reminder","Category","Pinned"]];
+      data.forEach(row=>csvRows.push([row.title,row.note,statusLabel(row.status),priorityLabel(row.priority),row.dueDate,row.reminderTime,row.category,row.pinned?"Yes":"No"]));
+      const csv=csvRows.map(row=>row.map(cell=>`"${String(cell ?? "").replace(/"/g,'""')}"`).join(",")).join("\n");
+      const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+      const a=document.createElement("a");
+      a.href=URL.createObjectURL(blob);
+      a.download=`notes-task-${todayISO}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(a.href);
+    }
+    document.addEventListener("keydown",event=>{
+      if((event.ctrlKey || event.metaKey) && event.key.toLowerCase()==="s"){
+        event.preventDefault();
+        saveTask();
+      }
+    });
+    clearForm();
+    loadTasks();
+  </script>
+  <script src="errorLogger.js"></script>
+</body>
+</html>
