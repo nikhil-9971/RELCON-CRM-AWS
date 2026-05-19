@@ -153,7 +153,7 @@ function normalizePersonKey(value = "") {
   return String(value || "")
     .trim()
     .toLowerCase()
-    .replace(/\([^)]*\)/g, " ")
+    .replace(/[()]/g, " ")
     .replace(/[^a-z0-9]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -204,8 +204,30 @@ function userMatchesEngineer(user = {}, engineerName = "") {
   });
 }
 
+function userMatchesExactEngineerIdentity(user = {}, engineerName = "") {
+  const target = normalizePersonKey(engineerName);
+  if (!target) return false;
+
+  const targetCompact = compactPersonKey(target);
+  const candidates = [
+    user.engineerName,
+    user.name,
+    user.username,
+    user.email,
+    String(user.email || "").split("@")[0],
+  ].map(normalizePersonKey).filter(Boolean);
+
+  return candidates.some((candidate) => (
+    candidate === target ||
+    (compactPersonKey(candidate) && compactPersonKey(candidate) === targetCompact)
+  ));
+}
+
 function getEngineerEmailsFromUsers(users = [], engineerName = "") {
-  const matchingUsers = users.filter((user) => userMatchesEngineer(user, engineerName));
+  const exactMatchingUsers = users.filter((user) => userMatchesExactEngineerIdentity(user, engineerName));
+  const matchingUsers = exactMatchingUsers.length
+    ? exactMatchingUsers
+    : users.filter((user) => userMatchesEngineer(user, engineerName));
   const preferredRoleMatches = matchingUsers.filter((user) => {
     const role = String(user.role || "").trim().toLowerCase();
     return ["engineer", "user"].includes(role);
