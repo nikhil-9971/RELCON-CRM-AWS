@@ -3945,6 +3945,18 @@ async function sendLateDataViewEntryAlert({
       return { ok: true, skipped: true, reason: "before_11_am" };
     }
 
+    const planDateISO = String(plan?.date || "").slice(0, 10);
+    const { dateISO: currentISTDateISO } = getCurrentISTDateParts(createdAt);
+    if (!planDateISO || planDateISO !== currentISTDateISO) {
+      return {
+        ok: true,
+        skipped: true,
+        reason: "plan_date_not_current_date",
+        planDate: planDateISO,
+        currentDate: currentISTDateISO,
+      };
+    }
+
     const entryId = String(status?._id || plan?._id || "");
     if (entryId) {
       const alreadySent = await EmailLog.findOne({
@@ -3989,7 +4001,7 @@ async function sendLateDataViewEntryAlert({
 
     const entryTime = formatDateTimeIST(createdAt);
     const engineerName = plan.engineer || submittedBy || "User";
-    const subject = `Late Data View Entry | ${category} | ${plan.roCode || "RO"} | ${engineerName}`;
+    const subject = `Late Daily Plan Entry | ${category} | ${plan.roCode || "RO"} | ${engineerName}`;
     const rows = [
       ["Entry Type", category],
       ["Submitted By", submittedBy || engineerName],
@@ -4011,7 +4023,7 @@ async function sendLateDataViewEntryAlert({
 
     const html = `
       <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:#111827;">
-        <p>Dear <b>Admin Team</b>,</p>
+        <p>Dear <b>Team</b>,</p>
         <p>A new Data View entry has been submitted after <b>11:00 AM IST</b>. Please review the details below.</p>
         <table style="border-collapse:collapse;width:100%;max-width:760px;font-size:13px;">
           <tbody>${rowsHtml}</tbody>
@@ -4021,14 +4033,14 @@ async function sendLateDataViewEntryAlert({
     `;
 
     const text = [
-      "Dear Admin Team,",
+      "Dear Team,",
       "",
       "A new Data View entry has been submitted after 11:00 AM IST.",
       "",
       ...rows.map(([label, value]) => `${label}: ${value}`),
       "",
       "Regards,",
-      "Relcon CRM System",
+      "Nikhil Trivedi",
     ].join("\n");
 
     const info = await transporter.sendMail({
