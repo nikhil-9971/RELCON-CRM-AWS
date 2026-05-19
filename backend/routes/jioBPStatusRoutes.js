@@ -5,6 +5,11 @@ const JioBPStatus = require("../models/jioBPStatus");
 const DailyPlan = require("../models/DailyPlan");
 const authMiddleware = require("../middleware/authMiddleware");
 const { sendVerificationCorrectionEmail } = require("../services/mailer");
+const { clearCacheByPrefix } = require("../utils/cache");
+
+function clearStatusDependentCaches() {
+  clearCacheByPrefix("daily-plans:");
+}
 
 function buildVerificationChanges(oldDoc = {}, newDoc = {}) {
   return Object.keys(newDoc)
@@ -39,6 +44,7 @@ router.post("/saveJioBPStatus", authMiddleware, async (req, res) => {
       jioBPStatusSaved: true,
       statusSaved: true,
     });
+    clearStatusDependentCaches();
 
     const updatedPlan = await DailyPlan.findById(planId);
 
@@ -153,6 +159,7 @@ router.put("/updateJioBPStatus/:id", authMiddleware, async (req, res) => {
     const updated = await JioBPStatus.findByIdAndUpdate(id, updateData, {
       new: true,
     });
+    clearStatusDependentCaches();
 
     if (!oldData?.isVerified && req.user?.role === "admin") {
       const verificationChanges = buildVerificationChanges(oldData.toObject(), updated.toObject());
@@ -189,6 +196,7 @@ router.delete("/deleteJioBPStatus/:id", authMiddleware, async (req, res) => {
       jioBPStatusSaved: false,
       statusSaved: false,
     });
+    clearStatusDependentCaches();
 
     res.status(200).json({ success: true, message: "Record deleted" });
   } catch (err) {

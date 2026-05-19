@@ -18,8 +18,13 @@ const {
 } = require("../services/mailer");
 
 const verifyToken = require("../middleware/authMiddleware");
+const { clearCacheByPrefix } = require("../utils/cache");
 
 const SECRET = process.env.JWT_SECRET || "relcon-secret-key";
+
+function clearStatusDependentCaches() {
+  clearCacheByPrefix("daily-plans:");
+}
 
 // ✅ Utility: Email content generator
 function generateEmailContent({
@@ -197,6 +202,7 @@ router.post("/saveStatus", async (req, res) => {
 
     // ✅ Mark DailyPlan as statusSaved = true
     await DailyPlan.findByIdAndUpdate(planId, { statusSaved: true }, { new: true }).lean();
+    clearStatusDependentCaches();
 
     res.send("Status saved");
   } catch (err) {
@@ -439,6 +445,7 @@ router.put("/updateStatus/:id", verifyToken, async (req, res) => {
     }).populate("planId");
 
     if (!updated) return res.status(404).send("Status not found");
+    clearStatusDependentCaches();
 
     const { before, after } = getChangedFields(
       oldData.toObject(),
@@ -509,6 +516,7 @@ router.delete("/deleteStatus/:id", verifyToken, async (req, res) => {
     const engineerName = plan.engineer || "N/A";
 
     const deleted = await Status.findByIdAndDelete(id);
+    clearStatusDependentCaches();
 
     await AuditTrail.create({
       modifiedBy: req.user?.username || "unknown",

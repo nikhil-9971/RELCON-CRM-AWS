@@ -6,6 +6,11 @@ const BPCLStatus = require("../models/BPCLStatus");
 const DailyPlan = require("../models/DailyPlan");
 const authMiddleware = require("../middleware/authMiddleware");
 const { sendVerificationCorrectionEmail } = require("../services/mailer");
+const { clearCacheByPrefix } = require("../utils/cache");
+
+function clearStatusDependentCaches() {
+  clearCacheByPrefix("daily-plans:");
+}
 
 function buildVerificationChanges(oldDoc = {}, newDoc = {}) {
   return Object.keys(newDoc)
@@ -50,6 +55,7 @@ router.post("/saveBPCLStatus", authMiddleware, async (req, res) => {
       bpclStatusSaved: true,
       statusSaved: true,
     });
+    clearStatusDependentCaches();
 
     res.status(200).json({
       success: true,
@@ -153,6 +159,7 @@ router.put("/updateBPCLStatus/:id", authMiddleware, async (req, res) => {
     const updated = await BPCLStatus.findByIdAndUpdate(id, req.body, {
       new: true,
     });
+    clearStatusDependentCaches();
 
     if (!oldData?.isVerified && req.user?.role === "admin") {
       const verificationChanges = buildVerificationChanges(oldData.toObject(), updated.toObject());
@@ -266,6 +273,7 @@ router.delete("/deleteBPCLStatus/:id", authMiddleware, async (req, res) => {
       bpclStatusSaved: false,
       statusSaved: false,
     });
+    clearStatusDependentCaches();
 
     res.status(200).json({
       success: true,

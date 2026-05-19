@@ -5,8 +5,19 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const { LoginLog } = require("../models/AuditLog");
 const fetch = require("node-fetch");
+const {
+  clearCachePrefixes,
+  getOrSetCache,
+  makeCacheKey,
+  sendCachedJson,
+} = require("../utils/cache");
 
 const SECRET = process.env.JWT_SECRET || "relcon-secret-key";
+const USERS_CACHE_TTL_MS = 3 * 60 * 1000;
+
+function clearUserCaches() {
+  clearCachePrefixes(["users:", "pcb-provided-counts:", "material-engineers:"]);
+}
 
 // 🔐 Login - returns JWT
 router.post("/login", async (req, res) => {
@@ -135,17 +146,20 @@ router.get("/pcb-provided-counts", verifyToken, async (req, res) => {
   try {
     const role = String(req.user?.role || "").toLowerCase();
     const engineerName = String(req.user?.engineerName || req.user?.username || "").trim();
-    const query = role === "admin"
-      ? { role: { $in: ["engineer", "Engineer", "user", "User"] } }
-      : { engineerName, role: { $in: ["engineer", "Engineer", "user", "User"] } };
-    const users = await User.find(query, "engineerName username pcbProvidedCount").lean();
-    const counts = {};
-    users.forEach((user) => {
-      const key = String(user.engineerName || user.username || "").trim();
-      if (!key) return;
-      counts[key] = Number(user.pcbProvidedCount || 0) || 0;
+    const result = await getOrSetCache(makeCacheKey("pcb-provided-counts", { role, engineerName }), USERS_CACHE_TTL_MS, async () => {
+      const query = role === "admin"
+        ? { role: { $in: ["engineer", "Engineer", "user", "User"] } }
+        : { engineerName, role: { $in: ["engineer", "Engineer", "user", "User"] } };
+      const users = await User.find(query, "engineerName username pcbProvidedCount").lean();
+      const counts = {};
+      users.forEach((user) => {
+        const key = String(user.engineerName || user.username || "").trim();
+        if (!key) return;
+        counts[key] = Number(user.pcbProvidedCount || 0) || 0;
+      });
+      return counts;
     });
-    res.json(counts);
+    sendCachedJson(res, result);
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch PCB provided counts", details: err.message });
   }
@@ -172,6 +186,7 @@ router.put("/pcb-provided-counts", verifyToken, async (req, res) => {
         )
       )
     );
+    clearUserCaches();
 
     const users = await User.find(
       { role: { $in: ["engineer", "Engineer", "user", "User"] } },
@@ -200,8 +215,10 @@ router.get("/getUsers", verifyToken, async (req, res) => {
     if (req.user.role !== "admin") {
       return res.status(403).json({ error: "Access denied. Admins only." });
     }
-    const users = await User.find({}).sort({ createdAt: -1 }).lean();
-    res.json(users);
+    const result = await getOrSetCache("users:admin-all", USERS_CACHE_TTL_MS, () =>
+      User.find({}).sort({ createdAt: -1 }).lean()
+    );
+    sendCachedJson(res, result);
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch users", details: err.message });
   }
@@ -213,19 +230,22 @@ router.get("/user-management/users", verifyToken, async (req, res) => {
     if (!isNikhilAdmin(req.user)) {
       return res.status(403).json({ error: "Access denied. Nikhil admin only." });
     }
-    const users = await User.find({}, "username email contactNumber role engineerName empId profilePhoto").sort({ username: 1 }).lean();
-    res.json(users.map(u => ({
-      _id: u._id,
-      username: u.username || "",
-      email: u.email || "",
-      contactNumber: u.contactNumber || "",
-      role: normalizeUserRole(u.role),
-      engineerName: u.engineerName || "",
-      empId: u.empId || "",
-      profilePhoto: u.profilePhoto || "",
-      passwordVisible: false,
-      passwordNote: "Stored securely and not retrievable",
-    })));
+    const result = await getOrSetCache("users:management-list", USERS_CACHE_TTL_MS, async () => {
+      const users = await User.find({}, "username email contactNumber role engineerName empId profilePhoto").sort({ username: 1 }).lean();
+      return users.map(u => ({
+        _id: u._id,
+        username: u.username || "",
+        email: u.email || "",
+        contactNumber: u.contactNumber || "",
+        role: normalizeUserRole(u.role),
+        engineerName: u.engineerName || "",
+        empId: u.empId || "",
+        profilePhoto: u.profilePhoto || "",
+        passwordVisible: false,
+        passwordNote: "Stored securely and not retrievable",
+      }));
+    });
+    sendCachedJson(res, result);
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch users", details: err.message });
   }
@@ -255,6 +275,7 @@ router.post("/user-management/users", verifyToken, async (req, res) => {
       profilePhoto: parseProfilePhoto(profilePhoto),
       password: hashedPassword,
     });
+    clearUserCaches();
     res.status(201).json({
       message: "User created successfully",
       user: {
@@ -292,6 +313,7 @@ router.put("/user-management/users/:id", verifyToken, async (req, res) => {
     if (password) updates.password = await bcrypt.hash(password, 10);
     const updated = await User.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true, select: "username email contactNumber role engineerName empId profilePhoto" });
     if (!updated) return res.status(404).json({ error: "User not found" });
+    clearUserCaches();
     res.json({
       message: "User updated successfully",
       user: {
@@ -319,6 +341,7 @@ router.delete("/user-management/users/:id", verifyToken, async (req, res) => {
     }
     const deleted = await User.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).json({ error: "User not found" });
+    clearUserCaches();
     res.json({ message: "User deleted successfully" });
   } catch (err) {
     res.status(500).json({ error: "Failed to delete user", details: err.message });
@@ -337,6 +360,7 @@ router.put("/updateUser/:id", verifyToken, async (req, res) => {
     }
     const updated = await User.findByIdAndUpdate(req.params.id, updates, { new: true });
     if (!updated) return res.status(404).json({ error: "User not found" });
+    clearUserCaches();
     res.json({ message: "User updated successfully", user: updated });
   } catch (err) {
     res.status(500).json({ error: "Failed to update user", details: err.message });
@@ -351,6 +375,7 @@ router.delete("/deleteUser/:id", verifyToken, async (req, res) => {
     }
     const deleted = await User.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).json({ error: "User not found" });
+    clearUserCaches();
     res.json({ message: "User deleted successfully" });
   } catch (err) {
     res.status(500).json({ error: "Failed to delete user", details: err.message });

@@ -14,6 +14,18 @@ const {
   sanitizeSchedule,
   importMaterialFileBuffer,
 } = require("../services/materialUploadService");
+const {
+  clearCacheByPrefix,
+  getOrSetCache,
+  makeCacheKey,
+  sendCachedJson,
+} = require("../utils/cache");
+
+const MATERIAL_CACHE_TTL_MS = 2 * 60 * 1000;
+
+function clearMaterialCaches() {
+  clearCacheByPrefix("material-management:");
+}
 
 // ── Multer config ─────────────────────────────────────────────────────────────
 const upload = multer({
@@ -46,18 +58,21 @@ function buildTransferEntry({ type, qty, fromEngineer = "", toEngineer = "", not
 
 router.get("/engineers", verifyToken, requireRole(["Admin", "Manager"]), async (req, res) => {
   try {
-    const users = await User.find(
-      { role: { $in: ["engineer", "Engineer", "user", "User"] } },
-      "engineerName username"
-    ).lean();
+    const result = await getOrSetCache("material-engineers:list", 3 * 60 * 1000, async () => {
+      const users = await User.find(
+        { role: { $in: ["engineer", "Engineer", "user", "User"] } },
+        "engineerName username"
+      ).lean();
 
-    const engineers = [...new Set(
-      users
-        .map((user) => String(user.engineerName || user.username || "").trim())
-        .filter(Boolean)
-    )].sort((a, b) => a.localeCompare(b));
+      const engineers = [...new Set(
+        users
+          .map((user) => String(user.engineerName || user.username || "").trim())
+          .filter(Boolean)
+      )].sort((a, b) => a.localeCompare(b));
 
-    res.json({ success: true, engineers });
+      return { success: true, engineers };
+    });
+    sendCachedJson(res, result);
   } catch (err) {
     console.error("[MaterialMgmt] GET /engineers:", err);
     res.status(500).json({ success: false, message: "Failed to fetch engineer users", error: err.message });
@@ -175,52 +190,55 @@ router.get("/", verifyToken, async (req, res) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 router.get("/stats", verifyToken, async (req, res) => {
   try {
-    const [total, byStatus, byType, byEngineer] = await Promise.all([
-      MaterialManagement.countDocuments({ isActive: true }),
+    const result = await getOrSetCache(makeCacheKey("material-management:stats", req.query), MATERIAL_CACHE_TTL_MS, async () => {
+      const [total, byStatus, byType, byEngineer] = await Promise.all([
+        MaterialManagement.countDocuments({ isActive: true }),
 
-      // UI mein "OK Items" aur "Not OK (Faulty)" stat cards hain
-      MaterialManagement.aggregate([
-        { $match: { isActive: true } },
-        { $group: { _id: "$itemStatus", count: { $sum: 1 } } },
-      ]),
+        // UI mein "OK Items" aur "Not OK (Faulty)" stat cards hain
+        MaterialManagement.aggregate([
+          { $match: { isActive: true } },
+          { $group: { _id: "$itemStatus", count: { $sum: 1 } } },
+        ]),
 
-      MaterialManagement.aggregate([
-        { $match: { isActive: true } },
-        { $group: { _id: "$itemType", count: { $sum: 1 }, totalQty: { $sum: "$qty" } } },
-        { $sort: { count: -1 } },
-      ]),
+        MaterialManagement.aggregate([
+          { $match: { isActive: true } },
+          { $group: { _id: "$itemType", count: { $sum: 1 }, totalQty: { $sum: "$qty" } } },
+          { $sort: { count: -1 } },
+        ]),
 
-      MaterialManagement.aggregate([
-        { $match: { isActive: true } },
-        { $group: { _id: "$engineerName", count: { $sum: 1 }, totalQty: { $sum: "$qty" } } },
-        { $sort: { totalQty: -1 } },
-        { $limit: 10 },
-      ]),
-    ]);
+        MaterialManagement.aggregate([
+          { $match: { isActive: true } },
+          { $group: { _id: "$engineerName", count: { $sum: 1 }, totalQty: { $sum: "$qty" } } },
+          { $sort: { totalQty: -1 } },
+          { $limit: 10 },
+        ]),
+      ]);
 
-    // UI ke stat cards: statOk, statFaulty
-    const okCount     = byStatus.find(s => s._id === "OK")?.count || 0;
-    const faultyCount = byStatus.find(s => s._id === "Not Ok (Faulty)")?.count || 0;
-    const lowStockCount = await MaterialManagement.countDocuments({ isActive: true, qty: { $lte: 1 } });
-    const recentTransfers = await MaterialManagement.aggregate([
-      { $match: { isActive: true, transferHistory: { $exists: true, $ne: [] } } },
-      { $unwind: "$transferHistory" },
-      { $sort: { "transferHistory.createdAt": -1 } },
-      { $limit: 8 },
-      {
-        $project: {
-          _id: 1,
-          itemCode: 1,
-          itemName: 1,
-          engineerName: 1,
-          serialNumber: 1,
-          itemType: 1,
-          transfer: "$transferHistory",
+      // UI ke stat cards: statOk, statFaulty
+      const okCount     = byStatus.find(s => s._id === "OK")?.count || 0;
+      const faultyCount = byStatus.find(s => s._id === "Not Ok (Faulty)")?.count || 0;
+      const lowStockCount = await MaterialManagement.countDocuments({ isActive: true, qty: { $lte: 1 } });
+      const recentTransfers = await MaterialManagement.aggregate([
+        { $match: { isActive: true, transferHistory: { $exists: true, $ne: [] } } },
+        { $unwind: "$transferHistory" },
+        { $sort: { "transferHistory.createdAt": -1 } },
+        { $limit: 8 },
+        {
+          $project: {
+            _id: 1,
+            itemCode: 1,
+            itemName: 1,
+            engineerName: 1,
+            serialNumber: 1,
+            itemType: 1,
+            transfer: "$transferHistory",
+          },
         },
-      },
-    ]);
+      ]);
 
-    res.json({ success: true, total, okCount, faultyCount, lowStockCount, byStatus, byType, byEngineer, recentTransfers });
+      return { success: true, total, okCount, faultyCount, lowStockCount, byStatus, byType, byEngineer, recentTransfers };
+    });
+    sendCachedJson(res, result);
   } catch (err) {
     console.error("[MaterialMgmt] GET /stats:", err);
     res.status(500).json({ success: false, message: "Server error", error: err.message });
@@ -261,6 +279,7 @@ router.post("/:id/transfer", verifyToken, requireRole(["Admin", "Manager"]), asy
       createdBy,
     }));
     await source.save();
+    clearMaterialCaches();
 
     res.json({
       success: true,
@@ -281,6 +300,7 @@ router.post("/:id/transfer", verifyToken, requireRole(["Admin", "Manager"]), asy
 router.delete("/admin/clear-all", verifyToken, requireRole(["Admin"]), async (req, res) => {
   try {
     const result = await MaterialManagement.deleteMany({});
+    clearMaterialCaches();
     res.json({
       success: true,
       message: `Cleared ${result.deletedCount || 0} material record(s) permanently`,
@@ -345,6 +365,7 @@ router.post("/", verifyToken, requireRole(["Admin"]), async (req, res) => {
       
       uploadedBy: req.user?.name || req.user?.email || "Admin",
     });
+    clearMaterialCaches();
 
     res.status(201).json({ success: true, message: "Material record created", data: record });
   } catch (err) {
@@ -403,6 +424,7 @@ router.put("/:id", verifyToken, requireRole(["Admin", "Manager"]), async (req, r
       { new: true, runValidators: true }
     );
 
+    clearMaterialCaches();
     res.json({ success: true, message: "Record updated", data: updated });
   } catch (err) {
     console.error("[MaterialMgmt] PUT /:id:", err);
@@ -420,6 +442,7 @@ router.delete("/:id", verifyToken, requireRole(["Admin"]), async (req, res) => {
       return res.status(404).json({ success: false, message: "Record not found" });
 
     await MaterialManagement.findByIdAndUpdate(req.params.id, { $set: { isActive: false } });
+    clearMaterialCaches();
     res.json({ success: true, message: "Record deleted successfully" });
   } catch (err) {
     console.error("[MaterialMgmt] DELETE /:id:", err);
@@ -435,6 +458,7 @@ router.post("/bulk-upload", verifyToken, requireRole(["Admin"]), upload.single("
     if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded" });
     const result = await importMaterialFileBuffer(req.file.buffer, { actorName: actorName(req) });
     if (!result.success) return res.status(400).json(result);
+    clearMaterialCaches();
     res.json(result);
   } catch (err) {
     console.error("[MaterialMgmt] POST /bulk-upload:", err);

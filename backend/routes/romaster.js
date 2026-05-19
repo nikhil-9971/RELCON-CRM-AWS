@@ -2,13 +2,28 @@ const express = require("express");
 const router = express.Router();
 const ROMaster = require("../models/ROMaster");
 const DailyPlan = require("../models/DailyPlan");
+const {
+  clearCacheByPrefix,
+  getOrSetCache,
+  makeCacheKey,
+  sendCachedJson,
+} = require("../utils/cache");
+
+const RO_CACHE_TTL_MS = 5 * 60 * 1000;
+
+function clearROCache() {
+  clearCacheByPrefix("romaster:");
+}
 
 router.get("/getROInfo/:roCode", async (req, res) => {
   try {
     const roCode = req.params.roCode.toUpperCase();
-    const data = await ROMaster.findOne({ roCode });
+    const result = await getOrSetCache(makeCacheKey("romaster:info", { roCode }), RO_CACHE_TTL_MS, () =>
+      ROMaster.findOne({ roCode }).lean()
+    );
+    const data = result.value;
     if (!data) return res.status(404).json({ error: "RO Code not found" });
-    res.json(data);
+    sendCachedJson(res, result);
   } catch (err) {
     res.status(500).send("Server error");
   }
@@ -59,6 +74,7 @@ router.post("/add", async (req, res) => {
     });
 
     await newEntry.save();
+    clearROCache();
     //     res.status(200).json({ message: "Site added successfully" });
     //   } catch (err) {
     //     console.error("Error saving new site:", err);
@@ -78,9 +94,10 @@ router.post("/add", async (req, res) => {
 /* List all RO Master records */
 router.get("/list", async (req, res) => {
   try {
-    // Optional query params for pagination / filtering can be added later
-    const data = await ROMaster.find({}).sort({ roCode: 1 });
-    res.json(data);
+    const result = await getOrSetCache("romaster:list", RO_CACHE_TTL_MS, () =>
+      ROMaster.find({}).sort({ roCode: 1 }).lean()
+    );
+    sendCachedJson(res, result);
   } catch (err) {
     console.error("Error fetching ROMaster list:", err);
     res.status(500).json({ error: "Server error" });
@@ -90,8 +107,10 @@ router.get("/list", async (req, res) => {
 /* Alias for list (some frontends try /all) */
 router.get("/all", async (req, res) => {
   try {
-    const data = await ROMaster.find({}).sort({ roCode: 1 });
-    res.json(data);
+    const result = await getOrSetCache("romaster:all", RO_CACHE_TTL_MS, () =>
+      ROMaster.find({}).sort({ roCode: 1 }).lean()
+    );
+    sendCachedJson(res, result);
   } catch (err) {
     console.error("Error fetching ROMaster all:", err);
     res.status(500).json({ error: "Server error" });
@@ -146,6 +165,7 @@ router.put("/update/:id", async (req, res) => {
       { new: true }
     );
     if (!updated) return res.status(404).json({ error: "Record not found" });
+    clearROCache();
     res.json({ message: "Updated successfully", data: updated });
   } catch (err) {
     console.error("Error updating ROMaster:", err);
@@ -159,6 +179,7 @@ router.delete("/delete/:id", async (req, res) => {
     const id = req.params.id;
     const deleted = await ROMaster.findByIdAndDelete(id);
     if (!deleted) return res.status(404).json({ error: "Record not found" });
+    clearROCache();
     res.json({ message: "Deleted successfully", data: deleted });
   } catch (err) {
     console.error("Error deleting ROMaster:", err);
@@ -177,112 +198,115 @@ router.get("/amcCountStatus", async (req, res) => {
         .json({ error: "Start date and end date are required" });
     }
 
-    // Get only RO Master entries with siteStatus = "AMC"
-    const roMasterData = await ROMaster.find({ siteStatus: "AMC" });
+    const result = await getOrSetCache(makeCacheKey("romaster:amc-count-status", { startDate, endDate }), RO_CACHE_TTL_MS, async () => {
+      // Get only RO Master entries with siteStatus = "AMC"
+      const roMasterData = await ROMaster.find({ siteStatus: "AMC" }).lean();
 
-    // Get all daily plans within the date range
-    const dailyPlans = await DailyPlan.find({
-      date: {
-        $gte: startDate,
-        $lte: endDate,
-      },
-      issueType: {
-        $in: ["Issue & PM Visit", "PM Visit", "ATG & PM Visit"],
-      },
-    });
+      // Get all daily plans within the date range
+      const dailyPlans = await DailyPlan.find({
+        date: {
+          $gte: startDate,
+          $lte: endDate,
+        },
+        issueType: {
+          $in: ["Issue & PM Visit", "PM Visit", "ATG & PM Visit"],
+        },
+      }).lean();
 
-    // Create a map to track completed AMC visits by RO Code
-    const completedAMCVisits = new Map();
-    dailyPlans.forEach((plan) => {
-      const roCode = plan.roCode;
-      if (!completedAMCVisits.has(roCode)) {
-        completedAMCVisits.set(roCode, []);
-      }
-      completedAMCVisits.get(roCode).push(plan);
-    });
-
-    // Group by engineer
-    const engineerStats = new Map();
-    const detailedData = []; // For CSV export
-
-    const isInactiveSite = (value = "") =>
-      String(value || "").trim().toLowerCase() === "inactive";
-
-    roMasterData.forEach((ro) => {
-      const engineer = ro.engineer || "Unknown";
-      const roCode = ro.roCode;
-      const roName = ro.roName;
-      const region = ro.region;
-      const phase = ro.phase;
-      const siteActivestatus = ro.siteActivestatus;
-
-      if (!engineerStats.has(engineer)) {
-        engineerStats.set(engineer, {
-          engineerName: engineer,
-          totalAMCAssigned: 0,
-          totalAMCCompleted: 0,
-          pendingAMC: 0,
-          inactiveSiteCount: 0,
-        });
-      }
-
-      const stats = engineerStats.get(engineer);
-      stats.totalAMCAssigned++;
-      if (isInactiveSite(siteActivestatus)) {
-        stats.inactiveSiteCount++;
-      }
-
-      // Check if this RO has completed AMC visits
-      const hasCompletedAMC = completedAMCVisits.has(roCode);
-      if (hasCompletedAMC) {
-        stats.totalAMCCompleted++;
-      } else {
-        stats.pendingAMC++;
-      }
-
-      // Add detailed data for CSV export
-      const latestVisit = hasCompletedAMC
-        ? completedAMCVisits
-            .get(roCode)
-            .reduce((latest, plan) =>
-              new Date(plan.date) > new Date(latest.date) ? plan : latest
-            )
-        : null;
-
-      detailedData.push({
-        engineerName: engineer,
-        roCode: roCode,
-        roName: roName,
-        region: region,
-        phase: phase,
-        purpose: hasCompletedAMC ? latestVisit.purpose : "-",
-        amcStatus: hasCompletedAMC ? "Completed" : "Pending",
-        visitDate: hasCompletedAMC ? latestVisit.date : "-",
-        amcQtr: hasCompletedAMC ? ro.amcQtr : "-", // ✅ only if completed
-        issueType: hasCompletedAMC ? latestVisit.issueType : "-",
-        siteActivestatus: siteActivestatus,
+      // Create a map to track completed AMC visits by RO Code
+      const completedAMCVisits = new Map();
+      dailyPlans.forEach((plan) => {
+        const roCode = plan.roCode;
+        if (!completedAMCVisits.has(roCode)) {
+          completedAMCVisits.set(roCode, []);
+        }
+        completedAMCVisits.get(roCode).push(plan);
       });
-    });
 
-    const result = Array.from(engineerStats.values());
+      // Group by engineer
+      const engineerStats = new Map();
+      const detailedData = []; // For CSV export
 
-    res.json({
-      success: true,
-      data: result,
-      detailedData: detailedData,
-      summary: {
-        totalSites: roMasterData.length,
-        totalCompleted: result.reduce(
-          (sum, stat) => sum + stat.totalAMCCompleted,
-          0
-        ),
-        totalPending: result.reduce((sum, stat) => sum + stat.pendingAMC, 0),
-        totalInactiveSites: result.reduce(
-          (sum, stat) => sum + stat.inactiveSiteCount,
-          0
-        ),
-      },
+      const isInactiveSite = (value = "") =>
+        String(value || "").trim().toLowerCase() === "inactive";
+
+      roMasterData.forEach((ro) => {
+        const engineer = ro.engineer || "Unknown";
+        const roCode = ro.roCode;
+        const roName = ro.roName;
+        const region = ro.region;
+        const phase = ro.phase;
+        const siteActivestatus = ro.siteActivestatus;
+
+        if (!engineerStats.has(engineer)) {
+          engineerStats.set(engineer, {
+            engineerName: engineer,
+            totalAMCAssigned: 0,
+            totalAMCCompleted: 0,
+            pendingAMC: 0,
+            inactiveSiteCount: 0,
+          });
+        }
+
+        const stats = engineerStats.get(engineer);
+        stats.totalAMCAssigned++;
+        if (isInactiveSite(siteActivestatus)) {
+          stats.inactiveSiteCount++;
+        }
+
+        // Check if this RO has completed AMC visits
+        const hasCompletedAMC = completedAMCVisits.has(roCode);
+        if (hasCompletedAMC) {
+          stats.totalAMCCompleted++;
+        } else {
+          stats.pendingAMC++;
+        }
+
+        // Add detailed data for CSV export
+        const latestVisit = hasCompletedAMC
+          ? completedAMCVisits
+              .get(roCode)
+              .reduce((latest, plan) =>
+                new Date(plan.date) > new Date(latest.date) ? plan : latest
+              )
+          : null;
+
+        detailedData.push({
+          engineerName: engineer,
+          roCode: roCode,
+          roName: roName,
+          region: region,
+          phase: phase,
+          purpose: hasCompletedAMC ? latestVisit.purpose : "-",
+          amcStatus: hasCompletedAMC ? "Completed" : "Pending",
+          visitDate: hasCompletedAMC ? latestVisit.date : "-",
+          amcQtr: hasCompletedAMC ? ro.amcQtr : "-",
+          issueType: hasCompletedAMC ? latestVisit.issueType : "-",
+          siteActivestatus: siteActivestatus,
+        });
+      });
+
+      const data = Array.from(engineerStats.values());
+
+      return {
+        success: true,
+        data,
+        detailedData: detailedData,
+        summary: {
+          totalSites: roMasterData.length,
+          totalCompleted: data.reduce(
+            (sum, stat) => sum + stat.totalAMCCompleted,
+            0
+          ),
+          totalPending: data.reduce((sum, stat) => sum + stat.pendingAMC, 0),
+          totalInactiveSites: data.reduce(
+            (sum, stat) => sum + stat.inactiveSiteCount,
+            0
+          ),
+        },
+      };
     });
+    sendCachedJson(res, result);
   } catch (err) {
     console.error("Error in AMC count status:", err);
     res.status(500).json({ error: "Server error" });

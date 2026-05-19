@@ -10,8 +10,20 @@ const {
   sendDailyPlanCompletionSummaryToNikhil,
   sendLateDataViewEntryAlert,
 } = require("../services/mailer");
+const {
+  clearCacheByPrefix,
+  getOrSetCache,
+  makeCacheKey,
+  sendCachedJson,
+} = require("../utils/cache");
 
 const User = require("../models/User");
+const DAILY_PLAN_CACHE_TTL_MS = 2 * 60 * 1000;
+
+function clearDailyPlanCaches() {
+  clearCacheByPrefix("daily-plans:");
+  clearCacheByPrefix("romaster:amc-count-status");
+}
 
 const HPCL_AMC_PHASES = [
   "HPCL/Phase-X",
@@ -127,6 +139,7 @@ router.post("/saveDailyPlan", async (req, res) => {
 
     const plan = new DailyPlan(req.body);
     await plan.save();
+    clearDailyPlanCaches();
     sendLateDataViewEntryAlert({
       category: "Daily Plan Entry",
       plan: plan?.toObject ? plan.toObject() : plan,
@@ -180,29 +193,29 @@ router.get("/getDailyPlans", verifyToken, async (req, res) => {
   const { role, engineerName } = req.user;
 
   try {
-    const plans =
-      role === "admin"
-        ? await DailyPlan.find({})
-        : await DailyPlan.find({ engineer: engineerName });
+    const result = await getOrSetCache(makeCacheKey("daily-plans:list", { role, engineerName }), DAILY_PLAN_CACHE_TTL_MS, async () => {
+      const plans =
+        role === "admin"
+          ? await DailyPlan.find({}).lean()
+          : await DailyPlan.find({ engineer: engineerName }).lean();
 
-    const statusList = await Status.find({});
-    const statusMap = new Map(
-      statusList.map((s) => [s.planId.toString(), true])
-    );
+      const statusList = await Status.find({}).lean();
+      const statusMap = new Map(
+        statusList.map((s) => [s.planId.toString(), true])
+      );
 
-    const jioStatusList = await JioBPStatus.find({});
-    const jioStatusMap = new Map(
-      jioStatusList.map((s) => [s.planId.toString(), true])
-    );
+      const jioStatusList = await JioBPStatus.find({}).lean();
+      const jioStatusMap = new Map(
+        jioStatusList.map((s) => [s.planId.toString(), true])
+      );
 
-    const enrichedPlans = plans.map((plan) => {
-      const planObj = plan.toObject();
-      planObj.statusSaved = statusMap.has(plan._id.toString());
-      planObj.jioBPStatusSaved = jioStatusMap.has(plan._id.toString());
-      return planObj;
+      return plans.map((plan) => ({
+        ...plan,
+        statusSaved: statusMap.has(plan._id.toString()),
+        jioBPStatusSaved: jioStatusMap.has(plan._id.toString()),
+      }));
     });
-
-    res.json(enrichedPlans);
+    sendCachedJson(res, result);
   } catch (err) {
     res.status(500).send("Server error");
   }
@@ -259,6 +272,7 @@ router.put("/updateDailyPlan/:id", async (req, res) => {
 
     const updated = await DailyPlan.findByIdAndUpdate(req.params.id, { $set: payload }, { new: true, runValidators: true });
     if (!updated) return res.status(404).send("Plan not found");
+    clearDailyPlanCaches();
     res.json({ ok: true, message: "Record updated", data: updated });
   } catch (err) {
     console.error("Error updating plan:", err);
@@ -270,6 +284,7 @@ router.delete("/deleteDailyPlan/:id", async (req, res) => {
   const id = req.params.id;
   try {
     await DailyPlan.deleteOne({ _id: id }); // Adjust model name as needed
+    clearDailyPlanCaches();
     res.status(200).json({ message: "Deleted successfully" });
   } catch (err) {
     res.status(500).json({ error: "Delete failed" });
@@ -286,6 +301,7 @@ router.put("/updateCompletion/:id", async (req, res) => {
       { new: true }
     );
     if (!updated) return res.status(404).send("Plan not found");
+    clearDailyPlanCaches();
     res.send("✅ Completion status updated");
   } catch (err) {
     res.status(500).send("Server error");

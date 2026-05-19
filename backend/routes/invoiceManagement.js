@@ -5,8 +5,19 @@ const XLSX = require("xlsx");
 
 const InvoiceManagement = require("../models/InvoiceManagement");
 const { verifyToken, requireRole } = require("./auth");
+const {
+  clearCacheByPrefix,
+  getOrSetCache,
+  makeCacheKey,
+  sendCachedJson,
+} = require("../utils/cache");
 
 const router = express.Router();
+const INVOICE_CACHE_TTL_MS = 2 * 60 * 1000;
+
+function clearInvoiceCaches() {
+  clearCacheByPrefix("invoice-management:");
+}
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -273,34 +284,37 @@ router.get("/", verifyToken, requireRole(["Admin"]), async (req, res) => {
 
 router.get("/stats", verifyToken, requireRole(["Admin"]), async (req, res) => {
   try {
-    const query = buildQuery(req.query);
-    const [totals, regions, months, billingTypes] = await Promise.all([
-      InvoiceManagement.aggregate([
-        { $match: query },
-        {
-          $group: {
-            _id: null,
-            recordCount: { $sum: 1 },
-            amount: { $sum: "$amount" },
-            finalAmount: { $sum: "$finalAmount" },
-            noOfSite: { $sum: "$noOfSite" },
+    const result = await getOrSetCache(makeCacheKey("invoice-management:stats", req.query), INVOICE_CACHE_TTL_MS, async () => {
+      const query = buildQuery(req.query);
+      const [totals, regions, months, billingTypes] = await Promise.all([
+        InvoiceManagement.aggregate([
+          { $match: query },
+          {
+            $group: {
+              _id: null,
+              recordCount: { $sum: 1 },
+              amount: { $sum: "$amount" },
+              finalAmount: { $sum: "$finalAmount" },
+              noOfSite: { $sum: "$noOfSite" },
+            },
           },
-        },
-      ]),
-      InvoiceManagement.distinct("region", query),
-      InvoiceManagement.distinct("monthLabel", query),
-      InvoiceManagement.distinct("billingType", query),
-    ]);
+        ]),
+        InvoiceManagement.distinct("region", query),
+        InvoiceManagement.distinct("monthLabel", query),
+        InvoiceManagement.distinct("billingType", query),
+      ]);
 
-    res.json({
-      success: true,
-      totals: totals[0] || { recordCount: 0, amount: 0, finalAmount: 0, noOfSite: 0 },
-      filters: {
-        regions: regions.filter(Boolean).sort(),
-        months: months.filter(Boolean).sort(),
-        billingTypes: billingTypes.filter(Boolean).sort(),
-      },
+      return {
+        success: true,
+        totals: totals[0] || { recordCount: 0, amount: 0, finalAmount: 0, noOfSite: 0 },
+        filters: {
+          regions: regions.filter(Boolean).sort(),
+          months: months.filter(Boolean).sort(),
+          billingTypes: billingTypes.filter(Boolean).sort(),
+        },
+      };
     });
+    sendCachedJson(res, result);
   } catch (err) {
     console.error("[InvoiceMgmt] GET /stats:", err);
     res.status(500).json({ success: false, message: "Failed to fetch invoice stats", error: err.message });
@@ -322,6 +336,7 @@ router.post("/", verifyToken, requireRole(["Admin"]), async (req, res) => {
       importedBy: req.user?.engineerName || req.user?.username || "Admin",
       importedAt: new Date(),
     });
+    clearInvoiceCaches();
 
     res.status(201).json({ success: true, message: "Invoice record added successfully", data: created });
   } catch (err) {
@@ -353,6 +368,7 @@ router.put("/:id", verifyToken, requireRole(["Admin"]), async (req, res) => {
       },
       { new: true, runValidators: true }
     );
+    clearInvoiceCaches();
 
     res.json({ success: true, message: "Invoice record updated successfully", data: updated });
   } catch (err) {
@@ -402,6 +418,7 @@ router.post("/bulk-upload", verifyToken, requireRole(["Admin"]), upload.single("
     }));
 
     await InvoiceManagement.insertMany(payload, { ordered: false });
+    clearInvoiceCaches();
 
     res.status(201).json({
       success: true,
@@ -446,6 +463,7 @@ router.get("/export/excel", verifyToken, requireRole(["Admin"]), async (req, res
 router.delete("/admin/clear-all", verifyToken, requireRole(["Admin"]), async (req, res) => {
   try {
     const result = await InvoiceManagement.deleteMany({});
+    clearInvoiceCaches();
     res.json({ success: true, message: "All invoice records deleted", deletedCount: result.deletedCount || 0 });
   } catch (err) {
     console.error("[InvoiceMgmt] DELETE /admin/clear-all:", err);
@@ -457,6 +475,7 @@ router.delete("/:id", verifyToken, requireRole(["Admin"]), async (req, res) => {
   try {
     const deleted = await InvoiceManagement.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).json({ success: false, message: "Invoice record not found" });
+    clearInvoiceCaches();
     res.json({ success: true, message: "Invoice record deleted" });
   } catch (err) {
     console.error("[InvoiceMgmt] DELETE /:id:", err);
