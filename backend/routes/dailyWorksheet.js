@@ -21,9 +21,10 @@ function normalizeTime(value = "") {
 }
 
 function calculateDurationMinutes(startTime, endTime) {
+  if (!startTime || !endTime) return 0;
   const [sh, sm] = normalizeTime(startTime).split(":").map(Number);
   const [eh, em] = normalizeTime(endTime).split(":").map(Number);
-  if ([sh, sm, eh, em].some((n) => Number.isNaN(n))) return 0;
+  if (![sh, sm, eh, em].every(Number.isFinite)) return 0;
   const start = sh * 60 + sm;
   let end = eh * 60 + em;
   if (end < start) end += 24 * 60;
