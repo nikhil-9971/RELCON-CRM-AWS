@@ -594,7 +594,7 @@
     let filteredData = [];
     let currentPage = 1;
     const rowsPerPage = 50;
-    const roMasterCacheKey = "romasterListCache:v1";
+    const roMasterCacheKey = "romasterListCache:v2";
     const roMasterCacheTTL = 5 * 60 * 1000;
     let latestStatusMap = {};
 
@@ -612,6 +612,7 @@
       { key: "amcQtr",           label: "AMC Qtr" },
       { key: "siteStatus",       label: "Site Status" },
       { key: "lastVisitDate",    label: "Last Visit Date" },
+      { key: "connectivityType", label: "Connectivity Type" },
       { key: "bosIP",            label: "BOS IP" },
       { key: "fccIP",            label: "FCC IP" },
       { key: "siteActivestatus", label: "Site Active Status" },
@@ -914,6 +915,10 @@
             const v = row.bosIP || latest.bosIP || "";
             return `<td>${escapeHtml(v)}</td>`;
           }
+          if (col.key === "connectivityType") {
+            const v = row.connectivityType || latest.connectivityType || "";
+            return `<td>${escapeHtml(v)}</td>`;
+          }
           if (col.key === "fccIP") {
             const v = row.fccIP || latest.fccIP || "";
             return `<td>${escapeHtml(v)}</td>`;
@@ -986,7 +991,7 @@
       editingId = rec._id || id;
       const form = document.getElementById("editForm");
       form.innerHTML = "";
-      const keys = ["zone","roCode","roName","region","phase","engineer","amcQtr","siteStatus","siteActivestatus","lastAMCqtr"];
+      const keys = ["zone","roCode","roName","region","phase","engineer","amcQtr","siteStatus","connectivityType","bosIP","fccIP","siteActivestatus","lastAMCqtr"];
       keys.forEach(k => {
         const val = rec[k] || "";
         const isReadonly = k === "roCode";
@@ -1071,7 +1076,7 @@
     /* ── Export CSV ── */
     function exportROMasterCSV() {
       if (!filteredData || filteredData.length === 0) { showToast("No data to export", "error"); return; }
-      const keys = ["roCode","roName","zone","region","phase","engineer","amcQtr","siteStatus","lastVisitDate","bosIP","fccIP","siteActivestatus","lastAMCqtr"];
+      const keys = ["roCode","roName","zone","region","phase","engineer","amcQtr","siteStatus","lastVisitDate","connectivityType","bosIP","fccIP","siteActivestatus","lastAMCqtr"];
       const header = keys.join(",");
       const rows = filteredData.map(r => {
         const rc = (r.roCode || "").toString().trim().toUpperCase();
@@ -1079,6 +1084,7 @@
         const values = keys.map(k => {
           let v = "";
           if (k === "lastVisitDate") v = latest.date || latest.visitDate || "";
+          else if (k === "connectivityType") v = latest.connectivityType || r.connectivityType || "";
           else if (k === "bosIP") v = latest.bosIP || r.bosIP || "";
           else if (k === "fccIP") v = latest.fccIP || r.fccIP || "";
           else v = r[k] || "";

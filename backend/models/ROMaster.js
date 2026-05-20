@@ -9,6 +9,9 @@ const ROMasterSchema = new mongoose.Schema({
   engineer: String,
   amcQtr: String,
   siteStatus: String,
+  connectivityType: String,
+  bosIP: String,
+  fccIP: String,
   siteActivestatus: String,
   lastAMCqtr: String,
 });

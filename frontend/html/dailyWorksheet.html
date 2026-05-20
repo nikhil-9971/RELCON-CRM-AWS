@@ -63,7 +63,19 @@
     .empty{padding:36px;text-align:center;color:var(--txt3)}.empty i{font-size:28px;color:var(--txt4);margin-bottom:9px}
     .toast{position:fixed;right:18px;top:66px;background:#fff;border:1px solid var(--border);box-shadow:var(--sh-md);border-radius:var(--r-lg);padding:12px 14px;min-width:280px;max-width:420px;display:none;align-items:flex-start;gap:10px;z-index:120;font-size:12px}.toast.show{display:flex;animation:toastIn .2s ease}.toast.success .toast-ico{color:var(--green)}.toast.error .toast-ico{color:var(--red)}.toast.info .toast-ico{color:var(--blue)}.toast-title{font-weight:800;margin-bottom:2px}.toast-msg{color:var(--txt3);line-height:1.45}@keyframes toastIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
     .loader{position:fixed;inset:0;background:rgba(243,242,242,.72);display:none;align-items:center;justify-content:center;z-index:90}.loader.show{display:flex}.spin{width:34px;height:34px;border:3px solid #d8dde6;border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
-    @media(max-width:820px){.body{padding:12px}.page-actions,.table-tools{width:100%;margin-left:0}.page-actions .input,.table-tools .input,.table-tools .select,.search-box,.search-box .input{width:100%}.form-grid{grid-template-columns:1fr}.form-actions{width:100%}.form-actions .btn{flex:1}.table-wrap{max-height:calc(100vh - 520px)}}
+    /* Attendance-style shell overrides */
+    .top-strip{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:52px;gap:12px;z-index:200}
+    .strip-icon{width:28px;height:28px;border-radius:5px;background:var(--blue-lt);font-size:13px}
+    .strip-title{font-size:14px;font-weight:700;letter-spacing:-.2px}.strip-meta{font-size:10px;font-weight:500;text-transform:none;letter-spacing:0;background:var(--surface2);border:1px solid var(--border);padding:2px 9px;border-radius:999px}
+    .last-sync{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--txt4)}.last-sync span:last-child{color:var(--txt3);font-weight:500}
+    .body{padding:16px 20px;max-width:none;margin:0}.sf-bc{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--txt3);margin-bottom:10px}.sf-bc a{color:var(--blue);text-decoration:none}
+    .page-head{padding:14px 20px;margin-bottom:12px}.page-icon{width:44px;height:44px;background:linear-gradient(135deg,#4da6f5,#0176d3);box-shadow:0 2px 8px rgba(1,118,211,.35)}.page-title{font-size:18px;font-weight:700}.page-sub{font-size:12px}
+    .btn{height:32px;font-size:12px;font-weight:500;padding:0 14px}.btn-primary{box-shadow:0 1px 3px rgba(1,118,211,.3)}
+    .summary-row{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:14px}.summary{padding:14px 16px;border-radius:var(--r-lg);display:flex;flex-direction:column;gap:4px;transition:box-shadow .15s,transform .15s}.summary:hover{box-shadow:var(--sh-md);transform:translateY(-1px)}.summary-num{font-size:24px;font-weight:700}.summary-label{font-size:10px;font-weight:600}
+    .editor-card{border-radius:var(--r-lg);margin-bottom:10px}.editor-head{height:auto;min-height:42px;padding:10px 16px}.editor-title{font-size:12px;font-weight:700}.editor-body{padding:12px 20px}.form-grid{grid-template-columns:minmax(280px,1fr) repeat(2,130px) auto}.label{font-weight:600}.input,.select{height:32px}.textarea{height:58px}.helper-row{margin-top:8px}.mini-btn{font-weight:500}
+    .table-card{border-radius:var(--r-lg)}.table-head{padding:10px 16px}.table-title{font-size:12px;font-weight:700}.table-wrap{max-height:calc(100vh - 430px)}table{min-width:900px;font-size:11px}th{font-weight:600!important}td{padding:8px 12px!important;font-size:11px!important;white-space:nowrap}.desc{font-size:11px}.time-pill,.duration-pill,.status-badge{font-size:10px;font-weight:600;padding:2px 8px}.icon-btn{width:24px;height:24px}
+    .loader{background:rgba(243,242,242,.75);flex-direction:column}.loader.show::after{content:"Loading...";font-size:12px;color:var(--txt3);margin-top:10px;font-weight:500}.toast{top:20px;right:20px;border-radius:var(--r-lg);min-width:280px;max-width:360px}
+    @media(max-width:820px){.body{padding:10px 12px}.summary-row{grid-template-columns:repeat(2,1fr);gap:8px}.page-actions,.table-tools{width:100%;margin-left:0}.page-actions .input,.table-tools .input,.table-tools .select,.search-box,.search-box .input{width:100%}.form-grid{grid-template-columns:1fr}.form-actions{width:100%}.form-actions .btn{flex:1}.table-wrap{max-height:calc(100vh - 560px)}.last-sync{display:none}}
     @media print{.top-strip,.page-actions,.editor-card,.table-tools,.actions,.toast,.loader{display:none!important}.body{max-width:none;padding:0}.page-head,.summary,.table-card{box-shadow:none;border-color:#bbb}body{background:#fff}.table-wrap{max-height:none;overflow:visible}table{min-width:0}th{background:#eee!important;color:#111!important}}
   </style>
 </head>
@@ -75,10 +87,20 @@
       <div class="strip-meta" id="dateBadge">Loading</div>
     </div>
     <div class="spacer"></div>
+    <div class="last-sync">
+      <span>Last sync:</span>
+      <span id="lastSyncTime">--</span>
+    </div>
     <button class="btn btn-neutral" onclick="loadEntries()"><i class="fa-solid fa-rotate-right"></i> Sync</button>
   </header>
 
   <main class="body">
+    <div class="sf-bc">
+      <a href="#">Home</a><span>/</span>
+      <a href="#">Operations</a><span>/</span>
+      <span>Admin Worksheet</span>
+    </div>
+
     <section class="page-head">
       <div class="page-icon"><i class="fa-solid fa-briefcase"></i></div>
       <div>
@@ -94,21 +116,21 @@
     </section>
 
     <section class="summary-row">
-      <div class="summary">
+      <div class="summary blue">
         <div class="summary-num" id="totalEntries">0</div>
-        <div class="summary-label">Entries Today</div>
+        <div class="summary-label"><i class="fa-solid fa-list-check" style="font-size:9px;"></i> Entries Today</div>
       </div>
       <div class="summary green">
         <div class="summary-num" id="totalDuration">0h</div>
-        <div class="summary-label">Total Time</div>
+        <div class="summary-label"><i class="fa-solid fa-clock" style="font-size:9px;"></i> Total Time</div>
       </div>
       <div class="summary orange">
         <div class="summary-num" id="lastSaved">--</div>
-        <div class="summary-label">Last Update</div>
+        <div class="summary-label"><i class="fa-solid fa-rotate" style="font-size:9px;"></i> Last Update</div>
       </div>
       <div class="summary red">
         <div class="summary-num" id="openEntries">0</div>
-        <div class="summary-label">Open Entries</div>
+        <div class="summary-label"><i class="fa-solid fa-circle-exclamation" style="font-size:9px;"></i> Open Entries</div>
       </div>
     </section>
 
@@ -340,6 +362,8 @@
       try{
         rows = await api(`/dailyWorksheet?date=${encodeURIComponent(selectedDate)}`);
         rows = Array.isArray(rows) ? rows : [];
+        const syncEl=document.getElementById("lastSyncTime");
+        if(syncEl) syncEl.textContent=new Date().toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"});
         renderTable();
         renderSummary();
         restoreDraft();

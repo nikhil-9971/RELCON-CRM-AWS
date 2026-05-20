@@ -987,9 +987,9 @@ async function importROMasterFile(event) {
 
 function downloadROMasterDemo() {
   const rows = [
-    ["RO Code","RO Name","Zone","Region","Phase","Engineer","AMC Qtr","Site Status","Site Active Status","Last AMC Qtr"],
-    ["123456","Demo RO Jaipur","North","Jaipur","HPCL","Nikhil Trivedi","Q1","AMC","Active","Q4"],
-    ["789012","Demo RO Indore","West","Indore","RBML","Amit Sharma","Q2","Warranty","Active","Q1"],
+    ["RO Code","RO Name","Zone","Region","Phase","Engineer","AMC Qtr","Site Status","Connectivity Type","BOS IP","FCC IP","Site Active Status","Last AMC Qtr"],
+    ["123456","Demo RO Jaipur","North","Jaipur","HPCL","Nikhil Trivedi","Q1","AMC","RELCON SIM","10.121.21.46","10.121.21.47","Active","Q4"],
+    ["789012","Demo RO Indore","West","Indore","RBML","Amit Sharma","Q2","Warranty","Broadband","10.122.10.11","10.122.10.12","Active","Q1"],
   ];
   const csv = rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
   const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });

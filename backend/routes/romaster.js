@@ -58,6 +58,9 @@ function normalizeROMasterImportRow(row = {}) {
     engineer: pick(row, ["engineer", "Engineer", "ENGINEER", "Engineer Name"]),
     amcQtr: pick(row, ["amcQtr", "AMC Qtr", "AMC Quarter", "AMC_QTR", "amcQuarter"]),
     siteStatus: pick(row, ["siteStatus", "Site Status", "SITE_STATUS", "Status"]),
+    connectivityType: pick(row, ["connectivityType", "Connectivity Type", "Connectivity", "SIM CARD Type"]),
+    bosIP: pick(row, ["bosIP", "BOS IP", "BOSIP", "BOS_IP"]),
+    fccIP: pick(row, ["fccIP", "FCC IP", "FCCIP", "FCC_IP"]),
     siteActivestatus: pick(row, ["siteActivestatus", "Site Active Status", "Site Active status", "Active Status", "siteActiveStatus"]),
     lastAMCqtr: pick(row, ["lastAMCqtr", "Last AMC Qtr", "Last AMC Quarter", "lastAMCQtr"]),
   };
@@ -194,6 +197,9 @@ router.put("/update/:id", async (req, res) => {
       "engineer",
       "amcQtr",
       "siteStatus",
+      "connectivityType",
+      "bosIP",
+      "fccIP",
       "siteActivestatus",
       "lastAMCqtr",
     ];
