@@ -725,20 +725,9 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
       </button>
 
       <div class="nav-label">Reports</div>
-      <button class="nav-parent" onclick="toggleNav(this,'reportSub')">
-        <i class="fa-solid fa-folder-open"></i><span class="nav-txt">All Reports</span><i class="fa-solid fa-chevron-right nav-caret"></i>
+      <button class="nav-item" onclick="loadPage('reportsOverview.html', this)">
+        <i class="fa-solid fa-folder-open"></i><span class="nav-txt">All Reports</span>
       </button>
-      <div class="nav-sub" id="reportSub">
-        <button class="nav-item" onclick="loadPage('reportsOverview.html', this)"><i class="fa-solid fa-grid-2"></i><span class="nav-txt">Reports Overview</span></button>
-        <button class="nav-item" onclick="loadPage('dataView.html', this)"><i class="fa-solid fa-file-lines"></i><span class="nav-txt">Visit Report</span></button>
-        <button id="statusLink" class="nav-item" style="display:none" onclick="loadPage('statusRecords.html', this)"><i class="fa-solid fa-file-lines"></i><span class="nav-txt">HPCL Status</span></button>
-        <button class="nav-item" onclick="loadPage('bpclVisitReport.html', this)"><i class="fa-solid fa-file-lines"></i><span class="nav-txt">BPCL Visit</span></button>
-        <button class="nav-item" onclick="loadPage('jioBPreport.html', this)"><i class="fa-solid fa-file-lines"></i><span class="nav-txt">JioBP Status</span></button>
-        <button class="nav-item" onclick="loadPage('bpclStatusreport.html', this)"><i class="fa-solid fa-file-lines"></i><span class="nav-txt">BPCL Status</span></button>
-        <button class="nav-item" onclick="loadPage('atgRecords.html', this)"><i class="fa-solid fa-tower-broadcast"></i><span class="nav-txt">ATG Report</span></button>
-        <button id="tasklink" class="nav-item" style="display:none" onclick="loadPage('taskReport.html', this)"><i class="fa-solid fa-file-lines"></i><span class="nav-txt">Task Report</span></button>
-        <button class="nav-item" onclick="loadPage('earthingReport.html', this)"><i class="fa-solid fa-bolt"></i><span class="nav-txt">Earthing Report</span></button>
-      </div>
 
       <div class="nav-label">Operations</div>
       <button id="dailyWorksheetLink" class="nav-item" style="display:none" onclick="loadPage('dailyWorksheet.html', this)"><i class="fa-solid fa-clipboard-check"></i><span class="nav-txt">Admin Worksheet</span></button>
@@ -1248,8 +1237,6 @@ async function fetchUser(){
     }
 
     if(user.role==="admin"){
-      document.getElementById("statusLink").style.display="flex";
-      document.getElementById("tasklink").style.display="flex";
       document.getElementById("addSiteBtn").classList.remove("hidden");
       document.getElementById("dailyWorksheetLink").style.display="flex";
       document.getElementById("notesTaskLink").style.display="flex";

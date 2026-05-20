@@ -12,6 +12,7 @@
     />
 
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
 
     <style>
       /* Use Poppins everywhere */
@@ -733,6 +734,104 @@
   .text-\[13px\], .text-\[14px\] { font-size: var(--fs-base) !important; }
   </style>
   <script src="config.js"></script>
+  <style id="reports-overview-app-ui">
+    .container {
+      max-width: 1240px !important;
+      margin: 0 auto !important;
+      padding: 0 !important;
+    }
+    .top {
+      background: var(--surface) !important;
+      border: 1px solid var(--border) !important;
+      border-radius: 8px !important;
+      box-shadow: var(--sh-sm) !important;
+      padding: 14px 16px !important;
+      margin-bottom: 12px !important;
+    }
+    .title svg { display: none !important; }
+    .title::before {
+      content: "\f07b";
+      font-family: "Font Awesome 6 Free";
+      font-weight: 900;
+      width: 34px;
+      height: 34px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--brand-lt);
+      color: var(--brand);
+      font-size: 14px;
+    }
+    .title h1 { font-size: 18px !important; }
+    .search input {
+      height: 34px !important;
+      border-radius: 4px !important;
+      box-shadow: none !important;
+      font-size: 12px !important;
+    }
+    .cards-grid {
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)) !important;
+      gap: 12px !important;
+    }
+    .card {
+      min-height: 96px !important;
+      align-items: flex-start !important;
+      gap: 12px !important;
+      padding: 14px !important;
+      border-radius: 8px !important;
+      background: var(--surface) !important;
+      border: 1px solid var(--border) !important;
+      box-shadow: var(--sh-sm) !important;
+      transform: none !important;
+      overflow: hidden !important;
+    }
+    .card:hover,
+    .card:focus {
+      transform: translateY(-2px) !important;
+      box-shadow: var(--sh) !important;
+      border-color: #c5dff5 !important;
+      filter: none !important;
+    }
+    .card .left-accent {
+      width: 3px !important;
+      height: auto !important;
+      align-self: stretch !important;
+      border-radius: 4px !important;
+      flex-basis: 3px !important;
+    }
+    .card .meta h3 {
+      font-size: 13px !important;
+      font-weight: 800 !important;
+      color: var(--txt) !important;
+      line-height: 1.25 !important;
+    }
+    .card .meta p {
+      margin-top: 5px !important;
+      font-size: 11px !important;
+      color: var(--txt3) !important;
+      line-height: 1.45 !important;
+    }
+    .card .control {
+      width: 32px !important;
+      height: 32px !important;
+      border-radius: 6px !important;
+      background: var(--surface2) !important;
+      border: 1px solid var(--border) !important;
+      box-shadow: none !important;
+    }
+    .card .control svg {
+      width: 16px !important;
+      height: 16px !important;
+    }
+    .card .glow { display: none !important; }
+    .crm-topbar-title { font-size: 14px !important; }
+    @media (max-width: 640px) {
+      .crm-body { padding: 12px !important; }
+      .top { align-items: stretch !important; flex-direction: column !important; }
+      .search { max-width: none !important; min-width: 0 !important; }
+    }
+  </style>
 </head>
 
   <body style="padding:0;margin:0;">
@@ -742,7 +841,7 @@
       <span class="icon" style="background:rgba(37,99,235,0.1);color:#2563EB;width:28px;height:28px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">
         <i class="fa-solid fa-folder-open"></i>
       </span>
-      Reports
+      Reports Overview
     </div>
     <div class="crm-topbar-spacer"></div>
   </div>
@@ -792,7 +891,7 @@
               fill="#f6ad55"
             ></rect>
           </svg>
-          <h1>Reports</h1>
+          <h1>Reports Overview</h1>
         </div>
 
         <div class="search" role="search" aria-label="Search reports">
@@ -1205,10 +1304,6 @@
         </div>
       </div>
 
-      <div style="margin-top: 18px; color: #6b7280; font-size: 13px">
-        Tip: Click on any card to open the report. Use the search box to quickly
-        find a report.
-      </div>
     </div>
 
     <script>
