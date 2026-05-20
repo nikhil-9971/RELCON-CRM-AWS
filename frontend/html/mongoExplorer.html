@@ -764,6 +764,18 @@ function renderTbl() {
       <button class="sf-btn sf-btn-neutral" onclick="loadColl(S.active)" title="Refresh">
         <i class="fa-solid fa-rotate-right"></i>
       </button>
+      ${c.id === 'romaster' ? `
+        <input id="roImportFile" type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="importROMasterFile(event)"/>
+        <button class="sf-btn sf-btn-success" onclick="document.getElementById('roImportFile').click()">
+          <i class="fa-solid fa-file-import"></i> Import
+        </button>
+        <button class="sf-btn sf-btn-neutral" onclick="downloadROMasterDemo()">
+          <i class="fa-solid fa-table"></i> Demo
+        </button>
+        <button class="sf-btn sf-btn-danger" onclick="deleteAllROMaster()">
+          <i class="fa-solid fa-trash-can"></i> Delete All
+        </button>
+      ` : ''}
       <button class="sf-btn sf-btn-primary" onclick="expCSV()">
         <i class="fa-solid fa-arrow-down-to-bracket"></i> CSV
       </button>
@@ -917,6 +929,78 @@ async function delR(id) {
     if (r.ok) { toast('Record deleted successfully', 's'); loadColl(S.active); }
     else throw new Error(await r.text());
   } catch(e) { toast(e.message, 'e'); }
+}
+
+async function deleteAllROMaster() {
+  if (S.active?.id !== 'romaster') return;
+  if (!confirm('Delete ALL RO Master records? This action cannot be undone.')) return;
+  const typed = prompt('Type DELETE RO MASTER to confirm full deletion.');
+  if (typed !== 'DELETE RO MASTER') {
+    toast('Delete all cancelled', 'i');
+    return;
+  }
+  try {
+    const r = await callApi('/romaster/deleteAll', { method: 'DELETE' });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || j.message || `Delete failed (${r.status})`);
+    toast(`${j.deletedCount || 0} RO Master records deleted`, 's');
+    await loadColl(S.active);
+  } catch(e) {
+    toast(e.message || 'Unable to delete RO Master data', 'e');
+  }
+}
+
+async function importROMasterFile(event) {
+  const input = event.target;
+  const file = input.files && input.files[0];
+  input.value = '';
+  if (!file) return;
+  if (S.active?.id !== 'romaster') return;
+  if (!confirm(`Import ${file.name} into RO Master? Existing data will stay unless you use Delete All first.`)) return;
+
+  const fd = new FormData();
+  fd.append('file', file);
+  const headers = {};
+  const t = S.token || tok();
+  if (t) headers.Authorization = 'Bearer ' + t;
+
+  try {
+    toast('Importing RO Master file…', 'i');
+    const r = await fetch(S.url + '/romaster/import', {
+      method: 'POST',
+      headers,
+      body: fd,
+      credentials: 'include',
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || j.success === false) throw new Error(j.error || j.message || `Import failed (${r.status})`);
+    const skipped = Number(j.skipped || 0);
+    toast(`${j.inserted || 0} RO Master records imported${skipped ? `, ${skipped} skipped` : ''}`, 's');
+    if (Array.isArray(j.errorRows) && j.errorRows.length) {
+      console.warn('RO Master import skipped rows:', j.errorRows);
+    }
+    await loadColl(S.active);
+  } catch(e) {
+    toast(e.message || 'Unable to import RO Master file', 'e');
+  }
+}
+
+function downloadROMasterDemo() {
+  const rows = [
+    ["RO Code","RO Name","Zone","Region","Phase","Engineer","AMC Qtr","Site Status","Site Active Status","Last AMC Qtr"],
+    ["123456","Demo RO Jaipur","North","Jaipur","HPCL","Nikhil Trivedi","Q1","AMC","Active","Q4"],
+    ["789012","Demo RO Indore","West","Indore","RBML","Amit Sharma","Q2","Warranty","Active","Q1"],
+  ];
+  const csv = rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "ro_master_import_demo.csv";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(a.href);
+  toast("RO Master demo CSV downloaded", "s");
 }
 
 function dec(enc) { return JSON.parse(decodeURIComponent(escape(atob(enc)))); }

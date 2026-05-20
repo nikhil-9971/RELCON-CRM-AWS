@@ -1,7 +1,11 @@
 const express = require("express");
 const router = express.Router();
+const multer = require("multer");
+const path = require("path");
+const XLSX = require("xlsx");
 const ROMaster = require("../models/ROMaster");
 const DailyPlan = require("../models/DailyPlan");
+const { verifyToken, requireRole } = require("./auth");
 const {
   clearCacheByPrefix,
   getOrSetCache,
@@ -13,6 +17,50 @@ const RO_CACHE_TTL_MS = 5 * 60 * 1000;
 
 function clearROCache() {
   clearCacheByPrefix("romaster:");
+}
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 15 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = [".xlsx", ".xls", ".csv"];
+    const ext = path.extname(file.originalname || "").toLowerCase();
+    if (allowed.includes(ext)) cb(null, true);
+    else cb(new Error("Only .xlsx / .xls / .csv files are allowed"));
+  },
+});
+
+function pick(row = {}, keys = []) {
+  for (const key of keys) {
+    const value = row[key];
+    if (value !== undefined && value !== null && String(value).trim() !== "") {
+      return String(value).trim();
+    }
+  }
+  return "";
+}
+
+function parseROMasterRows(buffer) {
+  const workbook = XLSX.read(buffer, { type: "buffer" });
+  const sheetName = workbook.SheetNames[0];
+  if (!sheetName) return [];
+  return XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: "" });
+}
+
+function normalizeROMasterImportRow(row = {}) {
+  const roCode = pick(row, ["roCode", "RO Code", "ROCODE", "RO_CODE", "Code", "Site Code"]).toUpperCase();
+  return {
+    zone: pick(row, ["zone", "Zone", "ZONE"]),
+    roCode,
+    roName: pick(row, ["roName", "RO Name", "RONAME", "RO_NAME", "Site Name", "Retail Outlet Name"]),
+    region: pick(row, ["region", "Region", "REGION"]),
+    phase: pick(row, ["phase", "Phase", "PHASE"]),
+    engineer: pick(row, ["engineer", "Engineer", "ENGINEER", "Engineer Name"]),
+    amcQtr: pick(row, ["amcQtr", "AMC Qtr", "AMC Quarter", "AMC_QTR", "amcQuarter"]),
+    siteStatus: pick(row, ["siteStatus", "Site Status", "SITE_STATUS", "Status"]),
+    siteActivestatus: pick(row, ["siteActivestatus", "Site Active Status", "Site Active status", "Active Status", "siteActiveStatus"]),
+    lastAMCqtr: pick(row, ["lastAMCqtr", "Last AMC Qtr", "Last AMC Quarter", "lastAMCQtr"]),
+  };
 }
 
 router.get("/getROInfo/:roCode", async (req, res) => {
@@ -184,6 +232,74 @@ router.delete("/delete/:id", async (req, res) => {
   } catch (err) {
     console.error("Error deleting ROMaster:", err);
     res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.delete("/deleteAll", verifyToken, requireRole(["Admin"]), async (req, res) => {
+  try {
+    const existingCount = await ROMaster.countDocuments({});
+    const result = await ROMaster.deleteMany({});
+    clearROCache();
+    res.json({
+      success: true,
+      message: "All RO Master records deleted successfully",
+      deletedCount: result.deletedCount ?? existingCount,
+    });
+  } catch (err) {
+    console.error("Error deleting all ROMaster records:", err);
+    res.status(500).json({ success: false, error: "Failed to delete all RO Master records", details: err.message });
+  }
+});
+
+router.post("/import", verifyToken, requireRole(["Admin"]), upload.single("file"), async (req, res) => {
+  try {
+    if (!req.file?.buffer) {
+      return res.status(400).json({ success: false, error: "Please upload a .xlsx, .xls, or .csv file" });
+    }
+
+    const rawRows = parseROMasterRows(req.file.buffer);
+    if (!rawRows.length) {
+      return res.status(400).json({ success: false, error: "Uploaded file is empty" });
+    }
+
+    const validRows = [];
+    const errorRows = [];
+    const seenCodes = new Set();
+
+    rawRows.forEach((rawRow, index) => {
+      const row = normalizeROMasterImportRow(rawRow);
+      const errors = [];
+      if (!row.roCode) errors.push("RO Code is required");
+      if (!row.roName) errors.push("RO Name is required");
+      if (row.roCode && seenCodes.has(row.roCode)) errors.push("Duplicate RO Code in uploaded file");
+      if (errors.length) {
+        errorRows.push({ row: index + 2, errors, data: rawRow });
+        return;
+      }
+      seenCodes.add(row.roCode);
+      validRows.push(row);
+    });
+
+    if (!validRows.length) {
+      return res.status(400).json({
+        success: false,
+        error: "No valid RO Master rows found. Existing data was not changed.",
+        errorRows: errorRows.slice(0, 25),
+      });
+    }
+
+    const inserted = await ROMaster.insertMany(validRows, { ordered: false });
+    clearROCache();
+    res.json({
+      success: true,
+      message: "RO Master import completed",
+      inserted: inserted.length,
+      skipped: rawRows.length - inserted.length,
+      errorRows: errorRows.slice(0, 25),
+    });
+  } catch (err) {
+    console.error("Error importing ROMaster records:", err);
+    res.status(500).json({ success: false, error: "Failed to import RO Master records", details: err.message });
   }
 });
 
