@@ -15,6 +15,7 @@ const {
   getTaskDefaultAssignee,
   detectTaskIssueType,
   getTaskCustomer,
+  sendStatusRequirementAlertToAdmins,
 } = require("../services/mailer");
 
 const verifyToken = require("../middleware/authMiddleware");
@@ -158,7 +159,7 @@ router.post("/saveStatus", async (req, res) => {
       locationField,
     } = req.body;
 
-    await Status.findOneAndUpdate(
+    const savedStatus = await Status.findOneAndUpdate(
       { planId },
       {
         planId,
@@ -201,8 +202,18 @@ router.post("/saveStatus", async (req, res) => {
     );
 
     // ✅ Mark DailyPlan as statusSaved = true
-    await DailyPlan.findByIdAndUpdate(planId, { statusSaved: true }, { new: true }).lean();
+    const updatedPlan = await DailyPlan.findByIdAndUpdate(planId, { statusSaved: true }, { new: true }).lean();
     clearStatusDependentCaches();
+
+    const isHpclPlan = String(updatedPlan?.phase || "").trim().toUpperCase().startsWith("HPCL");
+    if (isHpclPlan) {
+      sendStatusRequirementAlertToAdmins({
+        customer: "HPCL",
+        plan: updatedPlan || {},
+        status: savedStatus?.toObject ? savedStatus.toObject() : (savedStatus || req.body),
+        actorName: updatedPlan?.engineer || "",
+      }).catch((mailErr) => console.error("HPCL requirement alert email error:", mailErr?.message || mailErr));
+    }
 
     res.send("Status saved");
   } catch (err) {

@@ -1411,6 +1411,153 @@ async function sendMaterialDispatchNotification(request = {}, notificationType =
   }
 }
 
+async function getAdminNotificationEmails() {
+  const users = await User.find({}, "email role").lean();
+  const adminEmails = [...new Set(
+    users
+      .filter((user) => String(user.role || "").trim().toLowerCase() === "admin")
+      .map((user) => normalizeEmail(user.email))
+      .filter(Boolean)
+  )];
+  return adminEmails.length ? adminEmails : [normalizeEmail(MAIL_TO)].filter(Boolean);
+}
+
+function hasStatusRequirement({ customer = "", status = {} } = {}) {
+  const customerKey = String(customer || "").trim().toUpperCase();
+  if (customerKey === "RBML") {
+    const spareRequired = String(status.spareRequired || "").trim().toLowerCase();
+    const materialRequirement = String(status.materialRequirement || "").trim();
+    return spareRequired === "yes" && !!materialRequirement;
+  }
+
+  const spareRequired = String(status.spareRequirment || status.spareRequirement || "").trim().toLowerCase();
+  const requirementName = String(status.spareRequirmentname || status.spareRequirementName || "").trim();
+  return spareRequired === "yes" && !!requirementName && !/^no\s+spare\s+require/i.test(requirementName);
+}
+
+function buildStatusRequirementEmail({ customer = "", plan = {}, status = {}, actorName = "" } = {}) {
+  const customerLabel = String(customer || plan.customer || plan.phase || "Status").trim().toUpperCase();
+  const isRbml = customerLabel === "RBML";
+  const requirementText = isRbml
+    ? String(status.materialRequirement || "").trim()
+    : String(status.spareRequirmentname || status.spareRequirementName || "").trim();
+  const requiredFlag = isRbml ? status.spareRequired : (status.spareRequirment || status.spareRequirement);
+  const subject = `${customerLabel} Requirement Alert | ${plan.roCode || "RO"} | ${plan.roName || "Site"} | ${actorName || plan.engineer || "Engineer"}`;
+  const rows = [
+    ["Customer", customerLabel],
+    ["Engineer", actorName || plan.engineer || "—"],
+    ["Visit Date", formatDateOnlyIST(plan.date)],
+    ["RO Code", plan.roCode || "—"],
+    ["RO Name", plan.roName || "—"],
+    ["Region", plan.region || "—"],
+    ["Phase", plan.phase || "—"],
+    ["Requirement", requiredFlag || "Yes"],
+    ["Material / Spare Required", requirementText || "—"],
+    ...(isRbml
+      ? [
+          ["Diagnosis", status.diagnosis || "—"],
+          ["Solution", status.solution || "—"],
+          ["Current Status", status.status || "—"],
+        ]
+      : [
+          ["Work Completion", status.workCompletion || "—"],
+          ["Spare Used", status.spareUsed || "—"],
+          ["Active Spare", status.activeSpare || "—"],
+          ["Faulty Spare", status.faultySpare || "—"],
+        ]),
+  ];
+  const tableRows = rows.map(([label, value], index) => `
+    <tr style="background:${index % 2 === 0 ? "#ffffff" : "#f8fafc"};">
+      <td style="width:210px;padding:10px 12px;border-bottom:1px solid #e5edf5;font-weight:700;color:#334155;">${htmlEscape(label)}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #e5edf5;color:#0f172a;line-height:1.5;">${htmlEscape(value)}</td>
+    </tr>
+  `).join("");
+
+  const html = `
+    <div style="font-family:Arial,Helvetica,sans-serif;background:#f1f5f9;padding:22px;color:#0f172a;">
+      <div style="max-width:760px;margin:0 auto;background:#ffffff;border:1px solid #dbe3ee;border-radius:14px;overflow:hidden;">
+        <div style="background:#0176d3;color:#ffffff;padding:18px 22px;">
+          <div style="font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;opacity:.9;">Relcon CRM Requirement Alert</div>
+          <div style="margin-top:6px;font-size:20px;font-weight:800;line-height:1.25;">${htmlEscape(customerLabel)} Status Requirement Submitted</div>
+        </div>
+        <div style="padding:20px 22px;">
+          <p style="margin:0 0 14px;font-size:14px;line-height:1.6;">An engineer saved a ${htmlEscape(customerLabel)} status with a material/spare requirement. Please review and take the next action.</p>
+          <table style="width:100%;border-collapse:collapse;border:1px solid #e5edf5;border-radius:10px;overflow:hidden;font-size:13px;">${tableRows}</table>
+          <p style="margin:14px 0 0;color:#64748b;font-size:12px;">Generated on ${htmlEscape(formatDateTimeIST(new Date()))} IST.</p>
+        </div>
+      </div>
+    </div>
+  `;
+  const text = [
+    `${customerLabel} Status Requirement Submitted`,
+    "",
+    ...rows.map(([label, value]) => `${label}: ${value}`),
+    "",
+    `Generated on ${formatDateTimeIST(new Date())} IST`,
+  ].join("\n");
+  return { subject, html, text };
+}
+
+async function sendStatusRequirementAlertToAdmins({ customer = "", plan = {}, status = {}, actorName = "" } = {}) {
+  if (!hasStatusRequirement({ customer, status })) {
+    return { ok: true, skipped: true, reason: "no_requirement" };
+  }
+
+  const recipients = await getAdminNotificationEmails();
+  if (!recipients.length) {
+    await EmailLog.create({
+      type: "status-requirement-alert",
+      subject: "Skipped: admin recipient missing",
+      to: "",
+      status: "failure",
+      error: "No admin recipient email found",
+      meta: { customer, planId: String(plan._id || plan.id || "") },
+    });
+    return { ok: false, skipped: true, reason: "missing_admin_email" };
+  }
+
+  const { subject, html, text } = buildStatusRequirementEmail({ customer, plan, status, actorName });
+  try {
+    const info = await transporter.sendMail({
+      from: getDefaultOutgoingFromHeader(),
+      to: recipients.join(", "),
+      subject,
+      html,
+      text,
+    });
+    await EmailLog.create({
+      type: "status-requirement-alert",
+      subject,
+      to: recipients.join(", "),
+      status: "success",
+      meta: {
+        customer,
+        planId: String(plan._id || plan.id || ""),
+        roCode: plan.roCode || "",
+        roName: plan.roName || "",
+        engineer: actorName || plan.engineer || "",
+      },
+    });
+    return { ok: true, messageId: info?.messageId || "", recipients };
+  } catch (err) {
+    await EmailLog.create({
+      type: "status-requirement-alert",
+      subject,
+      to: recipients.join(", "),
+      status: "failure",
+      error: err.message || String(err),
+      meta: {
+        customer,
+        planId: String(plan._id || plan.id || ""),
+        roCode: plan.roCode || "",
+        roName: plan.roName || "",
+        engineer: actorName || plan.engineer || "",
+      },
+    });
+    throw err;
+  }
+}
+
 function prettifyFieldName(field = "") {
   return String(field || "")
     .replace(/([a-z])([A-Z])/g, "$1 $2")
@@ -5248,6 +5395,7 @@ module.exports = {
   sendTaskNotificationEmail,
   sendTaskClosureEmail,
   sendTaskEscalationEmail,
+  sendStatusRequirementAlertToAdmins,
   processPendingTaskEscalations,
   processNoteTaskReminderEmails,
   buildTaskSubject,

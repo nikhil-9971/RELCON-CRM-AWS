@@ -4,7 +4,10 @@ const router = express.Router();
 const JioBPStatus = require("../models/jioBPStatus");
 const DailyPlan = require("../models/DailyPlan");
 const authMiddleware = require("../middleware/authMiddleware");
-const { sendVerificationCorrectionEmail } = require("../services/mailer");
+const {
+  sendVerificationCorrectionEmail,
+  sendStatusRequirementAlertToAdmins,
+} = require("../services/mailer");
 const { clearCacheByPrefix } = require("../utils/cache");
 
 function clearStatusDependentCaches() {
@@ -47,6 +50,13 @@ router.post("/saveJioBPStatus", authMiddleware, async (req, res) => {
     clearStatusDependentCaches();
 
     const updatedPlan = await DailyPlan.findById(planId);
+
+    sendStatusRequirementAlertToAdmins({
+      customer: "RBML",
+      plan: updatedPlan?.toObject ? updatedPlan.toObject() : (updatedPlan || {}),
+      status: savedStatus?.toObject ? savedStatus.toObject() : (savedStatus || req.body),
+      actorName: updatedPlan?.engineer || req.user?.engineerName || req.user?.username || "",
+    }).catch((mailErr) => console.error("RBML requirement alert email error:", mailErr?.message || mailErr));
 
     res.status(200).json({
       success: true,
