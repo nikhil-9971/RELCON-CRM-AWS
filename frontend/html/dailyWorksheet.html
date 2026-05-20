@@ -45,7 +45,7 @@
     .editor-head{height:42px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;padding:0 16px}
     .editor-title{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.45px;display:flex;align-items:center;gap:7px}
     .edit-chip{display:none;background:var(--orange-lt);color:#9a3412;border:1px solid #fed7aa;border-radius:999px;padding:3px 9px;font-size:10px;font-weight:800}.edit-chip.show{display:inline-flex}
-    .editor-body{padding:16px}.form-grid{display:grid;grid-template-columns:minmax(280px,1fr) repeat(4,128px) auto;gap:12px;align-items:end}
+    .editor-body{padding:16px}.form-grid{display:grid;grid-template-columns:minmax(280px,1fr) repeat(2,128px) auto;gap:12px;align-items:end}
     .field{display:flex;flex-direction:column;gap:5px}.label{font-size:10px;font-weight:800;color:var(--txt3);text-transform:uppercase;letter-spacing:.55px;display:flex;align-items:center;gap:5px}
     .input,.textarea,.select{border:1px solid var(--border);border-radius:var(--r-sm);background:#fff;color:var(--txt);font-size:12px;outline:none;transition:.15s}.input,.select{height:34px;padding:5px 9px}.textarea{height:62px;padding:8px 10px;resize:vertical;line-height:1.45}
     .input:focus,.textarea:focus,.select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(1,118,211,.12)}
@@ -83,7 +83,7 @@
       <div class="page-icon"><i class="fa-solid fa-briefcase"></i></div>
       <div>
         <div class="page-title">Daily Admin Work Log</div>
-        <div class="page-sub">Maintain your own work descriptions, start times, lunch breaks, and end times in a clean daily worksheet.</div>
+        <div class="page-sub">Maintain your own work descriptions, start times, and end times in a clean daily worksheet.</div>
       </div>
       <div class="page-actions">
         <input id="worksheetDate" type="date" class="input" onchange="changeDate(this.value)"/>
@@ -132,14 +132,6 @@
             <label class="label" for="endTime"><i class="fa-solid fa-clock"></i> End Time</label>
             <input id="endTime" type="time" class="input"/>
           </div>
-          <div class="field">
-            <label class="label" for="lunchStartTime"><i class="fa-solid fa-mug-saucer"></i> Lunch Start</label>
-            <input id="lunchStartTime" type="time" class="input"/>
-          </div>
-          <div class="field">
-            <label class="label" for="lunchEndTime"><i class="fa-solid fa-mug-hot"></i> Lunch End</label>
-            <input id="lunchEndTime" type="time" class="input"/>
-          </div>
           <div class="form-actions">
             <button class="btn btn-success" id="saveBtn" onclick="saveEntry()"><i class="fa-solid fa-floppy-disk"></i> Save</button>
             <button class="btn btn-neutral" id="cancelBtn" onclick="clearForm()" style="display:none"><i class="fa-solid fa-xmark"></i> Cancel</button>
@@ -150,8 +142,6 @@
           <div class="quick-actions">
             <button class="mini-btn" onclick="setStartNow()">Start now</button>
             <button class="mini-btn" onclick="setEndNow()">End now</button>
-            <button class="mini-btn" onclick="setLunchStartNow()">Lunch start</button>
-            <button class="mini-btn" onclick="setLunchEndNow()">Lunch end</button>
             <button class="mini-btn" onclick="applyTemplate('Follow-up calls and coordination')">Follow-up</button>
             <button class="mini-btn" onclick="applyTemplate('Report preparation and data update')">Report</button>
             <button class="mini-btn" onclick="applyTemplate('Material / site issue coordination')">Material</button>
@@ -190,7 +180,6 @@
               <th>Work Description</th>
               <th>Start Time</th>
               <th>End Time</th>
-              <th>Lunch Break</th>
               <th>Duration</th>
               <th>Status</th>
               <th style="text-align:center">Actions</th>
@@ -221,8 +210,8 @@
 
     document.getElementById("dateBadge").textContent = new Date().toLocaleDateString("en-IN",{weekday:"short",day:"2-digit",month:"short",year:"numeric"});
     document.getElementById("worksheetDate").value = selectedDate;
-    ["startTime","endTime","lunchStartTime","lunchEndTime"].forEach(id=>document.getElementById(id).addEventListener("input", updateDurationPreview));
-    ["workDescription","startTime","endTime","lunchStartTime","lunchEndTime"].forEach(id=>document.getElementById(id).addEventListener("input", saveDraft));
+    ["startTime","endTime"].forEach(id=>document.getElementById(id).addEventListener("input", updateDurationPreview));
+    ["workDescription","startTime","endTime"].forEach(id=>document.getElementById(id).addEventListener("input", saveDraft));
 
     function esc(v){return String(v ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
     function description(row){return row.workDescription || [row.workTitle,row.workDetails].filter(Boolean).join(" - ")}
@@ -240,17 +229,10 @@
       const h=Math.floor(m/60), mm=m%60;
       return h ? `${h}h${mm ? ` ${mm}m` : ""}` : `${mm}m`;
     }
-    function lunchText(row){
-      const mins=Number(row.lunchBreakMinutes) || minutesBetween(row.lunchStartTime,row.lunchEndTime);
-      if(!row.lunchStartTime && !row.lunchEndTime) return "--";
-      const range=[row.lunchStartTime || "--", row.lunchEndTime || "--"].join(" - ");
-      return `${range}${mins ? ` (${durationText(mins)})` : ""}`;
-    }
     function netMinutes(row){
       const saved=Number(row.durationMinutes);
       if(saved > 0) return saved;
-      const lunch=Number(row.lunchBreakMinutes) || minutesBetween(row.lunchStartTime,row.lunchEndTime);
-      return Math.max(0, minutesBetween(row.startTime,row.endTime) - lunch);
+      return minutesBetween(row.startTime,row.endTime);
     }
     function entryStatus(row){return row.endTime ? "completed" : "open"}
     function statusText(row){return entryStatus(row)==="completed" ? "Completed" : "Open"}
@@ -296,19 +278,16 @@
     function markValidation(){
       const desc=document.getElementById("workDescription");
       const hasDesc=desc.value.trim().length>0;
-      const hasLunch=document.getElementById("lunchStartTime").value && document.getElementById("lunchEndTime").value;
-      desc.classList.toggle("error", !hasDesc && !hasLunch);
-      return hasDesc || hasLunch;
+      const hasTime=document.getElementById("startTime").value || document.getElementById("endTime").value;
+      desc.classList.toggle("error", !hasDesc && !hasTime);
+      return hasDesc || hasTime;
     }
     function updateDurationPreview(){
       const total=minutesBetween(document.getElementById("startTime").value, document.getElementById("endTime").value);
-      const lunch=minutesBetween(document.getElementById("lunchStartTime").value, document.getElementById("lunchEndTime").value);
-      document.getElementById("durationPreview").textContent=`Duration: ${durationText(Math.max(0,total-lunch))} (Lunch: ${durationText(lunch)})`;
+      document.getElementById("durationPreview").textContent=`Duration: ${durationText(total)}`;
     }
     function setStartNow(){document.getElementById("startTime").value=nowHHMM();updateDurationPreview();saveDraft()}
     function setEndNow(){document.getElementById("endTime").value=nowHHMM();updateDurationPreview();saveDraft()}
-    function setLunchStartNow(){document.getElementById("lunchStartTime").value=nowHHMM();updateDurationPreview();saveDraft()}
-    function setLunchEndNow(){document.getElementById("lunchEndTime").value=nowHHMM();updateDurationPreview();saveDraft()}
     function applyTemplate(text){
       const desc=document.getElementById("workDescription");
       desc.value = desc.value.trim() ? `${desc.value.trim()}\n${text}` : text;
@@ -321,10 +300,8 @@
         workDescription:document.getElementById("workDescription").value,
         startTime:document.getElementById("startTime").value,
         endTime:document.getElementById("endTime").value,
-        lunchStartTime:document.getElementById("lunchStartTime").value,
-        lunchEndTime:document.getElementById("lunchEndTime").value,
       };
-      if(draft.workDescription || draft.startTime || draft.endTime || draft.lunchStartTime || draft.lunchEndTime) localStorage.setItem(storageKey, JSON.stringify(draft));
+      if(draft.workDescription || draft.startTime || draft.endTime) localStorage.setItem(storageKey, JSON.stringify(draft));
       else localStorage.removeItem(storageKey);
     }
     function restoreDraft(){
@@ -334,8 +311,6 @@
         document.getElementById("workDescription").value=draft.workDescription || "";
         document.getElementById("startTime").value=draft.startTime || "";
         document.getElementById("endTime").value=draft.endTime || "";
-        document.getElementById("lunchStartTime").value=draft.lunchStartTime || "";
-        document.getElementById("lunchEndTime").value=draft.lunchEndTime || "";
         updateDurationPreview();
       }catch{}
     }
@@ -344,8 +319,6 @@
       document.getElementById("workDescription").value="";
       document.getElementById("startTime").value="";
       document.getElementById("endTime").value="";
-      document.getElementById("lunchStartTime").value="";
-      document.getElementById("lunchEndTime").value="";
       document.getElementById("workDescription").classList.remove("error");
       document.getElementById("editChip").classList.remove("show");
       document.getElementById("cancelBtn").style.display="none";
@@ -390,7 +363,7 @@
       document.getElementById("openEntries").textContent=rows.filter(row=>entryStatus(row)==="open").length;
     }
     function renderEmpty(msg,countText="0 records"){
-      document.getElementById("worksheetBody").innerHTML=`<tr><td colspan="7"><div class="empty"><i class="fa-solid fa-clipboard-list"></i><div>${esc(msg)}</div></div></td></tr>`;
+      document.getElementById("worksheetBody").innerHTML=`<tr><td colspan="6"><div class="empty"><i class="fa-solid fa-clipboard-list"></i><div>${esc(msg)}</div></div></td></tr>`;
       document.getElementById("rowCount").textContent=countText;
     }
     function visibleRows(){
@@ -420,7 +393,6 @@
             <td><div class="desc">${esc(description(row))}</div><div class="muted">${new Date(row.updatedAt || row.createdAt || Date.now()).toLocaleString("en-IN",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}</div></td>
             <td><span class="time-pill"><i class="fa-solid fa-play"></i>${esc(row.startTime || "--")}</span></td>
             <td><span class="time-pill"><i class="fa-solid fa-stop"></i>${esc(row.endTime || "--")}</span></td>
-            <td><span class="time-pill"><i class="fa-solid fa-mug-saucer"></i>${esc(lunchText(row))}</span></td>
             <td><span class="duration-pill">${esc(durationText(mins))}</span></td>
             <td><span class="status-badge ${status==="completed" ? "status-done" : "status-open"}"><i class="fa-solid ${status==="completed" ? "fa-circle-check" : "fa-circle"}"></i>${statusText(row)}</span></td>
             <td>
@@ -441,8 +413,6 @@
       document.getElementById("workDescription").value=description(row);
       document.getElementById("startTime").value=row.startTime || "";
       document.getElementById("endTime").value=row.endTime || "";
-      document.getElementById("lunchStartTime").value=row.lunchStartTime || "";
-      document.getElementById("lunchEndTime").value=row.lunchEndTime || "";
       document.getElementById("editChip").classList.add("show");
       document.getElementById("cancelBtn").style.display="inline-flex";
       document.querySelector(".editor-title").innerHTML='<i class="fa-solid fa-pen" style="color:var(--blue)"></i> Edit Work Entry';
@@ -456,8 +426,6 @@
       document.getElementById("workDescription").value=description(row);
       document.getElementById("startTime").value=row.startTime || "";
       document.getElementById("endTime").value=row.endTime || "";
-      document.getElementById("lunchStartTime").value=row.lunchStartTime || "";
-      document.getElementById("lunchEndTime").value=row.lunchEndTime || "";
       document.getElementById("editChip").classList.remove("show");
       document.getElementById("cancelBtn").style.display="none";
       document.querySelector(".editor-title").innerHTML='<i class="fa-solid fa-copy" style="color:var(--green)"></i> Duplicate Work Entry';
@@ -469,15 +437,16 @@
 
     async function saveEntry(){
       if(saving) return;
-      if(!markValidation()) return showToast("Work description or complete lunch break time is required.", "error");
+      if(!markValidation()) return showToast("Work description or start/end time is required.", "error");
       const id=document.getElementById("entryId").value;
+      const workDescription=document.getElementById("workDescription").value.trim();
       const payload={
         date: selectedDate,
-        workDescription: document.getElementById("workDescription").value.trim() || "Lunch Break",
+        workDescription: workDescription || "Work Entry",
         startTime: document.getElementById("startTime").value,
         endTime: document.getElementById("endTime").value,
-        lunchStartTime: document.getElementById("lunchStartTime").value,
-        lunchEndTime: document.getElementById("lunchEndTime").value,
+        lunchStartTime: "",
+        lunchEndTime: "",
       };
       setSaving(true);
       try{
@@ -514,10 +483,10 @@
     }
 
     function exportCSV(){
-      const csvRows=[["Work Description","Start Time","End Time","Lunch Break","Duration","Status"]];
+      const csvRows=[["Work Description","Start Time","End Time","Duration","Status"]];
       visibleRows().forEach(row=>{
         const mins=netMinutes(row);
-        csvRows.push([description(row), row.startTime || "", row.endTime || "", lunchText(row), durationText(mins), statusText(row)]);
+        csvRows.push([description(row), row.startTime || "", row.endTime || "", durationText(mins), statusText(row)]);
       });
       const csv=csvRows.map(row=>row.map(cell=>`"${String(cell).replace(/"/g,'""')}"`).join(",")).join("\n");
       const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
