@@ -27,6 +27,7 @@ const Attendance = require("../models/Attendance");
 const DailyPlan = require("../models/DailyPlan");
 const Status = require("../models/Status");
 const Task = require("../models/Task");
+const NoteTask = require("../models/NoteTask");
 const JioBPStatus = require("../models/jioBPStatus");
 const BPCLStatus = require("../models/BPCLStatus");
 const { importMaterialFileBuffer } = require("./materialUploadService");
@@ -732,8 +733,8 @@ function parseISTDateTime(dateISO = "", timeValue = "") {
   return new Date(year, month - 1, day, hour, minute, 0, 0);
 }
 
-function getISTNowDate() {
-  const now = new Date();
+function getISTNowDate(baseDate = new Date()) {
+  const now = new Date(baseDate);
   const istString = now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" });
   return new Date(istString);
 }
@@ -4811,6 +4812,188 @@ async function runScheduledMaterialUpload() {
     return { ok: false, error: err };
   }
 }
+
+function getNoteTaskReminderKey(note = {}) {
+  return `${String(note.dueDate || "").slice(0, 10)} ${String(note.reminderTime || "").slice(0, 5)}`.trim();
+}
+
+async function getNoteTaskReminderRecipient(note = {}) {
+  const queries = [];
+  const adminUserId = String(note.adminUserId || "").trim();
+  const adminName = String(note.adminName || "").trim();
+
+  if (adminUserId) {
+    queries.push({ username: adminUserId });
+    if (mongoose.Types.ObjectId.isValid(adminUserId)) queries.push({ _id: adminUserId });
+  }
+  if (adminName) {
+    queries.push({ engineerName: adminName });
+    queries.push({ username: adminName });
+  }
+
+  const user = queries.length
+    ? await User.findOne({ $or: queries }, "email username engineerName").lean()
+    : null;
+  return normalizeEmail(user?.email) || normalizeEmail(MAIL_TO);
+}
+
+function buildNoteTaskReminderEmail(note = {}, reminderKey = "") {
+  const dueLabel = `${formatDateOnlyIST(note.dueDate)}${note.reminderTime ? ` at ${note.reminderTime} IST` : ""}`;
+  const subject = `Reminder: ${note.title || "Note Task"} | ${dueLabel}`;
+  const generatedAt = formatDateTimeIST(new Date());
+  const rows = [
+    ["Title", note.title || "Note Task"],
+    ["Due", dueLabel],
+    ["Priority", formatTaskLabel(note.priority || "medium")],
+    ["Status", formatTaskLabel(note.status || "open")],
+    ["Category", note.category || "—"],
+  ];
+  const detailRows = rows.map(([label, value]) => `
+    <tr>
+      <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;color:#64748b;font-size:12px;font-weight:700;width:130px;">${htmlEscape(label)}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;color:#0f172a;font-size:13px;">${htmlEscape(value)}</td>
+    </tr>
+  `).join("");
+
+  const html = `
+    <div style="font-family:Inter,Arial,sans-serif;background:#f8fafc;padding:18px;color:#0f172a;">
+      <div style="max-width:680px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;">
+        <div style="background:#0176d3;color:#ffffff;padding:16px 18px;">
+          <div style="font-size:18px;font-weight:800;">Note Task Reminder</div>
+          <div style="font-size:13px;margin-top:4px;opacity:.92;">This reminder is being sent 30 minutes before the selected reminder time.</div>
+        </div>
+        <div style="padding:18px;">
+          <p style="margin:0 0 14px;font-size:14px;line-height:1.55;">Please review the below note task before its scheduled reminder time.</p>
+          <table style="width:100%;border-collapse:collapse;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">${detailRows}</table>
+          <div style="margin-top:14px;padding:12px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;">
+            <div style="font-size:12px;font-weight:800;color:#475569;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">Note</div>
+            <div style="font-size:13px;line-height:1.55;color:#0f172a;white-space:pre-wrap;">${htmlEscape(note.note || "No note added.")}</div>
+          </div>
+          <div style="margin-top:14px;font-size:12px;color:#64748b;">Reminder key: ${htmlEscape(reminderKey)} | Generated ${htmlEscape(generatedAt)} IST</div>
+        </div>
+      </div>
+    </div>
+  `;
+  const text = [
+    "Note Task Reminder",
+    `Title: ${note.title || "Note Task"}`,
+    `Due: ${dueLabel}`,
+    `Priority: ${formatTaskLabel(note.priority || "medium")}`,
+    `Status: ${formatTaskLabel(note.status || "open")}`,
+    `Category: ${note.category || "—"}`,
+    `Note: ${note.note || "No note added."}`,
+    `Reminder key: ${reminderKey}`,
+  ].join("\n");
+
+  return { subject, html, text };
+}
+
+async function processNoteTaskReminderEmails({ now = new Date() } = {}) {
+  const nowIST = getISTNowDate(now);
+  const candidates = await NoteTask.find({
+    status: { $nin: ["done", "archived"] },
+    dueDate: { $ne: "" },
+    reminderTime: { $ne: "" },
+  }).lean();
+
+  const summary = { ok: true, checked: candidates.length, sent: 0, skipped: 0, failed: 0 };
+
+  for (const note of candidates) {
+    const reminderKey = getNoteTaskReminderKey(note);
+    if (!reminderKey || note.reminderEmailSentKey === reminderKey) {
+      summary.skipped += 1;
+      continue;
+    }
+
+    const dueAtIST = parseISTDateTime(note.dueDate, note.reminderTime);
+    if (!dueAtIST) {
+      summary.skipped += 1;
+      continue;
+    }
+
+    const sendAtIST = new Date(dueAtIST.getTime() - 30 * 60 * 1000);
+    if (nowIST < sendAtIST || nowIST >= dueAtIST) {
+      summary.skipped += 1;
+      continue;
+    }
+
+    const recipient = await getNoteTaskReminderRecipient(note);
+    if (!recipient) {
+      summary.failed += 1;
+      await EmailLog.create({
+        type: "note-task-reminder",
+        subject: `Skipped: recipient missing for ${note.title || note._id}`,
+        to: "",
+        status: "failure",
+        error: "Recipient email missing",
+        meta: { noteTaskId: String(note._id), reminderKey },
+      });
+      continue;
+    }
+
+    const { subject, html, text } = buildNoteTaskReminderEmail(note, reminderKey);
+    try {
+      await transporter.sendMail({
+        from: getDefaultOutgoingFromHeader(),
+        to: recipient,
+        subject,
+        html,
+        text,
+      });
+
+      const sentAt = now instanceof Date ? now : new Date(now);
+      await NoteTask.updateOne(
+        {
+          _id: note._id,
+          status: { $nin: ["done", "archived"] },
+          dueDate: note.dueDate,
+          reminderTime: note.reminderTime,
+          reminderEmailSentKey: { $ne: reminderKey },
+        },
+        {
+          $set: {
+            reminderEmailSentAt: sentAt,
+            reminderEmailSentKey: reminderKey,
+            reminderEmailRecipient: recipient,
+          },
+        }
+      );
+
+      await EmailLog.create({
+        type: "note-task-reminder",
+        subject,
+        to: recipient,
+        status: "success",
+        meta: { noteTaskId: String(note._id), reminderKey },
+      });
+      summary.sent += 1;
+    } catch (err) {
+      summary.failed += 1;
+      await EmailLog.create({
+        type: "note-task-reminder",
+        subject,
+        to: recipient,
+        status: "failure",
+        error: err.message || String(err),
+        meta: { noteTaskId: String(note._id), reminderKey },
+      });
+      console.error("❌ Note task reminder email error:", err.message || err);
+    }
+  }
+
+  return summary;
+}
+
+// ─── Scheduler: every minute for note task reminders ─────────────────────────
+
+cron.schedule(
+  "* * * * *",
+  () => {
+    processNoteTaskReminderEmails().catch((e) => console.error("Note task reminder job error:", e));
+  },
+  { timezone: "Asia/Kolkata" }
+);
+
 // ─── Scheduler: daily 10:50 IST ───────────────────────────────────────────────
 
 cron.schedule(
@@ -5029,6 +5212,11 @@ if (require.main === module) {
       .then((r) => { console.log("Daily corrected verification report done:", r); process.exit(r.ok ? 0 : 1); })
       .catch((e) => { console.error("❌ error:", e); process.exit(1); });
 
+  } else if (type === "note-task-reminders") {
+    processNoteTaskReminderEmails()
+      .then((r) => { console.log("Note task reminder check done:", r); process.exit(r.ok ? 0 : 1); })
+      .catch((e) => { console.error("❌ error:", e); process.exit(1); });
+
   } else {
     // default = pending
     sendPendingStatusEmail({ forDateISO: dateArg })
@@ -5061,6 +5249,7 @@ module.exports = {
   sendTaskClosureEmail,
   sendTaskEscalationEmail,
   processPendingTaskEscalations,
+  processNoteTaskReminderEmails,
   buildTaskSubject,
   getTaskPriority,
   getTaskDefaultAssignee,

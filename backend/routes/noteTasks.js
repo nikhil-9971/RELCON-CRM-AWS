@@ -96,8 +96,14 @@ router.put("/noteTasks/:id", authMiddleware, requireAdmin, async (req, res) => {
 
     const wasDone = current.status === "done";
     const isDone = payload.status === "done";
+    const previousReminderKey = `${current.dueDate || ""} ${current.reminderTime || ""}`;
+    const nextReminderKey = `${payload.dueDate || ""} ${payload.reminderTime || ""}`;
+    const reminderReset = previousReminderKey !== nextReminderKey
+      ? { reminderEmailSentAt: null, reminderEmailSentKey: "", reminderEmailRecipient: "" }
+      : {};
     Object.assign(current, payload, {
       completedAt: isDone ? (wasDone ? current.completedAt : new Date()) : null,
+      ...reminderReset,
     });
     await current.save();
     res.json({ message: "Note task updated", row: current });
