@@ -126,6 +126,11 @@ jobs:
              SMTP_PASS=${{ secrets.SMTP_PASS }}
              MAIL_FROM=${{ secrets.MAIL_FROM }}
              MAIL_TO=${{ secrets.MAIL_TO }}
+             RELCON_SMTP_HOST=smtp.office365.com
+             RELCON_SMTP_PORT=587
+             RELCON_SMTP_USER=nikhil.trivedi@relconsystems.com
+             RELCON_SMTP_PASS=${{ secrets.RELCON_SMTP_PASS }}
+             RELCON_MAIL_FROM="Nikhil Trivedi <nikhil.trivedi@relconsystems.com>"
              BASE_URL=https://nikhildevops.co.in/api
              APP_USER=${{ secrets.APP_USER }}
              APP_PASS=${{ secrets.APP_PASS }}

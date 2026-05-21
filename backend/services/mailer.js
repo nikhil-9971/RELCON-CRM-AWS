@@ -43,6 +43,11 @@ const {
   APP_USER,
   APP_PASS,
   SESSION_SECRET,
+  RELCON_SMTP_HOST,
+  RELCON_SMTP_PORT,
+  RELCON_SMTP_USER,
+  RELCON_SMTP_PASS,
+  RELCON_MAIL_FROM,
 } = process.env;
 
 if (
@@ -55,17 +60,44 @@ if (
 axios.defaults.timeout = 30000;
 
 const DEFAULT_OUTGOING_MAIL_DISPLAY_NAME = "Nikhil Trivedi";
+const RELCON_MAIL_DISPLAY_NAME = "Nikhil Trivedi";
+const RELCON_MAIL_ADDRESS = "nikhil.trivedi@relconsystems.com";
 
-const transporter = nodemailer.createTransport({
+function createSmtpTransport({ host, port, user, pass }) {
+  return nodemailer.createTransport({
+    host,
+    port: Number(port),
+    secure: Number(port) === 465,
+    auth: { user, pass },
+    connectionTimeout: 30000,
+    greetingTimeout: 30000,
+    socketTimeout: 30000,
+    tls: { rejectUnauthorized: false },
+  });
+}
+
+const transporter = createSmtpTransport({
   host: SMTP_HOST,
-  port: Number(SMTP_PORT),
-  secure: Number(SMTP_PORT) === 465,
-  auth: { user: SMTP_USER, pass: SMTP_PASS },
-  connectionTimeout: 30000,
-  greetingTimeout: 30000,
-  socketTimeout: 30000,
-  tls: { rejectUnauthorized: false },
+  port: SMTP_PORT,
+  user: SMTP_USER,
+  pass: SMTP_PASS,
 });
+
+const hasRelconSmtpConfig = Boolean(
+  RELCON_SMTP_HOST &&
+  RELCON_SMTP_PORT &&
+  RELCON_SMTP_USER &&
+  RELCON_SMTP_PASS
+);
+
+const relconTransporter = hasRelconSmtpConfig
+  ? createSmtpTransport({
+      host: RELCON_SMTP_HOST,
+      port: RELCON_SMTP_PORT,
+      user: RELCON_SMTP_USER,
+      pass: RELCON_SMTP_PASS,
+    })
+  : transporter;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -260,13 +292,21 @@ function extractEmailAddress(value = "") {
   return normalizeEmail(match ? match[1] : raw);
 }
 
-function buildFromHeader(displayName) {
-  const fromAddress = extractEmailAddress(MAIL_FROM) || normalizeEmail(SMTP_USER) || "no-reply@relconsystems.com";
+function buildFromHeader(displayName, fallbackAddress) {
+  const fromAddress = extractEmailAddress(fallbackAddress) || extractEmailAddress(MAIL_FROM) || normalizeEmail(SMTP_USER) || "no-reply@relconsystems.com";
   return `"${String(displayName || DEFAULT_OUTGOING_MAIL_DISPLAY_NAME).replace(/"/g, "")}" <${fromAddress}>`;
 }
 
 function getDefaultOutgoingFromHeader() {
   return buildFromHeader(DEFAULT_OUTGOING_MAIL_DISPLAY_NAME);
+}
+
+function getRelconFromHeader() {
+  const fromAddress =
+    extractEmailAddress(RELCON_MAIL_FROM) ||
+    normalizeEmail(RELCON_SMTP_USER) ||
+    RELCON_MAIL_ADDRESS;
+  return buildFromHeader(RELCON_MAIL_DISPLAY_NAME, fromAddress);
 }
 
 function formatDateTimeIST(value = new Date()) {
@@ -4871,8 +4911,10 @@ async function sendPendingStatusReminderAlerts() {
         ageHours,
       });
 
-      const info = await transporter.sendMail({
-        from: buildFromHeader("Nikhil Trivedi"),
+      const mailTransporter = shouldSend48 ? relconTransporter : transporter;
+      const from = shouldSend48 ? getRelconFromHeader() : buildFromHeader("Nikhil Trivedi");
+      const info = await mailTransporter.sendMail({
+        from,
         to: engineerEmails.join(", "),
         cc: adminEmails.join(", "),
         subject,
