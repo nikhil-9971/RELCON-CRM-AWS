@@ -16,6 +16,7 @@ const {
   detectTaskIssueType,
   getTaskCustomer,
   sendStatusRequirementAlertToAdmins,
+  sendStatusMaterialUsageAlertToAdmins,
 } = require("../services/mailer");
 
 const verifyToken = require("../middleware/authMiddleware");
@@ -25,6 +26,18 @@ const SECRET = process.env.JWT_SECRET || "relcon-secret-key";
 
 function clearStatusDependentCaches() {
   clearCacheByPrefix("daily-plans:");
+}
+
+function getOptionalUserFromRequest(req) {
+  const authHeader = req.headers.authorization || "";
+  if (!authHeader.startsWith("Bearer ")) return {};
+
+  const token = authHeader.split(" ")[1];
+  try {
+    return jwt.verify(token, SECRET) || {};
+  } catch (err) {
+    return jwt.decode(token) || {};
+  }
 }
 
 // ✅ Utility: Email content generator
@@ -206,14 +219,24 @@ router.post("/saveStatus", async (req, res) => {
     clearStatusDependentCaches();
 
     const isHpclPlan = String(updatedPlan?.phase || "").trim().toUpperCase().startsWith("HPCL");
+    const actorUser = getOptionalUserFromRequest(req);
     if (isHpclPlan) {
       sendStatusRequirementAlertToAdmins({
         customer: "HPCL",
         plan: updatedPlan || {},
         status: savedStatus?.toObject ? savedStatus.toObject() : (savedStatus || req.body),
-        actorName: updatedPlan?.engineer || "",
+        actorName: updatedPlan?.engineer || actorUser?.engineerName || actorUser?.username || "",
       }).catch((mailErr) => console.error("HPCL requirement alert email error:", mailErr?.message || mailErr));
     }
+
+    sendStatusMaterialUsageAlertToAdmins({
+      customer: isHpclPlan ? "HPCL" : (updatedPlan?.phase || "Status"),
+      plan: updatedPlan || {},
+      status: savedStatus?.toObject ? savedStatus.toObject() : (savedStatus || req.body),
+      actorName: updatedPlan?.engineer || actorUser?.engineerName || actorUser?.username || "",
+      actorUsername: actorUser?.username || "",
+      actorEmail: actorUser?.email || "",
+    }).catch((mailErr) => console.error("Material usage alert email error:", mailErr?.message || mailErr));
 
     res.send("Status saved");
   } catch (err) {

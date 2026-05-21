@@ -1558,6 +1558,182 @@ async function sendStatusRequirementAlertToAdmins({ customer = "", plan = {}, st
   }
 }
 
+function hasMeaningfulMaterialValue(value) {
+  const normalized = String(value || "").trim();
+  if (!normalized) return false;
+  return !/^(no|none|nil|n\/a|na|not applicable|all ok)$/i.test(normalized);
+}
+
+function getStatusMaterialUsageRows({ customer = "", status = {} } = {}) {
+  const customerKey = String(customer || "").trim().toUpperCase();
+  if (customerKey === "RBML") {
+    return [
+      ["Active Material Used", status.activeMaterialUsed || "—"],
+      ["Used Material Details", status.usedMaterialDetails || "—"],
+      ["Faulty Material Details", status.faultyMaterialDetails || "—"],
+      ["Current Status", status.status || "—"],
+      ["Spare Required", status.spareRequired || "—"],
+      ["Material Requirement", status.materialRequirement || "—"],
+    ];
+  }
+
+  return [
+    ["Spare Used", status.spareUsed || "—"],
+    ["Active Material", status.activeSpare || "—"],
+    ["Faulty Material", status.faultySpare || "—"],
+    ["Work Completion", status.workCompletion || "—"],
+    ["Spare Requirement", status.spareRequirment || status.spareRequirement || "—"],
+    ["Spare Requirement Name", status.spareRequirmentname || status.spareRequirementName || "—"],
+  ];
+}
+
+function hasStatusMaterialUsage({ customer = "", status = {} } = {}) {
+  const customerKey = String(customer || "").trim().toUpperCase();
+  if (customerKey === "RBML") {
+    const activeMaterialUsed = String(status.activeMaterialUsed || "").trim().toLowerCase();
+    return (
+      activeMaterialUsed === "yes" ||
+      hasMeaningfulMaterialValue(status.usedMaterialDetails) ||
+      hasMeaningfulMaterialValue(status.faultyMaterialDetails)
+    );
+  }
+
+  const spareUsed = String(status.spareUsed || "").trim().toLowerCase();
+  return (
+    spareUsed === "yes" ||
+    hasMeaningfulMaterialValue(status.activeSpare) ||
+    hasMeaningfulMaterialValue(status.faultySpare)
+  );
+}
+
+function buildStatusMaterialUsageEmail({ customer = "", plan = {}, status = {}, actorName = "" } = {}) {
+  const customerLabel = String(customer || plan.customer || plan.phase || "Status").trim().toUpperCase();
+  const subject = `${customerLabel} Material Used Alert | ${plan.roCode || "RO"} | ${plan.roName || "Site"} | ${actorName || plan.engineer || "Engineer"}`;
+  const rows = [
+    ["Customer", customerLabel],
+    ["Engineer", actorName || plan.engineer || "—"],
+    ["Visit Date", formatDateOnlyIST(plan.date)],
+    ["RO Code", plan.roCode || "—"],
+    ["RO Name", plan.roName || "—"],
+    ["Region", plan.region || "—"],
+    ["Phase", plan.phase || "—"],
+    ...getStatusMaterialUsageRows({ customer: customerLabel, status }),
+  ];
+
+  const tableRows = rows.map(([label, value], index) => `
+    <tr style="background:${index % 2 === 0 ? "#ffffff" : "#f8fafc"};">
+      <td style="width:210px;padding:10px 12px;border-bottom:1px solid #e5edf5;font-weight:700;color:#334155;">${htmlEscape(label)}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #e5edf5;color:#0f172a;line-height:1.5;">${htmlEscape(value)}</td>
+    </tr>
+  `).join("");
+
+  const html = `
+    <div style="font-family:Arial,Helvetica,sans-serif;background:#f1f5f9;padding:22px;color:#0f172a;">
+      <div style="max-width:760px;margin:0 auto;background:#ffffff;border:1px solid #dbe3ee;border-radius:14px;overflow:hidden;">
+        <div style="background:#0f766e;color:#ffffff;padding:18px 22px;">
+          <div style="font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;opacity:.9;">Relcon CRM Material Alert</div>
+          <div style="margin-top:6px;font-size:20px;font-weight:800;line-height:1.25;">${htmlEscape(customerLabel)} Material Usage Submitted</div>
+        </div>
+        <div style="padding:20px 22px;">
+          <p style="margin:0 0 14px;font-size:14px;line-height:1.6;">An engineer saved a status with active/faulty material usage details. Please review the material details below.</p>
+          <table style="width:100%;border-collapse:collapse;border:1px solid #e5edf5;border-radius:10px;overflow:hidden;font-size:13px;">${tableRows}</table>
+          <p style="margin:14px 0 0;color:#64748b;font-size:12px;">Generated on ${htmlEscape(formatDateTimeIST(new Date()))} IST.</p>
+        </div>
+      </div>
+    </div>
+  `;
+  const text = [
+    `${customerLabel} Material Usage Submitted`,
+    "",
+    ...rows.map(([label, value]) => `${label}: ${value}`),
+    "",
+    `Generated on ${formatDateTimeIST(new Date())} IST`,
+  ].join("\n");
+
+  return { subject, html, text };
+}
+
+async function sendStatusMaterialUsageAlertToAdmins({ customer = "", plan = {}, status = {}, actorName = "", actorUsername = "", actorEmail = "" } = {}) {
+  if (!hasStatusMaterialUsage({ customer, status })) {
+    return { ok: true, skipped: true, reason: "no_material_usage" };
+  }
+
+  const recipients = await getAdminNotificationEmails();
+  if (!recipients.length) {
+    await EmailLog.create({
+      type: "status-material-usage-alert",
+      subject: "Skipped: admin recipient missing",
+      to: "",
+      status: "failure",
+      error: "No admin recipient email found",
+      meta: { customer, planId: String(plan._id || plan.id || "") },
+    });
+    return { ok: false, skipped: true, reason: "missing_admin_email" };
+  }
+
+  const users = await User.find({}, "email role engineerName username name").lean();
+  const fillerUsername = String(actorUsername || status.createdBy || "").trim();
+  const fillerEmail = normalizeEmail(actorEmail || status.createdByEmail || status.email || "");
+  const usernameEmails = fillerUsername
+    ? users
+        .filter((user) => String(user.username || "").trim().toLowerCase() === fillerUsername.toLowerCase())
+        .map((user) => normalizeEmail(user.email))
+        .filter(Boolean)
+    : [];
+  const engineerEmails = getEngineerEmailsFromUsers(users, actorName || plan.engineer || "");
+  const ccRecipients = [...new Set(
+    [fillerEmail, ...usernameEmails, ...engineerEmails]
+      .filter(Boolean)
+      .filter((email) => !recipients.includes(email))
+  )];
+
+  const { subject, html, text } = buildStatusMaterialUsageEmail({ customer, plan, status, actorName });
+  try {
+    const info = await transporter.sendMail({
+      from: getDefaultOutgoingFromHeader(),
+      to: recipients.join(", "),
+      ...(ccRecipients.length ? { cc: ccRecipients.join(", ") } : {}),
+      subject,
+      html,
+      text,
+    });
+    await EmailLog.create({
+      type: "status-material-usage-alert",
+      subject,
+      to: recipients.join(", "),
+      ...(ccRecipients.length ? { cc: ccRecipients.join(", ") } : {}),
+      status: "success",
+      meta: {
+        customer,
+        planId: String(plan._id || plan.id || ""),
+        roCode: plan.roCode || "",
+        roName: plan.roName || "",
+        engineer: actorName || plan.engineer || "",
+        cc: ccRecipients,
+      },
+    });
+    return { ok: true, messageId: info?.messageId || "", recipients, cc: ccRecipients };
+  } catch (err) {
+    await EmailLog.create({
+      type: "status-material-usage-alert",
+      subject,
+      to: recipients.join(", "),
+      ...(ccRecipients.length ? { cc: ccRecipients.join(", ") } : {}),
+      status: "failure",
+      error: err.message || String(err),
+      meta: {
+        customer,
+        planId: String(plan._id || plan.id || ""),
+        roCode: plan.roCode || "",
+        roName: plan.roName || "",
+        engineer: actorName || plan.engineer || "",
+        cc: ccRecipients,
+      },
+    });
+    throw err;
+  }
+}
+
 function prettifyFieldName(field = "") {
   return String(field || "")
     .replace(/([a-z])([A-Z])/g, "$1 $2")
@@ -5396,6 +5572,7 @@ module.exports = {
   sendTaskClosureEmail,
   sendTaskEscalationEmail,
   sendStatusRequirementAlertToAdmins,
+  sendStatusMaterialUsageAlertToAdmins,
   processPendingTaskEscalations,
   processNoteTaskReminderEmails,
   buildTaskSubject,
