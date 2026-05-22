@@ -309,6 +309,39 @@ function getRelconFromHeader() {
   return buildFromHeader(RELCON_MAIL_DISPLAY_NAME, fromAddress);
 }
 
+async function sendRelconSmtpTestEmail(to = "") {
+  const recipient = normalizeEmail(to) || normalizeEmail(MAIL_TO);
+  if (!recipient) {
+    throw new Error("Recipient email missing. Pass an email after relcon-smtp-test or set MAIL_TO.");
+  }
+  if (!hasRelconSmtpConfig) {
+    throw new Error("RELCON SMTP config missing. Set RELCON_SMTP_HOST, RELCON_SMTP_PORT, RELCON_SMTP_USER, and RELCON_SMTP_PASS.");
+  }
+
+  await relconTransporter.verify();
+  const generatedAt = formatDateTimeIST(new Date());
+  const info = await relconTransporter.sendMail({
+    from: getRelconFromHeader(),
+    to: recipient,
+    subject: `Relcon SMTP Test | ${generatedAt} IST`,
+    text: [
+      "Relcon SMTP test mail sent successfully.",
+      "",
+      `From: ${getRelconFromHeader()}`,
+      `Generated: ${generatedAt} IST`,
+    ].join("\n"),
+    html: `
+      <div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#0f172a;">
+        <p><b>Relcon SMTP test mail sent successfully.</b></p>
+        <p>From: ${htmlEscape(getRelconFromHeader())}</p>
+        <p>Generated: ${htmlEscape(generatedAt)} IST</p>
+      </div>
+    `,
+  });
+
+  return { ok: true, messageId: info?.messageId || "", to: recipient, from: getRelconFromHeader() };
+}
+
 function formatDateTimeIST(value = new Date()) {
   return new Date(value).toLocaleString("en-IN", {
     timeZone: "Asia/Kolkata",
@@ -5528,11 +5561,24 @@ cron.schedule(
 //     .catch((e) => { console.error("❌ error:", e); process.exit(1); });
 // }
 
+async function connectMongoForManualRun() {
+  if (mongoose.connection.readyState === 1) return;
+  if (!process.env.MONGO_URI) {
+    throw new Error("MONGO_URI missing. Manual DB-backed mail jobs need MONGO_URI.");
+  }
+  await mongoose.connect(process.env.MONGO_URI);
+}
+
 if (require.main === module) {
   const type = process.argv[2];   // pending / unverified
   const dateArg = process.argv[3]; // optional date
 
-  if (type === "unverified") {
+  if (type === "relcon-smtp-test") {
+    sendRelconSmtpTestEmail(dateArg)
+      .then((r) => { console.log("Relcon SMTP test done:", r); process.exit(r.ok ? 0 : 1); })
+      .catch((e) => { console.error("❌ error:", e); process.exit(1); });
+
+  } else if (type === "unverified") {
     sendUnverifiedStatusEmail()
       .then(() => { console.log("Unverified Done"); process.exit(0); })
       .catch((e) => { console.error("❌ error:", e); process.exit(1); });
@@ -5553,7 +5599,8 @@ if (require.main === module) {
       .catch((e) => { console.error("❌ error:", e); process.exit(1); });
 
   } else if (type === "status-reminder") {
-    sendPendingStatusReminderAlerts()
+    connectMongoForManualRun()
+      .then(() => sendPendingStatusReminderAlerts())
       .then((r) => { console.log("Pending status reminder done:", r); process.exit(r.ok ? 0 : 1); })
       .catch((e) => { console.error("❌ error:", e); process.exit(1); });
 
@@ -5616,6 +5663,7 @@ module.exports = {
   sendMonthlyAttendanceSheet,
   sendVerificationCorrectionEmail,
   sendPendingStatusReminderAlerts,
+  sendRelconSmtpTestEmail,
   sendMaterialUploadScheduleReminder,
   sendMaterialSheetUploadReminder,
   runScheduledMaterialUpload,
