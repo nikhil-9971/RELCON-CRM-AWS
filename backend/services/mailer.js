@@ -1598,12 +1598,6 @@ async function sendStatusRequirementAlertToAdmins({ customer = "", plan = {}, st
   }
 }
 
-function hasMeaningfulMaterialValue(value) {
-  const normalized = String(value || "").trim();
-  if (!normalized) return false;
-  return !/^(no|none|nil|n\/a|na|not applicable|all ok)$/i.test(normalized);
-}
-
 function getStatusMaterialUsageRows({ customer = "", status = {} } = {}) {
   const customerKey = String(customer || "").trim().toUpperCase();
   if (customerKey === "RBML") {
@@ -1631,25 +1625,16 @@ function hasStatusMaterialUsage({ customer = "", status = {} } = {}) {
   const customerKey = String(customer || "").trim().toUpperCase();
   if (customerKey === "RBML") {
     const activeMaterialUsed = String(status.activeMaterialUsed || "").trim().toLowerCase();
-    return (
-      activeMaterialUsed === "yes" ||
-      hasMeaningfulMaterialValue(status.usedMaterialDetails) ||
-      hasMeaningfulMaterialValue(status.faultyMaterialDetails)
-    );
+    return activeMaterialUsed === "yes";
   }
 
   const spareUsed = String(status.spareUsed || "").trim().toLowerCase();
-  return (
-    spareUsed === "yes" ||
-    hasMeaningfulMaterialValue(status.activeSpare) ||
-    hasMeaningfulMaterialValue(status.faultySpare)
-  );
+  return spareUsed === "yes";
 }
 
-function buildStatusMaterialUsageEmail({ customer = "", plan = {}, status = {}, actorName = "" } = {}) {
+function getStatusMaterialUsageEmailRows({ customer = "", plan = {}, status = {}, actorName = "" } = {}) {
   const customerLabel = String(customer || plan.customer || plan.phase || "Status").trim().toUpperCase();
-  const subject = `${customerLabel} Material Used Alert | ${plan.roCode || "RO"} | ${plan.roName || "Site"} | ${actorName || plan.engineer || "Engineer"}`;
-  const rows = [
+  return [
     ["Customer", customerLabel],
     ["Engineer", actorName || plan.engineer || "—"],
     ["Visit Date", formatDateOnlyIST(plan.date)],
@@ -1659,6 +1644,32 @@ function buildStatusMaterialUsageEmail({ customer = "", plan = {}, status = {}, 
     ["Phase", plan.phase || "—"],
     ...getStatusMaterialUsageRows({ customer: customerLabel, status }),
   ];
+}
+
+function buildStatusMaterialUsageExcelAttachment({ customer = "", plan = {}, status = {}, actorName = "" } = {}) {
+  const customerLabel = String(customer || plan.customer || plan.phase || "Status").trim().toUpperCase();
+  const rows = getStatusMaterialUsageEmailRows({ customer: customerLabel, plan, status, actorName });
+  const worksheet = XLSX.utils.json_to_sheet(rows.map(([field, value]) => ({
+    Field: field,
+    Value: safe(value),
+  })));
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Material Usage");
+  const safeCustomer = customerLabel.replace(/[^a-z0-9_-]/gi, "_") || "status";
+  const safeRoCode = String(plan.roCode || "RO").replace(/[^a-z0-9_-]/gi, "_");
+  const safeDate = String(plan.date || "").slice(0, 10) || toLocalISODate(new Date());
+
+  return {
+    filename: `${safeCustomer}_material_usage_${safeRoCode}_${safeDate}.xlsx`,
+    content: Buffer.from(XLSX.write(workbook, { type: "buffer", bookType: "xlsx" })),
+    contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  };
+}
+
+function buildStatusMaterialUsageEmail({ customer = "", plan = {}, status = {}, actorName = "" } = {}) {
+  const customerLabel = String(customer || plan.customer || plan.phase || "Status").trim().toUpperCase();
+  const subject = `${customerLabel} Material Used Alert | ${plan.roCode || "RO"} | ${plan.roName || "Site"} | ${actorName || plan.engineer || "Engineer"}`;
+  const rows = getStatusMaterialUsageEmailRows({ customer: customerLabel, plan, status, actorName });
 
   const tableRows = rows.map(([label, value], index) => `
     <tr style="background:${index % 2 === 0 ? "#ffffff" : "#f8fafc"};">
@@ -1675,7 +1686,7 @@ function buildStatusMaterialUsageEmail({ customer = "", plan = {}, status = {}, 
           <div style="margin-top:6px;font-size:20px;font-weight:800;line-height:1.25;">${htmlEscape(customerLabel)} Material Usage Submitted</div>
         </div>
         <div style="padding:20px 22px;">
-          <p style="margin:0 0 14px;font-size:14px;line-height:1.6;">An engineer saved a status with active/faulty material usage details. Please review the material details below.</p>
+          <p style="margin:0 0 14px;font-size:14px;line-height:1.6;">An engineer saved a status where spare/material used is marked Yes. Please review the material details below.</p>
           <table style="width:100%;border-collapse:collapse;border:1px solid #e5edf5;border-radius:10px;overflow:hidden;font-size:13px;">${tableRows}</table>
           <p style="margin:14px 0 0;color:#64748b;font-size:12px;">Generated on ${htmlEscape(formatDateTimeIST(new Date()))} IST.</p>
         </div>
@@ -1728,6 +1739,7 @@ async function sendStatusMaterialUsageAlertToAdmins({ customer = "", plan = {}, 
   )];
 
   const { subject, html, text } = buildStatusMaterialUsageEmail({ customer, plan, status, actorName });
+  const attachment = buildStatusMaterialUsageExcelAttachment({ customer, plan, status, actorName });
   try {
     const info = await transporter.sendMail({
       from: getDefaultOutgoingFromHeader(),
@@ -1736,6 +1748,7 @@ async function sendStatusMaterialUsageAlertToAdmins({ customer = "", plan = {}, 
       subject,
       html,
       text,
+      attachments: [attachment],
     });
     await EmailLog.create({
       type: "status-material-usage-alert",
@@ -1750,6 +1763,7 @@ async function sendStatusMaterialUsageAlertToAdmins({ customer = "", plan = {}, 
         roName: plan.roName || "",
         engineer: actorName || plan.engineer || "",
         cc: ccRecipients,
+        attachment: attachment.filename,
       },
     });
     return { ok: true, messageId: info?.messageId || "", recipients, cc: ccRecipients };
@@ -1768,6 +1782,7 @@ async function sendStatusMaterialUsageAlertToAdmins({ customer = "", plan = {}, 
         roName: plan.roName || "",
         engineer: actorName || plan.engineer || "",
         cc: ccRecipients,
+        attachment: attachment.filename,
       },
     });
     throw err;
