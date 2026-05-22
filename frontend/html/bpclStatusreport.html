@@ -516,5 +516,6 @@
     document.addEventListener("keydown",e=>{const tp=Math.ceil(filteredData.length/rowsPerPage);if(e.key==="ArrowRight"&&currentPage<tp){currentPage++;renderTable(filteredData)}if(e.key==="ArrowLeft"&&currentPage>1){currentPage--;renderTable(filteredData)}});
     fetchData();
   </script>
+<script src="saveButtonAnimation.js"></script>
 </body>
 </html>
