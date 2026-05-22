@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
 <script src="config.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.18.5/package/dist/xlsx.full.min.js"></script>
 <style>
 :root{
   --sf-blue:#0176d3; --sf-blue-lt:#e8f4fd; --sf-blue-dk:#014486;
@@ -177,6 +178,7 @@ tbody tr:hover{background:#f0f8ff;}
     </div>
     <button class="btn btn-neutral" onclick="clearFilters()"><i class="fa-solid fa-rotate-left"></i> Clear</button>
     <div class="spacer"></div>
+    <button class="btn btn-neutral" onclick="exportUsersExcel()"><i class="fa-solid fa-file-excel" style="color:var(--sf-green);"></i> Export Excel</button>
     <div class="hint-card">Passwords can be reset, not viewed</div>
     <span class="count" id="recordCount">0 users</span>
   </section>
@@ -447,6 +449,42 @@ function renderTable() {
       </td>
     </tr>
   `).join("");
+}
+
+function exportUsersExcel() {
+  const rows = filteredUsers();
+  if (!rows.length) return toast("No users available to export", "error");
+  if (!window.XLSX) return toast("Excel library is not loaded", "error");
+
+  const exportedAt = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
+  const exportRows = rows.map((u, index) => ({
+    "Sr No": index + 1,
+    "Username": u.username || "",
+    "Email": u.email || "",
+    "Contact Number": u.contactNumber || "",
+    "Engineer Name": u.engineerName || "",
+    "Role": String(u.role || "").toLowerCase() === "admin" ? "admin" : "engineer",
+    "Employee ID": u.empId || "",
+    "Password Status": u.passwordNote || "Stored securely and not retrievable",
+    "Exported At": exportedAt,
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(exportRows);
+  ws["!cols"] = [
+    { wch: 8 },
+    { wch: 22 },
+    { wch: 30 },
+    { wch: 18 },
+    { wch: 28 },
+    { wch: 12 },
+    { wch: 16 },
+    { wch: 36 },
+    { wch: 24 },
+  ];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Users");
+  XLSX.writeFile(wb, `User_Management_${new Date().toISOString().slice(0,10)}.xlsx`);
+  toast(`${rows.length} users exported`, "success");
 }
 
 function openCreate() {
