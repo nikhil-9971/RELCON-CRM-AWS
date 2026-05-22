@@ -43,11 +43,6 @@ const {
   APP_USER,
   APP_PASS,
   SESSION_SECRET,
-  RELCON_SMTP_HOST,
-  RELCON_SMTP_PORT,
-  RELCON_SMTP_USER,
-  RELCON_SMTP_PASS,
-  RELCON_MAIL_FROM,
 } = process.env;
 
 if (
@@ -60,8 +55,6 @@ if (
 axios.defaults.timeout = 30000;
 
 const DEFAULT_OUTGOING_MAIL_DISPLAY_NAME = "Nikhil Trivedi";
-const RELCON_MAIL_DISPLAY_NAME = "Nikhil Trivedi";
-const RELCON_MAIL_ADDRESS = "nikhil.trivedi@relconsystems.com";
 
 function createSmtpTransport({ host, port, user, pass }) {
   return nodemailer.createTransport({
@@ -82,22 +75,6 @@ const transporter = createSmtpTransport({
   user: SMTP_USER,
   pass: SMTP_PASS,
 });
-
-const hasRelconSmtpConfig = Boolean(
-  RELCON_SMTP_HOST &&
-  RELCON_SMTP_PORT &&
-  RELCON_SMTP_USER &&
-  RELCON_SMTP_PASS
-);
-
-const relconTransporter = hasRelconSmtpConfig
-  ? createSmtpTransport({
-      host: RELCON_SMTP_HOST,
-      port: RELCON_SMTP_PORT,
-      user: RELCON_SMTP_USER,
-      pass: RELCON_SMTP_PASS,
-    })
-  : transporter;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -299,47 +276,6 @@ function buildFromHeader(displayName, fallbackAddress) {
 
 function getDefaultOutgoingFromHeader() {
   return buildFromHeader(DEFAULT_OUTGOING_MAIL_DISPLAY_NAME);
-}
-
-function getRelconFromHeader() {
-  const fromAddress =
-    extractEmailAddress(RELCON_MAIL_FROM) ||
-    normalizeEmail(RELCON_SMTP_USER) ||
-    RELCON_MAIL_ADDRESS;
-  return buildFromHeader(RELCON_MAIL_DISPLAY_NAME, fromAddress);
-}
-
-async function sendRelconSmtpTestEmail(to = "") {
-  const recipient = normalizeEmail(to) || normalizeEmail(MAIL_TO);
-  if (!recipient) {
-    throw new Error("Recipient email missing. Pass an email after relcon-smtp-test or set MAIL_TO.");
-  }
-  if (!hasRelconSmtpConfig) {
-    throw new Error("RELCON SMTP config missing. Set RELCON_SMTP_HOST, RELCON_SMTP_PORT, RELCON_SMTP_USER, and RELCON_SMTP_PASS.");
-  }
-
-  await relconTransporter.verify();
-  const generatedAt = formatDateTimeIST(new Date());
-  const info = await relconTransporter.sendMail({
-    from: getRelconFromHeader(),
-    to: recipient,
-    subject: `Relcon SMTP Test | ${generatedAt} IST`,
-    text: [
-      "Relcon SMTP test mail sent successfully.",
-      "",
-      `From: ${getRelconFromHeader()}`,
-      `Generated: ${generatedAt} IST`,
-    ].join("\n"),
-    html: `
-      <div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#0f172a;">
-        <p><b>Relcon SMTP test mail sent successfully.</b></p>
-        <p>From: ${htmlEscape(getRelconFromHeader())}</p>
-        <p>Generated: ${htmlEscape(generatedAt)} IST</p>
-      </div>
-    `,
-  });
-
-  return { ok: true, messageId: info?.messageId || "", to: recipient, from: getRelconFromHeader() };
 }
 
 function formatDateTimeIST(value = new Date()) {
@@ -4959,10 +4895,8 @@ async function sendPendingStatusReminderAlerts() {
         ageHours,
       });
 
-      const mailTransporter = shouldSend48 ? relconTransporter : transporter;
-      const from = shouldSend48 ? getRelconFromHeader() : buildFromHeader("Nikhil Trivedi");
-      const info = await mailTransporter.sendMail({
-        from,
+      const info = await transporter.sendMail({
+        from: buildFromHeader("Nikhil Trivedi"),
         to: engineerEmails.join(", "),
         cc: adminEmails.join(", "),
         subject,
@@ -5573,12 +5507,7 @@ if (require.main === module) {
   const type = process.argv[2];   // pending / unverified
   const dateArg = process.argv[3]; // optional date
 
-  if (type === "relcon-smtp-test") {
-    sendRelconSmtpTestEmail(dateArg)
-      .then((r) => { console.log("Relcon SMTP test done:", r); process.exit(r.ok ? 0 : 1); })
-      .catch((e) => { console.error("❌ error:", e); process.exit(1); });
-
-  } else if (type === "unverified") {
+  if (type === "unverified") {
     sendUnverifiedStatusEmail()
       .then(() => { console.log("Unverified Done"); process.exit(0); })
       .catch((e) => { console.error("❌ error:", e); process.exit(1); });
@@ -5663,7 +5592,6 @@ module.exports = {
   sendMonthlyAttendanceSheet,
   sendVerificationCorrectionEmail,
   sendPendingStatusReminderAlerts,
-  sendRelconSmtpTestEmail,
   sendMaterialUploadScheduleReminder,
   sendMaterialSheetUploadReminder,
   runScheduledMaterialUpload,
