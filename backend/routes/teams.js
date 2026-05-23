@@ -5,15 +5,14 @@ const authMiddleware = require("../middleware/authMiddleware");
 
 const router = express.Router();
 const SECRET = process.env.JWT_SECRET || "relcon-secret-key";
-const GRAPH_SCOPE = "User.Read OnlineMeetings.ReadWrite offline_access";
+const GOOGLE_SCOPE = "https://www.googleapis.com/auth/calendar.events";
 const tokenStore = new Map();
 
-function getTeamsConfig() {
-  const tenantId = process.env.MS_TENANT_ID;
-  const clientId = process.env.MS_CLIENT_ID;
-  const clientSecret = process.env.MS_CLIENT_SECRET;
-  const redirectUri = process.env.MS_REDIRECT_URI;
-  return { tenantId, clientId, clientSecret, redirectUri };
+function getMeetConfig() {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI;
+  return { clientId, clientSecret, redirectUri };
 }
 
 function getRelconUser(req) {
@@ -25,16 +24,15 @@ function missingConfig(config) {
 }
 
 async function exchangeCodeForToken(code) {
-  const { tenantId, clientId, clientSecret, redirectUri } = getTeamsConfig();
+  const { clientId, clientSecret, redirectUri } = getMeetConfig();
   const body = new URLSearchParams({
     client_id: clientId,
     client_secret: clientSecret,
     code,
     redirect_uri: redirectUri,
     grant_type: "authorization_code",
-    scope: GRAPH_SCOPE,
   });
-  const url = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
+  const url = "https://oauth2.googleapis.com/token";
   const response = await axios.post(url, body.toString(), {
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
   });
@@ -42,16 +40,14 @@ async function exchangeCodeForToken(code) {
 }
 
 async function refreshAccessToken(relconUser, tokenData) {
-  const { tenantId, clientId, clientSecret, redirectUri } = getTeamsConfig();
+  const { clientId, clientSecret } = getMeetConfig();
   const body = new URLSearchParams({
     client_id: clientId,
     client_secret: clientSecret,
     refresh_token: tokenData.refresh_token,
-    redirect_uri: redirectUri,
     grant_type: "refresh_token",
-    scope: GRAPH_SCOPE,
   });
-  const url = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
+  const url = "https://oauth2.googleapis.com/token";
   const response = await axios.post(url, body.toString(), {
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
   });
@@ -73,10 +69,10 @@ async function getValidToken(relconUser) {
 }
 
 router.get("/auth-url", authMiddleware, (req, res) => {
-  const config = getTeamsConfig();
+  const config = getMeetConfig();
   const missing = missingConfig(config);
   if (missing.length) {
-    return res.status(500).json({ error: "Teams configuration missing", missing });
+    return res.status(500).json({ error: "Google Meet configuration missing", missing });
   }
 
   const relconUser = getRelconUser(req);
@@ -85,14 +81,15 @@ router.get("/auth-url", authMiddleware, (req, res) => {
     client_id: config.clientId,
     response_type: "code",
     redirect_uri: config.redirectUri,
-    response_mode: "query",
-    scope: GRAPH_SCOPE,
+    scope: GOOGLE_SCOPE,
     state,
-    prompt: "select_account",
+    access_type: "offline",
+    include_granted_scopes: "true",
+    prompt: "consent select_account",
   });
 
   res.json({
-    url: `https://login.microsoftonline.com/${config.tenantId}/oauth2/v2.0/authorize?${params.toString()}`,
+    url: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`,
   });
 });
 
@@ -113,17 +110,17 @@ router.get("/callback", async (req, res) => {
     });
 
     res.send(`<!doctype html><html><body style="font-family:Arial,sans-serif;padding:28px;">
-      <h3>Microsoft Teams connected</h3>
+      <h3>Google Meet connected</h3>
       <p>You can close this window and return to RELCON CRM.</p>
       <script>
-        try { window.opener && window.opener.postMessage({ type: "relcon-teams-connected" }, "*"); } catch {}
+        try { window.opener && window.opener.postMessage({ type: "relcon-meet-connected" }, "*"); } catch {}
         setTimeout(function(){ window.close(); }, 900);
       </script>
     </body></html>`);
   } catch (err) {
     res.status(400).send(`<!doctype html><html><body style="font-family:Arial,sans-serif;padding:28px;">
-      <h3>Teams connection failed</h3>
-      <p>${String(err.message || "Unable to connect Microsoft Teams")}</p>
+      <h3>Google Meet connection failed</h3>
+      <p>${String(err.message || "Unable to connect Google Meet")}</p>
     </body></html>`);
   }
 });
@@ -138,19 +135,26 @@ router.post("/create-meeting", authMiddleware, async (req, res) => {
     const relconUser = getRelconUser(req);
     const tokenData = await getValidToken(relconUser);
     if (!tokenData?.access_token) {
-      return res.status(401).json({ authRequired: true, message: "Microsoft Teams account not connected" });
+      return res.status(401).json({ authRequired: true, message: "Google account not connected" });
     }
 
     const startDate = new Date(Date.now() + 2 * 60 * 1000);
     const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
-    const subject = String(req.body?.subject || "RELCON CRM Teams Meeting").slice(0, 180);
+    const subject = String(req.body?.subject || "RELCON CRM Google Meet").slice(0, 180);
+    const requestId = `relcon-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
     const response = await axios.post(
-      "https://graph.microsoft.com/v1.0/me/onlineMeetings",
+      "https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1",
       {
-        subject,
-        startDateTime: startDate.toISOString(),
-        endDateTime: endDate.toISOString(),
+        summary: subject,
+        start: { dateTime: startDate.toISOString() },
+        end: { dateTime: endDate.toISOString() },
+        conferenceData: {
+          createRequest: {
+            requestId,
+            conferenceSolutionKey: { type: "hangoutsMeet" },
+          },
+        },
       },
       {
         headers: {
@@ -160,14 +164,17 @@ router.post("/create-meeting", authMiddleware, async (req, res) => {
       }
     );
 
+    const meetUrl = response.data?.hangoutLink ||
+      response.data?.conferenceData?.entryPoints?.find((entry) => entry.entryPointType === "video")?.uri;
+
     res.json({
-      joinUrl: response.data?.joinWebUrl,
-      subject: response.data?.subject || subject,
+      joinUrl: meetUrl,
+      subject: response.data?.summary || subject,
       meetingId: response.data?.id,
     });
   } catch (err) {
     const status = err.response?.status || 500;
-    const message = err.response?.data?.error?.message || err.message || "Failed to create Teams meeting";
+    const message = err.response?.data?.error?.message || err.message || "Failed to create Google Meet";
     res.status(status).json({ error: message });
   }
 });

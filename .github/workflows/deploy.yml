@@ -129,10 +129,9 @@ jobs:
              BASE_URL=https://nikhildevops.co.in/api
              APP_USER=${{ secrets.APP_USER }}
              APP_PASS=${{ secrets.APP_PASS }}
-             MS_TENANT_ID=${{ secrets.MS_TENANT_ID }}
-             MS_CLIENT_ID=${{ secrets.MS_CLIENT_ID }}
-             MS_CLIENT_SECRET=${{ secrets.MS_CLIENT_SECRET }}
-             MS_REDIRECT_URI=${{ secrets.MS_REDIRECT_URI }}
+             GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+             GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+             GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}
             EOF
 
             # Latest images pull karo (dono)

@@ -24,7 +24,7 @@ const materialRequestMasterItemsRoutes = require("./routes/materialRequestMaster
 const materialManagement       = require("./routes/materialManagement")
 const invoiceManagement        = require("./routes/invoiceManagement");
 const chatRoutes               = require("./routes/chatRoutes");
-const teamsRoutes              = require("./routes/teams");
+const meetRoutes               = require("./routes/teams");
 const incidentRoutes           = require("./routes/incidentRoutes");
 const aiAgentRoutes            = require("./routes/aiAgent");
 const dailyWorksheetRoutes     = require("./routes/dailyWorksheet");
@@ -101,7 +101,8 @@ app.use("/api/materialRequirement", materialRoutes);
 app.use("/api/materialRequestBuilder", materialRequestBuilderRoutes);
 app.use("/api/materialRequestMasterItems", materialRequestMasterItemsRoutes);
 app.use("/api/chat", chatRoutes);
-app.use("/api/teams", teamsRoutes);
+app.use("/api/meet", meetRoutes);
+app.use("/api/teams", meetRoutes);
 app.use("/api", incidentRoutes);
 app.use("/api/ai", aiAgentRoutes);
 app.use("/api", dailyWorksheetRoutes);
