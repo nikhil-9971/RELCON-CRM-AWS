@@ -1554,8 +1554,11 @@ body {
     </div>
     <div class="meeting-body">
       <div class="meeting-note">
-        Microsoft Teams meeting ko app ke andar iframe me embed nahi kiya ja sakta. Teams app/web me meeting create karo, phir link yahan paste karke current channel/DM me share karo.
+        Microsoft Teams meeting app ke andar iframe me embed nahi hoti. RELCON CRM meeting link Microsoft Graph se create karke current channel/DM me share kar sakta hai.
       </div>
+      <button class="meeting-primary" onclick="createTeamsMeeting()">
+        <i class="fa-solid fa-calendar-plus"></i> Create Teams Meeting
+      </button>
       <button class="meeting-primary" onclick="openTeamsApp()">
         <i class="fa-brands fa-microsoft"></i> Open Microsoft Teams
       </button>
@@ -2075,6 +2078,62 @@ function openTeamsMeetingModal(kind = 'video') {
 
 function openTeamsApp() {
   window.open('https://teams.microsoft.com', '_blank', 'noopener,noreferrer');
+}
+
+async function connectTeamsAccount() {
+  const res = await fetch(`${BASE_URL}/teams/auth-url`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok || !data.url) throw new Error(data.error || 'Unable to start Microsoft login');
+  const popup = window.open(data.url, 'relconTeamsAuth', 'width=620,height=720');
+  if (!popup) throw new Error('Popup blocked. Allow popups and try again.');
+  return new Promise((resolve) => {
+    const done = (event) => {
+      if (event.data?.type !== 'relcon-teams-connected') return;
+      window.removeEventListener('message', done);
+      resolve(true);
+    };
+    window.addEventListener('message', done);
+    const timer = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(timer);
+        window.removeEventListener('message', done);
+        resolve(false);
+      }
+    }, 700);
+  });
+}
+
+async function createTeamsMeeting() {
+  try {
+    const subject = `${activeMeetingKind === 'audio' ? 'Audio Call' : 'Video Meeting'} - ${getMeetingContextLabel()}`;
+    const create = async () => fetch(`${BASE_URL}/teams/create-meeting`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ subject }),
+    });
+
+    let res = await create();
+    let data = await res.json();
+    if (res.status === 401 && data?.authRequired) {
+      showToast('Connect Microsoft Teams account first', 'info');
+      const connected = await connectTeamsAccount();
+      if (!connected) return;
+      res = await create();
+      data = await res.json();
+    }
+    if (!res.ok || !data.joinUrl) throw new Error(data.error || data.message || 'Failed to create Teams meeting');
+    sendMeetingInvite(activeMeetingKind, data.joinUrl);
+    closeMeeting();
+    showToast('Teams meeting created and shared', 'success');
+  } catch (err) {
+    console.error('Teams meeting create error', err);
+    showToast(err.message || 'Failed to create Teams meeting', 'error');
+  }
 }
 
 function closeMeeting() {
