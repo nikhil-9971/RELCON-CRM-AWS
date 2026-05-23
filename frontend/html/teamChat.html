@@ -136,6 +136,20 @@ body {
 }
 .sb-top-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
 
+.meeting-btn{background:var(--surface2)!important;border-color:var(--border)!important;color:var(--txt3)!important;}
+.meeting-btn:hover{background:var(--brand-lt)!important;color:var(--brand)!important;border-color:#bfdbfe!important;}
+.meeting-btn.video{color:var(--success)!important;}
+.meeting-overlay{position:fixed;inset:0;background:rgba(15,23,42,.72);z-index:3000;display:none;align-items:center;justify-content:center;padding:18px;}
+.meeting-overlay.open{display:flex;}
+.meeting-window{width:min(1120px,96vw);height:min(720px,92vh);background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-xl);display:flex;flex-direction:column;overflow:hidden;}
+.meeting-head{height:52px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 14px;border-bottom:1px solid var(--border);background:var(--surface2);}
+.meeting-title{display:flex;align-items:center;gap:9px;min-width:0;font-weight:800;color:var(--txt);}
+.meeting-title span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.meeting-actions{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.meeting-frame{flex:1;width:100%;border:0;background:#020617;}
+.meeting-copy{height:30px;border:1px solid var(--border);background:var(--surface);color:var(--txt2);border-radius:8px;padding:0 11px;font-family:var(--font);font-weight:700;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;}
+.meeting-copy:hover{background:var(--brand-lt);color:var(--brand);}
+
 /* Search */
 .sb-search { padding: 10px 12px; flex-shrink: 0; }
 .sb-search-inner {
@@ -1336,6 +1350,8 @@ body {
         <i class="fa-solid fa-users"></i>
         <span id="onlineCount">0 online</span>
       </button>
+      <button class="ch-btn-icon meeting-btn" onclick="startMeeting('audio')" title="Start audio call"><i class="fa-solid fa-phone"></i></button>
+      <button class="ch-btn-icon meeting-btn video" onclick="startMeeting('video')" title="Start video meeting"><i class="fa-solid fa-video"></i></button>
       <button class="ch-btn-icon" onclick="toggleSearch()" title="Search in channel"><i class="fa-solid fa-magnifying-glass"></i></button>
       <button class="ch-btn-icon" onclick="toggleNotifPanel()" title="Notifications" id="notifBtn" style="position:relative;">
         <i class="fa-solid fa-bell"></i>
@@ -1520,6 +1536,22 @@ body {
   </div>
 </div>
 
+<div id="meetingOverlay" class="meeting-overlay">
+  <div class="meeting-window">
+    <div class="meeting-head">
+      <div class="meeting-title">
+        <i class="fa-solid fa-video" id="meetingIcon" style="color:var(--brand);"></i>
+        <span id="meetingTitle">Team Meeting</span>
+      </div>
+      <div class="meeting-actions">
+        <button class="meeting-copy" onclick="copyMeetingLink()"><i class="fa-solid fa-link"></i> Copy Link</button>
+        <button class="meeting-copy" onclick="closeMeeting()"><i class="fa-solid fa-xmark"></i> Close</button>
+      </div>
+    </div>
+    <iframe id="meetingFrame" class="meeting-frame" allow="camera; microphone; fullscreen; display-capture; autoplay" referrerpolicy="no-referrer-when-downgrade"></iframe>
+  </div>
+</div>
+
 <!-- Toast Container -->
 <div id="toastContainer"></div>
 
@@ -1560,6 +1592,7 @@ let activeReactTarget = null;
 let mentionSelectedIdx = -1;
 let lastOwnMsgId = null;
 let lastMsgFrom = null, lastMsgDate = null;
+let activeMeetingUrl = "";
 const CHAT_READ_SYNC_KEY = 'relcon_chat_read_at';
 
 const CHANNEL_META = {
@@ -1821,6 +1854,7 @@ function renderMessage(msg, bulk = false) {
     .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
     .replace(/\*(.*?)\*/g,'<em>$1</em>')
     .replace(/`(.*?)`/g,`<code style="font-family:var(--mono);font-size:12px;background:var(--surface3);padding:1px 5px;border-radius:4px;">$1</code>`)
+    .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:var(--brand);font-weight:700;">$1</a>')
     .replace(/@([^\s@]+(?:\s[^\s@]+)?)/g, (_, n) => {
       if (n.toLowerCase() === currentUser.toLowerCase()) return `<span class="mention-you">@${n}</span>`;
       return `<span class="mention-other">@${n}</span>`;
@@ -1992,6 +2026,74 @@ async function sendMessage() {
   if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(payload));
   renderMessage(payload);
   inp.value = ''; inp.style.height = 'auto'; updateSendBtn(); updateCharCount();
+}
+
+function getMeetingContextLabel() {
+  if (currentChannel.startsWith('dm-')) return `DM with ${currentChannel.replace('dm-', '')}`;
+  return `#${currentChannel}`;
+}
+
+function makeMeetingRoomName(kind) {
+  const context = getMeetingContextLabel()
+    .replace(/^#/, '')
+    .replace(/[^a-z0-9]+/gi, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 42) || 'team';
+  const stamp = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 12);
+  const random = Math.random().toString(36).slice(2, 8);
+  return `relcon-${context}-${kind}-${stamp}-${random}`;
+}
+
+function buildMeetingUrl(kind) {
+  const room = makeMeetingRoomName(kind);
+  const params = new URLSearchParams({
+    'config.prejoinPageEnabled': 'true',
+    'config.startWithVideoMuted': kind === 'audio' ? 'true' : 'false',
+    'config.startAudioOnly': kind === 'audio' ? 'true' : 'false',
+  });
+  return `https://meet.jit.si/${room}#${params.toString()}`;
+}
+
+function sendMeetingInvite(kind, meetingUrl) {
+  const label = kind === 'audio' ? 'Audio call' : 'Video meeting';
+  const text = `${label} started by ${currentUser} in ${getMeetingContextLabel()}\nJoin: ${meetingUrl}`;
+  const payload = {
+    type: currentChannel.startsWith('dm-') ? 'dm' : 'group',
+    from: currentUser,
+    text,
+    createdAt: new Date().toISOString(),
+  };
+  if (currentChannel.startsWith('dm-')) payload.to = currentChannel.replace('dm-', '');
+  else payload.channel = currentChannel;
+  if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(payload));
+  renderMessage(payload);
+}
+
+function startMeeting(kind = 'video') {
+  const meetingUrl = buildMeetingUrl(kind);
+  activeMeetingUrl = meetingUrl;
+  const title = `${kind === 'audio' ? 'Audio Call' : 'Video Meeting'} - ${getMeetingContextLabel()}`;
+  document.getElementById('meetingTitle').textContent = title;
+  document.getElementById('meetingIcon').className = kind === 'audio' ? 'fa-solid fa-phone' : 'fa-solid fa-video';
+  document.getElementById('meetingFrame').src = meetingUrl;
+  document.getElementById('meetingOverlay').classList.add('open');
+  sendMeetingInvite(kind, meetingUrl);
+  showToast(`${kind === 'audio' ? 'Audio call' : 'Video meeting'} started`, 'success');
+}
+
+function closeMeeting() {
+  document.getElementById('meetingOverlay').classList.remove('open');
+  document.getElementById('meetingFrame').src = 'about:blank';
+}
+
+async function copyMeetingLink() {
+  if (!activeMeetingUrl) return;
+  try {
+    await navigator.clipboard.writeText(activeMeetingUrl);
+    showToast('Meeting link copied', 'success');
+  } catch {
+    prompt('Copy meeting link', activeMeetingUrl);
+  }
 }
 
 /* ════════════════════════════════════════
