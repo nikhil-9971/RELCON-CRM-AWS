@@ -671,6 +671,27 @@ function escHtml(value = "") {
 function escAttr(value = "") {
   return escHtml(value);
 }
+function recordEngineerName(record = {}) {
+  return String(record.engineer || record.Engineer || record.engineerName || record.planId?.engineer || record.planId?.engineerName || "").trim();
+}
+function recordRoCode(record = {}) {
+  return String(record.roCode || record.ROCode || record.rocode || record.planId?.roCode || "").trim();
+}
+function recordRoName(record = {}) {
+  return String(record.roName || record.ROName || record.planId?.roName || "").trim();
+}
+function recordRegion(record = {}) {
+  return String(record.region || record.Region || record.planId?.region || "").trim();
+}
+function recordPhase(record = {}) {
+  return String(record.phase || record.Phase || record.planId?.phase || "").trim();
+}
+function recordDate(record = {}) {
+  return String(record.date || record.Date || record.uploadDate || record.planId?.date || "").slice(0, 10);
+}
+function isVerifiedRecord(record = {}) {
+  return String(record.isVerified).toLowerCase() === "true";
+}
 function getEngineerNameSet() {
   const list = Array.isArray(window.__engineerUsers) ? window.__engineerUsers : [];
   return new Set(
@@ -696,11 +717,12 @@ async function loadOverview() {
     const token = getToken();
     const headers = { Authorization: `Bearer ${token}` };
 
-    const [userRes,plansRes,statusRes,jioRes,incidentRes,loginLogsRes,pcbProvidedRes,engineerUsersRes] = await Promise.all([
+    const [userRes,plansRes,statusRes,jioRes,bpclRes,incidentRes,loginLogsRes,pcbProvidedRes,engineerUsersRes] = await Promise.all([
       fetch(`${baseUrl}/user`, { headers }),
       fetch(`${baseUrl}/getDailyPlans`, { headers }),
       fetch(`${baseUrl}/getMergedStatusRecords`, { headers }),
       fetch(`${baseUrl}/jioBP/getAllJioBPStatus`, { headers }),
+      fetch(`${baseUrl}/bpclStatus/getAllBPCLStatus`, { headers }),
       fetch(`${baseUrl}/getAllIncidents`, { headers }),
       fetch(`${baseUrl}/audit/loginLogs`, { headers }),
       fetch(`${baseUrl}/pcb-provided-counts`, { headers }),
@@ -711,6 +733,7 @@ async function loadOverview() {
     const plans = await plansRes.json();
     const hpcl = await statusRes.json();
     const jio = await jioRes.json();
+    const bpcl = bpclRes.ok ? await bpclRes.json() : [];
     const incJson = await incidentRes.json();
     const loginLogs = await loginLogsRes.json();
     const pcbProvidedCounts = await pcbProvidedRes.json();
@@ -730,14 +753,15 @@ async function loadOverview() {
     });
     const noPlanCount = holdToday.filter((p) => String(p.purpose || "").trim().toUpperCase() === "NO PLAN").length;
     const inLeaveCount = holdToday.filter((p) => String(p.purpose || "").trim().toUpperCase() === "IN LEAVE").length;
-    const unverifiedHpcl = (Array.isArray(hpcl) ? hpcl : []).filter((r) => String(r.isVerified).toLowerCase() !== "true");
-    const unverifiedJio = (Array.isArray(jio) ? jio : []).filter((r) => String(r.isVerified).toLowerCase() !== "true");
+    const unverifiedHpcl = (Array.isArray(hpcl) ? hpcl : []).filter((r) => !isVerifiedRecord(r));
+    const unverifiedJio = (Array.isArray(jio) ? jio : []).filter((r) => !isVerifiedRecord(r));
+    const unverifiedBpcl = (Array.isArray(bpcl) ? bpcl : []).filter((r) => !isVerifiedRecord(r));
     const openIncidents = (incJson?.incidents || []).filter((i) => (i.status || "").toLowerCase() !== "close");
     const activeUsernames = new Set((Array.isArray(loginLogs) ? loginLogs : []).filter((l) => (l.loginTime && new Date(l.loginTime)).toDateString() === new Date().toDateString()).map((l) => l.engineerName || l.username));
 
     document.getElementById("kpiPlansToday").textContent = plansToday.length;
-    document.getElementById("kpiUnverified").textContent = unverifiedHpcl.length + unverifiedJio.length;
-    document.getElementById("kpiUnverifiedBreakdown").textContent = `HPCL: ${unverifiedHpcl.length} • RBML: ${unverifiedJio.length}`;
+    document.getElementById("kpiUnverified").textContent = unverifiedHpcl.length + unverifiedJio.length + unverifiedBpcl.length;
+    document.getElementById("kpiUnverifiedBreakdown").textContent = `HPCL: ${unverifiedHpcl.length} • RBML: ${unverifiedJio.length} • BPCL: ${unverifiedBpcl.length}`;
     document.getElementById("kpiOpenIncidents").textContent = openIncidents.length;
 
     await loadAMCVisitStatus();
@@ -794,7 +818,11 @@ async function loadOverview() {
     };
 
     const plansTodayRows = plansToday.map((p) => ({ date: String(p.date || "").slice(0, 10), engineer: p.engineer || "", roCode: p.roCode || "", roName: p.roName || "", region: p.region || "", phase: p.phase || "", purpose: p.purpose || "" }));
-    const unverifiedRows = [...(unverifiedHpcl || []).map((r) => ({ source: "HPCL", date: String(r.date || r.uploadDate || "").slice(0, 10), engineer: r.engineer || "", roCode: r.roCode || "", roName: r.roName || "", region: r.region || "", phase: r.phase || "", status: String(r.isVerified) })), ...(unverifiedJio || []).map((r) => ({ source: "RBML/JIO", date: String(r.date || "").slice(0, 10), engineer: r.engineer || "", roCode: r.roCode || "", roName: r.roName || "", region: r.region || "", phase: r.phase || "", status: String(r.isVerified) }))];
+    const unverifiedRows = [
+      ...(unverifiedHpcl || []).map((r) => ({ source: "HPCL", date: recordDate(r), engineer: recordEngineerName(r), roCode: recordRoCode(r), roName: recordRoName(r), region: recordRegion(r), phase: recordPhase(r), status: String(r.isVerified) })),
+      ...(unverifiedJio || []).map((r) => ({ source: "RBML", date: recordDate(r), engineer: recordEngineerName(r), roCode: recordRoCode(r), roName: recordRoName(r), region: recordRegion(r), phase: recordPhase(r), status: String(r.isVerified) })),
+      ...(unverifiedBpcl || []).map((r) => ({ source: "BPCL", date: recordDate(r), engineer: recordEngineerName(r), roCode: recordRoCode(r), roName: recordRoName(r), region: recordRegion(r), phase: recordPhase(r), status: String(r.isVerified) })),
+    ];
     const openIncRows = (incJson?.incidents || []).filter((i) => (i.status || "").toLowerCase() !== "close").map((i) => ({ incidentId: i.incidentId || "", roCode: i.roCode || "", siteName: i.siteName || "", region: i.region || "", status: i.status || "" }));
 
     const todayLogins = (Array.isArray(loginLogs) ? loginLogs : []).filter((l) => (l.loginTime && new Date(l.loginTime)).toDateString() === new Date().toDateString());
@@ -819,16 +847,15 @@ async function loadOverview() {
 
     const userRole = String(currentUser.role || "").toLowerCase();
     const uname = String(currentUser.engineerName || currentUser.username || "").trim().toLowerCase();
-    const mineHpcl = (Array.isArray(hpcl) ? hpcl : []).filter((r) => String(r.engineer || "").trim().toLowerCase() === uname);
-    const mineJio = (Array.isArray(jio) ? jio : []).filter((r) => String(r.engineer || "").trim().toLowerCase() === uname);
-    const myTotal = mineHpcl.length + mineJio.length;
-    const myUnverified = mineHpcl.filter((r) => String(r.isVerified).toLowerCase() !== "true").length + mineJio.filter((r) => String(r.isVerified).toLowerCase() !== "true").length;
-    const allUnverified = unverifiedHpcl.length + unverifiedJio.length;
-    const allTotal = (Array.isArray(hpcl) ? hpcl.length : 0) + (Array.isArray(jio) ? jio.length : 0);
-    const chartUnverified = userRole === "admin" ? allUnverified : myUnverified;
-    const chartVerified = userRole === "admin" ? allTotal - allUnverified : myTotal - myUnverified;
-
-    renderVerifyChart(chartUnverified, chartVerified);
+    const filterMine = (records) => (Array.isArray(records) ? records : []).filter((r) => recordEngineerName(r).toLowerCase() === uname);
+    const visibleHpcl = userRole === "admin" ? (Array.isArray(hpcl) ? hpcl : []) : filterMine(hpcl);
+    const visibleJio = userRole === "admin" ? (Array.isArray(jio) ? jio : []) : filterMine(jio);
+    const visibleBpcl = userRole === "admin" ? (Array.isArray(bpcl) ? bpcl : []) : filterMine(bpcl);
+    renderVerifyChart({
+      HPCL: visibleHpcl,
+      RBML: visibleJio,
+      BPCL: visibleBpcl,
+    });
     renderPlansRegionChart(plansToday);
     renderCustomerChart(plansToday);
 
@@ -853,15 +880,17 @@ async function loadOverview() {
     // Store for mail copy
     window.__unverifiedHpcl = unverifiedHpcl;
     window.__unverifiedJio = unverifiedJio;
+    window.__unverifiedBpcl = unverifiedBpcl;
   } catch (e) { console.error("overview load error", e); }
 
   document.getElementById("copyUnverifiedMail")?.addEventListener("click", () => {
     try {
       const unverifiedHpcl = window.__unverifiedHpcl || [];
       const unverifiedJio = window.__unverifiedJio || [];
+      const unverifiedBpcl = window.__unverifiedBpcl || [];
       const engineerMap = new Map();
-      [...unverifiedHpcl, ...unverifiedJio].forEach((r) => { const eng = String(r.engineer || "").trim() || "-"; engineerMap.set(eng, (engineerMap.get(eng) || 0) + 1); });
-      let mailHtml = `<p>Dear Anurag,</p><p>Please find below the <b>Unverified Status Report</b> of HPCL & RBML Customer.</p><table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse; font-family:Poppins, Arial; font-size:12px; width:100%;"><thead style="background:#f1f5f9;"><tr><th style="text-align:left;">Engineer Name</th><th style="text-align:center;">Unverified Count</th></tr></thead><tbody>`;
+      [...unverifiedHpcl, ...unverifiedJio, ...unverifiedBpcl].forEach((r) => { const eng = recordEngineerName(r) || "-"; engineerMap.set(eng, (engineerMap.get(eng) || 0) + 1); });
+      let mailHtml = `<p>Dear Anurag,</p><p>Please find below the <b>Unverified Status Report</b> of HPCL, RBML & BPCL Customer.</p><table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse; font-family:Poppins, Arial; font-size:12px; width:100%;"><thead style="background:#f1f5f9;"><tr><th style="text-align:left;">Engineer Name</th><th style="text-align:center;">Unverified Count</th></tr></thead><tbody>`;
       engineerMap.forEach((count, eng) => { mailHtml += `<tr><td>${eng}</td><td style="text-align:center;">${count}</td></tr>`; });
       mailHtml += `</tbody></table><p><b>Note:</b> Kindly verify the pending status within <b>01 day</b> to avoid escalation.</p><p>Regards,<br/>Nikhil Trivedi</p>`;
       const blobHtml = new Blob([mailHtml], { type: "text/html" });
@@ -871,9 +900,32 @@ async function loadOverview() {
   });
 }
 
-function renderVerifyChart(unverified, verified) {
+function renderVerifyChart(sourceRecords) {
   const ctx = document.getElementById("chartVerify"); if (!ctx) return;
-  new Chart(ctx, { type: "doughnut", data: { labels: ["Unverified", "Verified"], datasets: [{ data: [unverified, verified], backgroundColor: ["#dd5a0c", "#2e844a"], borderWidth: 2, borderColor: "#fff" }] }, options: { responsive: true, plugins: { legend: { position: "bottom", labels: { font: { family: "Inter", size: 11 }, padding: 12 } } } } });
+  if (window.__verifyChart) window.__verifyChart.destroy();
+  const labels = ["HPCL", "RBML", "BPCL"];
+  const verified = labels.map((label) => (sourceRecords?.[label] || []).filter(isVerifiedRecord).length);
+  const unverified = labels.map((label) => (sourceRecords?.[label] || []).filter((record) => !isVerifiedRecord(record)).length);
+  window.__verifyChart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [
+        { label: "Verified", data: verified, backgroundColor: "#2e844a", borderRadius: 4, borderSkipped: false },
+        { label: "Unverified", data: unverified, backgroundColor: "#dd5a0c", borderRadius: 4, borderSkipped: false },
+      ],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: "bottom", labels: { font: { family: "Inter", size: 11 }, padding: 12 } },
+      },
+      scales: {
+        y: { beginAtZero: true, ticks: { precision: 0, font: { family: "Inter", size: 10 } }, grid: { color: "#f3f2f2" } },
+        x: { ticks: { font: { family: "Inter", size: 10 } }, grid: { display: false } },
+      },
+    },
+  });
 }
 
 function renderPlansRegionChart(plans) {
