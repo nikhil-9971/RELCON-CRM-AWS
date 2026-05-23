@@ -539,6 +539,7 @@ tbody tr.sf-total-row td{color:var(--txt)!important;font-weight:700!important;}
               <th>Today PCB Installation</th>
               <th>Total PCB Install (B)</th>
               <th>PCB Installation Pending</th>
+              <th>View</th>
             </tr>
           </thead>
           <tbody id="pcbInstallationBody"></tbody>
@@ -611,6 +612,43 @@ tbody tr.sf-total-row td{color:var(--txt)!important;font-weight:700!important;}
     </div>
     <div class="sf-modal-footer">
       <button class="sf-btn sf-btn-neutral" onclick="closeAMCPendingModal()">
+        <i class="fa-solid fa-xmark"></i> Close
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="sf-overlay" id="pcbInstallModal">
+  <div class="sf-modal">
+    <div class="sf-modal-header">
+      <div class="sf-modal-title">
+        <i class="fa-solid fa-microchip" style="color:var(--sf-orange);"></i>
+        <span id="pcbInstallModalTitle">PCB Installation List</span>
+      </div>
+      <button class="sf-modal-close" onclick="closePcbInstallModal()" title="Close">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div class="sf-modal-body">
+      <div class="amc-modal-meta" id="pcbInstallModalMeta"></div>
+      <div class="sf-table-wrap" style="max-height:60vh;">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>RO Code</th>
+              <th>RO Name</th>
+              <th>Region</th>
+              <th>Phase</th>
+              <th>Purpose of Visit</th>
+            </tr>
+          </thead>
+          <tbody id="pcbInstallModalBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="sf-modal-footer">
+      <button class="sf-btn sf-btn-neutral" onclick="closePcbInstallModal()">
         <i class="fa-solid fa-xmark"></i> Close
       </button>
     </div>
@@ -949,15 +987,28 @@ function renderPcbInstallation(statusRecords, pcbProvidedCounts) {
   filteredRecords = filteredRecords.filter((r) => isEngineerRecordName(r.engineer || r.Engineer || r.engineerName));
   if (userRole === "engineer" && currentEngineer) filteredRecords = filteredRecords.filter((r) => String(r.engineer || r.Engineer || r.engineerName || "").trim().toLowerCase() === currentEngineer.toLowerCase());
   const map = new Map();
+  const detailMap = new Map();
   filteredRecords.forEach((r) => {
-    const eng = String(r.engineer || r.Engineer || "").trim() || "-";
+    const eng = String(r.engineer || r.Engineer || r.engineerName || "").trim() || "-";
     if (!map.has(eng)) map.set(eng, { provided: Number(pcbProvidedCounts?.[eng] || 0) || 0, installed: 0, todayInstalled: 0 });
     if (isPowerProtectionInstall(r.purpose || r.PurposeOfVisit || r.PURPOSEOFVISIT)) {
       map.get(eng).installed += 1;
       const recordDate = String(r.date || r.Date || r.DATE || "").slice(0, 10);
       if (recordDate === today) map.get(eng).todayInstalled += 1;
+      if (!detailMap.has(eng)) detailMap.set(eng, []);
+      detailMap.get(eng).push({
+        engineerName: eng,
+        date: recordDate,
+        roCode: String(r.roCode || r.ROCode || r.rocode || "").trim(),
+        roName: String(r.roName || r.ROName || "").trim(),
+        region: String(r.region || r.Region || "").trim(),
+        phase: String(r.phase || r.Phase || "").trim(),
+        purpose: String(r.purpose || r.PurposeOfVisit || r.PURPOSEOFVISIT || "").trim(),
+      });
     }
   });
+  detailMap.forEach((items) => items.sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")) || String(a.roCode || "").localeCompare(String(b.roCode || ""))));
+  window.__pcbInstallDetailRows = detailMap;
   Object.entries(pcbProvidedCounts || {}).forEach(([eng, provided]) => {
     const name = String(eng || "").trim();
     if (!name) return;
@@ -979,13 +1030,41 @@ function renderPcbInstallation(statusRecords, pcbProvidedCounts) {
   const totalTodayInstalled = rows.reduce((sum, r) => sum + r.todayInstalled, 0);
   tbody.innerHTML = rows.map((r) => {
     const providedCell = isAdmin
-      ? `<input type="number" min="0" value="${r.provided}" data-eng="${String(r.eng).replace(/"/g, "&quot;")}" style="width:80px;border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:11px;outline:none;" />`
+      ? `<input type="number" min="0" value="${r.provided}" data-eng="${escAttr(r.eng)}" style="width:80px;border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:11px;outline:none;" />`
       : `<span>${r.provided}</span>`;
-    return `<tr><td>${r.eng}</td><td>${providedCell}</td><td>${r.todayInstalled}</td><td>${r.installed}</td><td style="color:${r.pending>0?'var(--sf-red)':'var(--sf-green)'};font-weight:600;">${r.pending}</td></tr>`;
+    const viewDisabled = r.installed > 0 ? "" : "disabled";
+    return `<tr><td>${escHtml(r.eng)}</td><td>${providedCell}</td><td>${r.todayInstalled}</td><td>${r.installed}</td><td style="color:${r.pending>0?'var(--sf-red)':'var(--sf-green)'};font-weight:600;">${r.pending}</td><td><button class="sf-icon-btn" ${viewDisabled} data-engineer="${escAttr(r.eng)}" onclick="openPcbInstallModal(this.dataset.engineer)" title="View PCB installation list"><i class="fa-solid fa-eye"></i></button></td></tr>`;
   }).join("");
-  if (rows.length > 0) tbody.innerHTML += `<tr class="sf-total-row"><td>Total</td><td>${totalProvided}</td><td>${totalTodayInstalled}</td><td>${totalInstalled}</td><td style="color:var(--sf-red);">${totalPending}</td></tr>`;
-  else tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--txt3);">No data</td></tr>`;
+  if (rows.length > 0) tbody.innerHTML += `<tr class="sf-total-row"><td>Total</td><td>${totalProvided}</td><td>${totalTodayInstalled}</td><td>${totalInstalled}</td><td style="color:var(--sf-red);">${totalPending}</td><td></td></tr>`;
+  else tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--txt3);">No data</td></tr>`;
   if (saveBtn) saveBtn.style.display = isAdmin ? "" : "none";
+}
+
+function openPcbInstallModal(engineerName) {
+  const detailMap = window.__pcbInstallDetailRows instanceof Map ? window.__pcbInstallDetailRows : new Map();
+  const rows = detailMap.get(String(engineerName || "").trim()) || [];
+  document.getElementById("pcbInstallModalTitle").textContent = `${engineerName} - PCB Installation List`;
+  document.getElementById("pcbInstallModalMeta").innerHTML = `<span class="sf-badge badge-green">Total Install: ${rows.length}</span>`;
+
+  const tbody = document.getElementById("pcbInstallModalBody");
+  tbody.innerHTML = rows.length
+    ? rows.map((item) => `
+        <tr>
+          <td>${escHtml(item.date || "-")}</td>
+          <td>${escHtml(item.roCode || "-")}</td>
+          <td>${escHtml(item.roName || "-")}</td>
+          <td>${escHtml(item.region || "-")}</td>
+          <td>${escHtml(item.phase || "-")}</td>
+          <td>${escHtml(item.purpose || "-")}</td>
+        </tr>
+      `).join("")
+    : '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--txt3);">No PCB installation records found for this engineer.</td></tr>';
+
+  document.getElementById("pcbInstallModal").classList.add("open");
+}
+
+function closePcbInstallModal() {
+  document.getElementById("pcbInstallModal").classList.remove("open");
 }
 
 async function savePcbProvidedCounts() {
