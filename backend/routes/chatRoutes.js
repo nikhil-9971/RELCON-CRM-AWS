@@ -51,12 +51,27 @@ router.post("/mark-read", async (req, res) => {
   const { from, to } = req.body; // mark messages in room where to is current user
   const roomId = [from, to].sort().join("__");
   try {
-    await Chat.updateMany({ roomId, to, read: false }, { read: true });
-    res.json({ success: true });
+    const result = await Chat.updateMany({ roomId, to, read: false }, { read: true });
+    res.json({ success: true, modifiedCount: result.modifiedCount || 0 });
   } catch (err) {
     res
       .status(500)
       .json({ error: "Failed to mark as read.", details: err.message });
+  }
+});
+
+router.get("/unread-count", authMiddleware, async (req, res) => {
+  try {
+    const currentUser = String(req.user?.engineerName || req.user?.username || "").trim();
+    if (!currentUser) return res.json({ count: 0 });
+    const count = await Chat.countDocuments({
+      to: currentUser,
+      roomId: { $ne: "group" },
+      read: false,
+    });
+    res.json({ count });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch unread count.", details: err.message });
   }
 });
 

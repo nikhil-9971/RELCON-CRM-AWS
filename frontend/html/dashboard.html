@@ -1312,7 +1312,10 @@ const currentUser=parseUser();
 const CHAT_READ_SYNC_KEY="relcon_chat_read_at";
 
 let unreadsMentionCount=0;
+let unreadDmCount=0;
 const badgeEl=document.getElementById("mentionBadge");
+const mobileBadgeEl=document.getElementById("mobileMentionBadge");
+const fabBadgeEl=document.getElementById("mentionBadgeChat");
 const chatBoxEl=document.getElementById("chatBox");
 const chatMessages=document.getElementById("chatMessages");
 const chatInput=document.getElementById("chatInput");
@@ -1326,7 +1329,7 @@ function buildWsUrl(){
 }
 function initWS(){
   ws=new WebSocket(buildWsUrl());
-  ws.onopen=()=>{loadGroupHistory();ws.send(JSON.stringify({type:"get_presence"}));};
+  ws.onopen=()=>{loadGroupHistory();refreshChatUnreadCount();ws.send(JSON.stringify({type:"get_presence"}));};
   ws.onmessage=(e)=>{
     const msg=JSON.parse(e.data);
     if(msg.type==="presence"&&Array.isArray(msg.users)){
@@ -1340,6 +1343,10 @@ function initWS(){
       clearTimeout(typingTimeout);typingTimeout=setTimeout(()=>{typingEl.textContent="";},2000);
     }
     if(msg.type==="group"&&msg.from!==currentUser) renderMessage(msg);
+    if(msg.type==="dm"&&msg.from!==currentUser){
+      unreadDmCount+=1;
+      updateMentionBadge();
+    }
     if(msg.type==="message_deleted"){
       const el=document.querySelector(`[data-message-id="${msg.messageId}"]`);
       if(el) el.remove();
@@ -1349,15 +1356,36 @@ function initWS(){
 }
 
 function updateMentionBadge(){
-  if(unreadsMentionCount>0){
-    badgeEl.textContent=unreadsMentionCount>99?"99+":unreadsMentionCount;
-    badgeEl.classList.add("show");
-  } else badgeEl.classList.remove("show");
+  const total=unreadsMentionCount+unreadDmCount;
+  const label=total>99?"99+":String(total);
+  [badgeEl,mobileBadgeEl,fabBadgeEl].forEach(el=>{
+    if(!el) return;
+    if(total>0){
+      el.textContent=label;
+      if(el.classList) el.classList.add("show");
+      el.style.display="flex";
+    }else{
+      if(el.classList) el.classList.remove("show");
+      el.style.display="none";
+    }
+  });
 }
 function clearMentionNotifications(){unreadsMentionCount=0;updateMentionBadge();}
 function openChatBox(){document.getElementById("chatBox").style.display="flex";clearMentionNotifications();setTimeout(scrolltoBottom,0);}
 chatInput.addEventListener("focus",()=>clearMentionNotifications());
-window.addEventListener("storage",(e)=>{if(e.key===CHAT_READ_SYNC_KEY) clearMentionNotifications();});
+async function refreshChatUnreadCount(){
+  if(!token) return;
+  try{
+    const res=await fetch(`${baseUrl}/chat/unread-count`,{headers:{Authorization:`Bearer ${token}`}});
+    if(!res.ok) return;
+    const data=await res.json();
+    unreadDmCount=Number(data.count||0)||0;
+    updateMentionBadge();
+  }catch(err){console.error("Failed to refresh chat unread count",err);}
+}
+window.addEventListener("storage",(e)=>{if(e.key===CHAT_READ_SYNC_KEY){clearMentionNotifications();refreshChatUnreadCount();}});
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible") refreshChatUnreadCount();});
+setInterval(refreshChatUnreadCount,30000);
 function scrolltoBottom(){try{chatMessages.scrollTop=chatMessages.scrollHeight;}catch{}}
 
 function sendMessage(){
