@@ -795,7 +795,8 @@
           </div>
           <div class="sf-field sf-form-grid-full">
             <label class="sf-label"><i class="fa-solid fa-list-check"></i> Purpose of Visit <span class="req">*</span></label>
-            <input id="purpose" type="text" class="sf-input" oninput="this.value = this.value.toUpperCase();" placeholder="Describe purpose..." />
+            <input id="purpose" type="text" class="sf-input" list="purposeSuggestions" autocomplete="off" oninput="handlePurposeInput()" placeholder="Describe or choose purpose..." />
+            <datalist id="purposeSuggestions"></datalist>
           </div>
         </div>
 
@@ -840,6 +841,24 @@
     const baseUrl = window.BACKEND_URL || "/api";
     const HPCL_START_QTR_DATE = "2026-04-01";
     const HPCL_END_QTR_DATE   = "2026-06-30";
+    const DEFAULT_PURPOSE_SUGGESTIONS = [
+      "PM VISIT",
+      "ISSUE VISIT",
+      "ISSUE & PM VISIT",
+      "ATG VISIT",
+      "ATG & PM VISIT",
+      "SURVEY",
+      "POWER ON",
+      "SAT",
+      "GSM MODULE INSTALLATION",
+      "POWER PROTECTION PCB INSTALLATION",
+      "REMOTELY AMC",
+      "HPCL OFFICE",
+      "NO PLAN",
+      "IN LEAVE",
+    ];
+    let remotePurposeSuggestions = [];
+    let purposeSuggestTimer;
 
     // Set date badge in header
     document.getElementById('currentDateBadge').textContent =
@@ -884,6 +903,50 @@
           ? '<span class="sf-spinner" style="border-color:rgba(255,255,255,.4);border-top-color:#fff;"></span><span class="mob-fab-label">Saving…</span>'
           : '<i class="fa-solid fa-floppy-disk"></i><span class="mob-fab-label">Save Record</span>';
       }
+    }
+
+    function normalizePurpose(value) {
+      return String(value || '').trim().toUpperCase().replace(/\s+/g, ' ');
+    }
+
+    function escapeOptionValue(value) {
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    function renderPurposeSuggestions() {
+      const list = document.getElementById('purposeSuggestions');
+      if (!list) return;
+      const suggestions = [...DEFAULT_PURPOSE_SUGGESTIONS, ...remotePurposeSuggestions]
+        .map(normalizePurpose)
+        .filter(Boolean);
+      const unique = [...new Set(suggestions)].slice(0, 80);
+      list.innerHTML = unique.map((item) => `<option value="${escapeOptionValue(item)}"></option>`).join('');
+    }
+
+    async function fetchPurposeSuggestions(query = '') {
+      try {
+        const params = new URLSearchParams();
+        const normalizedQuery = normalizePurpose(query);
+        if (normalizedQuery) params.set('q', normalizedQuery);
+        const res = await fetch(`${baseUrl}/purposeSuggestions?${params.toString()}`, { credentials: 'include' });
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        remotePurposeSuggestions = Array.isArray(data?.suggestions) ? data.suggestions : [];
+        renderPurposeSuggestions();
+      } catch {
+        renderPurposeSuggestions();
+      }
+    }
+
+    function handlePurposeInput() {
+      const input = document.getElementById('purpose');
+      input.value = input.value.toUpperCase();
+      clearTimeout(purposeSuggestTimer);
+      purposeSuggestTimer = setTimeout(() => fetchPurposeSuggestions(input.value), 250);
     }
 
     async function handleSubmit(event) {
@@ -1043,7 +1106,11 @@
       } catch { document.getElementById('empId').value = ''; }
     }
     document.getElementById('engineer').addEventListener('change', fetchEmpIdIfEngineerExists);
-    window.addEventListener('DOMContentLoaded', fetchEmpIdIfEngineerExists);
+    window.addEventListener('DOMContentLoaded', () => {
+      fetchEmpIdIfEngineerExists();
+      renderPurposeSuggestions();
+      fetchPurposeSuggestions();
+    });
 
     async function validateHPCLAMC(data) {
       const validHPCLPhases = ['HPCL/Phase-X','HPCL/Phase-IX','HPCL/Phase-XI','HPCL/Phase-XII','HPCL/Phase-XIII'];

@@ -35,6 +35,7 @@ const HPCL_AMC_PHASES = [
 const HPCL_AMC_VISIT_TYPES = ["PM Visit", "Issue & PM Visit", "ATG & PM Visit"];
 const DEFAULT_HPCL_AMC_START_DATE = "2026-04-01";
 const DEFAULT_HPCL_AMC_END_DATE = "2026-06-30";
+const EXCLUDED_PURPOSE_SUGGESTIONS = ["", "NO PLAN", "IN LEAVE"];
 
 function normalizeText(value = "") {
   return String(value || "").trim();
@@ -161,6 +162,48 @@ router.get("/validateHPCLAMC", async (req, res) => {
   } catch (error) {
     console.error("Error validating HPCL AMC:", error);
     res.status(500).json({ isValid: true });
+  }
+});
+
+router.get("/purposeSuggestions", async (req, res) => {
+  try {
+    const q = normalizeText(req.query.q).toUpperCase();
+    const regexEscape = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const match = {
+      purpose: { $nin: EXCLUDED_PURPOSE_SUGGESTIONS },
+    };
+
+    if (q) {
+      match.purpose = {
+        ...match.purpose,
+        $regex: regexEscape(q),
+        $options: "i",
+      };
+    }
+
+    const suggestions = await DailyPlan.aggregate([
+      { $match: match },
+      {
+        $project: {
+          purpose: {
+            $trim: {
+              input: { $toUpper: { $ifNull: ["$purpose", ""] } },
+            },
+          },
+          createdAt: 1,
+        },
+      },
+      { $match: { purpose: { $nin: EXCLUDED_PURPOSE_SUGGESTIONS } } },
+      { $group: { _id: "$purpose", lastUsedAt: { $max: "$createdAt" } } },
+      { $sort: { lastUsedAt: -1, _id: 1 } },
+      { $limit: 40 },
+      { $project: { _id: 0, purpose: "$_id" } },
+    ]);
+
+    res.json({ suggestions: suggestions.map((item) => item.purpose) });
+  } catch (error) {
+    console.error("Error fetching purpose suggestions:", error);
+    res.status(500).json({ suggestions: [] });
   }
 });
 
