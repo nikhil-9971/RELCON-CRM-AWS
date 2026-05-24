@@ -113,6 +113,33 @@ function setupWebsocket(server) {
         return;
       }
 
+      if (msg.type === "call_signal") {
+        const payload = {
+          type: "call_signal",
+          signalType: msg.signalType,
+          callId: msg.callId,
+          from: user,
+          to: msg.to,
+          mediaKind: msg.mediaKind,
+          sdp: msg.sdp,
+          candidate: msg.candidate,
+          reason: msg.reason,
+        };
+        const payloadStr = JSON.stringify(payload);
+
+        if (clients.has(user)) {
+          for (const s of clients.get(user)) {
+            if (s.readyState === WebSocket.OPEN) s.send(payloadStr);
+          }
+        }
+        if (msg.to && msg.to !== user && clients.has(msg.to)) {
+          for (const s of clients.get(msg.to)) {
+            if (s.readyState === WebSocket.OPEN) s.send(payloadStr);
+          }
+        }
+        return;
+      }
+
       // ✅ Handle message delete broadcast
       if (msg.type === "delete_message") {
         const payload = JSON.stringify({ type: "message_deleted", messageId: msg.messageId });
