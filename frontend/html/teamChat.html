@@ -166,6 +166,9 @@ body {
 .call-btn.danger{background:#ef4444;color:#fff;border-color:#ef4444;}
 .call-btn.accept{background:#16a34a;color:#fff;border-color:#16a34a;}
 .call-btn:disabled{opacity:.5;cursor:not-allowed;}
+.call-people{display:flex;gap:8px;flex-wrap:wrap;min-height:28px;}
+.call-chip{height:28px;border:1px solid var(--border);background:var(--surface2);border-radius:999px;padding:0 10px;display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:var(--txt2);}
+.call-chip::before{content:"";width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.14);}
 
 /* Search */
 .sb-search { padding: 10px 12px; flex-shrink: 0; }
@@ -1571,6 +1574,7 @@ body {
         <video id="localVideo" class="call-local" autoplay playsinline muted></video>
       </div>
       <div id="callStatus" class="call-status">Ready</div>
+      <div id="callParticipants" class="call-people"></div>
       <div class="call-controls" id="incomingCallControls" style="display:none;">
         <button class="call-btn accept" onclick="answerRelconCall()" title="Accept"><i class="fa-solid fa-phone"></i></button>
         <button class="call-btn danger" onclick="declineRelconCall()" title="Decline"><i class="fa-solid fa-phone-slash"></i></button>
@@ -1578,6 +1582,7 @@ body {
       <div class="call-controls" id="activeCallControls">
         <button class="call-btn" id="muteBtn" onclick="toggleCallMute()" title="Mute"><i class="fa-solid fa-microphone"></i></button>
         <button class="call-btn" id="cameraBtn" onclick="toggleCallCamera()" title="Camera"><i class="fa-solid fa-video"></i></button>
+        <button class="call-btn" id="screenBtn" onclick="toggleScreenShare()" title="Share screen"><i class="fa-solid fa-display"></i></button>
         <button class="call-btn danger" onclick="endRelconCall()" title="End call"><i class="fa-solid fa-phone-slash"></i></button>
       </div>
     </div>
@@ -1641,8 +1646,11 @@ let lastMsgFrom = null, lastMsgDate = null;
 let activeCall = null;
 let incomingCall = null;
 let callPeer = null;
+let groupCallPeers = new Map();
 let localCallStream = null;
+let screenShareStream = null;
 let pendingIceCandidates = [];
+let pendingIceByPeer = new Map();
 const CHAT_READ_SYNC_KEY = 'relcon_chat_read_at';
 
 const CHANNEL_META = {
@@ -2089,8 +2097,14 @@ function getCallTarget() {
   return currentChannel.replace('dm-', '').trim();
 }
 
-function callTitle(kind, peerName) {
-  return `${kind === 'audio' ? 'Audio Call' : 'Video Call'} - ${peerName}`;
+function getCallScope() {
+  if (currentChannel.startsWith('dm-')) return { mode: 'dm', peer: getCallTarget(), label: getCallTarget() };
+  return { mode: 'channel', channel: currentChannel, label: `#${currentChannel}` };
+}
+
+function callTitle(kind, label, mode = 'dm') {
+  const prefix = kind === 'audio' ? 'Audio Call' : 'Video Call';
+  return `${mode === 'channel' ? 'Team ' : ''}${prefix} - ${label}`;
 }
 
 function setCallStatus(text) {
@@ -2103,6 +2117,22 @@ function setCallControls(mode) {
   document.getElementById('activeCallControls').style.display = mode === 'active' ? 'flex' : 'none';
   const cameraBtn = document.getElementById('cameraBtn');
   if (cameraBtn) cameraBtn.disabled = activeCall?.mediaKind === 'audio';
+  const screenBtn = document.getElementById('screenBtn');
+  if (screenBtn) screenBtn.disabled = !activeCall || activeCall.mediaKind === 'audio';
+}
+
+function updateCallParticipants() {
+  const el = document.getElementById('callParticipants');
+  if (!el) return;
+  if (!activeCall && !incomingCall) { el.innerHTML = ''; return; }
+  const names = new Set([currentUser]);
+  if (activeCall?.peer) names.add(activeCall.peer);
+  if (incomingCall?.from) names.add(incomingCall.from);
+  groupCallPeers.forEach((_, name) => names.add(name));
+  el.innerHTML = Array.from(names)
+    .filter(Boolean)
+    .map((name) => `<span class="call-chip">${escHtml(name)}</span>`)
+    .join('');
 }
 
 function setCallVideos() {
@@ -2116,9 +2146,10 @@ function setCallVideos() {
   if (localVideo) localVideo.style.display = hasLocalVideo ? 'block' : 'none';
   if (remoteVideo) remoteVideo.style.display = hasRemoteVideo ? 'block' : 'none';
   if (avatar) {
-    avatar.textContent = (activeCall?.peer || incomingCall?.from || 'R').charAt(0).toUpperCase();
+    avatar.textContent = (activeCall?.peer || activeCall?.channel || incomingCall?.from || incomingCall?.channel || 'R').charAt(0).toUpperCase();
     avatar.style.display = hasRemoteVideo ? 'none' : 'flex';
   }
+  updateCallParticipants();
 }
 
 function openCallWindow({ title, icon = 'fa-solid fa-video', status = 'Ready', mode = 'active' }) {
@@ -2143,6 +2174,19 @@ function sendCallSignal(payload) {
   return true;
 }
 
+function rememberPendingCandidate(peerName, candidate) {
+  if (!pendingIceByPeer.has(peerName)) pendingIceByPeer.set(peerName, []);
+  pendingIceByPeer.get(peerName).push(candidate);
+}
+
+async function flushPendingCandidates(peerName, pc) {
+  const pending = pendingIceByPeer.get(peerName) || [];
+  for (const candidate of pending) {
+    await pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
+  }
+  pendingIceByPeer.delete(peerName);
+}
+
 function createPeerConnection(peerName, callId, mediaKind) {
   const pc = new RTCPeerConnection({
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
@@ -2162,18 +2206,37 @@ function createPeerConnection(peerName, callId, mediaKind) {
         activeCall.remoteStream.addTrack(track);
       }
     });
-    setCallStatus(`Connected with ${activeCall.peer}`);
+    setCallStatus(activeCall.mode === 'channel' ? `Team call active in #${activeCall.channel}` : `Connected with ${activeCall.peer}`);
     setCallVideos();
   };
 
   pc.onconnectionstatechange = () => {
-    if (pc.connectionState === 'connected') setCallStatus(`Connected with ${peerName}`);
+    if (pc.connectionState === 'connected') {
+      setCallStatus(activeCall?.mode === 'channel' ? `Team call active in #${activeCall.channel}` : `Connected with ${peerName}`);
+      updateCallParticipants();
+    }
     if (['failed', 'disconnected', 'closed'].includes(pc.connectionState)) {
       if (activeCall?.callId === callId) setCallStatus('Call disconnected');
     }
   };
 
   return pc;
+}
+
+function registerPeer(peerName, pc) {
+  groupCallPeers.set(peerName, pc);
+  callPeer = pc;
+  updateCallParticipants();
+}
+
+async function createOfferForPeer(peerName) {
+  if (!activeCall || !localCallStream || peerName === currentUser || groupCallPeers.has(peerName)) return;
+  const pc = createPeerConnection(peerName, activeCall.callId, activeCall.mediaKind);
+  localCallStream.getTracks().forEach((track) => pc.addTrack(track, localCallStream));
+  registerPeer(peerName, pc);
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  sendCallSignal({ signalType: 'offer', callId: activeCall.callId, to: peerName, mediaKind: activeCall.mediaKind, channel: activeCall.channel, sdp: offer });
 }
 
 async function getLocalCallStream(mediaKind) {
@@ -2187,11 +2250,7 @@ async function getLocalCallStream(mediaKind) {
 }
 
 async function startRelconCall(mediaKind = 'video') {
-  const peerName = getCallTarget();
-  if (!peerName) {
-    showToast('In-app calling is available inside a direct message.', 'info');
-    return;
-  }
+  const scope = getCallScope();
   if (activeCall || incomingCall) {
     showToast('A call is already active.', 'info');
     return;
@@ -2200,20 +2259,21 @@ async function startRelconCall(mediaKind = 'video') {
   const callId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
   try {
     localCallStream = await getLocalCallStream(mediaKind);
-    activeCall = { callId, peer: peerName, mediaKind, muted: false, cameraOff: mediaKind !== 'video', remoteStream: null };
-    callPeer = createPeerConnection(peerName, callId, mediaKind);
-    localCallStream.getTracks().forEach((track) => callPeer.addTrack(track, localCallStream));
+    activeCall = { callId, ...scope, mediaKind, muted: false, cameraOff: mediaKind !== 'video', remoteStream: null };
 
     openCallWindow({
-      title: callTitle(mediaKind, peerName),
+      title: callTitle(mediaKind, scope.label, scope.mode),
       icon: mediaKind === 'audio' ? 'fa-solid fa-phone' : 'fa-solid fa-video',
-      status: `Calling ${peerName}...`,
+      status: scope.mode === 'channel' ? `Starting team call in ${scope.label}...` : `Calling ${scope.peer}...`,
       mode: 'active',
     });
 
-    const offer = await callPeer.createOffer();
-    await callPeer.setLocalDescription(offer);
-    sendCallSignal({ signalType: 'offer', callId, to: peerName, mediaKind, sdp: offer });
+    if (scope.mode === 'channel') {
+      sendCallSignal({ signalType: 'team_invite', callId, channel: scope.channel, mediaKind });
+      showToast(`Team call started in ${scope.label}`, 'success');
+    } else {
+      await createOfferForPeer(scope.peer);
+    }
   } catch (err) {
     cleanupCall();
     showToast(err.message || 'Unable to start call', 'error');
@@ -2222,15 +2282,18 @@ async function startRelconCall(mediaKind = 'video') {
 
 function showIncomingCall(msg) {
   if (activeCall || incomingCall) {
-    sendCallSignal({ signalType: 'busy', callId: msg.callId, to: msg.from, mediaKind: msg.mediaKind });
+    sendCallSignal({ signalType: 'busy', callId: msg.callId, to: msg.from, mediaKind: msg.mediaKind, channel: msg.channel });
     return;
   }
   incomingCall = msg;
   pendingIceCandidates = [];
+  pendingIceByPeer.clear();
+  const isTeam = msg.signalType === 'team_invite' || Boolean(msg.channel);
+  const label = isTeam ? `#${msg.channel || currentChannel}` : msg.from;
   openCallWindow({
-    title: callTitle(msg.mediaKind, msg.from),
+    title: callTitle(msg.mediaKind, label, isTeam ? 'channel' : 'dm'),
     icon: msg.mediaKind === 'audio' ? 'fa-solid fa-phone' : 'fa-solid fa-video',
-    status: `${msg.from} is calling...`,
+    status: isTeam ? `${msg.from} started a team call in ${label}` : `${msg.from} is calling...`,
     mode: 'incoming',
   });
 }
@@ -2240,22 +2303,36 @@ async function answerRelconCall() {
   const msg = incomingCall;
   try {
     localCallStream = await getLocalCallStream(msg.mediaKind);
-    activeCall = { callId: msg.callId, peer: msg.from, mediaKind: msg.mediaKind, muted: false, cameraOff: msg.mediaKind !== 'video', remoteStream: null };
-    callPeer = createPeerConnection(msg.from, msg.callId, msg.mediaKind);
-    localCallStream.getTracks().forEach((track) => callPeer.addTrack(track, localCallStream));
+    const isTeam = msg.signalType === 'team_invite' || Boolean(msg.channel);
+    activeCall = {
+      callId: msg.callId,
+      mode: isTeam ? 'channel' : 'dm',
+      peer: isTeam ? null : msg.from,
+      channel: msg.channel,
+      mediaKind: msg.mediaKind,
+      muted: false,
+      cameraOff: msg.mediaKind !== 'video',
+      remoteStream: null,
+    };
     setCallControls('active');
-    setCallStatus(`Connecting with ${msg.from}...`);
+    setCallStatus(isTeam ? `Joining team call in #${msg.channel}...` : `Connecting with ${msg.from}...`);
     setCallVideos();
 
-    await callPeer.setRemoteDescription(new RTCSessionDescription(msg.sdp));
-    for (const candidate of pendingIceCandidates) {
-      await callPeer.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
+    if (isTeam) {
+      sendCallSignal({ signalType: 'join', callId: msg.callId, channel: msg.channel, mediaKind: msg.mediaKind });
+    } else {
+      callPeer = createPeerConnection(msg.from, msg.callId, msg.mediaKind);
+      localCallStream.getTracks().forEach((track) => callPeer.addTrack(track, localCallStream));
+      registerPeer(msg.from, callPeer);
+      await callPeer.setRemoteDescription(new RTCSessionDescription(msg.sdp));
+      for (const candidate of pendingIceCandidates) {
+        await callPeer.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
+      }
+      const answer = await callPeer.createAnswer();
+      await callPeer.setLocalDescription(answer);
+      sendCallSignal({ signalType: 'answer', callId: msg.callId, to: msg.from, mediaKind: msg.mediaKind, sdp: answer });
     }
     pendingIceCandidates = [];
-
-    const answer = await callPeer.createAnswer();
-    await callPeer.setLocalDescription(answer);
-    sendCallSignal({ signalType: 'answer', callId: msg.callId, to: msg.from, mediaKind: msg.mediaKind, sdp: answer });
     incomingCall = null;
   } catch (err) {
     cleanupCall();
@@ -2265,7 +2342,7 @@ async function answerRelconCall() {
 
 function declineRelconCall() {
   if (!incomingCall) return;
-  sendCallSignal({ signalType: 'decline', callId: incomingCall.callId, to: incomingCall.from, mediaKind: incomingCall.mediaKind });
+  sendCallSignal({ signalType: 'decline', callId: incomingCall.callId, to: incomingCall.from, channel: incomingCall.channel, mediaKind: incomingCall.mediaKind });
   incomingCall = null;
   cleanupCall();
 }
@@ -2284,48 +2361,129 @@ function toggleCallCamera() {
   document.getElementById('cameraBtn').classList.toggle('off', activeCall.cameraOff);
 }
 
+async function toggleScreenShare() {
+  if (!activeCall || activeCall.mediaKind === 'audio') return;
+  if (screenShareStream) {
+    stopScreenShare();
+    return;
+  }
+  if (!navigator.mediaDevices?.getDisplayMedia) {
+    showToast('Screen sharing is not supported in this browser.', 'error');
+    return;
+  }
+  try {
+    screenShareStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+    const screenTrack = screenShareStream.getVideoTracks()[0];
+    if (!screenTrack) throw new Error('No screen track selected');
+    replaceVideoTrackForAllPeers(screenTrack);
+    document.getElementById('screenBtn')?.classList.add('off');
+    setCallStatus('Screen sharing is active');
+    screenTrack.onended = stopScreenShare;
+  } catch (err) {
+    screenShareStream = null;
+    showToast(err.message || 'Unable to share screen', 'error');
+  }
+}
+
+function replaceVideoTrackForAllPeers(track) {
+  const peers = new Set(groupCallPeers.values());
+  if (callPeer) peers.add(callPeer);
+  peers.forEach((pc) => {
+    const sender = pc.getSenders().find((item) => item.track?.kind === 'video');
+    if (sender) sender.replaceTrack(track).catch(console.error);
+  });
+  const localVideo = document.getElementById('localVideo');
+  if (localVideo) localVideo.srcObject = screenShareStream || localCallStream;
+}
+
+function stopScreenShare() {
+  const cameraTrack = localCallStream?.getVideoTracks()[0] || null;
+  if (cameraTrack) replaceVideoTrackForAllPeers(cameraTrack);
+  screenShareStream?.getTracks().forEach((track) => track.stop());
+  screenShareStream = null;
+  document.getElementById('screenBtn')?.classList.remove('off');
+  setCallVideos();
+  if (activeCall) setCallStatus(activeCall.mode === 'channel' ? `Team call active in #${activeCall.channel}` : `Connected with ${activeCall.peer}`);
+}
+
 async function handleCallSignal(msg) {
   if (!msg || msg.from === currentUser) return;
-  if (msg.signalType === 'offer') {
+  if (msg.to && msg.to !== currentUser) return;
+  if (msg.signalType === 'team_invite') {
     showIncomingCall(msg);
     return;
   }
-  if (!activeCall || msg.callId !== activeCall.callId) {
-    if (msg.signalType === 'candidate') pendingIceCandidates.push(msg.candidate);
+  if (msg.signalType === 'join' && activeCall?.mode === 'channel' && msg.callId === activeCall.callId) {
+    await createOfferForPeer(msg.from);
     return;
   }
-  if (msg.signalType === 'answer' && callPeer) {
-    await callPeer.setRemoteDescription(new RTCSessionDescription(msg.sdp)).catch(console.error);
-    for (const candidate of pendingIceCandidates) {
-      await callPeer.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
+  if (msg.signalType === 'offer') {
+    if (!activeCall) {
+      showIncomingCall(msg);
+      return;
     }
-    pendingIceCandidates = [];
+    if (msg.callId === activeCall.callId && localCallStream) {
+      const pc = createPeerConnection(msg.from, msg.callId, msg.mediaKind);
+      localCallStream.getTracks().forEach((track) => pc.addTrack(track, localCallStream));
+      registerPeer(msg.from, pc);
+      await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp)).catch(console.error);
+      await flushPendingCandidates(msg.from, pc);
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      sendCallSignal({ signalType: 'answer', callId: msg.callId, to: msg.from, mediaKind: msg.mediaKind, channel: msg.channel, sdp: answer });
+    }
+    return;
+  }
+  if (!activeCall || msg.callId !== activeCall.callId) {
+    if (msg.signalType === 'candidate') rememberPendingCandidate(msg.from, msg.candidate);
+    return;
+  }
+  const peer = groupCallPeers.get(msg.from) || callPeer;
+  if (msg.signalType === 'answer' && peer) {
+    await peer.setRemoteDescription(new RTCSessionDescription(msg.sdp)).catch(console.error);
+    await flushPendingCandidates(msg.from, peer);
     setCallStatus(`Connecting with ${msg.from}...`);
   }
-  if (msg.signalType === 'candidate' && callPeer) {
-    if (callPeer.remoteDescription) {
-      await callPeer.addIceCandidate(new RTCIceCandidate(msg.candidate)).catch(() => {});
+  if (msg.signalType === 'candidate') {
+    if (peer?.remoteDescription) {
+      await peer.addIceCandidate(new RTCIceCandidate(msg.candidate)).catch(() => {});
     } else {
-      pendingIceCandidates.push(msg.candidate);
+      rememberPendingCandidate(msg.from, msg.candidate);
     }
   }
   if (msg.signalType === 'decline') {
+    if (activeCall?.mode === 'channel') {
+      showToast(`${msg.from} declined the team call`, 'info');
+      return;
+    }
     showToast(`${msg.from} declined the call`, 'info');
     cleanupCall();
   }
   if (msg.signalType === 'busy') {
+    if (activeCall?.mode === 'channel') {
+      showToast(`${msg.from} is busy`, 'info');
+      return;
+    }
     showToast(`${msg.from} is busy`, 'info');
     cleanupCall();
   }
   if (msg.signalType === 'end') {
-    showToast('Call ended', 'info');
-    cleanupCall();
+    if (activeCall?.mode === 'channel') {
+      groupCallPeers.get(msg.from)?.close();
+      groupCallPeers.delete(msg.from);
+      updateCallParticipants();
+      showToast(`${msg.from} left the team call`, 'info');
+    } else {
+      showToast('Call ended', 'info');
+      cleanupCall();
+    }
   }
 }
 
 function endRelconCall(notifyPeer = true) {
   if (notifyPeer && activeCall) {
-    sendCallSignal({ signalType: 'end', callId: activeCall.callId, to: activeCall.peer, mediaKind: activeCall.mediaKind });
+    if (activeCall.mode === 'channel') sendCallSignal({ signalType: 'end', callId: activeCall.callId, channel: activeCall.channel, mediaKind: activeCall.mediaKind });
+    else sendCallSignal({ signalType: 'end', callId: activeCall.callId, to: activeCall.peer, mediaKind: activeCall.mediaKind });
   }
   if (notifyPeer && incomingCall) {
     sendCallSignal({ signalType: 'decline', callId: incomingCall.callId, to: incomingCall.from, mediaKind: incomingCall.mediaKind });
@@ -2335,16 +2493,22 @@ function endRelconCall(notifyPeer = true) {
 
 function cleanupCall() {
   try { callPeer?.close(); } catch {}
+  groupCallPeers.forEach((pc) => { try { pc.close(); } catch {} });
+  groupCallPeers.clear();
   callPeer = null;
+  stopScreenShare();
   localCallStream?.getTracks().forEach((track) => track.stop());
   localCallStream = null;
   activeCall = null;
   incomingCall = null;
   pendingIceCandidates = [];
+  pendingIceByPeer.clear();
   document.getElementById('meetingOverlay').classList.remove('open');
   document.getElementById('muteBtn')?.classList.remove('off');
   document.getElementById('cameraBtn')?.classList.remove('off');
+  document.getElementById('screenBtn')?.classList.remove('off');
   if (document.getElementById('cameraBtn')) document.getElementById('cameraBtn').disabled = false;
+  if (document.getElementById('screenBtn')) document.getElementById('screenBtn').disabled = false;
   setCallVideos();
 }
 

@@ -120,12 +120,23 @@ function setupWebsocket(server) {
           callId: msg.callId,
           from: user,
           to: msg.to,
+          channel: msg.channel,
           mediaKind: msg.mediaKind,
           sdp: msg.sdp,
           candidate: msg.candidate,
           reason: msg.reason,
         };
         const payloadStr = JSON.stringify(payload);
+
+        if (msg.channel) {
+          for (const [username, conns] of clients.entries()) {
+            if (username === user && msg.signalType === "offer") continue;
+            for (const s of conns) {
+              if (s.readyState === WebSocket.OPEN) s.send(payloadStr);
+            }
+          }
+          return;
+        }
 
         if (clients.has(user)) {
           for (const s of clients.get(user)) {

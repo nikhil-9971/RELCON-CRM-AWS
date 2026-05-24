@@ -1539,15 +1539,17 @@ async function getGlobalLocalCallStream(mediaKind){
 }
 function showGlobalIncomingCall(msg){
   if(globalActiveCall||globalIncomingCall){
-    sendGlobalCallSignal({signalType:"busy",callId:msg.callId,to:msg.from,mediaKind:msg.mediaKind});
+    sendGlobalCallSignal({signalType:"busy",callId:msg.callId,to:msg.from,channel:msg.channel,mediaKind:msg.mediaKind});
     return;
   }
   globalIncomingCall=msg;
   globalPendingIceCandidates=[];
+  const isTeam=msg.signalType==="team_invite"||Boolean(msg.channel);
+  const label=isTeam?`#${msg.channel}`:msg.from;
   openGlobalCallWindow({
-    title:`Incoming ${callKindText(msg.mediaKind)} from ${msg.from}`,
+    title:isTeam?`Incoming team ${callKindText(msg.mediaKind)} in ${label}`:`Incoming ${callKindText(msg.mediaKind)} from ${msg.from}`,
     icon:msg.mediaKind==="audio"?"fa-solid fa-phone":"fa-solid fa-video",
-    status:`${msg.from} is calling...`,
+    status:isTeam?`${msg.from} started a team call`:`${msg.from} is calling...`,
     mode:"incoming",
   });
   startGlobalRingtone(msg.from);
@@ -1558,18 +1560,23 @@ async function answerGlobalRelconCall(){
   const msg=globalIncomingCall;
   try{
     globalLocalCallStream=await getGlobalLocalCallStream(msg.mediaKind);
-    globalActiveCall={callId:msg.callId,peer:msg.from,mediaKind:msg.mediaKind,muted:false,cameraOff:msg.mediaKind!=="video",remoteStream:null};
-    globalCallPeer=createGlobalPeerConnection(msg.from,msg.callId,msg.mediaKind);
-    globalLocalCallStream.getTracks().forEach(track=>globalCallPeer.addTrack(track,globalLocalCallStream));
+    const isTeam=msg.signalType==="team_invite"||Boolean(msg.channel);
+    globalActiveCall={callId:msg.callId,peer:isTeam?null:msg.from,channel:msg.channel,mode:isTeam?"channel":"dm",mediaKind:msg.mediaKind,muted:false,cameraOff:msg.mediaKind!=="video",remoteStream:null};
     setGlobalCallControls("active");
-    setGlobalCallStatus(`Connecting with ${msg.from}...`);
+    setGlobalCallStatus(isTeam?`Joining team call in #${msg.channel}...`:`Connecting with ${msg.from}...`);
     setGlobalCallVideos();
-    await globalCallPeer.setRemoteDescription(new RTCSessionDescription(msg.sdp));
-    for(const candidate of globalPendingIceCandidates){await globalCallPeer.addIceCandidate(new RTCIceCandidate(candidate)).catch(()=>{});}
+    if(isTeam){
+      sendGlobalCallSignal({signalType:"join",callId:msg.callId,channel:msg.channel,mediaKind:msg.mediaKind});
+    }else{
+      globalCallPeer=createGlobalPeerConnection(msg.from,msg.callId,msg.mediaKind);
+      globalLocalCallStream.getTracks().forEach(track=>globalCallPeer.addTrack(track,globalLocalCallStream));
+      await globalCallPeer.setRemoteDescription(new RTCSessionDescription(msg.sdp));
+      for(const candidate of globalPendingIceCandidates){await globalCallPeer.addIceCandidate(new RTCIceCandidate(candidate)).catch(()=>{});}
+      const answer=await globalCallPeer.createAnswer();
+      await globalCallPeer.setLocalDescription(answer);
+      sendGlobalCallSignal({signalType:"answer",callId:msg.callId,to:msg.from,mediaKind:msg.mediaKind,sdp:answer});
+    }
     globalPendingIceCandidates=[];
-    const answer=await globalCallPeer.createAnswer();
-    await globalCallPeer.setLocalDescription(answer);
-    sendGlobalCallSignal({signalType:"answer",callId:msg.callId,to:msg.from,mediaKind:msg.mediaKind,sdp:answer});
     globalIncomingCall=null;
   }catch(err){
     cleanupGlobalCall();
@@ -1578,7 +1585,7 @@ async function answerGlobalRelconCall(){
 }
 function declineGlobalRelconCall(){
   if(!globalIncomingCall) return;
-  sendGlobalCallSignal({signalType:"decline",callId:globalIncomingCall.callId,to:globalIncomingCall.from,mediaKind:globalIncomingCall.mediaKind});
+  sendGlobalCallSignal({signalType:"decline",callId:globalIncomingCall.callId,to:globalIncomingCall.from,channel:globalIncomingCall.channel,mediaKind:globalIncomingCall.mediaKind});
   cleanupGlobalCall();
 }
 function toggleGlobalCallMute(){
@@ -1595,6 +1602,19 @@ function toggleGlobalCallCamera(){
 }
 async function handleGlobalCallSignal(msg){
   if(!msg||msg.from===currentUser) return;
+  if(msg.to&&msg.to!==currentUser) return;
+  if(msg.signalType==="team_invite"){showGlobalIncomingCall(msg);return;}
+  if(msg.signalType==="offer"&&globalActiveCall&&msg.callId===globalActiveCall.callId&&globalLocalCallStream){
+    globalCallPeer=createGlobalPeerConnection(msg.from,msg.callId,msg.mediaKind);
+    globalLocalCallStream.getTracks().forEach(track=>globalCallPeer.addTrack(track,globalLocalCallStream));
+    await globalCallPeer.setRemoteDescription(new RTCSessionDescription(msg.sdp)).catch(console.error);
+    for(const candidate of globalPendingIceCandidates){await globalCallPeer.addIceCandidate(new RTCIceCandidate(candidate)).catch(()=>{});}
+    globalPendingIceCandidates=[];
+    const answer=await globalCallPeer.createAnswer();
+    await globalCallPeer.setLocalDescription(answer);
+    sendGlobalCallSignal({signalType:"answer",callId:msg.callId,to:msg.from,channel:msg.channel,mediaKind:msg.mediaKind,sdp:answer});
+    return;
+  }
   if(msg.signalType==="offer"){showGlobalIncomingCall(msg);return;}
   if(!globalActiveCall||msg.callId!==globalActiveCall.callId){
     if(msg.signalType==="candidate") globalPendingIceCandidates.push(msg.candidate);
@@ -1607,7 +1627,10 @@ async function handleGlobalCallSignal(msg){
   if(msg.signalType==="end"){showToast("Call ended","info");cleanupGlobalCall();}
 }
 function endGlobalRelconCall(){
-  if(globalActiveCall) sendGlobalCallSignal({signalType:"end",callId:globalActiveCall.callId,to:globalActiveCall.peer,mediaKind:globalActiveCall.mediaKind});
+  if(globalActiveCall){
+    if(globalActiveCall.mode==="channel") sendGlobalCallSignal({signalType:"end",callId:globalActiveCall.callId,channel:globalActiveCall.channel,mediaKind:globalActiveCall.mediaKind});
+    else sendGlobalCallSignal({signalType:"end",callId:globalActiveCall.callId,to:globalActiveCall.peer,mediaKind:globalActiveCall.mediaKind});
+  }
   if(globalIncomingCall) sendGlobalCallSignal({signalType:"decline",callId:globalIncomingCall.callId,to:globalIncomingCall.from,mediaKind:globalIncomingCall.mediaKind});
   cleanupGlobalCall();
 }
