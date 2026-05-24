@@ -568,6 +568,29 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
 .replyBtn{color:#059669;}.replyBtn:hover{background:#D1FAE5;}
 .deleteBtn{color:var(--danger);}.deleteBtn:hover{background:#FEE2E2;}
 
+/* ── GLOBAL CALL ALERT ── */
+#globalCallOverlay{position:fixed;inset:0;background:rgba(15,23,42,.72);z-index:10000;display:none;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(8px);}
+#globalCallOverlay.open{display:flex;}
+.global-call-window{width:min(560px,96vw);max-height:92vh;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-xl);display:flex;flex-direction:column;overflow:hidden;}
+.global-call-head{height:54px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 15px;border-bottom:1px solid var(--border);background:var(--surface2);}
+.global-call-title{display:flex;align-items:center;gap:9px;font-weight:800;color:var(--txt);min-width:0;}
+.global-call-title span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.global-call-body{padding:18px;display:flex;flex-direction:column;gap:12px;}
+.global-call-stage{position:relative;background:#020617;border-radius:12px;overflow:hidden;aspect-ratio:16/10;min-height:230px;border:1px solid rgba(148,163,184,.28);}
+.global-call-remote{width:100%;height:100%;object-fit:cover;background:#020617;display:block;}
+.global-call-local{position:absolute;right:12px;bottom:12px;width:132px;aspect-ratio:16/10;object-fit:cover;background:#111827;border:1px solid rgba(255,255,255,.22);border-radius:10px;box-shadow:0 16px 32px rgba(0,0,0,.35);}
+.global-call-avatar{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:46px;background:radial-gradient(circle at center,#334155,#020617 70%);}
+.global-call-status{font-size:13px;color:var(--txt2);font-weight:700;text-align:center;}
+.global-call-controls{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;}
+.global-call-btn{width:42px;height:42px;border:1px solid var(--border);border-radius:50%;background:var(--surface2);color:var(--txt);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;}
+.global-call-btn:hover{background:var(--brand-lt);color:var(--brand);}
+.global-call-btn.off{background:#fee2e2;color:#b91c1c;border-color:#fecaca;}
+.global-call-btn.danger{background:#ef4444;color:#fff;border-color:#ef4444;}
+.global-call-btn.accept{background:#16a34a;color:#fff;border-color:#16a34a;}
+.global-call-btn:disabled{opacity:.5;cursor:not-allowed;}
+.global-call-pulse{animation:callPulse 1.05s ease-in-out infinite;}
+@keyframes callPulse{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(22,163,74,.38);}50%{transform:scale(1.04);box-shadow:0 0 0 12px rgba(22,163,74,0);}}
+
 /* ── MENTION BOX ── */
 #mentionBox{position:fixed;z-index:9999;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-xl);max-height:170px;overflow-y:auto;min-width:200px;font-size:12.5px;display:none;}
 .mention-item{padding:8px 14px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:background .1s;}
@@ -958,6 +981,35 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
   <input type="file" id="chatFileInput" style="display:none;" onchange="handleChatFile(event)"/>
 </div>
 
+<div id="globalCallOverlay">
+  <div class="global-call-window">
+    <div class="global-call-head">
+      <div class="global-call-title">
+        <i class="fa-solid fa-phone global-call-pulse" id="globalCallIcon" style="color:#16a34a;"></i>
+        <span id="globalCallTitle">Incoming Call</span>
+      </div>
+      <button class="global-call-btn danger" onclick="endGlobalRelconCall()" title="Close"><i class="fa-solid fa-phone-slash"></i></button>
+    </div>
+    <div class="global-call-body">
+      <div class="global-call-stage">
+        <video id="globalRemoteVideo" class="global-call-remote" autoplay playsinline></video>
+        <div id="globalCallAvatar" class="global-call-avatar">R</div>
+        <video id="globalLocalVideo" class="global-call-local" autoplay playsinline muted></video>
+      </div>
+      <div id="globalCallStatus" class="global-call-status">Incoming call...</div>
+      <div class="global-call-controls" id="globalIncomingCallControls">
+        <button class="global-call-btn accept" onclick="answerGlobalRelconCall()" title="Accept"><i class="fa-solid fa-phone"></i></button>
+        <button class="global-call-btn danger" onclick="declineGlobalRelconCall()" title="Decline"><i class="fa-solid fa-phone-slash"></i></button>
+      </div>
+      <div class="global-call-controls" id="globalActiveCallControls" style="display:none;">
+        <button class="global-call-btn" id="globalMuteBtn" onclick="toggleGlobalCallMute()" title="Mute"><i class="fa-solid fa-microphone"></i></button>
+        <button class="global-call-btn" id="globalCameraBtn" onclick="toggleGlobalCallCamera()" title="Camera"><i class="fa-solid fa-video"></i></button>
+        <button class="global-call-btn danger" onclick="endGlobalRelconCall()" title="End call"><i class="fa-solid fa-phone-slash"></i></button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="toastContainer"></div>
 <div id="mentionBox"></div>
 
@@ -1322,6 +1374,15 @@ const chatInput=document.getElementById("chatInput");
 const sendBtn=document.getElementById("sendBtn");
 const typingEl=document.getElementById("typingIndicator");
 let typingTimeout,ws,lastUserMessageEl=null;
+let globalActiveCall=null;
+let globalIncomingCall=null;
+let globalCallPeer=null;
+let globalLocalCallStream=null;
+let globalPendingIceCandidates=[];
+let globalRingTimer=null;
+let globalAudioCtx=null;
+let globalTitleTimer=null;
+const originalDocumentTitle=document.title;
 
 function buildWsUrl(){
   const proto = location.protocol === "https:" ? "wss:" : "ws:";
@@ -1342,6 +1403,7 @@ function initWS(){
       typingEl.textContent=`${msg.from} is typing…`;
       clearTimeout(typingTimeout);typingTimeout=setTimeout(()=>{typingEl.textContent="";},2000);
     }
+    if(msg.type==="call_signal") handleGlobalCallSignal(msg);
     if(msg.type==="group"&&msg.from!==currentUser) renderMessage(msg);
     if(msg.type==="dm"&&msg.from!==currentUser){
       unreadDmCount+=1;
@@ -1369,6 +1431,200 @@ function updateMentionBadge(){
       el.style.display="none";
     }
   });
+}
+
+function callKindText(kind){return kind==="audio"?"audio call":"video call";}
+function setGlobalCallStatus(text){const el=document.getElementById("globalCallStatus");if(el) el.textContent=text;}
+function setGlobalCallControls(mode){
+  document.getElementById("globalIncomingCallControls").style.display=mode==="incoming"?"flex":"none";
+  document.getElementById("globalActiveCallControls").style.display=mode==="active"?"flex":"none";
+  const cameraBtn=document.getElementById("globalCameraBtn");
+  if(cameraBtn) cameraBtn.disabled=globalActiveCall?.mediaKind==="audio";
+}
+function setGlobalCallVideos(){
+  const localVideo=document.getElementById("globalLocalVideo");
+  const remoteVideo=document.getElementById("globalRemoteVideo");
+  const avatar=document.getElementById("globalCallAvatar");
+  const hasLocalVideo=Boolean(globalLocalCallStream?.getVideoTracks().length);
+  const hasRemoteVideo=Boolean(globalActiveCall?.remoteStream?.getVideoTracks().length);
+  if(localVideo){localVideo.srcObject=globalLocalCallStream||null;localVideo.style.display=hasLocalVideo?"block":"none";}
+  if(remoteVideo){remoteVideo.srcObject=globalActiveCall?.remoteStream||null;remoteVideo.style.display=hasRemoteVideo?"block":"none";}
+  if(avatar){
+    avatar.textContent=(globalActiveCall?.peer||globalIncomingCall?.from||"R").charAt(0).toUpperCase();
+    avatar.style.display=hasRemoteVideo?"none":"flex";
+  }
+}
+function openGlobalCallWindow({title,icon="fa-solid fa-phone",status="Incoming call...",mode="incoming"}){
+  document.getElementById("globalCallTitle").textContent=title;
+  document.getElementById("globalCallIcon").className=`${icon} global-call-pulse`;
+  document.getElementById("globalCallOverlay").classList.add("open");
+  setGlobalCallStatus(status);
+  setGlobalCallControls(mode);
+  setGlobalCallVideos();
+}
+function startGlobalRingtone(from){
+  stopGlobalRingtone(false);
+  let flip=false;
+  globalTitleTimer=setInterval(()=>{document.title=flip?`Incoming call from ${from}`:originalDocumentTitle;flip=!flip;},900);
+  if("Notification" in window&&Notification.permission==="granted"){
+    try{new Notification("RELCON incoming call",{body:`${from} is calling you`,tag:"relcon-call",renotify:true});}catch{}
+  }
+  globalRingTimer=setInterval(playGlobalRingTone,1150);
+  playGlobalRingTone();
+}
+function stopGlobalRingtone(resetTitle=true){
+  if(globalRingTimer) clearInterval(globalRingTimer);
+  if(globalTitleTimer) clearInterval(globalTitleTimer);
+  globalRingTimer=null;globalTitleTimer=null;
+  if(resetTitle) document.title=originalDocumentTitle;
+}
+function playGlobalRingTone(){
+  try{
+    globalAudioCtx=globalAudioCtx||new (window.AudioContext||window.webkitAudioContext)();
+    if(globalAudioCtx.state==="suspended") globalAudioCtx.resume();
+    const now=globalAudioCtx.currentTime;
+    [0,0.28].forEach((offset)=>{
+      const osc=globalAudioCtx.createOscillator();
+      const gain=globalAudioCtx.createGain();
+      osc.type="sine";
+      osc.frequency.setValueAtTime(880,now+offset);
+      gain.gain.setValueAtTime(0.0001,now+offset);
+      gain.gain.exponentialRampToValueAtTime(0.18,now+offset+0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001,now+offset+0.22);
+      osc.connect(gain).connect(globalAudioCtx.destination);
+      osc.start(now+offset);
+      osc.stop(now+offset+0.24);
+    });
+  }catch{}
+}
+function unlockGlobalCallAlerts(){
+  try{
+    globalAudioCtx=globalAudioCtx||new (window.AudioContext||window.webkitAudioContext)();
+    if(globalAudioCtx.state==="suspended") globalAudioCtx.resume();
+  }catch{}
+  if("Notification" in window&&Notification.permission==="default"){
+    Notification.requestPermission().catch(()=>{});
+  }
+}
+["click","keydown","touchstart"].forEach(evt=>window.addEventListener(evt,unlockGlobalCallAlerts,{once:true,passive:true}));
+
+function sendGlobalCallSignal(payload){
+  if(!ws||ws.readyState!==WebSocket.OPEN) return false;
+  ws.send(JSON.stringify({type:"call_signal",...payload}));
+  return true;
+}
+function createGlobalPeerConnection(peerName,callId,mediaKind){
+  const pc=new RTCPeerConnection({iceServers:[{urls:"stun:stun.l.google.com:19302"}]});
+  pc.onicecandidate=(event)=>{
+    if(event.candidate) sendGlobalCallSignal({signalType:"candidate",callId,to:peerName,mediaKind,candidate:event.candidate});
+  };
+  pc.ontrack=(event)=>{
+    if(!globalActiveCall) return;
+    if(!globalActiveCall.remoteStream) globalActiveCall.remoteStream=new MediaStream();
+    event.streams[0]?.getTracks().forEach(track=>{
+      if(!globalActiveCall.remoteStream.getTracks().some(t=>t.id===track.id)) globalActiveCall.remoteStream.addTrack(track);
+    });
+    setGlobalCallStatus(`Connected with ${globalActiveCall.peer}`);
+    setGlobalCallVideos();
+  };
+  pc.onconnectionstatechange=()=>{
+    if(pc.connectionState==="connected") setGlobalCallStatus(`Connected with ${peerName}`);
+    if(["failed","disconnected","closed"].includes(pc.connectionState)&&globalActiveCall?.callId===callId) setGlobalCallStatus("Call disconnected");
+  };
+  return pc;
+}
+async function getGlobalLocalCallStream(mediaKind){
+  if(!navigator.mediaDevices?.getUserMedia) throw new Error("Calling is not supported in this browser.");
+  return navigator.mediaDevices.getUserMedia({audio:true,video:mediaKind==="video"});
+}
+function showGlobalIncomingCall(msg){
+  if(globalActiveCall||globalIncomingCall){
+    sendGlobalCallSignal({signalType:"busy",callId:msg.callId,to:msg.from,mediaKind:msg.mediaKind});
+    return;
+  }
+  globalIncomingCall=msg;
+  globalPendingIceCandidates=[];
+  openGlobalCallWindow({
+    title:`Incoming ${callKindText(msg.mediaKind)} from ${msg.from}`,
+    icon:msg.mediaKind==="audio"?"fa-solid fa-phone":"fa-solid fa-video",
+    status:`${msg.from} is calling...`,
+    mode:"incoming",
+  });
+  startGlobalRingtone(msg.from);
+}
+async function answerGlobalRelconCall(){
+  if(!globalIncomingCall) return;
+  stopGlobalRingtone();
+  const msg=globalIncomingCall;
+  try{
+    globalLocalCallStream=await getGlobalLocalCallStream(msg.mediaKind);
+    globalActiveCall={callId:msg.callId,peer:msg.from,mediaKind:msg.mediaKind,muted:false,cameraOff:msg.mediaKind!=="video",remoteStream:null};
+    globalCallPeer=createGlobalPeerConnection(msg.from,msg.callId,msg.mediaKind);
+    globalLocalCallStream.getTracks().forEach(track=>globalCallPeer.addTrack(track,globalLocalCallStream));
+    setGlobalCallControls("active");
+    setGlobalCallStatus(`Connecting with ${msg.from}...`);
+    setGlobalCallVideos();
+    await globalCallPeer.setRemoteDescription(new RTCSessionDescription(msg.sdp));
+    for(const candidate of globalPendingIceCandidates){await globalCallPeer.addIceCandidate(new RTCIceCandidate(candidate)).catch(()=>{});}
+    globalPendingIceCandidates=[];
+    const answer=await globalCallPeer.createAnswer();
+    await globalCallPeer.setLocalDescription(answer);
+    sendGlobalCallSignal({signalType:"answer",callId:msg.callId,to:msg.from,mediaKind:msg.mediaKind,sdp:answer});
+    globalIncomingCall=null;
+  }catch(err){
+    cleanupGlobalCall();
+    showToast(err.message||"Unable to answer call","error");
+  }
+}
+function declineGlobalRelconCall(){
+  if(!globalIncomingCall) return;
+  sendGlobalCallSignal({signalType:"decline",callId:globalIncomingCall.callId,to:globalIncomingCall.from,mediaKind:globalIncomingCall.mediaKind});
+  cleanupGlobalCall();
+}
+function toggleGlobalCallMute(){
+  if(!globalLocalCallStream||!globalActiveCall) return;
+  globalActiveCall.muted=!globalActiveCall.muted;
+  globalLocalCallStream.getAudioTracks().forEach(track=>{track.enabled=!globalActiveCall.muted;});
+  document.getElementById("globalMuteBtn").classList.toggle("off",globalActiveCall.muted);
+}
+function toggleGlobalCallCamera(){
+  if(!globalLocalCallStream||!globalActiveCall||globalActiveCall.mediaKind!=="video") return;
+  globalActiveCall.cameraOff=!globalActiveCall.cameraOff;
+  globalLocalCallStream.getVideoTracks().forEach(track=>{track.enabled=!globalActiveCall.cameraOff;});
+  document.getElementById("globalCameraBtn").classList.toggle("off",globalActiveCall.cameraOff);
+}
+async function handleGlobalCallSignal(msg){
+  if(!msg||msg.from===currentUser) return;
+  if(msg.signalType==="offer"){showGlobalIncomingCall(msg);return;}
+  if(!globalActiveCall||msg.callId!==globalActiveCall.callId){
+    if(msg.signalType==="candidate") globalPendingIceCandidates.push(msg.candidate);
+    return;
+  }
+  if(msg.signalType==="candidate"&&globalCallPeer){
+    if(globalCallPeer.remoteDescription) await globalCallPeer.addIceCandidate(new RTCIceCandidate(msg.candidate)).catch(()=>{});
+    else globalPendingIceCandidates.push(msg.candidate);
+  }
+  if(msg.signalType==="end"){showToast("Call ended","info");cleanupGlobalCall();}
+}
+function endGlobalRelconCall(){
+  if(globalActiveCall) sendGlobalCallSignal({signalType:"end",callId:globalActiveCall.callId,to:globalActiveCall.peer,mediaKind:globalActiveCall.mediaKind});
+  if(globalIncomingCall) sendGlobalCallSignal({signalType:"decline",callId:globalIncomingCall.callId,to:globalIncomingCall.from,mediaKind:globalIncomingCall.mediaKind});
+  cleanupGlobalCall();
+}
+function cleanupGlobalCall(){
+  stopGlobalRingtone();
+  try{globalCallPeer?.close();}catch{}
+  globalCallPeer=null;
+  globalLocalCallStream?.getTracks().forEach(track=>track.stop());
+  globalLocalCallStream=null;
+  globalActiveCall=null;
+  globalIncomingCall=null;
+  globalPendingIceCandidates=[];
+  document.getElementById("globalCallOverlay").classList.remove("open");
+  document.getElementById("globalMuteBtn")?.classList.remove("off");
+  document.getElementById("globalCameraBtn")?.classList.remove("off");
+  if(document.getElementById("globalCameraBtn")) document.getElementById("globalCameraBtn").disabled=false;
+  setGlobalCallVideos();
 }
 function clearMentionNotifications(){unreadsMentionCount=0;updateMentionBadge();}
 function openChatBox(){document.getElementById("chatBox").style.display="flex";clearMentionNotifications();setTimeout(scrolltoBottom,0);}
