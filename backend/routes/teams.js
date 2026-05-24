@@ -72,7 +72,7 @@ router.get("/auth-url", authMiddleware, (req, res) => {
   const config = getMeetConfig();
   const missing = missingConfig(config);
   if (missing.length) {
-    return res.status(500).json({ error: "Google Meet configuration missing", missing });
+    return res.status(500).json({ error: "Meeting configuration missing", missing });
   }
 
   const relconUser = getRelconUser(req);
@@ -110,7 +110,7 @@ router.get("/callback", async (req, res) => {
     });
 
     res.send(`<!doctype html><html><body style="font-family:Arial,sans-serif;padding:28px;">
-      <h3>Google Meet connected</h3>
+      <h3>Meeting access connected</h3>
       <p>You can close this window and return to RELCON CRM.</p>
       <script>
         try { window.opener && window.opener.postMessage({ type: "relcon-meet-connected" }, "*"); } catch {}
@@ -119,8 +119,8 @@ router.get("/callback", async (req, res) => {
     </body></html>`);
   } catch (err) {
     res.status(400).send(`<!doctype html><html><body style="font-family:Arial,sans-serif;padding:28px;">
-      <h3>Google Meet connection failed</h3>
-      <p>${String(err.message || "Unable to connect Google Meet")}</p>
+      <h3>Meeting access failed</h3>
+      <p>${String(err.message || "Unable to connect meeting access")}</p>
     </body></html>`);
   }
 });
@@ -135,12 +135,12 @@ router.post("/create-meeting", authMiddleware, async (req, res) => {
     const relconUser = getRelconUser(req);
     const tokenData = await getValidToken(relconUser);
     if (!tokenData?.access_token) {
-      return res.status(401).json({ authRequired: true, message: "Google account not connected" });
+      return res.status(401).json({ authRequired: true, message: "Meeting access not connected" });
     }
 
     const startDate = new Date(Date.now() + 2 * 60 * 1000);
     const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
-    const subject = String(req.body?.subject || "RELCON CRM Google Meet").slice(0, 180);
+    const subject = String(req.body?.subject || "RELCON CRM Meeting").slice(0, 180);
     const requestId = `relcon-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
     const response = await axios.post(
@@ -174,7 +174,7 @@ router.post("/create-meeting", authMiddleware, async (req, res) => {
     });
   } catch (err) {
     const status = err.response?.status || 500;
-    const message = err.response?.data?.error?.message || err.message || "Failed to create Google Meet";
+    const message = err.response?.data?.error?.message || err.message || "Failed to create meeting";
     res.status(status).json({ error: message });
   }
 });

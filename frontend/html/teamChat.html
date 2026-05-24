@@ -1355,8 +1355,8 @@ body {
         <i class="fa-solid fa-users"></i>
         <span id="onlineCount">0 online</span>
       </button>
-      <button class="ch-btn-icon meeting-btn" onclick="openMeetMeetingModal('audio')" title="Share Google Meet audio call"><i class="fa-solid fa-phone"></i></button>
-      <button class="ch-btn-icon meeting-btn video" onclick="openMeetMeetingModal('video')" title="Share Google Meet video meeting"><i class="fa-solid fa-video"></i></button>
+      <button class="ch-btn-icon meeting-btn" onclick="openMeetMeetingModal('audio')" title="Start RELCON audio call"><i class="fa-solid fa-phone"></i></button>
+      <button class="ch-btn-icon meeting-btn video" onclick="openMeetMeetingModal('video')" title="Start RELCON video meeting"><i class="fa-solid fa-video"></i></button>
       <button class="ch-btn-icon" onclick="toggleSearch()" title="Search in channel"><i class="fa-solid fa-magnifying-glass"></i></button>
       <button class="ch-btn-icon" onclick="toggleNotifPanel()" title="Notifications" id="notifBtn" style="position:relative;">
         <i class="fa-solid fa-bell"></i>
@@ -1546,7 +1546,7 @@ body {
     <div class="meeting-head">
       <div class="meeting-title">
         <i class="fa-solid fa-video" id="meetingIcon" style="color:#0f9d58;"></i>
-        <span id="meetingTitle">Google Meet Meeting</span>
+        <span id="meetingTitle">RELCON Meeting</span>
       </div>
       <div class="meeting-actions">
         <button class="meeting-copy" onclick="closeMeeting()"><i class="fa-solid fa-xmark"></i> Close</button>
@@ -1554,17 +1554,14 @@ body {
     </div>
     <div class="meeting-body">
       <div class="meeting-note">
-        RELCON CRM Google Calendar se Google Meet link create karke current channel/DM me share kar sakta hai.
+        RELCON CRM current channel/DM ke liye secure meeting room create karke invite share karega.
       </div>
       <button class="meeting-primary" onclick="createMeetMeeting()">
-        <i class="fa-solid fa-calendar-plus"></i> Create Google Meet
+        <i class="fa-solid fa-video"></i> Start RELCON Meeting
       </button>
-      <button class="meeting-primary" onclick="openMeetApp()">
-        <i class="fa-solid fa-video"></i> Open Google Meet
-      </button>
-      <input id="meetMeetingLinkInput" class="meeting-link-input" placeholder="Paste Google Meet link here..." onkeydown="if(event.key==='Enter') shareMeetMeetingLink()" />
+      <input id="meetMeetingLinkInput" class="meeting-link-input" placeholder="Paste meeting link here..." onkeydown="if(event.key==='Enter') shareMeetMeetingLink()" />
       <button class="meeting-primary" onclick="shareMeetMeetingLink()">
-        <i class="fa-solid fa-paper-plane"></i> Share Meet Invite
+        <i class="fa-solid fa-paper-plane"></i> Share Meeting Invite
       </button>
     </div>
   </div>
@@ -1577,7 +1574,21 @@ body {
 /* ════════════════════════════════════════
    CONFIG & STATE
 ════════════════════════════════════════ */
-const token    = localStorage.getItem('token') || '';
+function getAuthToken() {
+  const urlToken = new URLSearchParams(window.location.search).get('token');
+  if (urlToken) localStorage.setItem('token', urlToken);
+  return localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+}
+
+function requireAuthToken() {
+  const freshToken = getAuthToken();
+  if (freshToken) return freshToken;
+  showToast('Session expired. Please login again.', 'error');
+  setTimeout(() => { window.location.href = 'login.html'; }, 900);
+  throw new Error('No login token found');
+}
+
+const token    = getAuthToken();
 const hostname = window.location.hostname;
 // Only treat as local when actually running on a local dev server — NOT when opened as file://
 const isLocal  = (hostname === 'localhost' || hostname === '127.0.0.1') && window.location.protocol !== 'file:';
@@ -2052,7 +2063,7 @@ function getMeetingContextLabel() {
 }
 
 function sendMeetingInvite(kind, meetingUrl) {
-  const label = kind === 'audio' ? 'Google Meet audio call' : 'Google Meet video meeting';
+  const label = kind === 'audio' ? 'RELCON audio call' : 'RELCON video meeting';
   const text = `${label} shared by ${currentUser} in ${getMeetingContextLabel()}\nJoin: ${meetingUrl}`;
   const payload = {
     type: currentChannel.startsWith('dm-') ? 'dm' : 'group',
@@ -2068,7 +2079,7 @@ function sendMeetingInvite(kind, meetingUrl) {
 
 function openMeetMeetingModal(kind = 'video') {
   activeMeetingKind = kind;
-  const title = `${kind === 'audio' ? 'Google Meet Audio Call' : 'Google Meet Video Meeting'} - ${getMeetingContextLabel()}`;
+  const title = `${kind === 'audio' ? 'RELCON Audio Call' : 'RELCON Video Meeting'} - ${getMeetingContextLabel()}`;
   document.getElementById('meetingTitle').textContent = title;
   document.getElementById('meetingIcon').className = kind === 'audio' ? 'fa-solid fa-phone' : 'fa-solid fa-video';
   document.getElementById('meetMeetingLinkInput').value = '';
@@ -2076,16 +2087,13 @@ function openMeetMeetingModal(kind = 'video') {
   setTimeout(() => document.getElementById('meetMeetingLinkInput')?.focus(), 50);
 }
 
-function openMeetApp() {
-  window.open('https://meet.google.com', '_blank', 'noopener,noreferrer');
-}
-
 async function connectMeetAccount() {
+  const authToken = requireAuthToken();
   const res = await fetch(`${BASE_URL}/meet/auth-url`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Authorization: `Bearer ${authToken}` },
   });
   const data = await res.json();
-  if (!res.ok || !data.url) throw new Error(data.error || 'Unable to start Google login');
+  if (!res.ok || !data.url) throw new Error(data.error || 'Unable to start meeting access');
   const popup = window.open(data.url, 'relconMeetAuth', 'width=620,height=720');
   if (!popup) throw new Error('Popup blocked. Allow popups and try again.');
   return new Promise((resolve) => {
@@ -2107,12 +2115,13 @@ async function connectMeetAccount() {
 
 async function createMeetMeeting() {
   try {
+    const authToken = requireAuthToken();
     const subject = `${activeMeetingKind === 'audio' ? 'Audio Call' : 'Video Meeting'} - ${getMeetingContextLabel()}`;
     const create = async () => fetch(`${BASE_URL}/meet/create-meeting`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${authToken}`,
       },
       body: JSON.stringify({ subject }),
     });
@@ -2120,19 +2129,19 @@ async function createMeetMeeting() {
     let res = await create();
     let data = await res.json();
     if (res.status === 401 && data?.authRequired) {
-      showToast('Connect Google account first', 'info');
+      showToast('Connect meeting access first', 'info');
       const connected = await connectMeetAccount();
       if (!connected) return;
       res = await create();
       data = await res.json();
     }
-    if (!res.ok || !data.joinUrl) throw new Error(data.error || data.message || 'Failed to create Google Meet');
+    if (!res.ok || !data.joinUrl) throw new Error(data.error || data.message || 'Failed to create meeting');
     sendMeetingInvite(activeMeetingKind, data.joinUrl);
     closeMeeting();
-    showToast('Google Meet created and shared', 'success');
+    showToast('RELCON meeting created and shared', 'success');
   } catch (err) {
-    console.error('Google Meet create error', err);
-    showToast(err.message || 'Failed to create Google Meet', 'error');
+    console.error('Meeting create error', err);
+    showToast(err.message || 'Failed to create meeting', 'error');
   }
 }
 
@@ -2144,18 +2153,18 @@ function shareMeetMeetingLink() {
   const input = document.getElementById('meetMeetingLinkInput');
   const meetingUrl = String(input?.value || '').trim();
   if (!meetingUrl) {
-    showToast('Paste Google Meet link first', 'error');
+    showToast('Paste meeting link first', 'error');
     input?.focus();
     return;
   }
   if (!/^https:\/\/meet\.google\.com\/|^https:\/\/g\.co\/meet\//i.test(meetingUrl)) {
-    showToast('Please paste a valid Google Meet link', 'error');
+    showToast('Please paste a valid meeting link', 'error');
     input?.focus();
     return;
   }
   sendMeetingInvite(activeMeetingKind, meetingUrl);
   closeMeeting();
-  showToast('Google Meet invite shared', 'success');
+  showToast('Meeting invite shared', 'success');
 }
 
 /* ════════════════════════════════════════
