@@ -1709,6 +1709,9 @@ let localCallStream = null;
 let screenShareStream = null;
 let pendingIceCandidates = [];
 let pendingIceByPeer = new Map();
+let callAudioCtx = null;
+let incomingRingTimer = null;
+let outgoingRingTimer = null;
 const CHAT_READ_SYNC_KEY = 'relcon_chat_read_at';
 
 const CHANNEL_META = {
@@ -2358,6 +2361,67 @@ function setCallControls(mode) {
   if (screenBtn) screenBtn.disabled = !activeCall || activeCall.mediaKind === 'audio';
 }
 
+function ensureCallAudio() {
+  try {
+    callAudioCtx = callAudioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (callAudioCtx.state === 'suspended') callAudioCtx.resume();
+    return callAudioCtx;
+  } catch {
+    return null;
+  }
+}
+
+function playCallTone(kind = 'incoming') {
+  const ctx = ensureCallAudio();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  const pattern = kind === 'outgoing' ? [0, 0.36] : [0, 0.28];
+  const frequency = kind === 'outgoing' ? 440 : 880;
+  pattern.forEach((offset) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(frequency, now + offset);
+    gain.gain.setValueAtTime(0.0001, now + offset);
+    gain.gain.exponentialRampToValueAtTime(kind === 'outgoing' ? 0.11 : 0.18, now + offset + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.22);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(now + offset);
+    osc.stop(now + offset + 0.24);
+  });
+}
+
+function startIncomingRingtone() {
+  stopIncomingRingtone();
+  playCallTone('incoming');
+  incomingRingTimer = setInterval(() => playCallTone('incoming'), 1150);
+}
+
+function stopIncomingRingtone() {
+  if (incomingRingTimer) clearInterval(incomingRingTimer);
+  incomingRingTimer = null;
+}
+
+function startOutgoingRingback() {
+  stopOutgoingRingback();
+  playCallTone('outgoing');
+  outgoingRingTimer = setInterval(() => playCallTone('outgoing'), 1800);
+}
+
+function stopOutgoingRingback() {
+  if (outgoingRingTimer) clearInterval(outgoingRingTimer);
+  outgoingRingTimer = null;
+}
+
+function stopCallSounds() {
+  stopIncomingRingtone();
+  stopOutgoingRingback();
+}
+
+['click', 'keydown', 'touchstart'].forEach((evt) => {
+  window.addEventListener(evt, ensureCallAudio, { once: true, passive: true });
+});
+
 function updateCallParticipants() {
   const el = document.getElementById('callParticipants');
   if (!el) return;
@@ -2448,6 +2512,7 @@ function createPeerConnection(peerName, callId, mediaKind) {
 
   pc.ontrack = (event) => {
     if (!activeCall) return;
+    stopOutgoingRingback();
     if (!activeCall.remoteStream) activeCall.remoteStream = new MediaStream();
     event.streams[0]?.getTracks().forEach((track) => {
       if (!activeCall.remoteStream.getTracks().some((t) => t.id === track.id)) {
@@ -2460,6 +2525,7 @@ function createPeerConnection(peerName, callId, mediaKind) {
 
   pc.onconnectionstatechange = () => {
     if (pc.connectionState === 'connected') {
+      stopOutgoingRingback();
       setCallStatus(activeCall?.mode === 'channel' ? `Team call active in #${activeCall.channel}` : `Connected with ${peerName}`);
       updateCallParticipants();
     }
@@ -2518,9 +2584,11 @@ async function startRelconCall(mediaKind = 'video') {
 
     if (scope.mode === 'channel') {
       sendCallSignal({ signalType: 'team_invite', callId, channel: scope.channel, mediaKind });
+      startOutgoingRingback();
       showToast(`Team call started in ${scope.label}`, 'success');
     } else {
       await createOfferForPeer(scope.peer);
+      startOutgoingRingback();
     }
   } catch (err) {
     cleanupCall();
@@ -2544,10 +2612,12 @@ function showIncomingCall(msg) {
     status: isTeam ? `${msg.from} started a team call in ${label}` : `${msg.from} is calling...`,
     mode: 'incoming',
   });
+  startIncomingRingtone();
 }
 
 async function answerRelconCall() {
   if (!incomingCall) return;
+  stopIncomingRingtone();
   const msg = incomingCall;
   try {
     localCallStream = await getLocalCallStream(msg.mediaKind);
@@ -2590,6 +2660,7 @@ async function answerRelconCall() {
 
 function declineRelconCall() {
   if (!incomingCall) return;
+  stopIncomingRingtone();
   sendCallSignal({ signalType: 'decline', callId: incomingCall.callId, to: incomingCall.from, channel: incomingCall.channel, mediaKind: incomingCall.mediaKind });
   incomingCall = null;
   cleanupCall();
@@ -2688,6 +2759,7 @@ async function handleCallSignal(msg) {
   }
   const peer = groupCallPeers.get(msg.from) || callPeer;
   if (msg.signalType === 'answer' && peer) {
+    stopOutgoingRingback();
     await peer.setRemoteDescription(new RTCSessionDescription(msg.sdp)).catch(console.error);
     await flushPendingCandidates(msg.from, peer);
     setCallStatus(`Connecting with ${msg.from}...`);
@@ -2700,6 +2772,7 @@ async function handleCallSignal(msg) {
     }
   }
   if (msg.signalType === 'decline') {
+    stopOutgoingRingback();
     if (activeCall?.mode === 'channel') {
       showToast(`${msg.from} declined the team call`, 'info');
       return;
@@ -2708,6 +2781,7 @@ async function handleCallSignal(msg) {
     cleanupCall();
   }
   if (msg.signalType === 'busy') {
+    stopOutgoingRingback();
     if (activeCall?.mode === 'channel') {
       showToast(`${msg.from} is busy`, 'info');
       return;
@@ -2744,6 +2818,7 @@ function cleanupCall() {
   groupCallPeers.forEach((pc) => { try { pc.close(); } catch {} });
   groupCallPeers.clear();
   callPeer = null;
+  stopCallSounds();
   stopScreenShare();
   localCallStream?.getTracks().forEach((track) => track.stop());
   localCallStream = null;
