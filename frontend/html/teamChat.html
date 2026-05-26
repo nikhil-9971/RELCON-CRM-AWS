@@ -141,7 +141,7 @@ body {
 .meeting-btn.video{color:#0f9d58!important;}
 .meeting-overlay{position:fixed;inset:0;background:rgba(15,23,42,.72);z-index:3000;display:none;align-items:center;justify-content:center;padding:18px;}
 .meeting-overlay.open{display:flex;}
-.meeting-window{width:min(1120px,98vw);height:min(780px,94vh);max-height:94vh;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-xl);display:flex;flex-direction:column;overflow:hidden;}
+.meeting-window{width:min(760px,96vw);height:min(560px,88vh);max-height:88vh;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-xl);display:flex;flex-direction:column;overflow:hidden;}
 .meeting-window.expanded{width:100vw;height:100vh;max-height:100vh;border-radius:0;border:0;}
 .meeting-head{height:52px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 14px;border-bottom:1px solid var(--border);background:var(--surface2);}
 .meeting-title{display:flex;align-items:center;gap:9px;min-width:0;font-weight:800;color:var(--txt);}
@@ -162,9 +162,9 @@ body {
 .meeting-primary:disabled{opacity:.65;cursor:not-allowed;}
 .meeting-copy{height:30px;border:1px solid var(--border);background:var(--surface);color:var(--txt2);border-radius:8px;padding:0 11px;font-family:var(--font);font-weight:700;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;}
 .meeting-copy:hover{background:var(--brand-lt);color:var(--brand);}
-.call-stage{position:relative;background:#020617;border-radius:12px;overflow:hidden;min-height:420px;flex:1;border:1px solid rgba(148,163,184,.28);}
+.call-stage{position:relative;background:#020617;border-radius:12px;overflow:hidden;min-height:300px;flex:1;border:1px solid rgba(148,163,184,.28);}
 .call-remote{width:100%;height:100%;object-fit:cover;background:#020617;display:block;}
-.call-local{position:absolute;right:16px;bottom:16px;width:clamp(150px,20%,260px);aspect-ratio:16/10;object-fit:cover;background:#111827;border:1px solid rgba(255,255,255,.22);border-radius:10px;box-shadow:0 16px 32px rgba(0,0,0,.35);}
+.call-local{position:absolute;right:12px;bottom:12px;width:clamp(126px,22%,180px);aspect-ratio:16/10;object-fit:cover;background:#111827;border:1px solid rgba(255,255,255,.22);border-radius:10px;box-shadow:0 16px 32px rgba(0,0,0,.35);}
 .call-avatar{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:46px;background:radial-gradient(circle at center,#334155,#020617 70%);}
 .call-status{font-size:13px;color:var(--txt2);font-weight:700;text-align:center;}
 .call-controls{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;}
@@ -182,7 +182,7 @@ body {
   .meeting-window{width:100%;height:96vh;border-radius:12px;}
   .meeting-window.expanded{height:100vh;border-radius:0;}
   .meeting-body{padding:12px;}
-  .call-stage{min-height:320px;}
+  .call-stage{min-height:280px;}
   .call-local{width:128px;right:10px;bottom:10px;}
   .meeting-form{grid-template-columns:1fr;}
 }
@@ -1734,6 +1734,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadChannelHistory(currentChannel);
   initWS();
   fetchUserList();
+  setTimeout(handleMeetingJoinLink, 700);
 
   // Textarea auto-resize
   const ta = document.getElementById('chatInput');
@@ -2195,6 +2196,83 @@ function saveInAppMeeting(meeting) {
   localStorage.setItem(key, JSON.stringify(list.slice(0, 100)));
 }
 
+function encodeMeetingPayload(meeting) {
+  return btoa(unescape(encodeURIComponent(JSON.stringify(meeting))));
+}
+
+function decodeMeetingPayload(value) {
+  return JSON.parse(decodeURIComponent(escape(atob(value))));
+}
+
+function buildMeetingJoinLink(meeting) {
+  const url = new URL(window.location.href);
+  url.searchParams.set('relconMeeting', encodeMeetingPayload(meeting));
+  url.searchParams.delete('token');
+  return url.toString();
+}
+
+function waitForChatSocket(timeoutMs = 6000) {
+  if (ws && ws.readyState === WebSocket.OPEN) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    const started = Date.now();
+    const timer = setInterval(() => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        clearInterval(timer);
+        resolve(true);
+      } else if (Date.now() - started > timeoutMs) {
+        clearInterval(timer);
+        resolve(false);
+      }
+    }, 200);
+  });
+}
+
+async function openMeetingChannel(meeting) {
+  const channel = meeting?.channel || 'general';
+  if (channel.startsWith('dm-')) {
+    const peer = meeting.createdBy === currentUser
+      ? (meeting.peer || channel.replace('dm-', ''))
+      : meeting.createdBy;
+    await startDM(peer);
+    return;
+  }
+  switchChannel(channel);
+}
+
+async function joinRelconMeeting(meeting) {
+  saveInAppMeeting(meeting);
+  await openMeetingChannel(meeting);
+  const ready = await waitForChatSocket();
+  if (!ready) {
+    showToast('Chat connection is reconnecting. Try joining again in a moment.', 'error');
+    return;
+  }
+  if (activeCall || incomingCall) {
+    showToast('A call is already active.', 'info');
+    return;
+  }
+  await startRelconCall(meeting.mediaKind || 'video');
+}
+
+async function handleMeetingJoinLink() {
+  const params = new URLSearchParams(window.location.search);
+  const encoded = params.get('relconMeeting');
+  if (!encoded) return;
+  try {
+    const meeting = decodeMeetingPayload(encoded);
+    const when = meeting.startDateTime
+      ? new Date(meeting.startDateTime).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+      : 'scheduled time';
+    const ok = confirm(`Join RELCON meeting?\n\n${meeting.subject || 'RELCON Meeting'}\n${when}`);
+    if (ok) await joinRelconMeeting(meeting);
+    params.delete('relconMeeting');
+    const cleanUrl = `${window.location.pathname}${params.toString() ? `?${params}` : ''}${window.location.hash}`;
+    window.history.replaceState({}, '', cleanUrl);
+  } catch (err) {
+    showToast('Meeting link is invalid or expired.', 'error');
+  }
+}
+
 async function scheduleRelconMeeting() {
   const btn = document.getElementById('scheduleMeetingSubmit');
   const subject = document.getElementById('scheduleMeetingTitle').value.trim() || `RELCON Meeting - ${getMeetingContextLabel()}`;
@@ -2219,13 +2297,16 @@ async function scheduleRelconMeeting() {
       subject,
       context: getMeetingContextLabel(),
       channel: currentChannel,
+      peer: currentChannel.startsWith('dm-') ? currentChannel.replace('dm-', '') : '',
       startDateTime: startDate.toISOString(),
       endDateTime: endDate.toISOString(),
       durationMinutes,
       notes,
       createdBy: currentUser,
       createdAt: new Date().toISOString(),
+      mediaKind: 'video',
     };
+    meeting.joinUrl = buildMeetingJoinLink(meeting);
     saveInAppMeeting(meeting);
     const when = startDate.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
     const message = [
@@ -2233,7 +2314,7 @@ async function scheduleRelconMeeting() {
       `When: ${when}`,
       `Duration: ${durationMinutes} minutes`,
       `Meeting ID: ${meeting.id}`,
-      `Start this meeting inside RELCON using the audio/video call buttons in this chat.`,
+      `Join link: ${meeting.joinUrl}`,
       notes ? `Notes: ${notes}` : '',
     ].filter(Boolean).join('\n');
     publishChatMessage(message);
