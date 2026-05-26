@@ -133,6 +133,7 @@ tbody tr:hover{background:#f0f8ff;}
     </div>
     <div class="hero-actions">
       <button class="btn btn-primary" onclick="openCreate()"><i class="fa-solid fa-user-plus"></i> Add User</button>
+      <button class="btn btn-neutral" onclick="openExternalInvite()"><i class="fa-brands fa-google"></i> Invite External</button>
       <button class="btn btn-neutral" onclick="loadUsers()"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
     </div>
   </section>
@@ -287,10 +288,50 @@ tbody tr:hover{background:#f0f8ff;}
   </div>
 </div>
 
+<div class="overlay" id="externalInviteModal">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-head">
+      <div class="modal-title"><i class="fa-brands fa-google" style="color:var(--sf-blue);"></i> Invite External User</div>
+      <button class="btn btn-neutral" onclick="closeModal('externalInviteModal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="grid">
+        <div class="field full">
+          <label>External Email</label>
+          <input id="extEmail" type="email" placeholder="person@example.com"/>
+        </div>
+        <div class="field">
+          <label>Display Name</label>
+          <input id="extName" placeholder="External user name"/>
+        </div>
+        <div class="field">
+          <label>Access Validity</label>
+          <select id="extAccessDays">
+            <option value="1">1 day</option>
+            <option value="7" selected>7 days</option>
+            <option value="15">15 days</option>
+            <option value="30">30 days</option>
+          </select>
+        </div>
+        <div class="field full">
+          <label>Generated Invite Link</label>
+          <input id="extInviteLink" readonly placeholder="Create invite to generate link"/>
+          <div class="muted">Share this link with the external user. They must verify with the same Google email. Access is limited to the external meeting join page only.</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-neutral" onclick="copyExternalInviteLink()"><i class="fa-solid fa-copy"></i> Copy Link</button>
+      <button class="btn btn-primary" id="externalInviteBtn" onclick="createExternalInvite()"><i class="fa-brands fa-google"></i> Create Google Invite</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
 const API = "/api/user-management/users";
+const EXTERNAL_INVITE_API = "/api/user-management/external-invites";
 let allUsers = [];
 let modalMode = "edit";
 let profilePhotoData = "";
@@ -437,9 +478,9 @@ function renderTable() {
       <td>${esc(u.email || "—")}</td>
       <td>${esc(u.contactNumber || "—")}</td>
       <td>${esc(u.engineerName)}</td>
-      <td><span class="badge ${String(u.role).toLowerCase()==="admin"?"badge-admin":"badge-user"}">${esc(String(u.role || "").toLowerCase()==="admin"?"admin":"engineer")}</span></td>
+      <td><span class="badge ${String(u.role).toLowerCase()==="admin"?"badge-admin":"badge-user"}">${esc(String(u.role || "").toLowerCase()==="admin"?"admin":(u.externalUser?"external":"engineer"))}</span></td>
       <td>${esc(u.empId || "—")}</td>
-      <td><div class="status-note">${esc(u.passwordNote || "Stored securely")}</div></td>
+      <td><div class="status-note">${esc(u.passwordNote || "Stored securely")}${u.externalUser ? `<br><span class="badge ${u.googleVerified ? "badge-user" : "badge-admin"}">${u.googleVerified ? "Google verified" : "Verification pending"}</span>` : ""}</div></td>
       <td>
         <div class="action-group">
           <button class="icon-btn edit" title="Edit" onclick="openEdit('${u._id}')"><i class="fa-solid fa-pen"></i></button>
@@ -502,6 +543,52 @@ function openCreate() {
   document.getElementById("passwordLabel").textContent = "Password";
   document.getElementById("passwordHelp").textContent = "A password is required when creating a new user.";
   openModal("editModal");
+}
+
+function openExternalInvite() {
+  document.getElementById("extEmail").value = "";
+  document.getElementById("extName").value = "";
+  document.getElementById("extAccessDays").value = "7";
+  document.getElementById("extInviteLink").value = "";
+  openModal("externalInviteModal");
+}
+
+async function createExternalInvite() {
+  const body = {
+    email: document.getElementById("extEmail").value.trim(),
+    engineerName: document.getElementById("extName").value.trim(),
+    accessDays: document.getElementById("extAccessDays").value,
+  };
+  if (!body.email) return toast("External email is required", "error");
+  const btn = document.getElementById("externalInviteBtn");
+  btn.disabled = true;
+  btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Creating`;
+  try {
+    const res = await fetch(EXTERNAL_INVITE_API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to create external invite");
+    document.getElementById("extInviteLink").value = data.inviteLink || "";
+    toast(data.message || "External invite created");
+    await loadUsers();
+  } catch (err) {
+    toast(err.message, "error");
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<i class="fa-brands fa-google"></i> Create Google Invite`;
+  }
+}
+
+function copyExternalInviteLink() {
+  const link = document.getElementById("extInviteLink").value.trim();
+  if (!link) return toast("Create an invite first", "error");
+  navigator.clipboard?.writeText(link).then(
+    () => toast("Invite link copied"),
+    () => toast("Copy failed. Select and copy the link manually.", "error")
+  );
 }
 
 function openEdit(id, focusPassword = false) {

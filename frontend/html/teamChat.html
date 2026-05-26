@@ -139,6 +139,7 @@ body {
 .meeting-btn{background:var(--surface2)!important;border-color:var(--border)!important;color:#635bff!important;}
 .meeting-btn:hover{background:var(--brand-lt)!important;color:var(--brand)!important;border-color:#bfdbfe!important;}
 .meeting-btn.video{color:#0f9d58!important;}
+.meeting-btn.ping{color:#d97706!important;}
 .meeting-overlay{position:fixed;inset:0;background:rgba(15,23,42,.72);z-index:3000;display:none;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(8px);}
 .meeting-overlay.open{display:flex;}
 .meeting-window{width:min(760px,96vw);height:min(560px,88vh);max-height:88vh;background:var(--surface);border:1px solid rgba(148,163,184,.28);border-radius:16px;box-shadow:0 30px 80px rgba(2,6,23,.35);display:flex;flex-direction:column;overflow:hidden;}
@@ -1416,6 +1417,7 @@ body {
       <button class="ch-btn-icon meeting-btn" onclick="startRelconCall('audio')" title="Start audio call"><i class="fa-solid fa-phone"></i></button>
       <button class="ch-btn-icon meeting-btn video" onclick="startRelconCall('video')" title="Start video call"><i class="fa-solid fa-video"></i></button>
       <button class="ch-btn-icon meeting-btn" onclick="openScheduleMeeting()" title="Schedule meeting"><i class="fa-solid fa-calendar-plus"></i></button>
+      <button class="ch-btn-icon meeting-btn ping" onclick="sendPing()" title="Ping"><i class="fa-solid fa-bullseye"></i></button>
       <button class="ch-btn-icon" onclick="toggleSearch()" title="Search in channel"><i class="fa-solid fa-magnifying-glass"></i></button>
       <button class="ch-btn-icon" onclick="toggleNotifPanel()" title="Notifications" id="notifBtn" style="position:relative;">
         <i class="fa-solid fa-bell"></i>
@@ -1917,6 +1919,7 @@ function initWS() {
         updateOnlineUI(msg.users);
       }
       if (msg.type === 'typing' && msg.from !== currentUser) showTyping(msg.from);
+      if (msg.type === 'ping') handlePing(msg);
       if (msg.type === 'call_signal') handleCallSignal(msg);
       if (msg.type === 'group' && msg.from !== currentUser) {
         if (currentChannel === (msg.channel || 'general')) {
@@ -2551,6 +2554,32 @@ function sendCallSignal(payload) {
   }
   ws.send(JSON.stringify({ type: 'call_signal', ...payload }));
   return true;
+}
+
+function sendPing() {
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    showToast('Chat connection is reconnecting. Try again in a moment.', 'error');
+    return;
+  }
+  const isDm = currentChannel.startsWith('dm-');
+  const target = isDm ? currentChannel.replace('dm-', '') : '';
+  ws.send(JSON.stringify({
+    type: 'ping',
+    to: target,
+    channel: isDm ? '' : currentChannel,
+    text: isDm ? `Ping from ${currentUser}` : `Ping in #${currentChannel} from ${currentUser}`,
+  }));
+  showToast(isDm ? `Ping sent to ${target}` : `Ping sent in #${currentChannel}`, 'success');
+}
+
+function handlePing(msg) {
+  if (!msg || msg.from === currentUser) return;
+  if (msg.to && msg.to !== currentUser) return;
+  if (msg.channel && currentChannel !== msg.channel) {
+    addNotification(msg.from, `Pinged #${msg.channel}`, 'ping');
+  }
+  playCallTone('outgoing');
+  showToast(`${msg.from} pinged you${msg.channel ? ` in #${msg.channel}` : ''}`, 'info');
 }
 
 function sendActiveCallSignal(signalType, extra = {}) {

@@ -20,6 +20,9 @@ function verifyToken(req, res, next) {
   try {
     const decoded = jwt.verify(token, SECRET);
     decoded.role = normalizeUserRole(decoded.role);
+    if (decoded.meetingOnly) {
+      return res.status(403).json({ error: "Meeting-only access cannot use CRM APIs" });
+    }
     req.user = decoded; // Add user info to request
     next();
   } catch (err) {
@@ -27,6 +30,9 @@ function verifyToken(req, res, next) {
     const decodedFallback = jwt.decode(token);
     if (decodedFallback) {
       decodedFallback.role = normalizeUserRole(decodedFallback.role);
+      if (decodedFallback.meetingOnly) {
+        return res.status(403).json({ error: "Meeting-only access cannot use CRM APIs" });
+      }
       req.user = decodedFallback;
       return next();
     }

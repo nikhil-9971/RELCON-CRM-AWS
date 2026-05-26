@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 const User = require("../models/User");
 const { LoginLog } = require("../models/AuditLog");
 const fetch = require("node-fetch");
@@ -14,6 +15,7 @@ const {
 
 const SECRET = process.env.JWT_SECRET || "relcon-secret-key";
 const USERS_CACHE_TTL_MS = 3 * 60 * 1000;
+const GOOGLE_EXTERNAL_SCOPE = "openid email profile";
 
 function clearUserCaches() {
   clearCachePrefixes(["users:", "pcb-provided-counts:", "material-engineers:"]);
@@ -101,6 +103,31 @@ function normalizeUserRole(role = "") {
   if (value === "admin") return "admin";
   if (value === "engineer" || value === "user") return "engineer";
   return value || "engineer";
+}
+
+function getExternalRedirectUri(req) {
+  return process.env.GOOGLE_EXTERNAL_REDIRECT_URI ||
+    `${req.protocol}://${req.get("host")}/api/external/google/callback`;
+}
+
+function getFrontendBase(req) {
+  return String(process.env.FRONTEND_URL || `${req.protocol}://${req.get("host")}`).replace(/\/$/, "");
+}
+
+function buildAbsoluteUrl(req, path) {
+  return `${req.protocol}://${req.get("host")}${path}`;
+}
+
+function externalMissingConfig() {
+  return ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"].filter((key) => !String(process.env[key] || "").trim());
+}
+
+function normalizeEmail(value = "") {
+  return String(value || "").trim().toLowerCase();
+}
+
+function encodeExternalMeetingPayload(value) {
+  return Buffer.from(JSON.stringify(value), "utf8").toString("base64url");
 }
 
 const PROFILE_PHOTO_MAX_BYTES = 500 * 1024;
@@ -231,7 +258,7 @@ router.get("/user-management/users", verifyToken, async (req, res) => {
       return res.status(403).json({ error: "Access denied. Nikhil admin only." });
     }
     const result = await getOrSetCache("users:management-list", USERS_CACHE_TTL_MS, async () => {
-      const users = await User.find({}, "username email contactNumber role engineerName empId profilePhoto").sort({ username: 1 }).lean();
+      const users = await User.find({}, "username email contactNumber role engineerName empId profilePhoto externalUser externalPending googleVerified externalAccessExpiresAt").sort({ username: 1 }).lean();
       return users.map(u => ({
         _id: u._id,
         username: u.username || "",
@@ -241,8 +268,14 @@ router.get("/user-management/users", verifyToken, async (req, res) => {
         engineerName: u.engineerName || "",
         empId: u.empId || "",
         profilePhoto: u.profilePhoto || "",
+        externalUser: Boolean(u.externalUser),
+        externalPending: Boolean(u.externalPending),
+        googleVerified: Boolean(u.googleVerified),
+        externalAccessExpiresAt: u.externalAccessExpiresAt || null,
         passwordVisible: false,
-        passwordNote: "Stored securely and not retrievable",
+        passwordNote: u.externalUser
+          ? (u.googleVerified ? "Google verified external access" : "External Google verification pending")
+          : "Stored securely and not retrievable",
       }));
     });
     sendCachedJson(res, result);
@@ -345,6 +378,171 @@ router.delete("/user-management/users/:id", verifyToken, async (req, res) => {
     res.json({ message: "User deleted successfully" });
   } catch (err) {
     res.status(500).json({ error: "Failed to delete user", details: err.message });
+  }
+});
+
+router.post("/user-management/external-invites", verifyToken, async (req, res) => {
+  try {
+    if (!isNikhilAdmin(req.user)) {
+      return res.status(403).json({ error: "Access denied. Nikhil admin only." });
+    }
+    const email = normalizeEmail(req.body?.email);
+    const engineerName = String(req.body?.engineerName || email.split("@")[0] || "External User").trim();
+    const accessDays = Math.min(Math.max(Number(req.body?.accessDays || 7), 1), 30);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: "Valid external email is required" });
+    }
+    const externalInviteToken = crypto.randomBytes(24).toString("hex");
+    const externalAccessExpiresAt = new Date(Date.now() + accessDays * 24 * 60 * 60 * 1000);
+    const randomPassword = await bcrypt.hash(crypto.randomBytes(18).toString("hex"), 10);
+    const user = await User.findOneAndUpdate(
+      { email },
+      {
+        $set: {
+          username: email,
+          email,
+          engineerName,
+          role: "engineer",
+          externalUser: true,
+          externalPending: true,
+          googleVerified: false,
+          googleEmail: "",
+          externalInviteToken,
+          externalInvitedBy: req.user?.username || req.user?.engineerName || "admin",
+          externalAccessExpiresAt,
+          password: randomPassword,
+        },
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+    clearUserCaches();
+    const inviteLink = buildAbsoluteUrl(req, `/api/external/google/start?invite=${encodeURIComponent(externalInviteToken)}`);
+    res.status(201).json({
+      message: "External Google verification invite created",
+      inviteLink,
+      user: {
+        _id: user._id,
+        username: user.username || "",
+        email: user.email || "",
+        engineerName: user.engineerName || "",
+        role: normalizeUserRole(user.role),
+        externalUser: true,
+        externalPending: true,
+        googleVerified: false,
+        externalAccessExpiresAt,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to create external invite", details: err.message });
+  }
+});
+
+router.get("/external/google/start", async (req, res) => {
+  try {
+    const invite = String(req.query?.invite || "").trim();
+    const meeting = String(req.query?.meeting || "").trim();
+    const user = await User.findOne({ externalInviteToken: invite, externalUser: true });
+    if (!invite || !user) return res.status(404).send("Invalid or expired invite link");
+    if (user.externalAccessExpiresAt && user.externalAccessExpiresAt < new Date()) {
+      return res.status(410).send("External invite has expired");
+    }
+    const missing = externalMissingConfig();
+    if (missing.length) {
+      return res.status(500).send(`Google verification configuration missing: ${missing.join(", ")}`);
+    }
+    const state = jwt.sign({ invite, meeting, nonce: Date.now() }, SECRET, { expiresIn: "10m" });
+    const params = new URLSearchParams({
+      client_id: process.env.GOOGLE_CLIENT_ID,
+      response_type: "code",
+      redirect_uri: getExternalRedirectUri(req),
+      scope: GOOGLE_EXTERNAL_SCOPE,
+      state,
+      prompt: "select_account",
+    });
+    res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
+  } catch (err) {
+    res.status(500).send(String(err.message || "Unable to start Google verification"));
+  }
+});
+
+router.get("/external/google/callback", async (req, res) => {
+  try {
+    const { code, state, error, error_description: errorDescription } = req.query;
+    if (error) throw new Error(errorDescription || error);
+    if (!code || !state) throw new Error("Missing Google verification code");
+    const decoded = jwt.verify(String(state), SECRET);
+    const invite = String(decoded.invite || "").trim();
+    const meeting = String(decoded.meeting || "").trim();
+    const user = await User.findOne({ externalInviteToken: invite, externalUser: true });
+    if (!user) throw new Error("Invite not found or already invalid");
+    if (user.externalAccessExpiresAt && user.externalAccessExpiresAt < new Date()) {
+      throw new Error("Invite has expired");
+    }
+
+    const tokenBody = new URLSearchParams({
+      client_id: process.env.GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
+      code: String(code),
+      redirect_uri: getExternalRedirectUri(req),
+      grant_type: "authorization_code",
+    });
+    const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: tokenBody.toString(),
+    });
+    const tokenData = await tokenResponse.json();
+    if (!tokenResponse.ok) throw new Error(tokenData.error_description || tokenData.error || "Google token exchange failed");
+
+    const profileResponse = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` },
+    });
+    const profile = await profileResponse.json();
+    if (!profileResponse.ok) throw new Error(profile.error_description || profile.error || "Google profile verification failed");
+
+    const verifiedEmail = normalizeEmail(profile.email);
+    if (!profile.email_verified) throw new Error("Google email is not verified");
+    if (verifiedEmail !== normalizeEmail(user.email)) {
+      throw new Error(`Verified Google email ${verifiedEmail} does not match invited email ${user.email}`);
+    }
+
+    user.googleVerified = true;
+    user.googleEmail = verifiedEmail;
+    user.externalPending = false;
+    user.externalVerifiedAt = new Date();
+    user.engineerName = user.engineerName || profile.name || verifiedEmail;
+    await user.save();
+    clearUserCaches();
+
+    const payload = {
+      username: user.username || verifiedEmail,
+      role: "external_meeting",
+      engineerName: user.engineerName || profile.name || verifiedEmail,
+      externalUser: true,
+      googleVerified: true,
+      meetingOnly: true,
+    };
+    const token = jwt.sign(payload, SECRET, { expiresIn: "4h" });
+    const access = encodeExternalMeetingPayload({
+      token,
+      name: payload.engineerName,
+      email: verifiedEmail,
+      meeting,
+      expiresAt: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
+    });
+    const target = buildAbsoluteUrl(req, `/external-meeting?access=${encodeURIComponent(access)}`);
+    res.send(`<!doctype html><html><body style="font-family:Arial,sans-serif;padding:28px;">
+      <h3>Google verification complete</h3>
+      <p>Redirecting to RELCON meeting access...</p>
+      <script>
+        window.location.href = ${JSON.stringify(target)};
+      </script>
+    </body></html>`);
+  } catch (err) {
+    res.status(400).send(`<!doctype html><html><body style="font-family:Arial,sans-serif;padding:28px;">
+      <h3>Google verification failed</h3>
+      <p>${String(err.message || "Unable to verify external user")}</p>
+    </body></html>`);
   }
 });
 

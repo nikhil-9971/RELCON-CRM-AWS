@@ -72,6 +72,7 @@ function setupWebsocket(server) {
 
     wss.handleUpgrade(request, socket, head, (ws) => {
       ws.user = username;
+      ws.meetingOnly = Boolean(payload.meetingOnly);
       wss.emit("connection", ws, request);
     });
   });
@@ -93,6 +94,10 @@ function setupWebsocket(server) {
 
       // Client asking for current presence explicitly
       if (msg.type === "get_presence") {
+        if (ws.meetingOnly) {
+          ws.send(JSON.stringify({ type: "presence", users: [{ name: user, engineerName: user, online: true }] }));
+          return;
+        }
         const users = Array.from(clients.keys()).map((name) => ({
           name,
           engineerName: name,
@@ -103,11 +108,45 @@ function setupWebsocket(server) {
       }
 
       if (msg.type === "typing") {
+        if (ws.meetingOnly) return;
         const payload = { type: "typing", from: user };
         for (const [username, conns] of clients.entries()) {
           if (username === user) continue;
           for (const s of conns) {
             if (s.readyState === WebSocket.OPEN) s.send(JSON.stringify(payload));
+          }
+        }
+        return;
+      }
+
+      if (msg.type === "ping") {
+        if (ws.meetingOnly) return;
+        const payload = {
+          type: "ping",
+          from: user,
+          to: msg.to,
+          channel: msg.channel,
+          text: String(msg.text || "Ping").slice(0, 160),
+          createdAt: new Date().toISOString(),
+        };
+        const payloadStr = JSON.stringify(payload);
+        if (msg.channel) {
+          for (const [username, conns] of clients.entries()) {
+            if (username === user) continue;
+            for (const s of conns) {
+              if (s.readyState === WebSocket.OPEN) s.send(payloadStr);
+            }
+          }
+          return;
+        }
+        if (msg.to && msg.to !== user && clients.has(msg.to)) {
+          for (const s of clients.get(msg.to)) {
+            if (s.readyState === WebSocket.OPEN) s.send(payloadStr);
+          }
+        }
+        if (clients.has(user)) {
+          for (const s of clients.get(user)) {
+            if (s.readyState === WebSocket.OPEN) s.send(payloadStr);
           }
         }
         return;
@@ -125,6 +164,8 @@ function setupWebsocket(server) {
           sdp: msg.sdp,
           candidate: msg.candidate,
           reason: msg.reason,
+          sharedBy: msg.sharedBy,
+          raised: msg.raised,
         };
         const payloadStr = JSON.stringify(payload);
 
@@ -153,6 +194,7 @@ function setupWebsocket(server) {
 
       // ✅ Handle message delete broadcast
       if (msg.type === "delete_message") {
+        if (ws.meetingOnly) return;
         const payload = JSON.stringify({ type: "message_deleted", messageId: msg.messageId });
         for (const conns of clients.values()) {
           for (const s of conns) {
@@ -164,6 +206,7 @@ function setupWebsocket(server) {
 
       // 📦 Handle group chat (channels)
       if (msg.type === "group") {
+        if (ws.meetingOnly) return;
         const channelName = msg.channel || "group";
         const messageDoc = await Chat.create({
           from: user,
@@ -195,6 +238,7 @@ function setupWebsocket(server) {
 
       // 📦 Handle Direct Message (DM)
       if (msg.type === "dm") {
+        if (ws.meetingOnly) return;
         const roomId = [user, msg.to].sort().join("__");
         const messageDoc = await Chat.create({
           from: user,
