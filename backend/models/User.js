@@ -7,6 +7,7 @@ const UserSchema = new mongoose.Schema({
   role: String,
   engineerName: String,
   empId: String,
+  isActive: { type: Boolean, default: true },
   profilePhoto: { type: String, default: "" },
   pcbProvidedCount: { type: Number, default: 0 },
   externalUser: { type: Boolean, default: false },

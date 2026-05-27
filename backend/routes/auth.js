@@ -29,6 +29,9 @@ router.post("/login", async (req, res) => {
   if (!user || !(await bcrypt.compare(password, user.password))) {
     return res.status(401).json({ error: "Invalid credentials" });
   }
+  if (user.isActive === false) {
+    return res.status(403).json({ error: "Your account is inactive. Please contact the admin." });
+  }
 
   const normalizedRole = normalizeUserRole(user.role);
   const payload = {
@@ -158,6 +161,7 @@ async function createExternalInviteForEmail(req, { email, engineerName, accessDa
         externalInvitedBy: req.user?.username || req.user?.engineerName || "admin",
         externalAccessExpiresAt,
         password: randomPassword,
+        isActive: true,
       },
     },
     { upsert: true, new: true, setDefaultsOnInsert: true }
@@ -298,7 +302,7 @@ router.get("/user-management/users", verifyToken, async (req, res) => {
       return res.status(403).json({ error: "Access denied. Nikhil admin only." });
     }
     const result = await getOrSetCache("users:management-list", USERS_CACHE_TTL_MS, async () => {
-      const users = await User.find({}, "username email contactNumber role engineerName empId profilePhoto externalUser externalPending googleVerified externalAccessExpiresAt").sort({ username: 1 }).lean();
+      const users = await User.find({}, "username email contactNumber role engineerName empId isActive profilePhoto externalUser externalPending googleVerified externalAccessExpiresAt").sort({ username: 1 }).lean();
       return users.map(u => ({
         _id: u._id,
         username: u.username || "",
@@ -307,6 +311,7 @@ router.get("/user-management/users", verifyToken, async (req, res) => {
         role: normalizeUserRole(u.role),
         engineerName: u.engineerName || "",
         empId: u.empId || "",
+        isActive: u.isActive !== false,
         profilePhoto: u.profilePhoto || "",
         externalUser: Boolean(u.externalUser),
         externalPending: Boolean(u.externalPending),
@@ -329,7 +334,7 @@ router.post("/user-management/users", verifyToken, async (req, res) => {
     if (!isNikhilAdmin(req.user)) {
       return res.status(403).json({ error: "Access denied. Nikhil admin only." });
     }
-    const { username, email, contactNumber, engineerName, role, empId, password, profilePhoto } = req.body;
+    const { username, email, contactNumber, engineerName, role, empId, password, profilePhoto, isActive } = req.body;
     if (!username || !engineerName || !password) {
       return res.status(400).json({ error: "Username, engineer name, and password are required" });
     }
@@ -345,6 +350,7 @@ router.post("/user-management/users", verifyToken, async (req, res) => {
       engineerName: String(engineerName).trim(),
       role: normalizeUserRole(role),
       empId: String(empId || "").trim(),
+      isActive: isActive !== false,
       profilePhoto: parseProfilePhoto(profilePhoto),
       password: hashedPassword,
     });
@@ -359,6 +365,7 @@ router.post("/user-management/users", verifyToken, async (req, res) => {
         role: normalizeUserRole(created.role),
         engineerName: created.engineerName || "",
         empId: created.empId || "",
+        isActive: created.isActive !== false,
         profilePhoto: created.profilePhoto || "",
         passwordVisible: false,
         passwordNote: "Stored securely and not retrievable",
@@ -374,7 +381,7 @@ router.put("/user-management/users/:id", verifyToken, async (req, res) => {
     if (!isNikhilAdmin(req.user)) {
       return res.status(403).json({ error: "Access denied. Nikhil admin only." });
     }
-    const { username, email, contactNumber, engineerName, role, empId, password, profilePhoto } = req.body;
+    const { username, email, contactNumber, engineerName, role, empId, password, profilePhoto, isActive } = req.body;
     const updates = {};
     if (username !== undefined) updates.username = String(username).trim();
     if (email !== undefined) updates.email = String(email).trim();
@@ -382,9 +389,16 @@ router.put("/user-management/users/:id", verifyToken, async (req, res) => {
     if (engineerName !== undefined) updates.engineerName = String(engineerName).trim();
     if (role !== undefined) updates.role = normalizeUserRole(role);
     if (empId !== undefined) updates.empId = String(empId).trim();
+    if (isActive !== undefined) updates.isActive = Boolean(isActive);
     if (profilePhoto !== undefined) updates.profilePhoto = parseProfilePhoto(profilePhoto);
     if (password) updates.password = await bcrypt.hash(password, 10);
-    const updated = await User.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true, select: "username email contactNumber role engineerName empId profilePhoto" });
+    if (updates.isActive === false) {
+      const target = await User.findById(req.params.id, "username").lean();
+      if (target && String(target.username || "").toLowerCase() === String(req.user?.username || "").toLowerCase()) {
+        return res.status(400).json({ error: "You cannot deactivate your own admin account" });
+      }
+    }
+    const updated = await User.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true, select: "username email contactNumber role engineerName empId isActive profilePhoto" });
     if (!updated) return res.status(404).json({ error: "User not found" });
     clearUserCaches();
     res.json({
@@ -397,6 +411,7 @@ router.put("/user-management/users/:id", verifyToken, async (req, res) => {
         role: normalizeUserRole(updated.role),
         engineerName: updated.engineerName || "",
         empId: updated.empId || "",
+        isActive: updated.isActive !== false,
         profilePhoto: updated.profilePhoto || "",
         passwordVisible: false,
         passwordNote: password ? "Password updated successfully" : "Stored securely and not retrievable",
@@ -476,6 +491,7 @@ router.get("/external/google/start", async (req, res) => {
     const meeting = String(req.query?.meeting || "").trim();
     const user = await User.findOne({ externalInviteToken: invite, externalUser: true });
     if (!invite || !user) return res.status(404).send("Invalid or expired invite link");
+    if (user.isActive === false) return res.status(403).send("External account is inactive");
     if (user.externalAccessExpiresAt && user.externalAccessExpiresAt < new Date()) {
       return res.status(410).send("External invite has expired");
     }
@@ -508,6 +524,7 @@ router.get("/external/google/callback", async (req, res) => {
     const meeting = String(decoded.meeting || "").trim();
     const user = await User.findOne({ externalInviteToken: invite, externalUser: true });
     if (!user) throw new Error("Invite not found or already invalid");
+    if (user.isActive === false) throw new Error("External account is inactive");
     if (user.externalAccessExpiresAt && user.externalAccessExpiresAt < new Date()) {
       throw new Error("Invite has expired");
     }

@@ -2,6 +2,7 @@ const WebSocket = require("ws");
 const url = require("url");
 const jwt = require("jsonwebtoken");
 const Chat = require("./models/Chat");
+const User = require("./models/User");
 
 const JWT_SECRET = process.env.JWT_SECRET || "relcon-secret-key";
 const DM_RETENTION_DAYS = 15;
@@ -28,6 +29,19 @@ function verifyToken(token) {
   }
 }
 
+async function isActiveSocketUser(payload) {
+  const username = String(payload?.username || "").trim();
+  const email = String(payload?.email || "").trim();
+  const engineerName = String(payload?.engineerName || payload?.name || "").trim();
+  const queries = [];
+  if (username) queries.push({ username });
+  if (email) queries.push({ email });
+  if (engineerName) queries.push({ engineerName });
+  if (!queries.length) return true;
+  const user = await User.findOne({ $or: queries }, "isActive").lean();
+  return !user || user.isActive !== false;
+}
+
 function broadcastPresence() {
   // Build list of currently online users
   const users = Array.from(clients.keys()).map((name) => ({
@@ -50,7 +64,7 @@ function broadcastPresence() {
 function setupWebsocket(server) {
   const wss = new WebSocket.Server({ noServer: true });
 
-  server.on("upgrade", (request, socket, head) => {
+  server.on("upgrade", async (request, socket, head) => {
     const parsed = url.parse(request.url, true);
    // ✅ Only allow /ws
     if (!parsed.pathname.startsWith("/ws")) {
@@ -59,7 +73,13 @@ function setupWebsocket(server) {
     } 
     const token = parsed.query.token;
     const payload = verifyToken(token);
-    if (!payload) {
+    let active = false;
+    try {
+      active = Boolean(payload) && await isActiveSocketUser(payload);
+    } catch {
+      active = false;
+    }
+    if (!active) {
       socket.destroy();
       return;
     }

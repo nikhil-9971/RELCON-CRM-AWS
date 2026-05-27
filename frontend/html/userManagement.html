@@ -63,15 +63,19 @@ thead th{position:sticky;top:0;background:var(--sf-navy);color:#e8f4fd;font-size
 thead th:last-child{border-right:none;}
 tbody td{padding:11px 12px;border-bottom:1px solid var(--border-lt);color:var(--txt2);white-space:nowrap;vertical-align:middle;line-height:1.4;}
 tbody tr:hover{background:#f0f8ff;}
-.badge{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;line-height:1;}
-.badge-admin{background:var(--sf-blue-lt);color:var(--sf-blue);}
-.badge-user{background:var(--sf-green-lt);color:var(--sf-green);}
-.status-note{font-size:var(--fs-xs);color:var(--txt3);line-height:1.45;}
-.action-group{display:flex;gap:4px;}
-.icon-btn{width:30px;height:30px;border:none;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;}
-.icon-btn.edit{background:var(--sf-blue-lt);color:var(--sf-blue);}
-.icon-btn.reset{background:var(--sf-yellow-lt);color:var(--sf-yellow);}
-.icon-btn.delete{background:var(--sf-red-lt);color:var(--sf-red);}
+	.badge{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;line-height:1;}
+	.badge-admin{background:var(--sf-blue-lt);color:var(--sf-blue);}
+	.badge-user{background:var(--sf-green-lt);color:var(--sf-green);}
+	.badge-active{background:var(--sf-green-lt);color:var(--sf-green);}
+	.badge-inactive{background:var(--sf-red-lt);color:var(--sf-red);}
+	.status-note{font-size:var(--fs-xs);color:var(--txt3);line-height:1.45;}
+	.action-group{display:flex;gap:4px;}
+	.icon-btn{width:30px;height:30px;border:none;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;}
+	.icon-btn.edit{background:var(--sf-blue-lt);color:var(--sf-blue);}
+	.icon-btn.reset{background:var(--sf-yellow-lt);color:var(--sf-yellow);}
+	.icon-btn.status{background:var(--sf-green-lt);color:var(--sf-green);}
+	.icon-btn.status.off{background:var(--sf-red-lt);color:var(--sf-red);}
+	.icon-btn.delete{background:var(--sf-red-lt);color:var(--sf-red);}
 .empty{padding:40px 20px;text-align:center;color:var(--txt4);font-size:var(--fs-sm);}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:100;padding:16px;}
 .overlay.open{display:flex;}
@@ -154,12 +158,17 @@ tbody tr:hover{background:#f0f8ff;}
       <div class="kpi-label">Engineers</div>
       <div class="kpi-sub">Field or standard user accounts</div>
     </div>
-    <div class="kpi yellow">
-      <div class="kpi-num" id="kpiAdmins">0</div>
-      <div class="kpi-label">Admins</div>
-      <div class="kpi-sub">Administrative accounts</div>
-    </div>
-  </section>
+	    <div class="kpi yellow">
+	      <div class="kpi-num" id="kpiAdmins">0</div>
+	      <div class="kpi-label">Admins</div>
+	      <div class="kpi-sub">Administrative accounts</div>
+	    </div>
+	    <div class="kpi">
+	      <div class="kpi-num" id="kpiInactive">0</div>
+	      <div class="kpi-label">Inactive</div>
+	      <div class="kpi-sub">Blocked from login and meeting access</div>
+	    </div>
+	  </section>
 
   <section class="toolbar">
     <div class="fg">
@@ -169,14 +178,22 @@ tbody tr:hover{background:#f0f8ff;}
         <input class="input" id="searchInput" placeholder="Search username, engineer name, email, employee ID..." oninput="renderTable()"/>
       </div>
     </div>
-    <div class="fg">
-      <label class="fl">Role</label>
-      <select class="select" id="roleFilter" onchange="renderTable()">
+	    <div class="fg">
+	      <label class="fl">Role</label>
+	      <select class="select" id="roleFilter" onchange="renderTable()">
         <option value="">All Roles</option>
         <option value="admin">Admin</option>
         <option value="engineer">Engineer</option>
-      </select>
-    </div>
+	      </select>
+	    </div>
+	    <div class="fg">
+	      <label class="fl">Status</label>
+	      <select class="select" id="statusFilter" onchange="renderTable()">
+	        <option value="">All Status</option>
+	        <option value="active">Active</option>
+	        <option value="inactive">Inactive</option>
+	      </select>
+	    </div>
     <button class="btn btn-neutral" onclick="clearFilters()"><i class="fa-solid fa-rotate-left"></i> Clear</button>
     <div class="spacer"></div>
     <button class="btn btn-neutral" onclick="exportUsersExcel()"><i class="fa-solid fa-file-excel" style="color:var(--sf-green);"></i> Export Excel</button>
@@ -197,14 +214,15 @@ tbody tr:hover{background:#f0f8ff;}
             <th>Email</th>
             <th>Contact</th>
             <th>Engineer Name</th>
-            <th>Role</th>
-            <th>Employee ID</th>
+	            <th>Role</th>
+	            <th>Status</th>
+	            <th>Employee ID</th>
             <th>Password Status</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody id="tableBody">
-          <tr><td colspan="9" class="empty">Loading users...</td></tr>
+	          <tr><td colspan="10" class="empty">Loading users...</td></tr>
         </tbody>
       </table>
     </div>
@@ -243,11 +261,18 @@ tbody tr:hover{background:#f0f8ff;}
             <option value="engineer">engineer</option>
           </select>
         </div>
-        <div class="field">
-          <label>Employee ID</label>
-          <input id="fEmpId"/>
-        </div>
-        <div class="photo-panel">
+	        <div class="field">
+	          <label>Employee ID</label>
+	          <input id="fEmpId"/>
+	        </div>
+	        <div class="field">
+	          <label>Account Status</label>
+	          <select id="fIsActive">
+	            <option value="true">Active</option>
+	            <option value="false">Inactive</option>
+	          </select>
+	        </div>
+	        <div class="photo-panel">
           <div class="photo-preview" id="photoPreview"></div>
           <div class="photo-meta">
             <div class="photo-title">Profile Photo</div>
@@ -423,12 +448,13 @@ function closeModal(id) { document.getElementById(id).classList.remove("open"); 
 function clearFilters() {
   document.getElementById("searchInput").value = "";
   document.getElementById("roleFilter").value = "";
+  document.getElementById("statusFilter").value = "";
   renderTable();
 }
 
 async function loadUsers() {
   if (!isAllowed()) {
-    document.getElementById("tableBody").innerHTML = `<tr><td colspan="9" class="empty">Access denied. This page is available only to admin user nikhil.trivedi.</td></tr>`;
+    document.getElementById("tableBody").innerHTML = `<tr><td colspan="10" class="empty">Access denied. This page is available only to admin user nikhil.trivedi.</td></tr>`;
     return;
   }
   try {
@@ -439,7 +465,7 @@ async function loadUsers() {
     updateKpis();
     renderTable();
   } catch (err) {
-    document.getElementById("tableBody").innerHTML = `<tr><td colspan="8" class="empty">${esc(err.message)}</td></tr>`;
+    document.getElementById("tableBody").innerHTML = `<tr><td colspan="10" class="empty">${esc(err.message)}</td></tr>`;
     toast(err.message, "error");
   }
 }
@@ -448,18 +474,23 @@ function updateKpis() {
   const total = allUsers.length;
   const admins = allUsers.filter(u => String(u.role || "").toLowerCase() === "admin").length;
   const engineers = allUsers.filter(u => String(u.role || "").toLowerCase() === "engineer").length;
+  const inactive = allUsers.filter(u => u.isActive === false).length;
   document.getElementById("kpiTotal").textContent = total;
   document.getElementById("kpiAdmins").textContent = admins;
   document.getElementById("kpiEngineers").textContent = engineers;
+  document.getElementById("kpiInactive").textContent = inactive;
 }
 
 function filteredUsers() {
   const q = document.getElementById("searchInput").value.trim().toLowerCase();
   const role = document.getElementById("roleFilter").value.trim().toLowerCase();
+  const status = document.getElementById("statusFilter").value.trim().toLowerCase();
   return allUsers.filter(u => {
-    const matchesQ = !q || [u.username, u.email, u.contactNumber, u.engineerName, u.empId, u.role].some(v => String(v || "").toLowerCase().includes(q));
+    const active = u.isActive !== false;
+    const matchesQ = !q || [u.username, u.email, u.contactNumber, u.engineerName, u.empId, u.role, active ? "active" : "inactive"].some(v => String(v || "").toLowerCase().includes(q));
     const matchesRole = !role || String(u.role || "").toLowerCase() === role;
-    return matchesQ && matchesRole;
+    const matchesStatus = !status || (status === "active" ? active : !active);
+    return matchesQ && matchesRole && matchesStatus;
   });
 }
 
@@ -468,7 +499,7 @@ function renderTable() {
   document.getElementById("recordCount").textContent = `${rows.length} user${rows.length === 1 ? "" : "s"}`;
   const tbody = document.getElementById("tableBody");
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="9" class="empty">No users found.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="empty">No users found.</td></tr>`;
     return;
   }
   tbody.innerHTML = rows.map((u, i) => `
@@ -477,15 +508,17 @@ function renderTable() {
       <td><div style="display:flex;align-items:center;gap:10px;"><div style="width:34px;height:34px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#e8f4fd;color:#0176d3;font-weight:800;border:1px solid #cfe3f8;">${u.profilePhoto ? `<img src="${u.profilePhoto}" alt="avatar" style="width:100%;height:100%;object-fit:cover;display:block;"/>` : esc(initialsForUser(u))}</div><strong>${esc(u.username)}</strong></div></td>
       <td>${esc(u.email || "—")}</td>
       <td>${esc(u.contactNumber || "—")}</td>
-      <td>${esc(u.engineerName)}</td>
-      <td><span class="badge ${String(u.role).toLowerCase()==="admin"?"badge-admin":"badge-user"}">${esc(String(u.role || "").toLowerCase()==="admin"?"admin":(u.externalUser?"external":"engineer"))}</span></td>
-      <td>${esc(u.empId || "—")}</td>
+	      <td>${esc(u.engineerName)}</td>
+	      <td><span class="badge ${String(u.role).toLowerCase()==="admin"?"badge-admin":"badge-user"}">${esc(String(u.role || "").toLowerCase()==="admin"?"admin":(u.externalUser?"external":"engineer"))}</span></td>
+	      <td><span class="badge ${u.isActive === false ? "badge-inactive" : "badge-active"}"><i class="fa-solid ${u.isActive === false ? "fa-circle-pause" : "fa-circle-check"}"></i>${u.isActive === false ? "Inactive" : "Active"}</span></td>
+	      <td>${esc(u.empId || "—")}</td>
       <td><div class="status-note">${esc(u.passwordNote || "Stored securely")}${u.externalUser ? `<br><span class="badge ${u.googleVerified ? "badge-user" : "badge-admin"}">${u.googleVerified ? "Google verified" : "Verification pending"}</span>` : ""}</div></td>
       <td>
         <div class="action-group">
-          <button class="icon-btn edit" title="Edit" onclick="openEdit('${u._id}')"><i class="fa-solid fa-pen"></i></button>
-          <button class="icon-btn reset" title="Reset Password" onclick="openEdit('${u._id}', true)"><i class="fa-solid fa-key"></i></button>
-          <button class="icon-btn delete" title="Delete" onclick="confirmDelete('${u._id}','${esc(u.username)}')"><i class="fa-solid fa-trash"></i></button>
+	          <button class="icon-btn edit" title="Edit" onclick="openEdit('${u._id}')"><i class="fa-solid fa-pen"></i></button>
+	          <button class="icon-btn reset" title="Reset Password" onclick="openEdit('${u._id}', true)"><i class="fa-solid fa-key"></i></button>
+	          <button class="icon-btn status ${u.isActive === false ? "" : "off"}" title="${u.isActive === false ? "Activate" : "Deactivate"}" onclick="confirmToggleStatus('${u._id}','${esc(u.username)}',${u.isActive === false})"><i class="fa-solid ${u.isActive === false ? "fa-user-check" : "fa-user-slash"}"></i></button>
+	          <button class="icon-btn delete" title="Delete" onclick="confirmDelete('${u._id}','${esc(u.username)}')"><i class="fa-solid fa-trash"></i></button>
         </div>
       </td>
     </tr>
@@ -503,9 +536,10 @@ function exportUsersExcel() {
     "Username": u.username || "",
     "Email": u.email || "",
     "Contact Number": u.contactNumber || "",
-    "Engineer Name": u.engineerName || "",
-    "Role": String(u.role || "").toLowerCase() === "admin" ? "admin" : "engineer",
-    "Employee ID": u.empId || "",
+	    "Engineer Name": u.engineerName || "",
+	    "Role": String(u.role || "").toLowerCase() === "admin" ? "admin" : "engineer",
+	    "Status": u.isActive === false ? "Inactive" : "Active",
+	    "Employee ID": u.empId || "",
     "Password Status": u.passwordNote || "Stored securely and not retrievable",
     "Exported At": exportedAt,
   }));
@@ -517,8 +551,9 @@ function exportUsersExcel() {
     { wch: 30 },
     { wch: 18 },
     { wch: 28 },
-    { wch: 12 },
-    { wch: 16 },
+	    { wch: 12 },
+	    { wch: 12 },
+	    { wch: 16 },
     { wch: 36 },
     { wch: 24 },
   ];
@@ -538,6 +573,7 @@ function openCreate() {
   document.getElementById("fEngineerName").value = "";
   document.getElementById("fRole").value = "engineer";
   document.getElementById("fEmpId").value = "";
+  document.getElementById("fIsActive").value = "true";
   document.getElementById("fPassword").value = "";
   resetProfilePhoto({});
   document.getElementById("passwordLabel").textContent = "Password";
@@ -603,6 +639,7 @@ function openEdit(id, focusPassword = false) {
   document.getElementById("fEngineerName").value = user.engineerName || "";
   document.getElementById("fRole").value = String(user.role || "engineer").toLowerCase() === "admin" ? "admin" : "engineer";
   document.getElementById("fEmpId").value = user.empId || "";
+  document.getElementById("fIsActive").value = user.isActive === false ? "false" : "true";
   document.getElementById("fPassword").value = "";
   resetProfilePhoto(user);
   document.getElementById("passwordLabel").textContent = "Set New Password";
@@ -620,6 +657,7 @@ async function saveUser() {
     engineerName: document.getElementById("fEngineerName").value.trim(),
     role: document.getElementById("fRole").value.trim(),
     empId: document.getElementById("fEmpId").value.trim(),
+    isActive: document.getElementById("fIsActive").value === "true",
     profilePhoto: profilePhotoData,
   };
   const password = document.getElementById("fPassword").value;
@@ -656,6 +694,32 @@ function confirmDelete(id, username) {
   document.getElementById("confirmText").textContent = `Delete user "${username}"? This action cannot be undone.`;
   document.getElementById("confirmBtn").onclick = () => deleteUser(id);
   openModal("confirmModal");
+}
+
+function confirmToggleStatus(id, username, currentlyInactive) {
+  const nextLabel = currentlyInactive ? "activate" : "deactivate";
+  document.getElementById("confirmText").textContent = `Do you want to ${nextLabel} user "${username}"? ${currentlyInactive ? "They will be able to login again." : "They will be blocked from login and external meeting access."}`;
+  document.getElementById("confirmBtn").onclick = () => updateUserStatus(id, currentlyInactive);
+  openModal("confirmModal");
+}
+
+async function updateUserStatus(id, currentlyInactive) {
+  closeModal("confirmModal");
+  const user = allUsers.find(u => u._id === id);
+  if (!user) return toast("User not found", "error");
+  try {
+    const res = await fetch(`${API}/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
+      body: JSON.stringify({ isActive: currentlyInactive }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to update user status");
+    toast(currentlyInactive ? "User activated" : "User deactivated");
+    await loadUsers();
+  } catch (err) {
+    toast(err.message, "error");
+  }
 }
 
 async function deleteUser(id) {
