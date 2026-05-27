@@ -55,6 +55,7 @@ if (
 axios.defaults.timeout = 30000;
 
 const DEFAULT_OUTGOING_MAIL_DISPLAY_NAME = "Nikhil Trivedi";
+const ACTIVE_USER_QUERY = { isActive: { $ne: false } };
 
 function createSmtpTransport({ host, port, user, pass }) {
   return nodemailer.createTransport({
@@ -268,6 +269,39 @@ function extractEmailAddress(value = "") {
   const match = raw.match(/<([^>]+)>/);
   return normalizeEmail(match ? match[1] : raw);
 }
+
+async function getInactiveUserEmailSet() {
+  const inactiveUsers = await User.find({ isActive: false }, "email").lean();
+  return new Set(inactiveUsers.map((user) => normalizeEmail(user.email)).filter(Boolean));
+}
+
+function sanitizeRecipientField(value, inactiveEmails) {
+  if (!value) return value;
+  if (Array.isArray(value)) {
+    const cleaned = value
+      .map((entry) => sanitizeRecipientField(entry, inactiveEmails))
+      .flat()
+      .filter(Boolean);
+    return cleaned.length ? cleaned : undefined;
+  }
+  if (typeof value === "object") {
+    const email = normalizeEmail(value.address || value.email || "");
+    return email && inactiveEmails.has(email) ? undefined : value;
+  }
+  const entries = String(value).split(",").map((entry) => entry.trim()).filter(Boolean);
+  const cleaned = entries.filter((entry) => !inactiveEmails.has(extractEmailAddress(entry)));
+  return cleaned.length ? cleaned.join(", ") : undefined;
+}
+
+const sendMailRaw = transporter.sendMail.bind(transporter);
+transporter.sendMail = async function sendMailWithoutInactiveUsers(options = {}, ...rest) {
+  const inactiveEmails = await getInactiveUserEmailSet();
+  const sanitized = { ...options };
+  sanitized.to = sanitizeRecipientField(sanitized.to, inactiveEmails);
+  sanitized.cc = sanitizeRecipientField(sanitized.cc, inactiveEmails);
+  sanitized.bcc = sanitizeRecipientField(sanitized.bcc, inactiveEmails);
+  return sendMailRaw(sanitized, ...rest);
+};
 
 function buildFromHeader(displayName, fallbackAddress) {
   const fromAddress = extractEmailAddress(fallbackAddress) || extractEmailAddress(MAIL_FROM) || normalizeEmail(SMTP_USER) || "no-reply@relconsystems.com";
@@ -632,7 +666,7 @@ async function sendTaskWorkflowEmail({
   if (!task) throw new Error("Task is required.");
   const recipient = normalizeEmail(to || task.customerEmail);
   if (!recipient) throw new Error("Recipient email missing.");
-  const users = await User.find({}, "email role engineerName username").lean();
+  const users = await User.find(ACTIVE_USER_QUERY, "email role engineerName username").lean();
   const engineerEmails = getEngineerEmailsFromUsers(users, task.engineer);
   const ccList = [...new Set([
     ...String(cc || task.ccEmails || "")
@@ -973,7 +1007,7 @@ function buildMaterialRequestLineItemsTable(rows = []) {
 }
 
 async function getMaterialRequestNotificationRecipients(request = {}) {
-  const users = await User.find({}, "email role engineerName username").lean();
+  const users = await User.find(ACTIVE_USER_QUERY, "email role engineerName username").lean();
   const adminEmails = [...new Set(
     users
       .filter((user) => String(user.role || "").trim().toLowerCase() === "admin")
@@ -1421,7 +1455,7 @@ async function sendMaterialDispatchNotification(request = {}, notificationType =
 }
 
 async function getAdminNotificationEmails() {
-  const users = await User.find({}, "email role").lean();
+  const users = await User.find(ACTIVE_USER_QUERY, "email role").lean();
   const adminEmails = [...new Set(
     users
       .filter((user) => String(user.role || "").trim().toLowerCase() === "admin")
@@ -1691,7 +1725,7 @@ async function sendStatusMaterialUsageAlertToAdmins({ customer = "", plan = {}, 
     return { ok: false, skipped: true, reason: "missing_admin_email" };
   }
 
-  const users = await User.find({}, "email role engineerName username name").lean();
+  const users = await User.find(ACTIVE_USER_QUERY, "email role engineerName username name").lean();
   const fillerUsername = String(actorUsername || status.createdBy || "").trim();
   const fillerEmail = normalizeEmail(actorEmail || status.createdByEmail || status.email || "");
   const usernameEmails = fillerUsername
@@ -1823,7 +1857,7 @@ function buildCorrectionSummaryHtml(changes = []) {
 async function getUserEmailsByUsernames(usernames = []) {
   const normalizedUsernames = [...new Set(usernames.map((value) => String(value || "").trim().toLowerCase()).filter(Boolean))];
   if (!normalizedUsernames.length) return [];
-  const users = await User.find({}, "username email").lean();
+  const users = await User.find(ACTIVE_USER_QUERY, "username email").lean();
   return [...new Set(
     users
       .filter((user) => normalizedUsernames.includes(String(user.username || "").trim().toLowerCase()))
@@ -2976,7 +3010,7 @@ async function sendFaultyMaterialDispatchAlerts() {
       })
         .sort({ engineerName: 1, updatedAt: -1, createdAt: -1 })
         .lean(),
-      User.find({}, "username email role engineerName").lean(),
+      User.find(ACTIVE_USER_QUERY, "username email role engineerName").lean(),
     ]);
 
     const adminEmails = [...new Set(
@@ -3192,7 +3226,7 @@ async function sendFaultyProbeHQODispatchReminder() {
       })
         .sort({ engineerName: 1, updatedAt: -1, createdAt: -1 })
         .lean(),
-      User.find({}, "username email role engineerName").lean(),
+      User.find(ACTIVE_USER_QUERY, "username email role engineerName").lean(),
     ]);
 
     const adminEmails = [...new Set(
@@ -3412,7 +3446,7 @@ async function sendWeeklyUserMailSummaryToAdmins({ baseDate = new Date() } = {})
 
   try {
     const { start, end, startISO, endISO } = getWeeklyUserMailSummaryRange(baseDate);
-    const users = await User.find({}, "username email role engineerName").lean();
+    const users = await User.find(ACTIVE_USER_QUERY, "username email role engineerName").lean();
 
     const adminEmails = [...new Set(
       users
@@ -3612,7 +3646,7 @@ async function sendDatabaseBackupArchiveToAdmins({ force = false } = {}) {
   const reportType = "Database Backup Archive";
 
   try {
-    const users = await User.find({}, "username email role engineerName").lean();
+    const users = await User.find(ACTIVE_USER_QUERY, "username email role engineerName").lean();
     const adminEmails = [...new Set(
       users
         .filter((user) => String(user.role || "").trim().toLowerCase() === "admin")
@@ -3811,7 +3845,7 @@ async function sendMonthlyAttendanceSheet({ baseDate = new Date() } = {}) {
     const { fromDateISO, toDateISO, label } = getPreviousMonthRange(baseDate);
 
     const [users, attendanceRecords] = await Promise.all([
-      User.find({}, "username email role engineerName").lean(),
+      User.find(ACTIVE_USER_QUERY, "username email role engineerName").lean(),
       Attendance.find({ date: { $gte: fromDateISO, $lte: toDateISO } }).sort({ engineerName: 1, date: 1 }).lean(),
     ]);
 
@@ -3984,7 +4018,7 @@ async function sendVerificationCorrectionEmail({
       return { ok: false, reason: "missing_engineer_changes_and_remark" };
     }
 
-    const users = await User.find({}, "email role engineerName username name").lean();
+    const users = await User.find(ACTIVE_USER_QUERY, "email role engineerName username name").lean();
     const engineerEmails = getEngineerEmailsFromUsers(users, engineerName);
 
     const adminEmails = [...new Set(
@@ -4153,7 +4187,7 @@ async function sendMissingMorningDataViewEntryAlert() {
     }
 
     const [users, todayPlans] = await Promise.all([
-      User.find({}, "email role engineerName username").lean(),
+      User.find(ACTIVE_USER_QUERY, "email role engineerName username").lean(),
       DailyPlan.find({ date: todayISO }).lean(),
     ]);
 
@@ -4321,7 +4355,7 @@ async function sendLateDataViewEntryAlert({
       }
     }
 
-    const users = await User.find({}, "email role engineerName username").lean();
+    const users = await User.find(ACTIVE_USER_QUERY, "email role engineerName username").lean();
     const adminEmails = [...new Set(
       users
         .filter((user) => String(user.role || "").trim().toLowerCase() === "admin")
@@ -4507,7 +4541,7 @@ async function sendDailyPlanCompletionSummaryToNikhil({ dateISO } = {}) {
     }
 
     const [users, plans] = await Promise.all([
-      User.find({}, "username email role engineerName").lean(),
+      User.find(ACTIVE_USER_QUERY, "username email role engineerName").lean(),
       DailyPlan.find({ date: summaryDate }).lean(),
     ]);
 
@@ -4798,7 +4832,7 @@ async function sendPendingStatusReminderAlerts() {
   try {
     const [plans, users, hpclStatuses, rbmlStatuses, bpclStatuses] = await Promise.all([
       DailyPlan.find({ date: { $gt: PENDING_STATUS_REMINDER_PLAN_DATE_CUTOFF } }).lean(),
-      User.find({}, "email role engineerName username").lean(),
+      User.find(ACTIVE_USER_QUERY, "email role engineerName username").lean(),
       Status.find({}, "planId").lean(),
       JioBPStatus.find({}, "planId").lean(),
       BPCLStatus.find({}, "planId").lean(),
@@ -5179,7 +5213,7 @@ async function getNoteTaskReminderRecipient(note = {}) {
   }
 
   const user = queries.length
-    ? await User.findOne({ $or: queries }, "email username engineerName").lean()
+    ? await User.findOne({ $and: [ACTIVE_USER_QUERY, { $or: queries }] }, "email username engineerName").lean()
     : null;
   return normalizeEmail(user?.email) || normalizeEmail(MAIL_TO);
 }
