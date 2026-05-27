@@ -1228,10 +1228,52 @@ function exportPcbInstallationExcel() {
     const currentUser = window.__currentUser || {};
     const userRole = currentUser.role || "";
     const currentEngineer = currentUser.engineerName || currentUser.username || "";
-    let pcbRecords = statusRecords.filter((r) => { const purpose = String(r.purpose || r.PurposeOfVisit || r.PURPOSEOFVISIT || "").trim().toUpperCase(); return purpose.includes("POWER PROTECTION PCB") && (purpose.includes("INSTALL") || purpose.includes("INSTAL")); });
+    let pcbRecords = statusRecords.filter((r) => isPowerProtectionInstall(r.purpose || r.PurposeOfVisit || r.PURPOSEOFVISIT));
     pcbRecords = pcbRecords.filter((r) => isEngineerRecordName(r.engineer || r.Engineer || r.engineerName));
     if (userRole === "engineer" && currentEngineer) pcbRecords = pcbRecords.filter((r) => String(r.engineer || r.Engineer || r.engineerName || "").trim().toLowerCase() === currentEngineer.toLowerCase());
-    const detailRows = pcbRecords.map((r) => ({ EngineerName: String(r.engineer || r.Engineer || "").trim(), Region: String(r.region || r.Region || "").trim(), ROCode: String(r.roCode || r.ROCode || r.rocode || "").trim(), ROName: String(r.roName || r.ROName || "").trim(), Phase: String(r.phase || "").trim(), Date: String(r.date || r.Date || "").trim(), PurposeOfVisit: String(r.purpose || r.PurposeOfVisit || r.PURPOSEOFVISIT || "").trim() }));
+    const siteDetailMap = new Map();
+    pcbRecords.forEach((r) => {
+      const roCode = String(r.roCode || r.ROCode || r.rocode || "").trim();
+      const roName = String(r.roName || r.ROName || "").trim();
+      const siteKey = `${roCode || "-"}||${roName || "-"}`.toUpperCase();
+      if (!siteDetailMap.has(siteKey)) {
+        siteDetailMap.set(siteKey, {
+          EngineerName: new Set(),
+          Region: new Set(),
+          ROCode: roCode,
+          ROName: roName,
+          Phase: new Set(),
+          Date: new Set(),
+          PurposeOfVisit: new Set(),
+        });
+      }
+      const row = siteDetailMap.get(siteKey);
+      const eng = String(r.engineer || r.Engineer || r.engineerName || "").trim();
+      const region = String(r.region || r.Region || "").trim();
+      const phase = String(r.phase || r.Phase || "").trim();
+      const date = String(r.date || r.Date || r.DATE || "").slice(0, 10);
+      const purpose = String(r.purpose || r.PurposeOfVisit || r.PURPOSEOFVISIT || "").trim();
+      if (eng) row.EngineerName.add(eng);
+      if (region) row.Region.add(region);
+      if (phase) row.Phase.add(phase);
+      if (date) row.Date.add(date);
+      if (purpose) row.PurposeOfVisit.add(purpose);
+    });
+    const detailRows = Array.from(siteDetailMap.values())
+      .map((row) => {
+        const dates = Array.from(row.Date).sort();
+        return {
+          EngineerName: Array.from(row.EngineerName).sort().join(" | "),
+          Region: Array.from(row.Region).sort().join(" | "),
+          ROCode: row.ROCode,
+          ROName: row.ROName,
+          Phase: Array.from(row.Phase).sort().join(" | "),
+          Date: dates.join(" | "),
+          InstallVisitCount: dates.length,
+          PurposeOfVisit: Array.from(row.PurposeOfVisit).sort().join(" | "),
+        };
+      })
+      .sort((a, b) => String(a.ROName || "").localeCompare(String(b.ROName || "")) || String(a.ROCode || "").localeCompare(String(b.ROCode || "")));
     const summaryMap = {};
     const todayIso = new Date().toISOString().split("T")[0];
     pcbRecords.forEach((r) => {
