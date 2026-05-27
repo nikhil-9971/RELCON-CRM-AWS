@@ -173,6 +173,11 @@ body {
 .call-avatar{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:46px;background:radial-gradient(circle at center,#334155,#020617 70%);}
 .call-screen-label{position:absolute;left:12px;top:12px;z-index:3;display:none;align-items:center;gap:7px;height:30px;padding:0 11px;border-radius:999px;background:rgba(15,23,42,.78);border:1px solid rgba(255,255,255,.14);color:#fff;font-size:12px;font-weight:800;backdrop-filter:blur(10px);}
 .call-stage.screen-sharing .call-screen-label{display:inline-flex;}
+.call-quality{min-height:26px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px;font-weight:800;color:var(--txt3);}
+.call-quality .metric{height:26px;border:1px solid var(--border);background:var(--surface2);border-radius:999px;padding:0 10px;display:inline-flex;align-items:center;gap:7px;}
+.call-quality .metric.good{color:#15803d;border-color:#bbf7d0;background:#f0fdf4;}
+.call-quality .metric.warn{color:#b45309;border-color:#fde68a;background:#fffbeb;}
+.call-quality .metric.bad{color:#b91c1c;border-color:#fecaca;background:#fef2f2;}
 .call-raised-hands{min-height:0;display:none;gap:8px;flex-wrap:wrap;}
 .call-raised-hands.show{display:flex;}
 .call-hand-chip{height:28px;border:1px solid #fde68a;background:#fffbeb;color:#92400e;border-radius:999px;padding:0 10px;display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:800;}
@@ -1616,11 +1621,13 @@ body {
     </div>
     <div class="meeting-body">
       <div class="call-stage">
-        <video id="remoteVideo" class="call-remote" autoplay playsinline></video>
+        <video id="remoteVideo" class="call-remote" autoplay playsinline muted></video>
+        <audio id="remoteAudio" autoplay playsinline></audio>
         <div id="callAvatar" class="call-avatar">R</div>
         <div id="screenShareLabel" class="call-screen-label"><i class="fa-solid fa-display"></i><span>Screen sharing</span></div>
         <video id="localVideo" class="call-local" autoplay playsinline muted></video>
       </div>
+      <div id="callQuality" class="call-quality"></div>
       <div id="callStatus" class="call-status">Ready</div>
       <div id="callParticipants" class="call-people"></div>
       <div id="raisedHands" class="call-raised-hands"></div>
@@ -1750,6 +1757,7 @@ let pendingIceByPeer = new Map();
 let callAudioCtx = null;
 let incomingRingTimer = null;
 let outgoingRingTimer = null;
+let callStatsTimer = null;
 let raisedHands = new Set();
 const CHAT_READ_SYNC_KEY = 'relcon_chat_read_at';
 
@@ -2392,6 +2400,25 @@ function setCallStatus(text) {
   if (el) el.textContent = text;
 }
 
+function qualityClass(pingMs) {
+  if (!Number.isFinite(pingMs)) return '';
+  if (pingMs <= 120) return 'good';
+  if (pingMs <= 250) return 'warn';
+  return 'bad';
+}
+
+function setCallQuality(pingMs = null) {
+  const el = document.getElementById('callQuality');
+  if (!el) return;
+  if (!activeCall) {
+    el.innerHTML = '';
+    return;
+  }
+  const cls = qualityClass(pingMs);
+  const label = Number.isFinite(pingMs) ? `${Math.round(pingMs)} ms` : '-- ms';
+  el.innerHTML = `<span class="metric ${cls}"><i class="fa-solid fa-gauge-high"></i> Ping ${label}</span>`;
+}
+
 function setCallControls(mode) {
   document.getElementById('incomingCallControls').style.display = mode === 'incoming' ? 'flex' : 'none';
   document.getElementById('activeCallControls').style.display = mode === 'active' ? 'flex' : 'none';
@@ -2501,6 +2528,7 @@ function setScreenSharingState(sharedBy = '') {
 function setCallVideos() {
   const localVideo = document.getElementById('localVideo');
   const remoteVideo = document.getElementById('remoteVideo');
+  const remoteAudio = document.getElementById('remoteAudio');
   const avatar = document.getElementById('callAvatar');
   const screenSharingBy = activeCall?.screenSharingBy || '';
   const hasLocalVideo = Boolean(localCallStream?.getVideoTracks().length);
@@ -2511,6 +2539,10 @@ function setCallVideos() {
   const presentationStream = screenSharingBy === currentUser ? screenShareStream : (sharingPeerStream || activeCall?.remoteStream);
   if (localVideo) localVideo.srcObject = screenSharingBy === currentUser ? null : (localCallStream || null);
   if (remoteVideo) remoteVideo.srcObject = presentationStream || null;
+  if (remoteAudio) {
+    remoteAudio.srcObject = activeCall?.remoteStream || null;
+    remoteAudio.play?.().catch(() => {});
+  }
   if (localVideo) localVideo.style.display = hasLocalVideo && !screenSharingBy ? 'block' : 'none';
   if (remoteVideo) remoteVideo.style.display = hasRemoteVideo ? 'block' : 'none';
   if (screenSharingBy === currentUser && remoteVideo) remoteVideo.style.display = screenShareStream ? 'block' : 'none';
@@ -2529,6 +2561,7 @@ function openCallWindow({ title, icon = 'fa-solid fa-video', status = 'Ready', m
   document.getElementById('meetingOverlay').classList.add('open');
   setCallStatus(status);
   setCallControls(mode);
+  setCallQuality(null);
   setCallVideos();
 }
 
@@ -2613,6 +2646,72 @@ async function flushPendingCandidates(peerName, pc) {
   pendingIceByPeer.delete(peerName);
 }
 
+function getActivePeerConnections() {
+  const peers = new Set(groupCallPeers.values());
+  if (callPeer) peers.add(callPeer);
+  return Array.from(peers).filter(Boolean);
+}
+
+async function readPeerPingMs(pc) {
+  const stats = await pc.getStats();
+  let fallback = null;
+  let selectedPairId = null;
+  for (const report of stats.values()) {
+    if (report.type === 'transport' && report.selectedCandidatePairId) selectedPairId = report.selectedCandidatePairId;
+  }
+  for (const report of stats.values()) {
+    if (report.type === 'candidate-pair' && report.state === 'succeeded') {
+      const isSelected = report.selected || report.nominated || selectedPairId === report.id;
+      if (Number.isFinite(report.currentRoundTripTime)) {
+        const value = report.currentRoundTripTime * 1000;
+        if (isSelected) return value;
+        fallback = value;
+      }
+    }
+    if (report.type === 'remote-inbound-rtp' && Number.isFinite(report.roundTripTime)) {
+      fallback = report.roundTripTime * 1000;
+    }
+  }
+  return fallback;
+}
+
+async function refreshCallStats() {
+  if (!activeCall) {
+    setCallQuality(null);
+    return;
+  }
+  const peers = getActivePeerConnections();
+  if (!peers.length) {
+    setCallQuality(null);
+    return;
+  }
+  const pings = (await Promise.all(peers.map((pc) => readPeerPingMs(pc).catch(() => null))))
+    .filter((value) => Number.isFinite(value));
+  setCallQuality(pings.length ? Math.round(pings.reduce((sum, value) => sum + value, 0) / pings.length) : null);
+}
+
+function startCallStats() {
+  stopCallStats();
+  setCallQuality(null);
+  callStatsTimer = setInterval(refreshCallStats, 1500);
+}
+
+function stopCallStats() {
+  if (callStatsTimer) clearInterval(callStatsTimer);
+  callStatsTimer = null;
+  const el = document.getElementById('callQuality');
+  if (el) el.innerHTML = '';
+}
+
+function tuneVideoSender(sender, isScreenShare = false) {
+  if (!sender?.setParameters) return;
+  const params = sender.getParameters();
+  params.encodings = params.encodings?.length ? params.encodings : [{}];
+  params.encodings[0].maxBitrate = isScreenShare ? 4500000 : 3000000;
+  params.encodings[0].maxFramerate = 60;
+  sender.setParameters(params).catch(() => {});
+}
+
 function createPeerConnection(peerName, callId, mediaKind) {
   const pc = new RTCPeerConnection({
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
@@ -2661,12 +2760,16 @@ function registerPeer(peerName, pc) {
   groupCallPeers.set(peerName, pc);
   callPeer = pc;
   updateCallParticipants();
+  refreshCallStats();
 }
 
 async function createOfferForPeer(peerName) {
   if (!activeCall || !localCallStream || peerName === currentUser || groupCallPeers.has(peerName)) return;
   const pc = createPeerConnection(peerName, activeCall.callId, activeCall.mediaKind);
-  localCallStream.getTracks().forEach((track) => pc.addTrack(track, localCallStream));
+  localCallStream.getTracks().forEach((track) => {
+    const sender = pc.addTrack(track, localCallStream);
+    if (track.kind === 'video') tuneVideoSender(sender);
+  });
   registerPeer(peerName, pc);
   const offer = await pc.createOffer();
   await pc.setLocalDescription(offer);
@@ -2678,8 +2781,19 @@ async function getLocalCallStream(mediaKind) {
     throw new Error('Calling is not supported in this browser.');
   }
   return navigator.mediaDevices.getUserMedia({
-    audio: true,
-    video: mediaKind === 'video',
+    audio: {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+    },
+    video: mediaKind === 'video'
+      ? {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          frameRate: { ideal: 60, max: 60 },
+          facingMode: 'user',
+        }
+      : false,
   });
 }
 
@@ -2695,6 +2809,7 @@ async function startRelconCall(mediaKind = 'video') {
     raisedHands.clear();
     localCallStream = await getLocalCallStream(mediaKind);
     activeCall = { callId, ...scope, mediaKind, muted: false, cameraOff: mediaKind !== 'video', remoteStream: null, peerStreams: new Map(), screenSharingBy: null, handRaised: false };
+    startCallStats();
 
     openCallWindow({
       title: callTitle(mediaKind, scope.label, scope.mode),
@@ -2758,6 +2873,7 @@ async function answerRelconCall() {
       screenSharingBy: null,
       handRaised: false,
     };
+    startCallStats();
     setCallControls('active');
     setCallStatus(isTeam ? `Joining team call in #${msg.channel}...` : `Connecting with ${msg.from}...`);
     setCallVideos();
@@ -2766,7 +2882,10 @@ async function answerRelconCall() {
       sendCallSignal({ signalType: 'join', callId: msg.callId, channel: msg.channel, mediaKind: msg.mediaKind });
     } else {
       callPeer = createPeerConnection(msg.from, msg.callId, msg.mediaKind);
-      localCallStream.getTracks().forEach((track) => callPeer.addTrack(track, localCallStream));
+      localCallStream.getTracks().forEach((track) => {
+        const sender = callPeer.addTrack(track, localCallStream);
+        if (track.kind === 'video') tuneVideoSender(sender);
+      });
       registerPeer(msg.from, callPeer);
       await callPeer.setRemoteDescription(new RTCSessionDescription(msg.sdp));
       for (const candidate of pendingIceCandidates) {
@@ -2817,7 +2936,14 @@ async function toggleScreenShare() {
     return;
   }
   try {
-    screenShareStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+    screenShareStream = await navigator.mediaDevices.getDisplayMedia({
+      video: {
+        frameRate: { ideal: 60, max: 60 },
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+      },
+      audio: false,
+    });
     const screenTrack = screenShareStream.getVideoTracks()[0];
     if (!screenTrack) throw new Error('No screen track selected');
     replaceVideoTrackForAllPeers(screenTrack);
@@ -2838,7 +2964,11 @@ function replaceVideoTrackForAllPeers(track) {
   if (callPeer) peers.add(callPeer);
   peers.forEach((pc) => {
     const sender = pc.getSenders().find((item) => item.track?.kind === 'video');
-    if (sender) sender.replaceTrack(track).catch(console.error);
+    if (sender) {
+      sender.replaceTrack(track)
+        .then(() => tuneVideoSender(sender, track !== localCallStream?.getVideoTracks()[0]))
+        .catch(console.error);
+    }
   });
   setCallVideos();
 }
@@ -2873,7 +3003,10 @@ async function handleCallSignal(msg) {
     }
     if (msg.callId === activeCall.callId && localCallStream) {
       const pc = createPeerConnection(msg.from, msg.callId, msg.mediaKind);
-      localCallStream.getTracks().forEach((track) => pc.addTrack(track, localCallStream));
+      localCallStream.getTracks().forEach((track) => {
+        const sender = pc.addTrack(track, localCallStream);
+        if (track.kind === 'video') tuneVideoSender(sender);
+      });
       registerPeer(msg.from, pc);
       await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp)).catch(console.error);
       await flushPendingCandidates(msg.from, pc);
@@ -2975,6 +3108,7 @@ function cleanupCall() {
   groupCallPeers.clear();
   callPeer = null;
   stopCallSounds();
+  stopCallStats();
   stopScreenShare({ notify: false });
   localCallStream?.getTracks().forEach((track) => track.stop());
   localCallStream = null;
