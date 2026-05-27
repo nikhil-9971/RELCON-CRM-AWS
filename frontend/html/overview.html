@@ -539,6 +539,7 @@ tbody tr.sf-total-row td{color:var(--txt)!important;font-weight:700!important;}
               <th>Today PCB Installation</th>
               <th>Total PCB Install (B)</th>
               <th>PCB Installation Pending</th>
+              <th>Site Wise Install Count</th>
               <th>View</th>
             </tr>
           </thead>
@@ -1042,11 +1043,13 @@ function renderPcbInstallation(statusRecords, pcbProvidedCounts) {
   const detailMap = new Map();
   filteredRecords.forEach((r) => {
     const eng = String(r.engineer || r.Engineer || r.engineerName || "").trim() || "-";
-    if (!map.has(eng)) map.set(eng, { provided: Number(pcbProvidedCounts?.[eng] || 0) || 0, installed: 0, todayInstalled: 0 });
+    if (!map.has(eng)) map.set(eng, { provided: Number(pcbProvidedCounts?.[eng] || 0) || 0, installed: 0, todayInstalled: 0, siteKeys: new Set() });
     if (isPowerProtectionInstall(r.purpose || r.PurposeOfVisit || r.PURPOSEOFVISIT)) {
       map.get(eng).installed += 1;
       const recordDate = String(r.date || r.Date || r.DATE || "").slice(0, 10);
       if (recordDate === today) map.get(eng).todayInstalled += 1;
+      const siteKey = `${String(r.roCode || r.ROCode || r.rocode || "").trim().toUpperCase()}||${String(r.roName || r.ROName || "").trim().toUpperCase()}`;
+      if (siteKey !== "||") map.get(eng).siteKeys.add(siteKey);
       if (!detailMap.has(eng)) detailMap.set(eng, []);
       detailMap.get(eng).push({
         engineerName: eng,
@@ -1066,7 +1069,7 @@ function renderPcbInstallation(statusRecords, pcbProvidedCounts) {
     if (!name) return;
     if (!isEngineerRecordName(name)) return;
     if (userRole === "engineer" && currentEngineer && name.toLowerCase() !== currentEngineer.toLowerCase()) return;
-    if (!map.has(name)) map.set(name, { provided: Number(provided || 0) || 0, installed: 0, todayInstalled: 0 });
+    if (!map.has(name)) map.set(name, { provided: Number(provided || 0) || 0, installed: 0, todayInstalled: 0, siteKeys: new Set() });
     else map.get(name).provided = Number(provided || 0) || 0;
   });
   const rows = Array.from(map.entries()).map(([eng, rec]) => ({
@@ -1075,20 +1078,22 @@ function renderPcbInstallation(statusRecords, pcbProvidedCounts) {
     todayInstalled: rec.todayInstalled,
     installed: rec.installed,
     pending: Math.max(0, rec.provided - rec.installed),
+    siteInstallCount: rec.siteKeys?.size || 0,
   })).filter((r) => r.eng.toUpperCase() !== "NAVAL KISHOR PANDEY").sort((a, b) => a.eng.localeCompare(b.eng));
   const totalProvided = rows.reduce((sum, r) => sum + r.provided, 0);
   const totalInstalled = rows.reduce((sum, r) => sum + r.installed, 0);
   const totalPending = rows.reduce((sum, r) => sum + r.pending, 0);
   const totalTodayInstalled = rows.reduce((sum, r) => sum + r.todayInstalled, 0);
+  const totalSiteInstallCount = rows.reduce((sum, r) => sum + r.siteInstallCount, 0);
   tbody.innerHTML = rows.map((r) => {
     const providedCell = isAdmin
       ? `<input type="number" min="0" value="${r.provided}" data-eng="${escAttr(r.eng)}" style="width:80px;border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:11px;outline:none;" />`
       : `<span>${r.provided}</span>`;
     const viewDisabled = r.installed > 0 ? "" : "disabled";
-    return `<tr><td>${escHtml(r.eng)}</td><td>${providedCell}</td><td>${r.todayInstalled}</td><td>${r.installed}</td><td style="color:${r.pending>0?'var(--sf-red)':'var(--sf-green)'};font-weight:600;">${r.pending}</td><td><button class="sf-icon-btn" ${viewDisabled} data-engineer="${escAttr(r.eng)}" onclick="openPcbInstallModal(this.dataset.engineer)" title="View PCB installation list"><i class="fa-solid fa-eye"></i></button></td></tr>`;
+    return `<tr><td>${escHtml(r.eng)}</td><td>${providedCell}</td><td>${r.todayInstalled}</td><td>${r.installed}</td><td style="color:${r.pending>0?'var(--sf-red)':'var(--sf-green)'};font-weight:600;">${r.pending}</td><td>${r.siteInstallCount}</td><td><button class="sf-icon-btn" ${viewDisabled} data-engineer="${escAttr(r.eng)}" onclick="openPcbInstallModal(this.dataset.engineer)" title="View PCB installation list"><i class="fa-solid fa-eye"></i></button></td></tr>`;
   }).join("");
-  if (rows.length > 0) tbody.innerHTML += `<tr class="sf-total-row"><td>Total</td><td>${totalProvided}</td><td>${totalTodayInstalled}</td><td>${totalInstalled}</td><td style="color:var(--sf-red);">${totalPending}</td><td></td></tr>`;
-  else tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--txt3);">No data</td></tr>`;
+  if (rows.length > 0) tbody.innerHTML += `<tr class="sf-total-row"><td>Total</td><td>${totalProvided}</td><td>${totalTodayInstalled}</td><td>${totalInstalled}</td><td style="color:var(--sf-red);">${totalPending}</td><td>${totalSiteInstallCount}</td><td></td></tr>`;
+  else tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--txt3);">No data</td></tr>`;
   if (saveBtn) saveBtn.style.display = isAdmin ? "" : "none";
 }
 
@@ -1278,26 +1283,29 @@ function exportPcbInstallationExcel() {
     const todayIso = new Date().toISOString().split("T")[0];
     pcbRecords.forEach((r) => {
       const eng = String(r.engineer || r.Engineer || "").trim() || "Unknown";
-      if (!summaryMap[eng]) summaryMap[eng] = { Provided: Number(pcbProvidedCounts[eng] || 0) || 0, Today: 0, Total: 0, Pending: 0 };
+      if (!summaryMap[eng]) summaryMap[eng] = { Provided: Number(pcbProvidedCounts[eng] || 0) || 0, Today: 0, Total: 0, Pending: 0, SiteKeys: new Set() };
       summaryMap[eng].Total += 1;
       const d = String(r.date || r.Date || "").slice(0, 10);
       if (d === todayIso) summaryMap[eng].Today += 1;
+      const siteKey = `${String(r.roCode || r.ROCode || r.rocode || "").trim().toUpperCase()}||${String(r.roName || r.ROName || "").trim().toUpperCase()}`;
+      if (siteKey !== "||") summaryMap[eng].SiteKeys.add(siteKey);
     });
     Object.entries(pcbProvidedCounts || {}).forEach(([eng, provided]) => {
       const name = String(eng || "").trim();
       if (!name) return;
       if (!isEngineerRecordName(name)) return;
       if (userRole === "engineer" && currentEngineer && name.toLowerCase() !== currentEngineer.toLowerCase()) return;
-      if (!summaryMap[name]) summaryMap[name] = { Provided: Number(provided || 0) || 0, Today: 0, Total: 0, Pending: 0 };
+      if (!summaryMap[name]) summaryMap[name] = { Provided: Number(provided || 0) || 0, Today: 0, Total: 0, Pending: 0, SiteKeys: new Set() };
       else summaryMap[name].Provided = Number(provided || 0) || 0;
     });
-    const summaryRows = [["Engineer Name","Total PCB Provided (A)","Today PCB Installation","Total PCB Install (B)","Total PCB Installation Pending"]];
-    Object.entries(summaryMap).forEach(([eng, val]) => summaryRows.push([eng, val.Provided, val.Today, val.Total, Math.max(0, (val.Provided || 0) - val.Total)]));
+    const summaryRows = [["Engineer Name","Total PCB Provided (A)","Today PCB Installation","Total PCB Install (B)","Total PCB Installation Pending","Site Wise Install Count"]];
+    Object.entries(summaryMap).forEach(([eng, val]) => summaryRows.push([eng, val.Provided, val.Today, val.Total, Math.max(0, (val.Provided || 0) - val.Total), val.SiteKeys?.size || 0]));
     const totalProvided = Object.values(summaryMap).reduce((sum, v) => sum + (v.Provided || 0), 0);
     const totalToday = Object.values(summaryMap).reduce((sum, v) => sum + v.Today, 0);
     const totalInstall = Object.values(summaryMap).reduce((sum, v) => sum + v.Total, 0);
     const totalPending = Object.values(summaryMap).reduce((sum, v) => sum + Math.max(0, (v.Provided || 0) - v.Total), 0);
-    summaryRows.push(["Total", totalProvided, totalToday, totalInstall, totalPending]);
+    const totalSiteInstall = Object.values(summaryMap).reduce((sum, v) => sum + (v.SiteKeys?.size || 0), 0);
+    summaryRows.push(["Total", totalProvided, totalToday, totalInstall, totalPending, totalSiteInstall]);
     const ws1 = XLSX.utils.aoa_to_sheet(summaryRows);
     const ws2 = XLSX.utils.json_to_sheet(detailRows);
     const wb = XLSX.utils.book_new();
