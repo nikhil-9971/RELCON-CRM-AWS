@@ -135,21 +135,21 @@ app.get("/external-meeting", (req, res) => {
 <title>RELCON External Meeting</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
 <style>
-body{margin:0;font-family:Inter,Arial,sans-serif;background:#0f172a;color:#e5e7eb;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:18px;}
-.wrap{width:min(900px,100%);background:#111827;border:1px solid rgba(148,163,184,.3);border-radius:18px;box-shadow:0 30px 90px rgba(0,0,0,.38);overflow:hidden;}
-.head{padding:18px 22px;background:linear-gradient(135deg,#111827,#064e3b);display:flex;align-items:center;gap:12px;}
-.head i{width:42px;height:42px;border-radius:13px;background:#fff;color:#047857;display:flex;align-items:center;justify-content:center;font-size:18px;}
-.title{font-size:20px;font-weight:800}.sub{font-size:13px;color:#cbd5e1;margin-top:3px;}
-.body{padding:20px;display:grid;gap:14px;}
-.panel{background:#020617;border:1px solid rgba(148,163,184,.25);border-radius:14px;padding:14px;}
+	body{margin:0;font-family:Inter,Arial,sans-serif;background:#111;color:#e5e7eb;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:18px;}
+	.wrap{width:min(980px,100%);height:min(720px,92vh);background:#1f1f1f;border:1px solid rgba(255,255,255,.12);border-radius:10px;box-shadow:0 30px 90px rgba(0,0,0,.48);overflow:hidden;display:flex;flex-direction:column;}
+	.head{height:52px;padding:0 16px;background:#242424;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(255,255,255,.1);}
+	.head i{width:32px;height:32px;border-radius:8px;background:#5b5fc7;color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;}
+	.title{font-size:20px;font-weight:800}.sub{font-size:13px;color:#cbd5e1;margin-top:3px;}
+	.body{padding:14px;display:grid;grid-template-rows:auto auto 1fr auto;gap:12px;min-height:0;flex:1;}
+	.panel{background:#252525;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:12px;}
 label{display:block;font-size:12px;font-weight:800;color:#cbd5e1;margin-bottom:7px;text-transform:uppercase;letter-spacing:.05em;}
-input{width:100%;height:42px;border:1px solid rgba(148,163,184,.35);border-radius:10px;background:#0f172a;color:#fff;padding:0 12px;font:500 13px Inter,Arial,sans-serif;box-sizing:border-box;}
-.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
-button{height:42px;border:0;border-radius:10px;padding:0 14px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:8px;}
-.primary{background:#10b981;color:#fff}.danger{background:#ef4444;color:#fff}.ghost{background:#1f2937;color:#e5e7eb;border:1px solid rgba(148,163,184,.3);}
-.stage{position:relative;min-height:360px;background:#020617;border:1px solid rgba(148,163,184,.25);border-radius:14px;overflow:hidden;display:flex;align-items:center;justify-content:center;}
-video{width:100%;height:100%;object-fit:cover;display:none;background:#020617;}
-.local{position:absolute;right:12px;bottom:12px;width:150px;aspect-ratio:16/10;border-radius:10px;border:1px solid rgba(255,255,255,.24);box-shadow:0 12px 28px rgba(0,0,0,.35);}
+	input{width:100%;height:42px;border:1px solid rgba(255,255,255,.16);border-radius:6px;background:#1b1b1b;color:#fff;padding:0 12px;font:500 13px Inter,Arial,sans-serif;box-sizing:border-box;}
+	.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+	button{height:42px;border:0;border-radius:999px;padding:0 14px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:8px;}
+	.primary{background:#237b4b;color:#fff}.danger{background:#c4314b;color:#fff}.ghost{background:#333;color:#e5e7eb;border:1px solid rgba(255,255,255,.12);}
+	.stage{position:relative;min-height:0;background:#0b0b0b;border:1px solid rgba(255,255,255,.1);border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;}
+	video{width:100%;height:100%;object-fit:cover;display:none;background:#020617;}
+	.local{position:absolute;right:14px;bottom:14px;width:170px;aspect-ratio:16/10;border-radius:8px;border:1px solid rgba(255,255,255,.24);box-shadow:0 12px 28px rgba(0,0,0,.35);}
 .empty{color:#94a3b8;text-align:center;font-weight:700}.status{font-size:13px;color:#cbd5e1;font-weight:700;}
 .pill{display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 10px;border-radius:999px;background:#064e3b;color:#d1fae5;font-size:12px;font-weight:800;}
 @media(max-width:640px){.stage{min-height:280px}.local{width:120px}.row button{flex:1;justify-content:center;}}
@@ -168,8 +168,9 @@ video{width:100%;height:100%;object-fit:cover;display:none;background:#020617;}
     </div>
     <div class="stage">
       <div class="empty" id="emptyState">Load a meeting link, then join.</div>
-      <video id="remoteVideo" autoplay playsinline></video>
-      <video id="localVideo" class="local" autoplay playsinline muted></video>
+	      <video id="remoteVideo" autoplay playsinline muted></video>
+	      <audio id="remoteAudio" autoplay playsinline></audio>
+	      <video id="localVideo" class="local" autoplay playsinline muted></video>
     </div>
     <div class="row">
       <button class="primary" onclick="joinMeeting()"><i class="fa-solid fa-phone"></i> Join Meeting</button>
@@ -191,9 +192,9 @@ function loadMeetingFromInput(){const raw=document.getElementById('meetingLink')
 function wsUrl(){const proto=location.protocol==='https:'?'wss':'ws';return proto+'://'+location.host+'/ws?token='+encodeURIComponent(access.token);}
 function send(payload){if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify({type:'call_signal',...payload}));}
 function ensureWs(){return new Promise((resolve,reject)=>{if(ws&&ws.readyState===WebSocket.OPEN)return resolve();ws=new WebSocket(wsUrl());ws.onopen=resolve;ws.onerror=()=>reject(new Error('Connection failed'));ws.onmessage=onWsMessage;});}
-function makePc(peer){pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});pc.onicecandidate=e=>{if(e.candidate)send({signalType:'candidate',callId:meeting.id,channel:meeting.channel,mediaKind:'video',candidate:e.candidate});};pc.ontrack=e=>{const rv=document.getElementById('remoteVideo');rv.srcObject=e.streams[0];rv.style.display='block';document.getElementById('emptyState').style.display='none';setStatus('Connected');};localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));return pc;}
+function makePc(peer){pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});pc.onicecandidate=e=>{if(e.candidate)send({signalType:'candidate',callId:meeting.id,channel:meeting.channel,mediaKind:'video',candidate:e.candidate});};pc.ontrack=e=>{const stream=e.streams[0];const rv=document.getElementById('remoteVideo');const ra=document.getElementById('remoteAudio');rv.srcObject=stream;ra.srcObject=stream;rv.style.display=stream?.getVideoTracks().length?'block':'none';ra.play?.().catch(()=>{});document.getElementById('emptyState').style.display='none';setStatus('Connected');};localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));return pc;}
 async function onWsMessage(ev){let msg;try{msg=JSON.parse(ev.data);}catch{return;}if(msg.type!=='call_signal'||!meeting||msg.callId!==meeting.id||msg.from===access.name)return;if(msg.signalType==='offer'){makePc(msg.from);await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));const ans=await pc.createAnswer();await pc.setLocalDescription(ans);send({signalType:'answer',callId:meeting.id,to:msg.from,channel:meeting.channel,mediaKind:'video',sdp:ans});}if(msg.signalType==='candidate'&&pc){await pc.addIceCandidate(new RTCIceCandidate(msg.candidate)).catch(()=>{});}if(msg.signalType==='end'){setStatus('Meeting ended');leaveMeeting(false);}}
-async function joinMeeting(){if(!access?.token)return setStatus('Invalid external access');if(!meeting)return setStatus('Load meeting link first');await ensureWs();localStream=await navigator.mediaDevices.getUserMedia({audio:true,video:true});const lv=document.getElementById('localVideo');lv.srcObject=localStream;lv.style.display='block';send({signalType:'join',callId:meeting.id,channel:meeting.channel,mediaKind:'video'});setStatus('Joining...');}
+async function joinMeeting(){if(!access?.token)return setStatus('Invalid external access');if(!meeting)return setStatus('Load meeting link first');await ensureWs();localStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:{width:{ideal:1280},height:{ideal:720},frameRate:{ideal:60,max:60},facingMode:'user'}});const lv=document.getElementById('localVideo');lv.srcObject=localStream;lv.style.display='block';send({signalType:'join',callId:meeting.id,channel:meeting.channel,mediaKind:'video'});setStatus('Joining...');}
 function toggleMute(){if(!localStream)return;muted=!muted;localStream.getAudioTracks().forEach(t=>t.enabled=!muted);document.getElementById('muteBtn').classList.toggle('primary',muted);}
 function toggleCamera(){if(!localStream)return;cameraOff=!cameraOff;localStream.getVideoTracks().forEach(t=>t.enabled=!cameraOff);document.getElementById('camBtn').classList.toggle('primary',cameraOff);}
 function leaveMeeting(notify=true){if(notify&&meeting)send({signalType:'end',callId:meeting.id,channel:meeting.channel,mediaKind:'video'});try{pc&&pc.close();}catch{}pc=null;localStream&&localStream.getTracks().forEach(t=>t.stop());localStream=null;setStatus('Left meeting');}

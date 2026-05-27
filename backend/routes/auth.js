@@ -130,6 +130,46 @@ function encodeExternalMeetingPayload(value) {
   return Buffer.from(JSON.stringify(value), "utf8").toString("base64url");
 }
 
+async function createExternalInviteForEmail(req, { email, engineerName, accessDays = 7 }) {
+  const normalizedEmail = normalizeEmail(email);
+  const cleanName = String(engineerName || normalizedEmail.split("@")[0] || "External User").trim();
+  const days = Math.min(Math.max(Number(accessDays || 7), 1), 30);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    const err = new Error("Valid external email is required");
+    err.statusCode = 400;
+    throw err;
+  }
+  const externalInviteToken = crypto.randomBytes(24).toString("hex");
+  const externalAccessExpiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+  const randomPassword = await bcrypt.hash(crypto.randomBytes(18).toString("hex"), 10);
+  const user = await User.findOneAndUpdate(
+    { email: normalizedEmail },
+    {
+      $set: {
+        username: normalizedEmail,
+        email: normalizedEmail,
+        engineerName: cleanName,
+        role: "engineer",
+        externalUser: true,
+        externalPending: true,
+        googleVerified: false,
+        googleEmail: "",
+        externalInviteToken,
+        externalInvitedBy: req.user?.username || req.user?.engineerName || "admin",
+        externalAccessExpiresAt,
+        password: randomPassword,
+      },
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+  clearUserCaches();
+  return {
+    inviteLink: buildAbsoluteUrl(req, `/api/external/google/start?invite=${encodeURIComponent(externalInviteToken)}`),
+    user,
+    externalAccessExpiresAt,
+  };
+}
+
 const PROFILE_PHOTO_MAX_BYTES = 500 * 1024;
 
 function parseProfilePhoto(value) {
@@ -386,37 +426,7 @@ router.post("/user-management/external-invites", verifyToken, async (req, res) =
     if (!isNikhilAdmin(req.user)) {
       return res.status(403).json({ error: "Access denied. Nikhil admin only." });
     }
-    const email = normalizeEmail(req.body?.email);
-    const engineerName = String(req.body?.engineerName || email.split("@")[0] || "External User").trim();
-    const accessDays = Math.min(Math.max(Number(req.body?.accessDays || 7), 1), 30);
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return res.status(400).json({ error: "Valid external email is required" });
-    }
-    const externalInviteToken = crypto.randomBytes(24).toString("hex");
-    const externalAccessExpiresAt = new Date(Date.now() + accessDays * 24 * 60 * 60 * 1000);
-    const randomPassword = await bcrypt.hash(crypto.randomBytes(18).toString("hex"), 10);
-    const user = await User.findOneAndUpdate(
-      { email },
-      {
-        $set: {
-          username: email,
-          email,
-          engineerName,
-          role: "engineer",
-          externalUser: true,
-          externalPending: true,
-          googleVerified: false,
-          googleEmail: "",
-          externalInviteToken,
-          externalInvitedBy: req.user?.username || req.user?.engineerName || "admin",
-          externalAccessExpiresAt,
-          password: randomPassword,
-        },
-      },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
-    clearUserCaches();
-    const inviteLink = buildAbsoluteUrl(req, `/api/external/google/start?invite=${encodeURIComponent(externalInviteToken)}`);
+    const { inviteLink, user, externalAccessExpiresAt } = await createExternalInviteForEmail(req, req.body || {});
     res.status(201).json({
       message: "External Google verification invite created",
       inviteLink,
@@ -433,7 +443,30 @@ router.post("/user-management/external-invites", verifyToken, async (req, res) =
       },
     });
   } catch (err) {
-    res.status(500).json({ error: "Failed to create external invite", details: err.message });
+    res.status(err.statusCode || 500).json({ error: err.statusCode ? err.message : "Failed to create external invite", details: err.message });
+  }
+});
+
+router.post("/external/meeting-invites", verifyToken, async (req, res) => {
+  try {
+    const { inviteLink, user, externalAccessExpiresAt } = await createExternalInviteForEmail(req, req.body || {});
+    res.status(201).json({
+      message: "External meeting invite created",
+      inviteLink,
+      user: {
+        _id: user._id,
+        username: user.username || "",
+        email: user.email || "",
+        engineerName: user.engineerName || "",
+        role: normalizeUserRole(user.role),
+        externalUser: true,
+        externalPending: true,
+        googleVerified: false,
+        externalAccessExpiresAt,
+      },
+    });
+  } catch (err) {
+    res.status(err.statusCode || 500).json({ error: err.statusCode ? err.message : "Failed to create external meeting invite", details: err.message });
   }
 });
 
