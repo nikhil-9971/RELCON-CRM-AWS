@@ -182,13 +182,14 @@ label{display:block;font-size:12px;font-weight:800;color:#cbd5e1;margin-bottom:7
 </div>
 <script>
 function decodeAccess(){try{let v=new URLSearchParams(location.search).get('access')||'';v=v.replace(/-/g,'+').replace(/_/g,'/');while(v.length%4)v+='=';return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(v),c=>c.charCodeAt(0))));}catch{return null;}}
-function decodeMeeting(v){try{return JSON.parse(decodeURIComponent(escape(atob(v))));}catch{return null;}}
+function decodeMeeting(v){try{v=String(v||'').replace(/-/g,'+').replace(/_/g,'/');while(v.length%4)v+='=';return JSON.parse(decodeURIComponent(escape(atob(v))));}catch{return null;}}
+function meetingDisplayLink(){if(!meeting)return'';if(meeting.joinUrl)return meeting.joinUrl;return meeting.subject?('RELCON meeting: '+meeting.subject):'RELCON meeting loaded';}
 const access=decodeAccess();let meeting=null,ws=null,pc=null,localStream=null,muted=false,cameraOff=false;
 if(!access?.token){document.getElementById('status').textContent='Invalid meeting access';}
 else{document.getElementById('guestName').textContent=access.name||'Verified external guest'; if(access.meeting){meeting=decodeMeeting(access.meeting); renderMeeting();}}
 function setStatus(t){document.getElementById('status').textContent=t;}
-function renderMeeting(){if(!meeting)return;document.getElementById('meetingLink').value=meeting.joinUrl||'';document.getElementById('emptyState').textContent=meeting.subject?('Ready to join: '+meeting.subject):'Ready to join meeting';}
-function loadMeetingFromInput(){const raw=document.getElementById('meetingLink').value.trim();try{const u=new URL(raw);meeting=decodeMeeting(u.searchParams.get('relconMeeting')||'');if(!meeting)throw new Error('Invalid link');renderMeeting();setStatus('Meeting loaded');}catch(e){setStatus('Invalid RELCON meeting link');}}
+function renderMeeting(){if(!meeting)return;document.getElementById('meetingLink').value=meetingDisplayLink();document.getElementById('emptyState').textContent=meeting.subject?('Ready to join: '+meeting.subject):'Ready to join meeting';}
+function loadMeetingFromInput(){const raw=document.getElementById('meetingLink').value.trim();try{const u=new URL(raw);meeting=decodeMeeting(u.searchParams.get('relconMeeting')||u.searchParams.get('meeting')||'');if(!meeting)throw new Error('Invalid link');renderMeeting();setStatus('Meeting loaded');}catch(e){setStatus('Invalid RELCON meeting link');}}
 function wsUrl(){const proto=location.protocol==='https:'?'wss':'ws';return proto+'://'+location.host+'/ws?token='+encodeURIComponent(access.token);}
 function send(payload){if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify({type:'call_signal',...payload}));}
 function ensureWs(){return new Promise((resolve,reject)=>{if(ws&&ws.readyState===WebSocket.OPEN)return resolve();ws=new WebSocket(wsUrl());ws.onopen=resolve;ws.onerror=()=>reject(new Error('Connection failed'));ws.onmessage=onWsMessage;});}

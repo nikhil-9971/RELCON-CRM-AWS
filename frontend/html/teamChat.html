@@ -734,6 +734,29 @@ body {
   display: inline-block;
   max-width: 100%;
 }
+.msg-text a {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.meeting-chat-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  margin-top: 2px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: rgba(37, 99, 235, .1);
+  border: 1px solid rgba(37, 99, 235, .18);
+  color: var(--brand) !important;
+  font-weight: 800;
+  text-decoration: none;
+}
+.msg-row[data-from-me="true"] .meeting-chat-link {
+  background: rgba(255,255,255,.16);
+  border-color: rgba(255,255,255,.22);
+  color: #fff !important;
+}
 
 /* Own Messages */
 .msg-row[data-from-me="true"] {
@@ -2056,7 +2079,11 @@ function renderMessage(msg, bulk = false) {
     .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
     .replace(/\*(.*?)\*/g,'<em>$1</em>')
     .replace(/`(.*?)`/g,`<code style="font-family:var(--mono);font-size:12px;background:var(--surface3);padding:1px 5px;border-radius:4px;">$1</code>`)
-    .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:var(--brand);font-weight:700;">$1</a>')
+    .replace(/(https?:\/\/[^\s]+)/g, (url) => {
+      const label = meetingLinkLabel(url);
+      const cls = label ? ' class="meeting-chat-link"' : ' style="color:var(--brand);font-weight:700;"';
+      return `<a href="${url}" target="_blank" rel="noopener noreferrer"${cls}>${label || url}</a>`;
+    })
     .replace(/@([^\s@]+(?:\s[^\s@]+)?)/g, (_, n) => {
       if (n.toLowerCase() === currentUser.toLowerCase()) return `<span class="mention-you">@${n}</span>`;
       return `<span class="mention-other">@${n}</span>`;
@@ -2286,21 +2313,49 @@ function encodeMeetingPayload(meeting) {
   return btoa(unescape(encodeURIComponent(JSON.stringify(meeting))));
 }
 
+function compactMeetingPayload(meeting = {}) {
+  return {
+    id: meeting.id || '',
+    subject: meeting.subject || 'RELCON Meeting',
+    context: meeting.context || '',
+    channel: meeting.channel || '',
+    peer: meeting.peer || '',
+    startDateTime: meeting.startDateTime || '',
+    endDateTime: meeting.endDateTime || '',
+    durationMinutes: meeting.durationMinutes || 60,
+    createdBy: meeting.createdBy || currentUser,
+    mediaKind: meeting.mediaKind || 'video',
+  };
+}
+
 function decodeMeetingPayload(value) {
   return JSON.parse(decodeURIComponent(escape(atob(value))));
 }
 
 function buildMeetingJoinLink(meeting) {
   const url = new URL(window.location.href);
-  url.searchParams.set('relconMeeting', encodeMeetingPayload(meeting));
+  url.searchParams.set('relconMeeting', encodeMeetingPayload(compactMeetingPayload(meeting)));
   url.searchParams.delete('token');
   return url.toString();
 }
 
 function buildExternalMeetingLink(inviteLink, meeting) {
   const url = new URL(inviteLink, window.location.origin);
-  url.searchParams.set('meeting', encodeMeetingPayload(meeting));
+  url.searchParams.set('meeting', encodeMeetingPayload(compactMeetingPayload(meeting)));
   return url.toString();
+}
+
+function meetingLinkLabel(rawUrl) {
+  try {
+    const url = new URL(String(rawUrl || '').replace(/&amp;/g, '&'));
+    if (url.pathname.includes('/api/external/google/start') && url.searchParams.has('meeting')) {
+      return '<i class="fa-solid fa-user-plus"></i><span>External guest join link</span>';
+    }
+    if (url.searchParams.has('relconMeeting')) {
+      return '<i class="fa-solid fa-video"></i><span>Join RELCON meeting</span>';
+    }
+  } catch {}
+  return '';
 }
 
 async function copyTextToClipboard(text) {
