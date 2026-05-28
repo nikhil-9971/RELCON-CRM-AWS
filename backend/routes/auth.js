@@ -110,15 +110,25 @@ function normalizeUserRole(role = "") {
 
 function getExternalRedirectUri(req) {
   return process.env.GOOGLE_EXTERNAL_REDIRECT_URI ||
-    `${req.protocol}://${req.get("host")}/api/external/google/callback`;
+    `${getPublicBaseUrl(req)}/api/external/google/callback`;
 }
 
 function getFrontendBase(req) {
-  return String(process.env.FRONTEND_URL || `${req.protocol}://${req.get("host")}`).replace(/\/$/, "");
+  return String(process.env.FRONTEND_URL || getPublicBaseUrl(req)).replace(/\/$/, "");
+}
+
+function getPublicBaseUrl(req) {
+  const configured = String(process.env.PUBLIC_URL || process.env.FRONTEND_URL || "").trim();
+  if (configured) return configured.replace(/\/$/, "");
+  const forwardedProto = String(req.get("x-forwarded-proto") || "").split(",")[0].trim();
+  const forwardedHost = String(req.get("x-forwarded-host") || "").split(",")[0].trim();
+  const proto = forwardedProto || req.protocol || "https";
+  const host = forwardedHost || req.get("host");
+  return `${proto}://${host}`.replace(/\/$/, "");
 }
 
 function buildAbsoluteUrl(req, path) {
-  return `${req.protocol}://${req.get("host")}${path}`;
+  return `${getPublicBaseUrl(req)}${path}`;
 }
 
 function externalMissingConfig() {
