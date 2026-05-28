@@ -17,6 +17,18 @@ const ChatSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    deletedFor: {
+      type: [String],
+      default: [],
+    },
+    deletedForEveryoneAt: {
+      type: Date,
+      default: null,
+    },
+    deletedBy: {
+      type: String,
+      default: "",
+    },
     expiresAt: {
       type: Date,
       default: null,

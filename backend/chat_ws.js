@@ -219,6 +219,12 @@ function setupWebsocket(server) {
       // ✅ Handle message delete broadcast
       if (msg.type === "delete_message") {
         if (ws.meetingOnly) return;
+        const message = await Chat.findById(msg.messageId);
+        if (!message || String(message.from || "").trim() !== user) return;
+        await Chat.updateOne(
+          { _id: msg.messageId },
+          { $set: { deletedForEveryoneAt: new Date(), deletedBy: user } }
+        );
         const payload = JSON.stringify({ type: "message_deleted", messageId: msg.messageId });
         for (const conns of clients.values()) {
           for (const s of conns) {
@@ -244,6 +250,7 @@ function setupWebsocket(server) {
 
         const payloadMessage = {
           type: "group",
+          _id: messageDoc._id,
           channel: channelName,
           from: user,
           text: msg.text,
@@ -276,6 +283,7 @@ function setupWebsocket(server) {
 
         const payloadMessage = {
           type: "dm",
+          _id: messageDoc._id,
           from: user,
           to: msg.to,
           text: msg.text,

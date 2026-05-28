@@ -1997,23 +1997,26 @@ function initWS() {
       if (msg.type === 'typing' && msg.from !== currentUser) showTyping(msg.from);
       if (msg.type === 'ping') handlePing(msg);
       if (msg.type === 'call_signal') handleCallSignal(msg);
-      if (msg.type === 'group' && msg.from !== currentUser) {
+      if (msg.type === 'group') {
         if (currentChannel === (msg.channel || 'general')) {
           renderMessage(msg);
           if (!isAtBottom) { newMsgCount++; updateScrollFabCount(); }
         }
         // Mention notification
         const mp = new RegExp(`@${escapeRegex(currentUser)}`, 'i');
-        if (mp.test(msg.text || '')) addNotification(msg.from, msg.text, 'mention');
+        if (msg.from !== currentUser && mp.test(msg.text || '')) addNotification(msg.from, msg.text, 'mention');
       }
-      if (msg.type === 'dm' && msg.from !== currentUser) {
-        if (currentChannel === `dm-${msg.from}`) {
+      if (msg.type === 'dm') {
+        const activeDmPeer = msg.from === currentUser ? msg.to : msg.from;
+        if (currentChannel === `dm-${activeDmPeer}`) {
           renderMessage(msg);
           if (!isAtBottom) { newMsgCount++; updateScrollFabCount(); }
-          markDmAsRead(msg.from);
-          markNotificationsReadBySender(msg.from);
+          if (msg.from !== currentUser) {
+            markDmAsRead(msg.from);
+            markNotificationsReadBySender(msg.from);
+          }
           syncChatReadState();
-        } else {
+        } else if (msg.from !== currentUser) {
           addNotification(msg.from, msg.text, 'dm');
         }
       }
@@ -2157,6 +2160,7 @@ function renderMessage(msg, bulk = false) {
   const msgIdStr = msgId ? `'${msgId}'` : 'null';
   const fromStr  = `'${escJs(msg.from||'')}'`;
   const textStr  = `'${escJs(msg.text||'')}'`;
+  const isOwnStr = isOwn ? 'true' : 'false';
   const reactionsId = msgId || ('r' + Math.random().toString(36).slice(2));
 
   const div = document.createElement('div');
@@ -2185,7 +2189,7 @@ function renderMessage(msg, bulk = false) {
       <button class="action-btn" onclick="pinMessage(${msgIdStr},${textStr})" title="Pin"><i class="fa-solid fa-thumbtack"></i></button>
       <button class="action-btn" onclick="copyMessage(${textStr})" title="Copy"><i class="fa-solid fa-copy"></i></button>
       ${isOwn ? `<button class="action-btn" onclick="startEdit(${msgIdStr},${textStr})" title="Edit"><i class="fa-solid fa-pen"></i></button>` : ''}
-      <button class="action-btn danger" onclick="deleteMessage(${msgIdStr},this)" title="Delete"><i class="fa-solid fa-trash"></i></button>
+      <button class="action-btn danger" onclick="openDeleteMessageMenu(event,${msgIdStr},${isOwnStr})" title="Delete"><i class="fa-solid fa-trash"></i></button>
     </div>`;
 
   const msgsEl = document.getElementById('messages');
@@ -2281,8 +2285,10 @@ async function sendMessage() {
   if (replyContext) { payload.replyTo = { from: replyContext.from, text: replyContext.text }; cancelReply(); }
 
   let renderedPayload = payload;
+  let shouldRenderNow = true;
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify(payload));
+    shouldRenderNow = false;
   } else if (payload.type === 'dm') {
     try {
       const res = await fetch(`${BASE_URL}/chat/send`, {
@@ -2304,7 +2310,7 @@ async function sendMessage() {
       showToast('Message saved locally only. Please check connection.', 'error');
     }
   }
-  renderMessage(renderedPayload);
+  if (shouldRenderNow) renderMessage(renderedPayload);
   inp.value = ''; inp.style.height = 'auto'; updateSendBtn(); updateCharCount();
 }
 
@@ -3446,16 +3452,97 @@ function cancelEdit() {
   editContext = null;
   document.getElementById('editPreview').classList.remove('show');
 }
-function deleteMessage(msgId, btn) {
+
+function removeMessageRow(msgId) {
   if (!msgId) return;
-  const row = btn.closest('.msg-row');
+  const row = document.querySelector(`[data-msg-id="${msgId}"]`);
   if (!row) return;
   row.style.transition = 'opacity .22s, transform .22s';
   row.style.opacity = '0'; row.style.transform = 'translateX(-8px)';
   setTimeout(() => row.remove(), 220);
-  if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'delete_message', messageId: msgId }));
-  showToast('Message deleted', 'info');
   if (msgId === lastOwnMsgId) lastOwnMsgId = null;
+}
+
+function closeDeleteMessageMenu() {
+  document.getElementById('deleteMessageMenu')?.remove();
+}
+
+function openDeleteMessageMenu(event, msgId, isOwn) {
+  event?.stopPropagation?.();
+  closeDeleteMessageMenu();
+  if (!msgId) {
+    showToast('Please wait a moment before deleting this message.', 'info');
+    return;
+  }
+  const isDm = currentChannel.startsWith('dm-');
+  const menu = document.createElement('div');
+  menu.id = 'deleteMessageMenu';
+  menu.style.cssText = 'position:fixed;z-index:5000;min-width:190px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--sh-lg);padding:6px;';
+  const x = Math.min(event.clientX || 20, window.innerWidth - 210);
+  const y = Math.min(event.clientY || 20, window.innerHeight - 120);
+  menu.style.left = `${Math.max(8, x)}px`;
+  menu.style.top = `${Math.max(8, y)}px`;
+
+  const items = [];
+  if (isDm) {
+    items.push({ label: 'Delete for me', icon: 'fa-user', action: () => deleteMessageForMe(msgId) });
+  }
+  if (isOwn || !isDm) {
+    items.push({ label: isDm ? 'Delete from everyone' : 'Delete message', icon: 'fa-users', danger: true, action: () => deleteMessageForEveryone(msgId) });
+  }
+  if (!items.length) items.push({ label: 'Delete for me', icon: 'fa-user', action: () => deleteMessageForMe(msgId) });
+
+  menu.innerHTML = items.map((item, index) => `
+    <button type="button" data-del-index="${index}" style="width:100%;height:34px;border:0;background:transparent;color:${item.danger?'var(--danger)':'var(--txt2)'};font:700 12.5px var(--font);display:flex;align-items:center;gap:9px;padding:0 10px;border-radius:7px;cursor:pointer;text-align:left;">
+      <i class="fa-solid ${item.icon}" style="width:14px;"></i>${item.label}
+    </button>
+  `).join('');
+  menu.querySelectorAll('button').forEach((btn) => {
+    btn.addEventListener('mouseenter', () => { btn.style.background = 'var(--surface2)'; });
+    btn.addEventListener('mouseleave', () => { btn.style.background = 'transparent'; });
+    btn.addEventListener('click', () => {
+      const item = items[Number(btn.dataset.delIndex)];
+      closeDeleteMessageMenu();
+      item?.action();
+    });
+  });
+  document.body.appendChild(menu);
+  setTimeout(() => document.addEventListener('click', closeDeleteMessageMenu, { once: true }), 0);
+}
+
+async function deleteMessageForMe(msgId) {
+  if (!msgId) return;
+  removeMessageRow(msgId);
+  try {
+    await fetch(`${BASE_URL}/chat/delete-for-me/${encodeURIComponent(msgId)}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    showToast('Deleted for you', 'info');
+  } catch {
+    showToast('Deleted from this screen. Sync may retry after refresh.', 'error');
+  }
+}
+
+async function deleteMessageForEveryone(msgId) {
+  if (!msgId) return;
+  if (!confirm('Delete this message from everyone?')) return;
+  try {
+    const res = await fetch(`${BASE_URL}/chat/delete/${encodeURIComponent(msgId)}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Unable to delete message');
+    removeMessageRow(msgId);
+    showToast('Deleted from everyone', 'info');
+  } catch (err) {
+    showToast(err.message || 'Unable to delete message', 'error');
+  }
+}
+
+function deleteMessage(msgId, btn) {
+  openDeleteMessageMenu({ clientX: window.innerWidth / 2, clientY: window.innerHeight / 2, stopPropagation() {} }, msgId, true);
 }
 
 /* ════════════════════════════════════════
