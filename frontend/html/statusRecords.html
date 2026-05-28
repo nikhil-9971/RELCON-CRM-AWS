@@ -511,15 +511,66 @@
       setTimeout(() => toast.classList.remove('show'), 3800);
     }
 
+    function isNikhilAdmin(user = {}) {
+      return user.role === "admin" && String(user.username || "").toLowerCase() === "nikhil.trivedi";
+    }
+
+    function isAnuragAdmin(user = {}) {
+      return user.role === "admin" && String(user.username || "").toLowerCase() === "anurag.mishra";
+    }
+
+    function isVerifiedRecord(row = {}) {
+      return row.isVerified === true || row.isVerified === "true";
+    }
+
+    function isHpclRecord(row = {}) {
+      return String(row.phase || "").trim().toUpperCase().startsWith("HPCL");
+    }
+
+    function hasActionRequiredIssue(row = {}) {
+      const duOffline = String(row.duOffline || "").trim().toUpperCase();
+      const tankOffline = String(row.tankOffline || "").trim().toUpperCase();
+      const earthingStatus = String(row.earthingStatus || "").trim().toUpperCase();
+      return Boolean(
+        (duOffline && duOffline !== "ALL OK") ||
+        (tankOffline && tankOffline !== "ALL OK") ||
+        (earthingStatus && earthingStatus !== "OK")
+      );
+    }
+
+    function hasSpareActivity(row = {}) {
+      const yesValues = ["YES", "Y", "TRUE"];
+      const spareUsed = String(row.spareUsed || "").trim().toUpperCase();
+      const spareReq = String(row.spareRequirment || "").trim().toUpperCase();
+      const activeSpare = String(row.activeSpare || "").trim().toUpperCase();
+      const faultySpare = String(row.faultySpare || "").trim().toUpperCase();
+      const spareReqName = String(row.spareRequirmentname || "").trim().toUpperCase();
+      return (
+        yesValues.includes(spareUsed) ||
+        yesValues.includes(spareReq) ||
+        (activeSpare && activeSpare !== "NO ACTIVE MATERIAL USED") ||
+        (faultySpare && faultySpare !== "NO FAULTY MATERIAL CREATED") ||
+        (spareReqName && spareReqName !== "NO SPARE REQUIRE")
+      );
+    }
+
+    function canNikhilVerifyHpclUnverified(row = {}) {
+      return isHpclRecord(row) && !isVerifiedRecord(row) && (hasActionRequiredIssue(row) || hasSpareActivity(row));
+    }
+
+    function visibleRowsForUser(rows = [], user = {}) {
+      if (isAnuragAdmin(user)) return rows;
+      if (isNikhilAdmin(user)) return rows.filter(r => isVerifiedRecord(r) || canNikhilVerifyHpclUnverified(r));
+      return rows.filter(isVerifiedRecord);
+    }
+
     async function fetchStatusRecords() {
       showLoader();
       const res = await fetch(`${baseUrl}/getMergedStatusRecords`, { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       allStatusData = data;
       const user = JSON.parse(localStorage.getItem("user")) || {};
-      filteredData = (user.role === "admin" && user.username === "anurag.mishra")
-        ? data
-        : data.filter(r => r.isVerified === true || r.isVerified === "true");
+      filteredData = visibleRowsForUser(data, user);
       renderTable(filteredData);
       hideLoader();
     }
@@ -547,8 +598,7 @@
         filteredData = allStatusData.filter(row => {
           const rd = new Date(row.date);
           const inRange = (!fromDate || rd >= fromDate) && (!toDate || rd <= toDate);
-          if (user.role === "admin" && user.username === "anurag.mishra") return inRange;
-          return inRange && (row.isVerified === true || row.isVerified === "true");
+          return inRange && visibleRowsForUser([row], user).length > 0;
         });
         currentPage = 1;
         renderTable(filteredData);
@@ -560,9 +610,7 @@
       document.getElementById("fromDate").value = "";
       document.getElementById("toDate").value   = "";
       const user = JSON.parse(localStorage.getItem("user")) || {};
-      filteredData = (user.role === "admin" && user.username === "anurag.mishra")
-        ? allStatusData
-        : allStatusData.filter(r => r.isVerified === true || r.isVerified === "true");
+      filteredData = visibleRowsForUser(allStatusData, user);
       currentPage = 1;
       renderTable(filteredData);
     }
@@ -659,7 +707,9 @@
         const cells = columns.map(col => {
           if (col.key === "actions") {
             let html = "";
-            if (role === "admin" && username === "anurag.mishra" && !isVerified) {
+            const userObj = { role, username };
+            const canVerifyUnverified = (isAnuragAdmin(userObj) && !isVerified) || (isNikhilAdmin(userObj) && canNikhilVerifyHpclUnverified(record));
+            if (canVerifyUnverified) {
               html = `
                 <button class="sf-btn sf-btn-neutral" style="height:26px;padding:0 10px;font-size:11px;" onclick='handleEditClick("${encoded}")'>
                   <i class="fa-solid fa-pen"></i> Edit
@@ -670,7 +720,7 @@
                 <button class="sf-btn sf-btn-success" style="height:26px;padding:0 10px;font-size:11px;margin-left:4px;" onclick='verifyRecord("${record._id}")'>
                   <i class="fa-solid fa-check"></i> Verify
                 </button>`;
-            } else if (role === "admin" && username === "nikhil.trivedi" && isVerified) {
+            } else if (isNikhilAdmin(userObj) && isVerified) {
               html = `
                 <button class="sf-btn sf-btn-neutral" style="height:26px;padding:0 10px;font-size:11px;" onclick='handleEditClick("${encoded}")'>
                   <i class="fa-solid fa-pen"></i> Edit
@@ -678,7 +728,7 @@
                 <button class="sf-btn sf-btn-danger" style="height:26px;padding:0 10px;font-size:11px;margin-left:4px;" onclick='deleteStatus("${record._id}")'>
                   <i class="fa-solid fa-trash"></i>
                 </button>`;
-            } else if (role === "admin" && username === "anurag.mishra" && isVerified) {
+            } else if (isAnuragAdmin(userObj) && isVerified) {
               html = `<span class="sf-badge sf-badge-green"><i class="fa-solid fa-lock"></i> Verified</span>`;
             }
             return `<td style="text-align:center;">${html}</td>`;
@@ -691,11 +741,11 @@
               cell += ` <span class="sf-badge sf-badge-green"><i class="fa-solid fa-check"></i> Verified</span>`;
               if (record.taskGenerated) cell += ` <span class="sf-badge sf-badge-blue" title="Task auto-generated"><i class="fa-solid fa-thumbtack"></i></span>`;
             } else {
-              const hasDuIssue = record.duOffline && record.duOffline !== "ALL OK";
-              const hasTankIssue = record.tankOffline && record.tankOffline !== "ALL OK";
-              const hasEarthingIssue = record.earthingStatus && record.earthingStatus !== "OK";
-              if (hasDuIssue || hasTankIssue || hasEarthingIssue) {
+              if (hasActionRequiredIssue(record)) {
                 cell += ` <span class="sf-badge sf-badge-amber sf-badge-warn-pulse" title="Issues in DU/Tank/Earthing"><i class="fa-solid fa-triangle-exclamation"></i> Action Required</span>`;
+              }
+              if (hasSpareActivity(record)) {
+                cell += ` <span class="sf-badge sf-badge-blue" title="Spare used or required"><i class="fa-solid fa-screwdriver-wrench"></i> Spare</span>`;
               }
             }
           }
@@ -794,9 +844,7 @@
         const idx = allStatusData.findIndex(r => r._id === verifyTargetId);
         if (idx !== -1) { allStatusData[idx].isVerified = true; allStatusData[idx].taskGenerated = true; }
         const user = JSON.parse(localStorage.getItem("user")) || {};
-        filteredData = (user.role === "admin" && user.username === "anurag.mishra")
-          ? allStatusData
-          : allStatusData.filter(r => r.isVerified === true || r.isVerified === "true");
+        filteredData = visibleRowsForUser(allStatusData, user);
         renderTable(filteredData);
         closeVerifyRemarkModal();
       } else showToast("Verification failed.", "error");

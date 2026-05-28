@@ -40,6 +40,52 @@ function getOptionalUserFromRequest(req) {
   }
 }
 
+function isNikhilAdmin(user = {}) {
+  return String(user.role || "").toLowerCase() === "admin" &&
+    String(user.username || "").toLowerCase() === "nikhil.trivedi";
+}
+
+function isAnuragAdmin(user = {}) {
+  return String(user.role || "").toLowerCase() === "admin" &&
+    String(user.username || "").toLowerCase() === "anurag.mishra";
+}
+
+function hasHpclActionRequiredIssue(status = {}) {
+  const duOffline = String(status.duOffline || "").trim().toUpperCase();
+  const tankOffline = String(status.tankOffline || "").trim().toUpperCase();
+  const earthingStatus = String(status.earthingStatus || "").trim().toUpperCase();
+  return Boolean(
+    (duOffline && duOffline !== "ALL OK") ||
+    (tankOffline && tankOffline !== "ALL OK") ||
+    (earthingStatus && earthingStatus !== "OK")
+  );
+}
+
+function hasSpareActivity(status = {}) {
+  const yesValues = new Set(["YES", "Y", "TRUE"]);
+  const spareUsed = String(status.spareUsed || "").trim().toUpperCase();
+  const spareReq = String(status.spareRequirment || "").trim().toUpperCase();
+  const activeSpare = String(status.activeSpare || "").trim().toUpperCase();
+  const faultySpare = String(status.faultySpare || "").trim().toUpperCase();
+  const spareReqName = String(status.spareRequirmentname || "").trim().toUpperCase();
+  return (
+    yesValues.has(spareUsed) ||
+    yesValues.has(spareReq) ||
+    (activeSpare && activeSpare !== "NO ACTIVE MATERIAL USED") ||
+    (faultySpare && faultySpare !== "NO FAULTY MATERIAL CREATED") ||
+    (spareReqName && spareReqName !== "NO SPARE REQUIRE")
+  );
+}
+
+function canVerifyHpclStatus(user = {}, status = {}) {
+  if (isAnuragAdmin(user)) return true;
+  if (!isNikhilAdmin(user)) return false;
+  const phase = String(status.planId?.phase || "").trim().toUpperCase();
+  return phase.startsWith("HPCL") &&
+    !status.isVerified &&
+    (hasHpclActionRequiredIssue(status) || hasSpareActivity(status));
+}
+
 // ✅ Utility: Email content generator
 function generateEmailContent({
   roName,
@@ -584,6 +630,12 @@ router.put("/verifyStatus/:id", verifyToken, async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).send("Invalid ObjectId format.");
+    }
+
+    const statusToVerify = await Status.findById(id).populate("planId");
+    if (!statusToVerify) return res.status(404).send("Status not found");
+    if (!canVerifyHpclStatus(req.user || {}, statusToVerify)) {
+      return res.status(403).send("You do not have access to verify this HPCL status record.");
     }
 
     const updated = await Status.findByIdAndUpdate(
