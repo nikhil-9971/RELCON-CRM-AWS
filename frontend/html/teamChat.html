@@ -1826,6 +1826,17 @@ const CHANNEL_META = {
 };
 
 const AVATAR_COLORS = ['#2563eb','#059669','#7c3aed','#dc2626','#d97706','#0891b2','#db2777','#16a34a'];
+const CALL_VIDEO_CONSTRAINTS = {
+  width: { ideal: 1920 },
+  height: { ideal: 1080 },
+  frameRate: { ideal: 30, max: 30 },
+  facingMode: 'user',
+};
+const CALL_SCREEN_CONSTRAINTS = {
+  width: { ideal: 1920 },
+  height: { ideal: 1080 },
+  frameRate: { ideal: 30, max: 30 },
+};
 
 /* ════════════════════════════════════════
    INIT
@@ -2935,9 +2946,20 @@ function tuneVideoSender(sender, isScreenShare = false) {
   if (!sender?.setParameters) return;
   const params = sender.getParameters();
   params.encodings = params.encodings?.length ? params.encodings : [{}];
-  params.encodings[0].maxBitrate = isScreenShare ? 4500000 : 3000000;
-  params.encodings[0].maxFramerate = 60;
+  params.degradationPreference = 'maintain-resolution';
+  params.encodings[0].maxBitrate = isScreenShare ? 6000000 : 5000000;
+  params.encodings[0].maxFramerate = 30;
+  params.encodings[0].scaleResolutionDownBy = 1;
   sender.setParameters(params).catch(() => {});
+}
+
+function tuneLocalVideoTracks(stream, isScreenShare = false) {
+  stream?.getVideoTracks?.().forEach((track) => {
+    try { track.contentHint = isScreenShare ? 'detail' : 'motion'; } catch {}
+    if (!isScreenShare && track.applyConstraints) {
+      track.applyConstraints(CALL_VIDEO_CONSTRAINTS).catch(() => {});
+    }
+  });
 }
 
 function createPeerConnection(peerName, callId, mediaKind) {
@@ -3008,21 +3030,16 @@ async function getLocalCallStream(mediaKind) {
   if (!navigator.mediaDevices?.getUserMedia) {
     throw new Error('Calling is not supported in this browser.');
   }
-  return navigator.mediaDevices.getUserMedia({
+  const stream = await navigator.mediaDevices.getUserMedia({
     audio: {
       echoCancellation: true,
       noiseSuppression: true,
       autoGainControl: true,
     },
-    video: mediaKind === 'video'
-      ? {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          frameRate: { ideal: 60, max: 60 },
-          facingMode: 'user',
-        }
-      : false,
+    video: mediaKind === 'video' ? CALL_VIDEO_CONSTRAINTS : false,
   });
+  tuneLocalVideoTracks(stream);
+  return stream;
 }
 
 async function startRelconCall(mediaKind = 'video', options = {}) {
@@ -3165,13 +3182,10 @@ async function toggleScreenShare() {
   }
   try {
     screenShareStream = await navigator.mediaDevices.getDisplayMedia({
-      video: {
-        frameRate: { ideal: 60, max: 60 },
-        width: { ideal: 1920 },
-        height: { ideal: 1080 },
-      },
+      video: CALL_SCREEN_CONSTRAINTS,
       audio: false,
     });
+    tuneLocalVideoTracks(screenShareStream, true);
     const screenTrack = screenShareStream.getVideoTracks()[0];
     if (!screenTrack) throw new Error('No screen track selected');
     replaceVideoTrackForAllPeers(screenTrack);
