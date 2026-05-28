@@ -5,12 +5,15 @@ const Chat = require("./models/Chat");
 const User = require("./models/User");
 
 const JWT_SECRET = process.env.JWT_SECRET || "relcon-secret-key";
-const DM_RETENTION_DAYS = 15;
+let dmExpiryCleanupStarted = false;
 
-function getDmExpiryDate() {
-  const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + DM_RETENTION_DAYS);
-  return expiresAt;
+function preserveDmHistory() {
+  if (dmExpiryCleanupStarted) return;
+  dmExpiryCleanupStarted = true;
+  Chat.updateMany(
+    { roomId: /__/, expiresAt: { $ne: null } },
+    { $set: { expiresAt: null } }
+  ).catch((err) => console.error("Failed to preserve DM history:", err?.message || err));
 }
 
 // username -> set of sockets
@@ -62,6 +65,7 @@ function broadcastPresence() {
 }
 
 function setupWebsocket(server) {
+  preserveDmHistory();
   const wss = new WebSocket.Server({ noServer: true });
 
   server.on("upgrade", async (request, socket, head) => {
@@ -268,7 +272,6 @@ function setupWebsocket(server) {
           delivered: true,
           read: false,
           replyTo: msg.replyTo || null,
-          expiresAt: getDmExpiryDate(),
         });
 
         const payloadMessage = {
