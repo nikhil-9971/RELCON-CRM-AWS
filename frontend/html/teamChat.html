@@ -144,10 +144,15 @@ body {
 .meeting-overlay.open{display:flex;}
 .meeting-window{width:min(1100px,98vw);height:min(720px,92vh);max-height:92vh;background:#1f1f1f;border:1px solid rgba(255,255,255,.12);border-radius:10px;box-shadow:0 30px 80px rgba(2,6,23,.46);display:flex;flex-direction:column;overflow:hidden;color:#f5f5f5;}
 .meeting-window.expanded{width:100vw;height:100vh;max-height:100vh;border-radius:0;border:0;}
+.meeting-window.people-collapsed .call-layout{grid-template-columns:1fr;}
+.meeting-window.people-collapsed .call-side{display:none;}
 .meeting-head{height:52px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 14px;border-bottom:1px solid rgba(255,255,255,.1);background:#242424;}
 .meeting-title{display:flex;align-items:center;gap:9px;min-width:0;font-weight:800;color:#f5f5f5;}
 .meeting-title span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .meeting-actions{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.meeting-meta{height:28px;display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:1px solid rgba(255,255,255,.08);background:#202020;color:#d4d4d8;font-size:12px;font-weight:800;overflow:hidden;}
+.meeting-meta-chip{height:22px;border:1px solid rgba(255,255,255,.12);background:#2d2d2d;border-radius:999px;padding:0 9px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
+.meeting-meta-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#a1a1aa;}
 .meeting-body{padding:0;display:grid;grid-template-rows:1fr auto;overflow:hidden;min-height:0;flex:1;background:#1b1b1b;}
 .dark-mode .meeting-body{background:#1b1b1b;}
 .call-layout{display:grid;grid-template-columns:minmax(0,1fr)260px;gap:0;min-height:0;}
@@ -203,6 +208,7 @@ body {
 .call-people{display:flex;gap:8px;flex-wrap:wrap;min-height:28px;}
 .call-chip{height:34px;border:1px solid rgba(255,255,255,.1);background:#303030;border-radius:6px;padding:0 10px;display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#f5f5f5;}
 .call-chip::before{content:"";width:8px;height:8px;border-radius:50%;background:#92c353;box-shadow:0 0 0 3px rgba(146,195,83,.15);}
+.call-chip.me::after{content:"You";font-size:10px;color:#a7f3d0;background:rgba(35,123,75,.25);border:1px solid rgba(167,243,208,.2);border-radius:999px;padding:1px 6px;}
 .schedule-window{width:min(720px,96vw)!important;height:auto!important;max-height:92vh!important;}
 .schedule-window .meeting-head{height:62px;background:linear-gradient(135deg,#eef2ff,#ecfdf5);}
 .dark-mode .schedule-window .meeting-head{background:linear-gradient(135deg,#111827,#052e2b);}
@@ -1649,9 +1655,16 @@ body {
         <span id="meetingTitle">RELCON Call</span>
       </div>
       <div class="meeting-actions">
+        <button class="meeting-copy" id="meetingCopyLinkBtn" onclick="copyActiveMeetingLink()" title="Copy meeting link"><i class="fa-solid fa-link"></i> Copy link</button>
+        <button class="meeting-copy" id="meetingPeopleBtn" onclick="toggleCallPeoplePanel()" title="Show or hide people"><i class="fa-solid fa-user-group"></i> <span id="meetingPeopleCount">1</span></button>
         <button class="meeting-copy" id="meetingExpandBtn" onclick="toggleMeetingSize()" title="Expand call"><i class="fa-solid fa-up-right-and-down-left-from-center"></i> Expand</button>
         <button class="meeting-copy" onclick="closeMeeting()"><i class="fa-solid fa-xmark"></i> Close</button>
       </div>
+    </div>
+    <div class="meeting-meta">
+      <span class="meeting-meta-chip"><i class="fa-solid fa-shield-halved"></i><span id="meetingModeLabel">Secure call</span></span>
+      <span class="meeting-meta-chip"><i class="fa-solid fa-gauge-high"></i><span id="meetingQualityLabel">Checking quality</span></span>
+      <span class="meeting-meta-text" id="meetingContextLabel">Ready</span>
     </div>
     <div class="meeting-body">
       <div class="call-layout">
@@ -2615,6 +2628,8 @@ function callTitle(kind, label, mode = 'dm') {
 function setCallStatus(text) {
   const el = document.getElementById('callStatus');
   if (el) el.textContent = text;
+  const context = document.getElementById('meetingContextLabel');
+  if (context) context.textContent = text || 'Ready';
 }
 
 function qualityClass(pingMs) {
@@ -2626,14 +2641,17 @@ function qualityClass(pingMs) {
 
 function setCallQuality(pingMs = null) {
   const el = document.getElementById('callQuality');
+  const meta = document.getElementById('meetingQualityLabel');
   if (!el) return;
   if (!activeCall) {
     el.innerHTML = '';
+    if (meta) meta.textContent = 'Ready';
     return;
   }
   const cls = qualityClass(pingMs);
   const label = Number.isFinite(pingMs) ? `${Math.round(pingMs)} ms` : '-- ms';
   el.innerHTML = `<span class="metric ${cls}"><i class="fa-solid fa-gauge-high"></i> Ping ${label}</span>`;
+  if (meta) meta.textContent = `Ping ${label}`;
 }
 
 function setCallControls(mode) {
@@ -2710,15 +2728,21 @@ function stopCallSounds() {
 
 function updateCallParticipants() {
   const el = document.getElementById('callParticipants');
+  const countEl = document.getElementById('meetingPeopleCount');
   if (!el) return;
-  if (!activeCall && !incomingCall) { el.innerHTML = ''; return; }
+  if (!activeCall && !incomingCall) {
+    el.innerHTML = '';
+    if (countEl) countEl.textContent = '0';
+    return;
+  }
   const names = new Set([currentUser]);
   if (activeCall?.peer) names.add(activeCall.peer);
   if (incomingCall?.from) names.add(incomingCall.from);
   groupCallPeers.forEach((_, name) => names.add(name));
-  el.innerHTML = Array.from(names)
-    .filter(Boolean)
-    .map((name) => `<span class="call-chip">${escHtml(name)}</span>`)
+  const people = Array.from(names).filter(Boolean);
+  if (countEl) countEl.textContent = String(people.length);
+  el.innerHTML = people
+    .map((name) => `<span class="call-chip${name === currentUser ? ' me' : ''}">${escHtml(name)}</span>`)
     .join('');
 }
 
@@ -2775,11 +2799,32 @@ function setCallVideos() {
 function openCallWindow({ title, icon = 'fa-solid fa-video', status = 'Ready', mode = 'active' }) {
   document.getElementById('meetingTitle').textContent = title;
   document.getElementById('meetingIcon').className = icon;
+  const modeLabel = document.getElementById('meetingModeLabel');
+  if (modeLabel) modeLabel.textContent = activeCall?.mode === 'channel' ? 'Team meeting' : (activeCall?.mode === 'dm' ? 'Direct call' : 'Incoming call');
   document.getElementById('meetingOverlay').classList.add('open');
   setCallStatus(status);
   setCallControls(mode);
   setCallQuality(null);
   setCallVideos();
+}
+
+async function copyActiveMeetingLink() {
+  const meeting = meetingFromActiveCall();
+  if (!meeting?.joinUrl) {
+    showToast('Join or start a call first.', 'info');
+    return;
+  }
+  const copied = await copyTextToClipboard(meeting.joinUrl);
+  showToast(copied ? 'Meeting link copied.' : 'Unable to copy meeting link.', copied ? 'success' : 'error');
+}
+
+function toggleCallPeoplePanel() {
+  const win = document.querySelector('#meetingOverlay .meeting-window');
+  const btn = document.getElementById('meetingPeopleBtn');
+  if (!win || !btn) return;
+  const collapsed = win.classList.toggle('people-collapsed');
+  btn.title = collapsed ? 'Show people' : 'Hide people';
+  btn.classList.toggle('active', !collapsed);
 }
 
 function toggleMeetingSize() {
@@ -3412,11 +3457,14 @@ function cleanupCall() {
   pendingIceByPeer.clear();
   document.getElementById('meetingOverlay').classList.remove('open');
   document.querySelector('#meetingOverlay .meeting-window')?.classList.remove('expanded');
+  document.querySelector('#meetingOverlay .meeting-window')?.classList.remove('people-collapsed');
   const expandBtn = document.getElementById('meetingExpandBtn');
   if (expandBtn) {
     expandBtn.innerHTML = '<i class="fa-solid fa-up-right-and-down-left-from-center"></i> Expand';
     expandBtn.title = 'Expand call';
   }
+  const peopleBtn = document.getElementById('meetingPeopleBtn');
+  if (peopleBtn) peopleBtn.title = 'Show or hide people';
   document.getElementById('muteBtn')?.classList.remove('off');
   document.getElementById('cameraBtn')?.classList.remove('off');
   document.getElementById('screenBtn')?.classList.remove('off');
