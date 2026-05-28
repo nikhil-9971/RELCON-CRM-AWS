@@ -1837,6 +1837,7 @@ const CALL_SCREEN_CONSTRAINTS = {
   height: { ideal: 1080 },
   frameRate: { ideal: 30, max: 30 },
 };
+const MAX_VIDEO_CALL_PARTICIPANTS = 4;
 
 /* ════════════════════════════════════════
    INIT
@@ -2891,6 +2892,22 @@ function getActivePeerConnections() {
   return Array.from(peers).filter(Boolean);
 }
 
+function getCallParticipantCount(extraPeerName = '') {
+  if (!activeCall) return 0;
+  const names = new Set([currentUser]);
+  if (activeCall.peer) names.add(activeCall.peer);
+  groupCallPeers.forEach((_, name) => names.add(name));
+  if (extraPeerName) names.add(extraPeerName);
+  return Array.from(names).filter(Boolean).length;
+}
+
+function callVideoBitrate(participantCount, isScreenShare = false) {
+  if (isScreenShare) return participantCount <= 3 ? 6000000 : 4000000;
+  if (participantCount <= 2) return 5000000;
+  if (participantCount === 3) return 3000000;
+  return 2000000;
+}
+
 async function readPeerPingMs(pc) {
   const stats = await pc.getStats();
   let fallback = null;
@@ -2946,11 +2963,20 @@ function tuneVideoSender(sender, isScreenShare = false) {
   if (!sender?.setParameters) return;
   const params = sender.getParameters();
   params.encodings = params.encodings?.length ? params.encodings : [{}];
+  const participantCount = Math.max(getCallParticipantCount(), 2);
   params.degradationPreference = 'maintain-resolution';
-  params.encodings[0].maxBitrate = isScreenShare ? 6000000 : 5000000;
+  params.encodings[0].maxBitrate = callVideoBitrate(participantCount, isScreenShare);
   params.encodings[0].maxFramerate = 30;
   params.encodings[0].scaleResolutionDownBy = 1;
   sender.setParameters(params).catch(() => {});
+}
+
+function retuneAllVideoSenders() {
+  getActivePeerConnections().forEach((pc) => {
+    pc.getSenders()
+      .filter((sender) => sender.track?.kind === 'video')
+      .forEach((sender) => tuneVideoSender(sender, sender.track !== localCallStream?.getVideoTracks()[0]));
+  });
 }
 
 function tuneLocalVideoTracks(stream, isScreenShare = false) {
@@ -3009,12 +3035,25 @@ function createPeerConnection(peerName, callId, mediaKind) {
 function registerPeer(peerName, pc) {
   groupCallPeers.set(peerName, pc);
   callPeer = pc;
+  retuneAllVideoSenders();
   updateCallParticipants();
   refreshCallStats();
 }
 
 async function createOfferForPeer(peerName) {
   if (!activeCall || !localCallStream || peerName === currentUser || groupCallPeers.has(peerName)) return;
+  if (activeCall.mode === 'channel' && getCallParticipantCount(peerName) > MAX_VIDEO_CALL_PARTICIPANTS) {
+    sendCallSignal({
+      signalType: 'busy',
+      callId: activeCall.callId,
+      to: peerName,
+      channel: activeCall.channel,
+      mediaKind: activeCall.mediaKind,
+      reason: 'call_full',
+    });
+    showToast(`Meeting limit reached: max ${MAX_VIDEO_CALL_PARTICIPANTS} video users for lag-free calls.`, 'info');
+    return;
+  }
   const pc = createPeerConnection(peerName, activeCall.callId, activeCall.mediaKind);
   localCallStream.getTracks().forEach((track) => {
     const sender = pc.addTrack(track, localCallStream);
@@ -3309,6 +3348,11 @@ async function handleCallSignal(msg) {
   }
   if (msg.signalType === 'busy') {
     stopOutgoingRingback();
+    if (msg.reason === 'call_full') {
+      showToast(`Meeting full. Max ${MAX_VIDEO_CALL_PARTICIPANTS} video users are allowed for lag-free calls.`, 'info');
+      cleanupCall();
+      return;
+    }
     if (activeCall?.mode === 'channel') {
       showToast(`${msg.from} is busy`, 'info');
       return;
@@ -3323,6 +3367,7 @@ async function handleCallSignal(msg) {
       activeCall?.peerStreams?.delete(msg.from);
       if (activeCall?.screenSharingBy === msg.from) setScreenSharingState('');
       raisedHands.delete(msg.from);
+      retuneAllVideoSenders();
       updateCallParticipants();
       updateRaisedHandsUI();
       showToast(`${msg.from} left the team call`, 'info');
