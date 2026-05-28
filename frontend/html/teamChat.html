@@ -2205,6 +2205,22 @@ function renderDateSep(dateStr) {
   document.getElementById('messages').appendChild(sep);
 }
 
+function showMessagesLoader() {
+  const messages = document.getElementById('messages');
+  if (!messages) return;
+  messages.innerHTML = `
+    <div id="skelLoader">
+      <div class="skel-row"><div class="skel-av skeleton"></div><div class="skel-body"><div class="skel-name skeleton"></div><div class="skel-line skeleton"></div><div class="skel-line-short skeleton"></div></div></div>
+      <div class="skel-row"><div class="skel-av skeleton"></div><div class="skel-body"><div class="skel-name skeleton"></div><div class="skel-line skeleton"></div></div></div>
+      <div class="skel-row"><div class="skel-av skeleton"></div><div class="skel-body"><div class="skel-name skeleton"></div><div class="skel-line skeleton"></div><div class="skel-line-short skeleton"></div></div></div>
+    </div>`;
+}
+
+function hideMessagesLoader() {
+  const skelLoader = document.getElementById('skelLoader');
+  if (skelLoader) skelLoader.remove();
+}
+
 /* ════════════════════════════════════════
    SEND MESSAGE
 ════════════════════════════════════════ */
@@ -2252,8 +2268,31 @@ async function sendMessage() {
   else payload.channel = currentChannel;
   if (replyContext) { payload.replyTo = { from: replyContext.from, text: replyContext.text }; cancelReply(); }
 
-  if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(payload));
-  renderMessage(payload);
+  let renderedPayload = payload;
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(payload));
+  } else if (payload.type === 'dm') {
+    try {
+      const res = await fetch(`${BASE_URL}/chat/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          from: currentUser,
+          to: payload.to,
+          text: payload.text,
+          replyTo: payload.replyTo || null,
+        }),
+      });
+      if (res.ok) renderedPayload = await res.json();
+      else showToast('Message saved locally only. Please check connection.', 'error');
+    } catch {
+      showToast('Message saved locally only. Please check connection.', 'error');
+    }
+  }
+  renderMessage(renderedPayload);
   inp.value = ''; inp.style.height = 'auto'; updateSendBtn(); updateCharCount();
 }
 
@@ -3827,19 +3866,19 @@ async function startDM(name) {
   document.getElementById('chIcon').className = 'ch-icon fa-solid fa-at';
 
   const messages = document.getElementById('messages');
-  messages.innerHTML = '';
-  document.getElementById('skelLoader').style.display = 'block';
+  showMessagesLoader();
   lastMsgFrom = null; lastMsgDate = null;
 
   try {
     const res  = await fetch(`${BASE_URL}/chat/history/${encodeURIComponent(currentUser)}/${encodeURIComponent(name)}`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     await markDmAsRead(name);
     markNotificationsReadBySender(name);
     syncChatReadState();
-    document.getElementById('skelLoader').style.display = 'none';
+    hideMessagesLoader();
     messages.innerHTML = '';
-    const sorted = data.sort((a,b) => new Date(a.createdAt||0) - new Date(b.createdAt||0));
+    const sorted = Array.isArray(data) ? data.sort((a,b) => new Date(a.createdAt||0) - new Date(b.createdAt||0)) : [];
     let lastDate = null; lastMsgFrom = null; lastMsgDate = null;
     sorted.forEach(msg => {
       const d = msg.createdAt ? new Date(msg.createdAt).toDateString() : new Date().toDateString();
@@ -3851,7 +3890,7 @@ async function startDM(name) {
       messages.innerHTML = `<div class="empty-state"><div class="empty-icon">💬</div><div class="empty-title">Direct Message with ${escHtml(name)}</div><div class="empty-sub">This is the beginning of your conversation.</div></div>`;
     }
   } catch {
-    document.getElementById('skelLoader').style.display = 'none';
+    hideMessagesLoader();
     messages.innerHTML = `<div class="empty-state"><div class="empty-icon">💬</div><div class="empty-title">Direct Message</div><div class="empty-sub">Failed to load chat history. Please try again.</div></div>`;
   }
 }
@@ -3962,15 +4001,13 @@ function switchChannel(name, el) {
   loadChannelHistory(name);
 }
 async function loadChannelHistory(name) {
-  const skelLoader = document.getElementById('skelLoader');
   const messagesEl = document.getElementById('messages');
-  skelLoader.style.display = 'block';
-  messagesEl.innerHTML = '';
+  showMessagesLoader();
   lastMsgFrom = null; lastMsgDate = null;
 
   // Safety: never leave skeleton spinning > 12s
   const safetyTimer = setTimeout(() => {
-    skelLoader.style.display = 'none';
+    hideMessagesLoader();
     if (!messagesEl.children.length) {
       messagesEl.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Could not load messages</div><div class="empty-sub">Server took too long to respond. Please refresh.</div></div>`;
     }
@@ -3981,9 +4018,10 @@ async function loadChannelHistory(name) {
     : `/chat/history/channel/${encodeURIComponent(name)}`;
   try {
     const res  = await fetch(`${BASE_URL}${endpoint}`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     clearTimeout(safetyTimer);
     const data = await res.json();
-    skelLoader.style.display = 'none';
+    hideMessagesLoader();
     if (!Array.isArray(data) || !data.length) {
       messagesEl.innerHTML = `<div class="empty-state"><div class="empty-icon">#</div><div class="empty-title">Welcome to #${escHtml(name)}</div><div class="empty-sub">This is the start of the #${escHtml(name)} channel. Say hi! 👋</div></div>`;
       return;
@@ -3998,7 +4036,7 @@ async function loadChannelHistory(name) {
     scrollToBottom();
   } catch {
     clearTimeout(safetyTimer);
-    skelLoader.style.display = 'none';
+    hideMessagesLoader();
     messagesEl.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Error loading messages</div><div class="empty-sub">Could not connect to the server. Please check your connection.</div></div>`;
   }
 }

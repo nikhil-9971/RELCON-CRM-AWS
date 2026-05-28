@@ -7,7 +7,7 @@ const authMiddleware = require("../middleware/authMiddleware");
 // Send a message (fallback if not using WS)
 router.post("/send", async (req, res) => {
   try {
-    const { from, to, text } = req.body;
+    const { from, to, text, replyTo } = req.body;
     const roomId = [from, to].sort().join("__");
     const message = await Chat.create({
       from,
@@ -15,6 +15,7 @@ router.post("/send", async (req, res) => {
       text,
       roomId,
       delivered: true,
+      replyTo: replyTo || null,
     }); // via REST consider delivered
     res.status(201).json(message);
   } catch (err) {
