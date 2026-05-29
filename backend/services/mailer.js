@@ -1905,6 +1905,7 @@ function buildCorrectionReportRows(records = [], category = "") {
       VerifiedCorrectionMailSentAt: log.notificationSentAt ? formatDateTimeIST(log.notificationSentAt) : "",
       AdminRemark: log.adminRemark || "",
       TotalChangedFields: changes.length,
+      StatusRecordId: String(record._id || ""),
     };
     const recordFields = flattenForExcel(record);
     if (changes.length) {
@@ -2096,6 +2097,351 @@ async function sendDailyVerificationCorrectionReportToNikhil({ dateISO = getCurr
       status: "failure",
       error: err.message,
       meta: { dateISO, hpcl: hpcl.length, rbml: rbml.length, bpcl: bpcl.length, totalRecords, totalRows },
+    });
+    throw err;
+  }
+}
+
+function shiftISODate(dateISO, dayOffset = 0) {
+  const date = new Date(`${dateISO}T00:00:00`);
+  date.setDate(date.getDate() + dayOffset);
+  return toLocalISODate(date);
+}
+
+function getISTDateRangeUTC(fromDateISO, toDateISO) {
+  return {
+    start: new Date(`${fromDateISO}T00:00:00+05:30`),
+    end: new Date(`${toDateISO}T23:59:59.999+05:30`),
+    fromDateISO,
+    toDateISO,
+  };
+}
+
+function getBiweeklyCorrectionAnalyticsRange({ endDateISO = getCurrentISTDateParts().dateISO } = {}) {
+  const toDateISO = String(endDateISO || getCurrentISTDateParts().dateISO).slice(0, 10);
+  return {
+    fromDateISO: shiftISODate(toDateISO, -13),
+    toDateISO,
+  };
+}
+
+function incrementMap(map, key, incrementBy = 1) {
+  const safeKey = String(key || "Unknown").trim() || "Unknown";
+  map.set(safeKey, (map.get(safeKey) || 0) + incrementBy);
+}
+
+function mapToSortedRows(map, keyName, valueName, limit = 0) {
+  const rows = [...map.entries()]
+    .map(([key, value]) => ({ [keyName]: key, [valueName]: value }))
+    .sort((a, b) => Number(b[valueName] || 0) - Number(a[valueName] || 0) || String(a[keyName]).localeCompare(String(b[keyName])));
+  return limit > 0 ? rows.slice(0, limit) : rows;
+}
+
+function buildCorrectionAnalytics(recordsByCategory = []) {
+  const engineerMap = new Map();
+  const fieldMap = new Map();
+  const adminMap = new Map();
+  const categoryMap = new Map();
+  const engineerFieldMap = new Map();
+  const detailRows = [];
+
+  for (const item of recordsByCategory) {
+    const category = item.category || "Status";
+    const record = item.record || {};
+    const plan = record.planId || {};
+    const log = record.verificationEditLog || {};
+    const changes = Array.isArray(log.changes) ? log.changes : [];
+    const engineer = String(plan.engineer || "Unknown").trim() || "Unknown";
+    const admin = String(log.editedBy || "Admin").trim() || "Admin";
+    const correctionItemCount = changes.length || (String(log.adminRemark || "").trim() ? 1 : 0);
+
+    if (!engineerMap.has(engineer)) {
+      engineerMap.set(engineer, {
+        Engineer: engineer,
+        EngineerCode: plan.empId || "",
+        CorrectedRecords: 0,
+        CorrectedFields: 0,
+        RemarkOnlyRecords: 0,
+        HPCL: 0,
+        RBML: 0,
+        BPCL: 0,
+      });
+    }
+    const engineerRow = engineerMap.get(engineer);
+    engineerRow.CorrectedRecords += 1;
+    engineerRow.CorrectedFields += changes.length;
+    if (!changes.length && String(log.adminRemark || "").trim()) engineerRow.RemarkOnlyRecords += 1;
+    engineerRow[category] = (engineerRow[category] || 0) + 1;
+
+    incrementMap(adminMap, admin, correctionItemCount);
+    incrementMap(categoryMap, category, 1);
+
+    if (changes.length) {
+      for (const change of changes) {
+        const field = prettifyFieldName(change.field);
+        incrementMap(fieldMap, field, 1);
+        const engineerFieldKey = `${engineer} | ${field}`;
+        incrementMap(engineerFieldMap, engineerFieldKey, 1);
+        detailRows.push({
+          Category: category,
+          Engineer: engineer,
+          EngineerCode: plan.empId || "",
+          ROCode: plan.roCode || "",
+          ROName: plan.roName || "",
+          Region: plan.region || "",
+          VisitDate: plan.date || "",
+          CorrectedBy: admin,
+          CorrectedAt: log.editedAt ? formatDateTimeIST(log.editedAt) : "",
+          Field: field,
+          SubmittedByEngineer: change.before || "",
+          CorrectedByAdmin: change.after || "",
+          AdminRemark: log.adminRemark || "",
+          StatusRecordId: String(record._id || ""),
+        });
+      }
+    } else {
+      detailRows.push({
+        Category: category,
+        Engineer: engineer,
+        EngineerCode: plan.empId || "",
+        ROCode: plan.roCode || "",
+        ROName: plan.roName || "",
+        Region: plan.region || "",
+        VisitDate: plan.date || "",
+        CorrectedBy: admin,
+        CorrectedAt: log.editedAt ? formatDateTimeIST(log.editedAt) : "",
+        Field: "Admin Remark Only",
+        SubmittedByEngineer: "",
+        CorrectedByAdmin: "",
+        AdminRemark: log.adminRemark || "",
+        StatusRecordId: String(record._id || ""),
+      });
+    }
+  }
+
+  const engineerRows = [...engineerMap.values()]
+    .map((row) => ({
+      ...row,
+      TotalMistakeScore: row.CorrectedFields + row.RemarkOnlyRecords,
+      AvgFieldsPerRecord: row.CorrectedRecords ? Number((row.CorrectedFields / row.CorrectedRecords).toFixed(2)) : 0,
+    }))
+    .sort((a, b) =>
+      Number(b.TotalMistakeScore || 0) - Number(a.TotalMistakeScore || 0) ||
+      Number(b.CorrectedRecords || 0) - Number(a.CorrectedRecords || 0) ||
+      String(a.Engineer).localeCompare(String(b.Engineer))
+    );
+
+  const engineerFieldRows = [...engineerFieldMap.entries()]
+    .map(([key, Count]) => {
+      const [Engineer, Field] = key.split(" | ");
+      return { Engineer, Field, Count };
+    })
+    .sort((a, b) => Number(b.Count || 0) - Number(a.Count || 0) || String(a.Engineer).localeCompare(String(b.Engineer)));
+
+  return {
+    engineerRows,
+    fieldRows: mapToSortedRows(fieldMap, "Field", "CorrectionCount"),
+    adminRows: mapToSortedRows(adminMap, "CorrectedByAdmin", "CorrectionItems"),
+    categoryRows: mapToSortedRows(categoryMap, "Category", "CorrectedRecords"),
+    engineerFieldRows,
+    detailRows,
+    totals: {
+      records: recordsByCategory.length,
+      fields: detailRows.filter((row) => row.Field !== "Admin Remark Only").length,
+      remarkOnly: detailRows.filter((row) => row.Field === "Admin Remark Only").length,
+      engineers: engineerRows.length,
+    },
+  };
+}
+
+function buildCorrectionAnalyticsWorkbook({
+  analytics,
+  fromDateISO = "",
+  toDateISO = "",
+} = {}) {
+  const wb = XLSX.utils.book_new();
+  const summaryRows = [
+    { Metric: "Report From", Value: fromDateISO },
+    { Metric: "Report To", Value: toDateISO },
+    { Metric: "Corrected Records", Value: analytics.totals.records },
+    { Metric: "Corrected Fields", Value: analytics.totals.fields },
+    { Metric: "Remark-only Records", Value: analytics.totals.remarkOnly },
+    { Metric: "Engineers With Corrections", Value: analytics.totals.engineers },
+    { Metric: "Top Mistake Engineer", Value: analytics.engineerRows[0]?.Engineer || "—" },
+    { Metric: "Top Mistake Field", Value: analytics.fieldRows[0]?.Field || "—" },
+  ];
+
+  [
+    ["Summary", summaryRows],
+    ["Engineer Analytics", analytics.engineerRows],
+    ["Field Mistakes", analytics.fieldRows],
+    ["Engineer Field Mix", analytics.engineerFieldRows],
+    ["Admin Corrections", analytics.adminRows],
+    ["Category Split", analytics.categoryRows],
+    ["Correction Details", analytics.detailRows.length ? analytics.detailRows : [{ Note: "No correction analytics data found for this range." }]],
+  ].forEach(([sheetName, rows]) => {
+    const sheet = XLSX.utils.json_to_sheet(rows);
+    autosizeWorksheetColumns(sheet, rows);
+    XLSX.utils.book_append_sheet(wb, sheet, sheetName);
+  });
+
+  return XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+}
+
+function buildSmallHtmlTable(rows = [], columns = [], emptyText = "No data found.") {
+  if (!rows.length) {
+    return `<div style="padding:12px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;color:#64748b;font-size:13px;">${htmlEscape(emptyText)}</div>`;
+  }
+  const thead = columns.map((col) => `<th style="border:1px solid #d0d7de;padding:8px 10px;background:#f8fafc;text-align:left;font-size:12px;color:#334155;">${htmlEscape(col.label)}</th>`).join("");
+  const tbody = rows.map((row) => `
+    <tr>
+      ${columns.map((col) => `<td style="border:1px solid #d0d7de;padding:8px 10px;font-size:12px;color:#0f172a;">${htmlEscape(typeof col.get === "function" ? col.get(row) : row[col.key])}</td>`).join("")}
+    </tr>
+  `).join("");
+  return `<table style="border-collapse:collapse;width:100%;margin:8px 0 16px;"><thead><tr>${thead}</tr></thead><tbody>${tbody}</tbody></table>`;
+}
+
+async function sendBiweeklyCorrectionAnalyticsReportToNikhil({
+  endDateISO = getCurrentISTDateParts().dateISO,
+  force = false,
+} = {}) {
+  const reportType = "Biweekly Correction Analytics Report";
+  const { fromDateISO, toDateISO } = getBiweeklyCorrectionAnalyticsRange({ endDateISO });
+  const { start, end } = getISTDateRangeUTC(fromDateISO, toDateISO);
+
+  if (!force) {
+    const lastSuccess = await EmailLog.findOne({ type: reportType, status: "success" }).sort({ sentAt: -1 }).lean();
+    if (lastSuccess?.sentAt) {
+      const daysSinceLast = (Date.now() - new Date(lastSuccess.sentAt).getTime()) / (24 * 60 * 60 * 1000);
+      if (daysSinceLast < 13.5) {
+        return { ok: true, skipped: true, reason: "already_sent_recently", lastSentAt: lastSuccess.sentAt };
+      }
+    }
+  }
+
+  const recipients = await getUserEmailsByUsernames(["nikhil.trivedi"]);
+  if (!recipients.length) {
+    await EmailLog.create({
+      type: reportType,
+      subject: `Skipped: Nikhil email missing for correction analytics ${fromDateISO} to ${toDateISO}`,
+      to: "",
+      status: "failure",
+      meta: { fromDateISO, toDateISO, reason: "nikhil.trivedi email not found" },
+    });
+    return { ok: false, reason: "missing_nikhil_email" };
+  }
+
+  const baseQuery = {
+    isVerified: true,
+    "verificationEditLog.notificationSentAt": { $gte: start, $lte: end },
+    $or: [
+      { "verificationEditLog.changes.0": { $exists: true } },
+      { "verificationEditLog.adminRemark": { $nin: ["", null] } },
+    ],
+  };
+
+  const [hpcl, rbml, bpcl] = await Promise.all([
+    Status.find(baseQuery).populate("planId").lean(),
+    JioBPStatus.find(baseQuery).populate("planId").lean(),
+    BPCLStatus.find(baseQuery).populate("planId").lean(),
+  ]);
+
+  const recordsByCategory = [
+    ...hpcl.map((record) => ({ category: "HPCL", record })),
+    ...rbml.map((record) => ({ category: "RBML", record })),
+    ...bpcl.map((record) => ({ category: "BPCL", record })),
+  ];
+  const analytics = buildCorrectionAnalytics(recordsByCategory);
+  const attachment = buildCorrectionAnalyticsWorkbook({ analytics, fromDateISO, toDateISO });
+  const generatedAt = formatDateTimeIST(new Date());
+  const topEngineer = analytics.engineerRows[0];
+  const topField = analytics.fieldRows[0];
+  const subject = `Correction Analytics | ${fromDateISO} to ${toDateISO} | Records ${analytics.totals.records}`;
+
+  const html = `
+    <div style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;font-size:14px;line-height:1.7;">
+      <p>Dear Nikhil,</p>
+      <p>Please find the 14-day correction analytics report based on admin corrections made during status verification.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin:14px 0;">
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 14px;min-width:150px;"><div style="font-size:11px;color:#1d4ed8;font-weight:700;">Records Corrected</div><div style="font-size:24px;font-weight:800;color:#1e40af;">${analytics.totals.records}</div></div>
+        <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:12px 14px;min-width:150px;"><div style="font-size:11px;color:#c2410c;font-weight:700;">Fields Corrected</div><div style="font-size:24px;font-weight:800;color:#9a3412;">${analytics.totals.fields}</div></div>
+        <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;padding:12px 14px;min-width:150px;"><div style="font-size:11px;color:#047857;font-weight:700;">Engineers</div><div style="font-size:24px;font-weight:800;color:#065f46;">${analytics.totals.engineers}</div></div>
+      </div>
+      <p><strong>Top mistake engineer:</strong> ${htmlEscape(topEngineer ? `${topEngineer.Engineer} (${topEngineer.TotalMistakeScore} mistake score, ${topEngineer.CorrectedRecords} records)` : "No data")}</p>
+      <p><strong>Most corrected field:</strong> ${htmlEscape(topField ? `${topField.Field} (${topField.CorrectionCount})` : "No field-level correction data")}</p>
+      <h3 style="font-size:15px;margin:18px 0 8px;">Engineer Mistake Ranking</h3>
+      ${buildSmallHtmlTable(analytics.engineerRows.slice(0, 10), [
+        { key: "Engineer", label: "Engineer" },
+        { key: "CorrectedRecords", label: "Records" },
+        { key: "CorrectedFields", label: "Fields" },
+        { key: "RemarkOnlyRecords", label: "Remark Only" },
+        { key: "TotalMistakeScore", label: "Mistake Score" },
+      ])}
+      <h3 style="font-size:15px;margin:18px 0 8px;">Common Mistake Fields</h3>
+      ${buildSmallHtmlTable(analytics.fieldRows.slice(0, 10), [
+        { key: "Field", label: "Field" },
+        { key: "CorrectionCount", label: "Corrections" },
+      ], "No field-level corrections captured.")}
+      <p>The attached Excel workbook includes Summary, Engineer Analytics, Field Mistakes, Engineer Field Mix, Admin Corrections, Category Split, and full Correction Details.</p>
+      <p>Regards,<br/><strong>Relcon CRM</strong><br/><span style="color:#64748b;font-size:12px;">Generated on ${htmlEscape(generatedAt)} IST.</span></p>
+    </div>
+  `;
+
+  const text = [
+    "Dear Nikhil,",
+    "",
+    `Correction analytics report: ${fromDateISO} to ${toDateISO}`,
+    `Corrected Records: ${analytics.totals.records}`,
+    `Corrected Fields: ${analytics.totals.fields}`,
+    `Engineers With Corrections: ${analytics.totals.engineers}`,
+    `Top Mistake Engineer: ${topEngineer ? `${topEngineer.Engineer} (${topEngineer.TotalMistakeScore})` : "No data"}`,
+    `Most Corrected Field: ${topField ? `${topField.Field} (${topField.CorrectionCount})` : "No data"}`,
+    "",
+    "Please refer to the attached Excel workbook for complete analytics and correction details.",
+    "",
+    "Regards,",
+    "Relcon CRM",
+  ].join("\n");
+
+  try {
+    const info = await transporter.sendMail({
+      from: getDefaultOutgoingFromHeader(),
+      to: recipients.join(", "),
+      subject,
+      html,
+      text,
+      attachments: [{
+        filename: `correction_analytics_${fromDateISO}_to_${toDateISO}.xlsx`,
+        content: attachment,
+        contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      }],
+    });
+    await EmailLog.create({
+      type: reportType,
+      subject,
+      to: recipients.join(", "),
+      status: "success",
+      meta: {
+        fromDateISO,
+        toDateISO,
+        hpcl: hpcl.length,
+        rbml: rbml.length,
+        bpcl: bpcl.length,
+        totals: analytics.totals,
+        topEngineer: topEngineer?.Engineer || "",
+        topField: topField?.Field || "",
+        messageId: info?.messageId || "",
+      },
+    });
+    return { ok: true, fromDateISO, toDateISO, totals: analytics.totals, messageId: info?.messageId || "" };
+  } catch (err) {
+    await EmailLog.create({
+      type: reportType,
+      subject,
+      to: recipients.join(", "),
+      status: "failure",
+      error: err.message,
+      meta: { fromDateISO, toDateISO, totals: analytics.totals },
     });
     throw err;
   }
@@ -5669,6 +6015,19 @@ cron.schedule(
   { timezone: "Asia/Kolkata" }
 );
 
+// ─── Scheduler: every Monday 19:30 IST, sends analytics once per 14 days ────
+
+cron.schedule(
+  "30 19 * * 1",
+  () => {
+    console.log("🔔 Biweekly correction analytics CRON TRIGGERED:", new Date().toISOString());
+    sendBiweeklyCorrectionAnalyticsReportToNikhil().catch((e) =>
+      console.error("Biweekly correction analytics report job error:", e)
+    );
+  },
+  { timezone: "Asia/Kolkata" }
+);
+
 // ─── Manual run ───────────────────────────────────────────────────────────────
 
 // if (require.main === module) {
@@ -5751,6 +6110,11 @@ if (require.main === module) {
       .then((r) => { console.log("Daily corrected verification report done:", r); process.exit(r.ok ? 0 : 1); })
       .catch((e) => { console.error("❌ error:", e); process.exit(1); });
 
+  } else if (type === "correction-analytics") {
+    sendBiweeklyCorrectionAnalyticsReportToNikhil({ endDateISO: dateArg || getCurrentISTDateParts().dateISO, force: true })
+      .then((r) => { console.log("Correction analytics report done:", r); process.exit(r.ok ? 0 : 1); })
+      .catch((e) => { console.error("❌ error:", e); process.exit(1); });
+
   } else if (type === "note-task-reminders") {
     processNoteTaskReminderEmails()
       .then((r) => { console.log("Note task reminder check done:", r); process.exit(r.ok ? 0 : 1); })
@@ -5784,6 +6148,7 @@ module.exports = {
   sendMaterialRequestNotification,
   sendMaterialDispatchNotification,
   sendDailyVerificationCorrectionReportToNikhil,
+  sendBiweeklyCorrectionAnalyticsReportToNikhil,
   sendTaskNotificationEmail,
   sendTaskClosureEmail,
   sendTaskEscalationEmail,
