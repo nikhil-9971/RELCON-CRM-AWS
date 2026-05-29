@@ -1,8 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const { handleAIQuery } = require("../services/aiService");
+const verifyToken = require("../middleware/authMiddleware");
 
-router.post("/ask", async (req, res) => {
+router.post("/ask", verifyToken, async (req, res) => {
   try {
     const { question } = req.body;
 
