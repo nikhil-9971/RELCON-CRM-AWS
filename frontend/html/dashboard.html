@@ -934,7 +934,6 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
       <button class="nav-item" id="roMasterLink" onclick="loadPage('romaster.html', this)"><i class="fa-solid fa-database"></i><span class="nav-txt">RO Master</span></button>
 
       <div class="nav-label">Admin</div>
-      <button id="auditLink" class="nav-item" style="display:none" onclick="loadPage('auditReport.html', this)"><i class="fa-solid fa-shield-halved"></i><span class="nav-txt">Audit Report</span></button>
       <button id="logsViewerLink" class="nav-item" style="display:none" onclick="loadPage('logsViewer.html', this)"><i class="fa-solid fa-scroll"></i><span class="nav-txt">Logs Viewer</span></button>
       <button id="mongoExplorerLink" class="nav-item" style="display:none" onclick="loadPage('mongoExplorer.html', this)"><i class="fa-solid fa-server"></i><span class="nav-txt">DB Explorer</span></button>
       <button id="userManagementLink" class="nav-item" style="display:none" onclick="loadPage('userManagement.html', this)"><i class="fa-solid fa-users-gear"></i><span class="nav-txt">User Management</span></button>
@@ -1280,7 +1279,7 @@ const pageNames = {
   'jioBPreport.html':'JioBP Status','bpclStatusreport.html':'BPCL Status Report',
   'atgRecords.html':'ATG Report','taskReport.html':'Task Report',
   'earthingReport.html':'Earthing Report','dailyWorksheet.html':'Admin Worksheet','notesTask.html':'Notes Task','taskManager.html':'Task Management',
-  'auditReport.html':'Audit Report','mongoExplorer.html':'DB Explorer',
+  'mongoExplorer.html':'DB Explorer',
   'materialrequirement.html':'Material Requirement','incident.html':'Incident Manager',
   'materialrequestbuilder.html':'Material Request Builder',
   'romaster.html':'RO Master','activeVsFaulty.html':'Active vs Faulty',
@@ -1305,7 +1304,6 @@ const pageSlugs = {
   'dailyWorksheet.html':'daily-worksheet',
   'notesTask.html':'notes-task',
   'taskManager.html':'task-management',
-  'auditReport.html':'audit-report',
   'mongoExplorer.html':'db-explorer',
   'materialrequirement.html':'material-requirement',
   'materialrequestbuilder.html':'material-request-builder',
@@ -1493,7 +1491,6 @@ async function fetchUser(){
       document.getElementById("incidentId").style.display="flex";
     }
     if(user.role==="admin"&&user.engineerName==="Nikhil Trivedi"){
-      document.getElementById("auditLink").style.display="block";
       document.getElementById("logsViewerLink").style.display="block";
       document.getElementById("mongoExplorerLink").style.display="block";
       document.getElementById("userManagementLink").style.display="block";
