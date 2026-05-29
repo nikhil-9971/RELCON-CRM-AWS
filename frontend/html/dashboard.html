@@ -284,6 +284,64 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
   color:#0f766e;
   animation:aiNod 1.2s ease-in-out infinite;
 }
+.tb-btn.ai-logo-btn i{display:none;}
+.ai-logo-mark{
+  width:28px;height:28px;
+  border-radius:50%;
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  color:#ffffff;
+  background:
+    radial-gradient(circle at 35% 30%,rgba(255,255,255,.95) 0 5%,transparent 7%),
+    radial-gradient(circle at center,#38bdf8 0 10%,#2563eb 34%,#0f172a 72%);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.18),0 0 18px rgba(37,99,235,.38);
+  isolation:isolate;
+  overflow:hidden;
+}
+.ai-logo-mark::before{
+  content:"";
+  position:absolute;
+  inset:4px;
+  border:1.5px solid rgba(255,255,255,.62);
+  border-top-color:#34d399;
+  border-right-color:#a78bfa;
+  border-radius:50%;
+  animation:aiLogoSpin 2.8s linear infinite;
+}
+.ai-logo-mark::after{
+  content:"AI";
+  position:relative;
+  z-index:2;
+  font-size:8px;
+  font-weight:900;
+  letter-spacing:.3px;
+}
+.ai-logo-node{
+  position:absolute;
+  width:4px;height:4px;
+  border-radius:50%;
+  background:#a7f3d0;
+  box-shadow:0 0 8px rgba(167,243,208,.8);
+  z-index:3;
+}
+.ai-logo-node.n1{top:4px;right:7px;animation:aiNodePulse 1.7s ease-in-out infinite;}
+.ai-logo-node.n2{left:5px;bottom:7px;background:#bfdbfe;animation:aiNodePulse 1.7s ease-in-out .35s infinite;}
+.ai-logo-node.n3{right:5px;bottom:8px;background:#ddd6fe;animation:aiNodePulse 1.7s ease-in-out .7s infinite;}
+.ai-logo-mark.ai-small{width:20px;height:20px;}
+.ai-logo-mark.ai-small::after{font-size:6px;}
+.ai-logo-mark.ai-small .ai-logo-node{width:3px;height:3px;}
+.ai-logo-mark.ai-large{width:34px;height:34px;}
+.ai-logo-mark.ai-large::after{font-size:9px;}
+.ai-thinking .ai-logo-mark,
+.ai-logo-mark.ai-thinking-logo{
+  animation:aiLogoThink 1.05s ease-in-out infinite;
+}
+.ai-thinking .ai-logo-mark::before,
+.ai-logo-mark.ai-thinking-logo::before{
+  animation-duration:.8s;
+}
 .tb-badge{
   position:absolute;top:-4px;right:-4px;
   width:17px;height:17px;
@@ -479,6 +537,7 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
   box-shadow:0 8px 28px rgba(37,99,235,.34);
   overflow:hidden;
   isolation:isolate;
+  padding:0;
 }
 .fab.ai-fab::before{
   content:"";
@@ -498,6 +557,9 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
 @keyframes aiOrbit{to{transform:rotate(360deg);}}
 @keyframes aiNod{0%,100%{transform:rotate(0deg) scale(1);}35%{transform:rotate(-10deg) scale(1.08);}70%{transform:rotate(9deg) scale(1.04);}}
 @keyframes aiFloat{0%,100%{transform:translateY(0) scale(1);}50%{transform:translateY(-4px) scale(1.04);}}
+@keyframes aiLogoSpin{to{transform:rotate(360deg);}}
+@keyframes aiNodePulse{0%,100%{transform:scale(.8);opacity:.65;}50%{transform:scale(1.45);opacity:1;}}
+@keyframes aiLogoThink{0%,100%{filter:saturate(1);transform:scale(1);}50%{filter:saturate(1.35);transform:scale(1.08);}}
 
 /* ── AI CHAT PANEL ── */
 #aiChatBox{
@@ -518,7 +580,7 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
 .ai-hdr-left{display:flex;align-items:center;gap:10px;}
 .ai-hdr-icon{
   width:34px;height:34px;
-  background:linear-gradient(135deg,rgba(37,99,235,.5),rgba(124,58,237,.5));
+  background:rgba(255,255,255,.08);
   border-radius:9px;display:flex;align-items:center;justify-content:center;
   font-size:16px;border:1px solid rgba(255,255,255,.12);
   position:relative;
@@ -568,9 +630,9 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
 }
 .ai-bot-avatar{
   width:28px;height:28px;border-radius:50%;flex-shrink:0;
-  background:linear-gradient(135deg,#0B1628,#1E3A5F);
+  background:transparent;
   display:flex;align-items:center;justify-content:center;
-  font-size:14px;border:1px solid rgba(255,255,255,.08);
+  font-size:14px;border:0;
 }
 .ai-bot-avatar.ai-thinking-avatar{animation:aiNod 1.2s ease-in-out infinite;}
 .ai-bot-bubble{
@@ -949,6 +1011,7 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
       <!-- AI -->
       <button id="aiTopbarBtn" class="tb-btn ai-logo-btn" onclick="toggleAIChat()" title="AI Assistant">
         <i class="fa-solid fa-robot"></i>
+        <span class="ai-logo-mark ai-small" aria-hidden="true"><span class="ai-logo-node n1"></span><span class="ai-logo-node n2"></span><span class="ai-logo-node n3"></span></span>
       </button>
       <!-- User -->
       <div class="tb-user" id="topbarUserBtn" onclick="toggleUserDropdown()">
@@ -1000,13 +1063,17 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
 </div>
 
 <!-- ── AI FAB ── -->
-<button id="aiAgentBtn" class="fab ai-fab" onclick="toggleAIChat()" title="AI Assistant">🤖</button>
+<button id="aiAgentBtn" class="fab ai-fab" onclick="toggleAIChat()" title="AI Assistant">
+  <span class="ai-logo-mark" aria-hidden="true"><span class="ai-logo-node n1"></span><span class="ai-logo-node n2"></span><span class="ai-logo-node n3"></span></span>
+</button>
 
 <!-- ── AI Chat Panel ── -->
 <div id="aiChatBox">
   <div class="ai-hdr">
     <div class="ai-hdr-left">
-      <div class="ai-hdr-icon" id="aiHeaderLogo">🤖</div>
+      <div class="ai-hdr-icon" id="aiHeaderLogo">
+        <span class="ai-logo-mark ai-large" aria-hidden="true"><span class="ai-logo-node n1"></span><span class="ai-logo-node n2"></span><span class="ai-logo-node n3"></span></span>
+      </div>
       <div>
         <div class="ai-hdr-title">RELCON AI</div>
         <div class="ai-status"><div class="ai-dot"></div><span class="ai-status-txt">Online — powered by Intelligence</span></div>
@@ -2086,6 +2153,10 @@ function setAILogoState({ open, thinking } = {}){
   document.getElementById("aiHeaderLogo")?.classList.toggle("ai-thinking",!!thinking);
 }
 
+function getAILogoMarkup(sizeClass="", thinking=false){
+  return `<span class="ai-logo-mark ${sizeClass} ${thinking ? "ai-thinking-logo" : ""}" aria-hidden="true"><span class="ai-logo-node n1"></span><span class="ai-logo-node n2"></span><span class="ai-logo-node n3"></span></span>`;
+}
+
 function toggleAIChat(){
   const box=document.getElementById("aiChatBox");
   const willOpen = box.style.display==="none"||box.style.display==="";
@@ -2115,7 +2186,7 @@ async function sendAIMessage(){
   const thinkingId="ai-thinking-"+Date.now();
   const thinkDiv=document.createElement("div");
   thinkDiv.id=thinkingId;thinkDiv.className="ai-thinking";
-  thinkDiv.innerHTML=`<div class="ai-bot-avatar ai-thinking-avatar">🤖</div><span>Searching database</span><div class="ai-thinking-dots"><span></span><span></span><span></span></div>`;
+  thinkDiv.innerHTML=`<div class="ai-bot-avatar ai-thinking-avatar">${getAILogoMarkup("ai-small", true)}</div><span>Searching database</span><div class="ai-thinking-dots"><span></span><span></span><span></span></div>`;
   messages.appendChild(thinkDiv);messages.scrollTop=messages.scrollHeight;
   setAILogoState({ open: true, thinking: true });
 
@@ -2125,12 +2196,12 @@ async function sendAIMessage(){
     const data=await res.json();
     document.getElementById(thinkingId)?.remove();
     const botWrap=document.createElement("div");botWrap.className="ai-msg-bot";
-    botWrap.innerHTML=`<div class="ai-bot-avatar">🤖</div><div class="ai-bot-bubble">${data.reply}</div>`;
+    botWrap.innerHTML=`<div class="ai-bot-avatar">${getAILogoMarkup("ai-small")}</div><div class="ai-bot-bubble">${data.reply}</div>`;
     messages.appendChild(botWrap);messages.scrollTop=messages.scrollHeight;
   }catch(err){
     document.getElementById(thinkingId)?.remove();
     const errDiv=document.createElement("div");errDiv.className="ai-msg-bot";
-    errDiv.innerHTML=`<div class="ai-bot-avatar">🤖</div><div class="ai-bot-bubble" style="color:var(--danger);">❌ Connection failed. Check internet or backend.</div>`;
+    errDiv.innerHTML=`<div class="ai-bot-avatar">${getAILogoMarkup("ai-small")}</div><div class="ai-bot-bubble" style="color:var(--danger);">Connection failed. Check internet or backend.</div>`;
     messages.appendChild(errDiv);
     console.error("AI Fetch Error:",err);
   }finally{
