@@ -28,6 +28,7 @@ const DailyPlan = require("../models/DailyPlan");
 const Status = require("../models/Status");
 const Task = require("../models/Task");
 const NoteTask = require("../models/NoteTask");
+const CRMNotification = require("../models/CRMNotification");
 const JioBPStatus = require("../models/jioBPStatus");
 const BPCLStatus = require("../models/BPCLStatus");
 const { importMaterialFileBuffer } = require("./materialUploadService");
@@ -2116,6 +2117,28 @@ function isHpclActionRequiredStatusRecord(record = {}) {
     || (tankOffline && tankOffline !== "ALL OK" && ["HPCL", "BOTH"].includes(tankDependency));
 }
 
+function isUsefulHpclSpareText(value = "", emptyLabels = []) {
+  const normalized = String(value || "").trim().toUpperCase();
+  if (!normalized) return false;
+  return !emptyLabels.includes(normalized);
+}
+
+function isHpclSpareActivityStatusRecord(record = {}) {
+  const plan = record.planId || {};
+  const phase = String(plan.phase || record.phase || "").trim().toUpperCase();
+  if (!phase.startsWith("HPCL")) return false;
+
+  const yesValues = new Set(["YES", "Y", "TRUE"]);
+  const spareUsed = String(record.spareUsed || "").trim().toUpperCase();
+  const spareRequirement = String(record.spareRequirment || record.spareRequirement || "").trim().toUpperCase();
+
+  return yesValues.has(spareUsed)
+    || yesValues.has(spareRequirement)
+    || isUsefulHpclSpareText(record.activeSpare, ["NO ACTIVE MATERIAL USED"])
+    || isUsefulHpclSpareText(record.faultySpare, ["NO FAULTY MATERIAL CREATED"])
+    || isUsefulHpclSpareText(record.spareRequirmentname || record.spareRequirementName, ["NO SPARE REQUIRE", "NO SPARE REQUIRED"]);
+}
+
 function buildHpclActionRequiredIssue(record = {}) {
   const issues = [];
   const earthingStatus = String(record.earthingStatus || "").trim().toUpperCase();
@@ -2133,6 +2156,95 @@ function buildHpclActionRequiredIssue(record = {}) {
   }
 
   return issues.join(" + ") || "Action Required";
+}
+
+function buildHpclSpareActivityIssue(record = {}) {
+  const issues = [];
+  const spareUsed = String(record.spareUsed || "").trim();
+  const activeSpare = String(record.activeSpare || "").trim();
+  const faultySpare = String(record.faultySpare || "").trim();
+  const spareRequirement = String(record.spareRequirment || record.spareRequirement || "").trim();
+  const spareRequirementName = String(record.spareRequirmentname || record.spareRequirementName || "").trim();
+
+  if (spareUsed) issues.push(`Spare Used: ${spareUsed}`);
+  if (isUsefulHpclSpareText(activeSpare, ["NO ACTIVE MATERIAL USED"])) issues.push(`Active: ${activeSpare}`);
+  if (isUsefulHpclSpareText(faultySpare, ["NO FAULTY MATERIAL CREATED"])) issues.push(`Faulty: ${faultySpare}`);
+  if (spareRequirement) issues.push(`Requirement: ${spareRequirement}`);
+  if (isUsefulHpclSpareText(spareRequirementName, ["NO SPARE REQUIRE", "NO SPARE REQUIRED"])) {
+    issues.push(`Required Spare: ${spareRequirementName}`);
+  }
+
+  return issues.join(" + ") || "Spare Activity";
+}
+
+function buildHpclVerificationPendingIssue(record = {}) {
+  const issues = [];
+  if (isHpclActionRequiredStatusRecord(record)) issues.push(buildHpclActionRequiredIssue(record));
+  if (isHpclSpareActivityStatusRecord(record)) issues.push(buildHpclSpareActivityIssue(record));
+  return issues.join(" | ") || "Verification Pending";
+}
+
+function distributeRowsEvenly(rows = [], assignees = []) {
+  const buckets = assignees.map((assignee) => ({ ...assignee, rows: [] }));
+  if (!buckets.length) return buckets;
+
+  rows.forEach((row, index) => {
+    const bucket = buckets[index % buckets.length];
+    bucket.rows.push({
+      ...row,
+      assignedTo: bucket.label,
+    });
+  });
+
+  return buckets;
+}
+
+async function upsertHpclVerificationPendingNotifications(assignments = []) {
+  const operations = [];
+
+  for (const assignment of assignments) {
+    for (const row of assignment.rows || []) {
+      if (!row.statusRecordId) continue;
+
+      operations.push({
+        updateOne: {
+          filter: {
+            key: `hpcl-verification-pending:${assignment.username}:${row.statusRecordId}`,
+          },
+          update: {
+            $set: {
+              type: "hpcl_verification_pending",
+              title: `HPCL verification pending | ${row.roCode || "RO"}`,
+              message: `${row.roName || "HPCL site"} has pending action/spare verification.`,
+              recipientUsername: assignment.username,
+              recipientName: assignment.label,
+              assignedTo: assignment.label,
+              statusRecordId: row.statusRecordId,
+              roCode: row.roCode || "",
+              roName: row.roName || "",
+              visitDate: row.date || "",
+              severity: "warning",
+              link: "statusRecords.html",
+              isRead: false,
+              readAt: null,
+              payload: row,
+            },
+            $setOnInsert: {
+              key: `hpcl-verification-pending:${assignment.username}:${row.statusRecordId}`,
+            },
+          },
+          upsert: true,
+        },
+      });
+    }
+  }
+
+  if (!operations.length) return { upserted: 0, modified: 0 };
+  const result = await CRMNotification.bulkWrite(operations, { ordered: false });
+  return {
+    upserted: result.upsertedCount || 0,
+    modified: result.modifiedCount || 0,
+  };
 }
 
 function getPlanCreatedAt(plan) {
@@ -2880,52 +2992,71 @@ async function sendHpclActionRequiredUnverifiedEmail() {
   const reportType = "HPCL Action Required Unverified Report";
 
   try {
-    const [statusRecords, toRecipients, ccRecipients] = await Promise.all([
-      Status.find({ isVerified: false }).populate("planId").lean(),
+    const [statusRecords, anuragRecipients, nikhilRecipients] = await Promise.all([
+      Status.find({ isVerified: { $ne: true } }).populate("planId").lean(),
       getUserEmailsByUsernames(["anurag.mishra"]),
       getUserEmailsByUsernames(["nikhil.trivedi"]),
     ]);
 
-    if (!toRecipients.length) {
+    if (!anuragRecipients.length || !nikhilRecipients.length) {
       await EmailLog.create({
         type: reportType,
         subject: "Skipped: missing recipient for HPCL action required unverified report",
         to: "",
         status: "failure",
-        error: "Recipient email not found for anurag.mishra",
+        error: [
+          !anuragRecipients.length ? "Recipient email not found for anurag.mishra" : "",
+          !nikhilRecipients.length ? "Recipient email not found for nikhil.trivedi" : "",
+        ].filter(Boolean).join("; "),
       });
       return { ok: false, reason: "missing_to_recipient" };
     }
 
     const rows = statusRecords
-      .filter((record) => isHpclActionRequiredStatusRecord(record))
-      .map((record, index) => {
+      .filter((record) => isHpclActionRequiredStatusRecord(record) || isHpclSpareActivityStatusRecord(record))
+      .map((record) => {
         const plan = record.planId || {};
         return {
-          serialNumber: index + 1,
+          statusRecordId: String(record._id || ""),
           date: String(plan.date || "").slice(0, 10),
           roCode: plan.roCode || "",
           roName: plan.roName || "",
           region: plan.region || "",
           engineer: plan.engineer || "",
-          issue: buildHpclActionRequiredIssue(record),
+          issue: buildHpclVerificationPendingIssue(record),
           earthingStatus: record.earthingStatus || "—",
           voltageReading: record.voltageReading || "—",
           duOffline: record.duOffline || "—",
           duDependency: record.duDependency || "—",
           tankOffline: record.tankOffline || "—",
           tankDependency: record.tankDependency || "—",
+          spareUsed: record.spareUsed || "—",
+          activeSpare: record.activeSpare || "—",
+          faultySpare: record.faultySpare || "—",
+          spareRequirement: record.spareRequirment || record.spareRequirement || "—",
+          spareRequirementName: record.spareRequirmentname || record.spareRequirementName || "—",
         };
       })
-      .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+      .sort((a, b) => {
+        const dateCompare = String(b.date || "").localeCompare(String(a.date || ""));
+        if (dateCompare) return dateCompare;
+        return String(a.roCode || "").localeCompare(String(b.roCode || ""));
+      })
+      .map((row, index) => ({ ...row, serialNumber: index + 1 }));
 
     if (!rows.length) {
-      console.log("ℹ️ No unverified HPCL action-required records found for scheduled report.");
+      console.log("ℹ️ No unverified HPCL action-required/spare records found for scheduled report.");
       return { ok: true, skipped: true, count: 0 };
     }
 
+    const assignments = distributeRowsEvenly(rows, [
+      { username: "anurag.mishra", label: "Anurag Mishra", recipients: anuragRecipients },
+      { username: "nikhil.trivedi", label: "Nikhil Trivedi", recipients: nikhilRecipients },
+    ]);
+
     const columns = [
       { key: "serialNumber", label: "S. No." },
+      { key: "assignedTo", label: "Assigned To" },
       { key: "date", label: "Visit Date" },
       { key: "roCode", label: "RO Code" },
       { key: "roName", label: "RO Name" },
@@ -2938,49 +3069,67 @@ async function sendHpclActionRequiredUnverifiedEmail() {
       { key: "duDependency", label: "DU Dependency" },
       { key: "tankOffline", label: "Tank Offline" },
       { key: "tankDependency", label: "Tank Dependency" },
+      { key: "spareUsed", label: "Spare Used" },
+      { key: "activeSpare", label: "Active Spare" },
+      { key: "faultySpare", label: "Faulty Spare" },
+      { key: "spareRequirement", label: "Spare Requirement" },
+      { key: "spareRequirementName", label: "Required Spare" },
     ];
 
-    const html = `
-      <div style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;font-size:14px;line-height:1.7;">
-        <p style="margin:0 0 14px;">Dear Anurag,</p>
-        <p style="margin:0 0 14px;">
-          Please find below the list of HPCL status records where action is required and verification is still pending.
-          These records need timely review to avoid follow-up delays and operational dependency closures being missed.
-        </p>
-        ${buildTable(rows, columns, "HPCL Action Required Records Pending Verification")}
-        <p style="margin:18px 0 0;">
-          Kindly review and verify the above records on priority.
-        </p>
-        <p style="margin:14px 0 0;">
-          Regards,<br/>
-          <strong>Relcon CRM</strong><br/>
-          <span style="color:#64748b;font-size:12px;">Generated on ${htmlEscape(formatDateTimeIST(new Date()))} IST.</span>
-        </p>
-      </div>
-    `;
+    const notificationResult = await upsertHpclVerificationPendingNotifications(assignments);
 
-    const subject = `HPCL Status Verification Pending | Action Required Records | ${rows.length} Open`;
-    const mailOptions = {
-      from: getDefaultOutgoingFromHeader(),
-      to: toRecipients.join(", "),
-      cc: ccRecipients.length ? ccRecipients.join(", ") : undefined,
-      subject,
-      html,
-    };
+    const sentMessages = [];
+    for (const assignment of assignments) {
+      if (!assignment.rows.length) continue;
 
-    const info = await transporter.sendMail(mailOptions);
+      const firstName = assignment.label.split(" ")[0];
+      const html = `
+        <div style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;font-size:14px;line-height:1.7;">
+          <p style="margin:0 0 14px;">Dear ${htmlEscape(firstName)},</p>
+          <p style="margin:0 0 14px;">
+            Please find below your assigned HPCL status records where action/spare review is required and verification is still pending.
+            Total open records: <strong>${rows.length}</strong>. Your assigned records: <strong>${assignment.rows.length}</strong>.
+          </p>
+          ${buildTable(assignment.rows, columns, "HPCL Action/Spare Records Pending Verification")}
+          <p style="margin:18px 0 0;">
+            Kindly review and verify the above records on priority.
+          </p>
+          <p style="margin:14px 0 0;">
+            Regards,<br/>
+            <strong>Relcon CRM</strong><br/>
+            <span style="color:#64748b;font-size:12px;">Generated on ${htmlEscape(formatDateTimeIST(new Date()))} IST.</span>
+          </p>
+        </div>
+      `;
+
+      const subject = `HPCL Status Verification Pending | ${assignment.label} | ${assignment.rows.length}/${rows.length} Open`;
+      const info = await transporter.sendMail({
+        from: getDefaultOutgoingFromHeader(),
+        to: assignment.recipients.join(", "),
+        subject,
+        html,
+      });
+      sentMessages.push({
+        username: assignment.username,
+        label: assignment.label,
+        to: assignment.recipients,
+        count: assignment.rows.length,
+        messageId: info?.messageId || "",
+      });
+    }
+
     await EmailLog.create({
       type: reportType,
-      subject,
-      to: [...new Set([...toRecipients, ...ccRecipients])].join(", "),
+      subject: `HPCL Status Verification Pending | Distributed | ${rows.length} Open`,
+      to: [...new Set(sentMessages.flatMap((message) => message.to))].join(", "),
       status: "success",
       meta: {
         count: rows.length,
-        messageId: info?.messageId || "",
-        cc: ccRecipients,
+        notifications: notificationResult,
+        distribution: sentMessages,
       },
     });
-    return { ok: true, count: rows.length, messageId: info?.messageId || "" };
+    return { ok: true, count: rows.length, distribution: sentMessages };
   } catch (err) {
     console.error("❌ HPCL action required unverified mail error:", err.message);
     try {

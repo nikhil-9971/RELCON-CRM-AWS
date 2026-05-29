@@ -2,6 +2,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const router = express.Router();
 const Status = require("../models/Status");
+const CRMNotification = require("../models/CRMNotification");
 const { AuditTrail } = require("../models/AuditLog");
 const jwt = require("jsonwebtoken");
 
@@ -648,6 +649,15 @@ router.put("/verifyStatus/:id", verifyToken, async (req, res) => {
     ).populate("planId");
 
     if (!updated) return res.status(404).send("Status not found");
+
+    await CRMNotification.updateMany(
+      {
+        statusRecordId: String(updated._id),
+        type: "hpcl_verification_pending",
+        isRead: false,
+      },
+      { isRead: true, readAt: new Date() }
+    );
 
     const plan = updated.planId || {};
     const roCode = plan.roCode || "N/A";

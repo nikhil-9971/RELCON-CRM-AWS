@@ -335,6 +335,32 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
 .od-indicator{width:7px;height:7px;border-radius:50%;background:#22c55e;margin-left:auto;flex-shrink:0;}
 .od-empty{padding:14px 16px;font-size:12px;color:var(--txt4);text-align:center;}
 
+/* CRM notifications */
+#notificationDropdown{
+  position:absolute;top:calc(var(--topbar-h) + 6px);right:112px;
+  width:340px;max-width:calc(100vw - 24px);
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r-xl);
+  box-shadow:var(--sh-xl);
+  z-index:210;display:none;overflow:hidden;
+}
+#notificationDropdown.open{display:block;animation:dropIn .18s cubic-bezier(.34,1.56,.64,1);}
+.nt-head{padding:12px 14px;background:linear-gradient(135deg,#7c2d12,#c2410c);display:flex;align-items:center;gap:8px;color:#fff;}
+.nt-head-title{font-size:12px;font-weight:800;}
+.nt-head-count{margin-left:auto;background:rgba(255,255,255,.18);font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;}
+.nt-list{max-height:320px;overflow-y:auto;padding:6px 0;}
+.nt-item{display:flex;gap:10px;padding:10px 13px;border-bottom:1px solid var(--border);cursor:pointer;background:#fff;}
+.nt-item:hover{background:#fff7ed;}
+.nt-item.read{opacity:.66;background:var(--surface2);}
+.nt-icon{width:28px;height:28px;border-radius:8px;background:#fff7ed;color:#c2410c;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.nt-title{font-size:12px;font-weight:800;color:var(--txt);line-height:1.3;}
+.nt-msg{font-size:11px;color:var(--txt3);line-height:1.45;margin-top:2px;}
+.nt-meta{font-size:10px;color:var(--txt4);margin-top:5px;}
+.nt-empty{padding:18px 16px;text-align:center;font-size:12px;color:var(--txt4);}
+.nt-foot{padding:8px 12px;background:var(--surface2);display:flex;justify-content:flex-end;border-top:1px solid var(--border);}
+.nt-foot button{border:none;background:transparent;color:var(--brand);font-size:11px;font-weight:700;cursor:pointer;}
+
 /* User chip */
 .tb-user{
   display:flex;align-items:center;gap:8px;
@@ -831,6 +857,24 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
         <i class="fa-solid fa-comments"></i>
         <span class="tb-badge" id="mentionBadge">0</span>
       </button>
+      <!-- CRM Notifications -->
+      <button class="tb-btn" onclick="toggleNotificationDropdown()" title="CRM Notifications">
+        <i class="fa-solid fa-bell"></i>
+        <span class="tb-badge" id="notificationBadge">0</span>
+      </button>
+      <div id="notificationDropdown">
+        <div class="nt-head">
+          <i class="fa-solid fa-bell"></i>
+          <span class="nt-head-title">CRM Notifications</span>
+          <span class="nt-head-count" id="notificationDropCount">0</span>
+        </div>
+        <div class="nt-list" id="notificationList">
+          <div class="nt-empty">Loading...</div>
+        </div>
+        <div class="nt-foot">
+          <button onclick="markAllNotificationsRead()">Mark all read</button>
+        </div>
+      </div>
       <!-- AI -->
       <button class="tb-btn" onclick="toggleAIChat()" title="AI Assistant">
         <i class="fa-solid fa-robot"></i>
@@ -1031,6 +1075,8 @@ function toggleUserDropdown(){ document.getElementById("userDropdown").classList
 document.addEventListener("click", e => {
   if(!e.target.closest("#topbarUserBtn") && !e.target.closest("#userDropdown"))
     document.getElementById("userDropdown").classList.remove("open");
+  if(!e.target.closest("[title='CRM Notifications']") && !e.target.closest("#notificationDropdown"))
+    document.getElementById("notificationDropdown")?.classList.remove("open");
 });
 function toggleNavCollapse(){
   const nav=document.getElementById("nav"), icon=document.getElementById("navCollapseIcon");
@@ -1350,6 +1396,7 @@ async function submitNewSite(){
 window.onload=async()=>{
   try{
     await fetchUser();
+    await refreshNotificationCount();
     document.getElementById("addSiteBtn").onclick=openNewSiteModal;
     resetInactivityTimer();
   }catch(error){console.error("Error during page load:",error);}
@@ -1395,6 +1442,94 @@ let globalRingTimer=null;
 let globalAudioCtx=null;
 let globalTitleTimer=null;
 const originalDocumentTitle=document.title;
+const notificationBadgeEl=document.getElementById("notificationBadge");
+const notificationDropdownEl=document.getElementById("notificationDropdown");
+const notificationListEl=document.getElementById("notificationList");
+const notificationDropCountEl=document.getElementById("notificationDropCount");
+
+function crmEsc(value){
+  return String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+}
+function formatNotificationDate(value){
+  if(!value) return "";
+  const date=new Date(value);
+  if(Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("en-IN",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});
+}
+function updateNotificationBadge(count=0){
+  if(!notificationBadgeEl) return;
+  const total=Number(count||0);
+  notificationBadgeEl.textContent=total>99?"99+":String(total);
+  if(total>0){
+    notificationBadgeEl.classList.add("show");
+    notificationBadgeEl.style.display="flex";
+  }else{
+    notificationBadgeEl.classList.remove("show");
+    notificationBadgeEl.style.display="none";
+  }
+  if(notificationDropCountEl) notificationDropCountEl.textContent=String(total);
+}
+async function refreshNotificationCount(){
+  if(!token) return;
+  try{
+    const res=await fetch(`${baseUrl}/notifications/unread-count`,{headers:{Authorization:`Bearer ${token}`}});
+    if(!res.ok) return;
+    const data=await res.json();
+    updateNotificationBadge(data.count||0);
+  }catch(err){console.error("Failed to refresh notifications",err);}
+}
+async function fetchNotifications(){
+  if(!token||!notificationListEl) return;
+  notificationListEl.innerHTML='<div class="nt-empty">Loading...</div>';
+  try{
+    const res=await fetch(`${baseUrl}/notifications?limit=40`,{headers:{Authorization:`Bearer ${token}`}});
+    if(!res.ok) throw new Error("Unable to load notifications");
+    const data=await res.json();
+    const rows=Array.isArray(data.notifications)?data.notifications:[];
+    if(!rows.length){
+      notificationListEl.innerHTML='<div class="nt-empty">No CRM notifications.</div>';
+      updateNotificationBadge(0);
+      return;
+    }
+    const unread=rows.filter(n=>!n.isRead).length;
+    updateNotificationBadge(unread);
+    notificationListEl.innerHTML=rows.map(n=>`
+      <div class="nt-item ${n.isRead?'read':''}" onclick="openNotification('${crmEsc(n._id)}','${crmEsc(n.link||'statusRecords.html')}')">
+        <div class="nt-icon"><i class="fa-solid fa-circle-exclamation"></i></div>
+        <div style="min-width:0;flex:1;">
+          <div class="nt-title">${crmEsc(n.title)}</div>
+          <div class="nt-msg">${crmEsc(n.message)}</div>
+          <div class="nt-meta">${crmEsc(n.roCode||'')} ${n.visitDate?`| ${crmEsc(n.visitDate)}`:''} ${n.createdAt?`| ${crmEsc(formatNotificationDate(n.createdAt))}`:''}</div>
+        </div>
+      </div>
+    `).join("");
+  }catch(err){
+    console.error("Failed to fetch notifications",err);
+    notificationListEl.innerHTML='<div class="nt-empty">Unable to load notifications.</div>';
+  }
+}
+async function toggleNotificationDropdown(){
+  if(!notificationDropdownEl) return;
+  const willOpen=!notificationDropdownEl.classList.contains("open");
+  document.getElementById("onlineDropdown")?.classList.remove("open");
+  document.getElementById("userDropdown")?.classList.remove("open");
+  notificationDropdownEl.classList.toggle("open",willOpen);
+  if(willOpen) await fetchNotifications();
+}
+async function openNotification(id,link){
+  try{
+    await fetch(`${baseUrl}/notifications/${encodeURIComponent(id)}/read`,{method:"PUT",headers:{Authorization:`Bearer ${token}`}});
+  }catch(err){console.error("Failed to mark notification read",err);}
+  notificationDropdownEl?.classList.remove("open");
+  refreshNotificationCount();
+  loadPage(link||"statusRecords.html");
+}
+async function markAllNotificationsRead(){
+  try{
+    await fetch(`${baseUrl}/notifications/read-all`,{method:"PUT",headers:{Authorization:`Bearer ${token}`}});
+    await fetchNotifications();
+  }catch(err){console.error("Failed to mark all notifications read",err);}
+}
 
 function buildWsUrl(){
   const proto = location.protocol === "https:" ? "wss:" : "ws:";
@@ -1402,7 +1537,7 @@ function buildWsUrl(){
 }
 function initWS(){
   ws=new WebSocket(buildWsUrl());
-  ws.onopen=()=>{loadGroupHistory();refreshChatUnreadCount();ws.send(JSON.stringify({type:"get_presence"}));};
+  ws.onopen=()=>{loadGroupHistory();refreshChatUnreadCount();refreshNotificationCount();ws.send(JSON.stringify({type:"get_presence"}));};
   ws.onmessage=(e)=>{
     const msg=JSON.parse(e.data);
     if(msg.type==="presence"&&Array.isArray(msg.users)){
@@ -1865,6 +2000,7 @@ async function chatbotFlow(message,sender){
 }
 
 initWS();
+setInterval(refreshNotificationCount, 120000);
 
 /* ── AI Chat ── */
 function toggleAIChat(){
