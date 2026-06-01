@@ -52,6 +52,26 @@ function isAnuragAdmin(user = {}) {
     String(user.username || "").toLowerCase() === "anurag.mishra";
 }
 
+function canUseApprovedVerifiedEdit(user = {}, status = {}) {
+  const request = status?.verifiedEditRequest || {};
+  return isAnuragAdmin(user) &&
+    status?.isVerified === true &&
+    request.status === "approved" &&
+    String(request.requestedBy || "").toLowerCase() === "anurag.mishra";
+}
+
+function editRequestView(status = {}) {
+  const request = status?.verifiedEditRequest || {};
+  return {
+    editRequestStatus: request.status || "none",
+    editRequestRequestedBy: request.requestedBy || "",
+    editRequestRequestedAt: request.requestedAt || null,
+    editRequestReason: request.reason || "",
+    editRequestApprovedBy: request.approvedBy || "",
+    editRequestApprovedAt: request.approvedAt || null,
+  };
+}
+
 function hasHpclActionRequiredIssue(status = {}) {
   const duOffline = String(status.duOffline || "").trim().toUpperCase();
   const tankOffline = String(status.tankOffline || "").trim().toUpperCase();
@@ -352,6 +372,7 @@ router.get("/getMergedStatusRecords", verifyToken, async (req, res) => {
           isVerified: status.isVerified || false,
           taskGenerated: !!taskExists,
           oms03: status.oms03 || "No",
+          ...editRequestView(status),
         };
       })
     );
@@ -422,6 +443,7 @@ router.get("/getStatusRecords", verifyToken, async (req, res) => {
           isVerified: status.isVerified || false,
           taskGenerated: !!taskExists,
           oms03: status.oms03 || "No",
+          ...editRequestView(status),
         };
       })
     );
@@ -472,11 +494,13 @@ router.put("/updateStatus/:id", verifyToken, async (req, res) => {
 
     const oldData = await Status.findById(id).populate("planId");
 
-    // ✅ Prevent update if already verified and user is not nikhil.trivedi
-    if (oldData?.isVerified && req.user?.username !== "nikhil.trivedi") {
+    const approvedVerifiedEdit = canUseApprovedVerifiedEdit(req.user || {}, oldData);
+
+    // ✅ Prevent update if already verified and user is not nikhil.trivedi or approved Anurag edit
+    if (oldData?.isVerified && req.user?.username !== "nikhil.trivedi" && !approvedVerifiedEdit) {
       return res
         .status(403)
-        .send("Verified records can only be updated by Nikhil.");
+        .send("Verified records can only be updated by Nikhil, or by Anurag after Nikhil approval.");
     }
 
     const allowedFields = [
@@ -531,6 +555,23 @@ router.put("/updateStatus/:id", verifyToken, async (req, res) => {
     }).populate("planId");
 
     if (!updated) return res.status(404).send("Status not found");
+
+    if (approvedVerifiedEdit) {
+      await Status.findByIdAndUpdate(id, {
+        "verifiedEditRequest.status": "used",
+        "verifiedEditRequest.usedAt": new Date(),
+      });
+      await CRMNotification.updateMany(
+        {
+          statusRecordId: String(id),
+          type: "hpcl_verified_edit_approved",
+          recipientUsername: "anurag.mishra",
+          isRead: false,
+        },
+        { isRead: true, readAt: new Date() }
+      );
+    }
+
     clearStatusDependentCaches();
 
     const { before, after } = getChangedFields(
@@ -574,6 +615,158 @@ router.put("/updateStatus/:id", verifyToken, async (req, res) => {
   } catch (err) {
     console.error("Update error:", err);
     res.status(500).send("Update error: " + err.message);
+  }
+});
+
+router.post("/requestVerifiedEdit/:id", verifyToken, async (req, res) => {
+  const { id } = req.params;
+  const reason = String(req.body?.reason || "").trim();
+
+  if (!id || id === "undefined") {
+    return res.status(400).json({ success: false, message: "Invalid ID provided." });
+  }
+
+  try {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: "Invalid ObjectId format." });
+    }
+    if (!isAnuragAdmin(req.user || {})) {
+      return res.status(403).json({ success: false, message: "Only Anurag can request edit access for verified HPCL records." });
+    }
+
+    const status = await Status.findById(id).populate("planId");
+    if (!status) return res.status(404).json({ success: false, message: "Status not found" });
+    const phase = String(status.planId?.phase || "").trim().toUpperCase();
+    if (!phase.startsWith("HPCL") || !status.isVerified) {
+      return res.status(400).json({ success: false, message: "Edit access can be requested only for verified HPCL records." });
+    }
+
+    const currentRequest = status.verifiedEditRequest || {};
+    if (currentRequest.status === "pending") {
+      return res.json({ success: true, message: "Edit request is already pending with Nikhil." });
+    }
+    if (currentRequest.status === "approved") {
+      return res.json({ success: true, message: "Edit access is already approved. You can edit this record now." });
+    }
+
+    const updated = await Status.findByIdAndUpdate(
+      id,
+      {
+        verifiedEditRequest: {
+          status: "pending",
+          requestedBy: "anurag.mishra",
+          requestedAt: new Date(),
+          reason,
+          approvedBy: "",
+          approvedAt: null,
+          usedAt: null,
+        },
+      },
+      { new: true }
+    ).populate("planId");
+
+    const plan = updated.planId || {};
+    await CRMNotification.findOneAndUpdate(
+      { key: `hpcl-verified-edit-request:nikhil.trivedi:${id}` },
+      {
+        $set: {
+          type: "hpcl_verified_edit_request",
+          title: "HPCL verified record edit request",
+          message: `Anurag requested edit access for ${plan.roCode || "RO"}${reason ? `: ${reason}` : ""}`,
+          recipientUsername: "nikhil.trivedi",
+          recipientName: "Nikhil Trivedi",
+          assignedTo: "nikhil.trivedi",
+          statusRecordId: String(id),
+          roCode: plan.roCode || "",
+          roName: plan.roName || "",
+          visitDate: plan.date || "",
+          severity: "warning",
+          link: "statusRecords.html",
+          isRead: false,
+          readAt: null,
+          payload: { requestedBy: "anurag.mishra", reason },
+        },
+      },
+      { upsert: true, new: true }
+    );
+
+    res.json({ success: true, message: "Edit request sent to Nikhil for approval." });
+  } catch (err) {
+    console.error("Verified edit request error:", err);
+    res.status(500).json({ success: false, message: "Request error: " + err.message });
+  }
+});
+
+router.put("/approveVerifiedEdit/:id", verifyToken, async (req, res) => {
+  const { id } = req.params;
+
+  if (!id || id === "undefined") {
+    return res.status(400).json({ success: false, message: "Invalid ID provided." });
+  }
+
+  try {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: "Invalid ObjectId format." });
+    }
+    if (!isNikhilAdmin(req.user || {})) {
+      return res.status(403).json({ success: false, message: "Only Nikhil can approve verified record edit requests." });
+    }
+
+    const status = await Status.findById(id).populate("planId");
+    if (!status) return res.status(404).json({ success: false, message: "Status not found" });
+    if (status.verifiedEditRequest?.status !== "pending") {
+      return res.status(400).json({ success: false, message: "No pending edit request found for this record." });
+    }
+
+    const updated = await Status.findByIdAndUpdate(
+      id,
+      {
+        "verifiedEditRequest.status": "approved",
+        "verifiedEditRequest.approvedBy": "nikhil.trivedi",
+        "verifiedEditRequest.approvedAt": new Date(),
+      },
+      { new: true }
+    ).populate("planId");
+
+    const plan = updated.planId || {};
+    await CRMNotification.updateMany(
+      {
+        statusRecordId: String(id),
+        type: "hpcl_verified_edit_request",
+        recipientUsername: "nikhil.trivedi",
+        isRead: false,
+      },
+      { isRead: true, readAt: new Date() }
+    );
+
+    await CRMNotification.findOneAndUpdate(
+      { key: `hpcl-verified-edit-approved:anurag.mishra:${id}` },
+      {
+        $set: {
+          type: "hpcl_verified_edit_approved",
+          title: "HPCL verified edit approved",
+          message: `Nikhil approved edit access for ${plan.roCode || "RO"}.`,
+          recipientUsername: "anurag.mishra",
+          recipientName: "Anurag Mishra",
+          assignedTo: "anurag.mishra",
+          statusRecordId: String(id),
+          roCode: plan.roCode || "",
+          roName: plan.roName || "",
+          visitDate: plan.date || "",
+          severity: "success",
+          link: "statusRecords.html",
+          isRead: false,
+          readAt: null,
+          payload: { approvedBy: "nikhil.trivedi" },
+        },
+      },
+      { upsert: true, new: true }
+    );
+
+    res.json({ success: true, message: "Edit access approved for Anurag." });
+  } catch (err) {
+    console.error("Verified edit approval error:", err);
+    res.status(500).json({ success: false, message: "Approval error: " + err.message });
   }
 });
 

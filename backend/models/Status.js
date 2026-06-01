@@ -20,6 +20,23 @@ const verificationEditLogSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const verifiedEditRequestSchema = new mongoose.Schema(
+  {
+    status: {
+      type: String,
+      enum: ["none", "pending", "approved", "used", "rejected"],
+      default: "none",
+    },
+    requestedBy: { type: String, default: "" },
+    requestedAt: { type: Date, default: null },
+    reason: { type: String, default: "" },
+    approvedBy: { type: String, default: "" },
+    approvedAt: { type: Date, default: null },
+    usedAt: { type: Date, default: null },
+  },
+  { _id: false }
+);
+
 const StatusSchema = new mongoose.Schema({
   planId: { type: mongoose.Schema.Types.ObjectId, ref: "DailyPlan" },
   createdAt: { type: Date, default: Date.now },
@@ -71,6 +88,10 @@ const StatusSchema = new mongoose.Schema({
   verificationEditLog: {
     type: verificationEditLogSchema,
     default: () => ({ changes: [] }),
+  },
+  verifiedEditRequest: {
+    type: verifiedEditRequestSchema,
+    default: () => ({ status: "none" }),
   },
 });
 

@@ -558,6 +558,13 @@
       return isHpclRecord(row) && !isVerifiedRecord(row) && (hasActionRequiredIssue(row) || hasSpareActivity(row));
     }
 
+    function canAnuragEditApprovedVerified(row = {}, user = {}) {
+      return isAnuragAdmin(user) &&
+        isVerifiedRecord(row) &&
+        String(row.editRequestStatus || "").toLowerCase() === "approved" &&
+        String(row.editRequestRequestedBy || "").toLowerCase() === "anurag.mishra";
+    }
+
     function visibleRowsForUser(rows = [], user = {}) {
       if (isAnuragAdmin(user)) return rows;
       if (isNikhilAdmin(user)) return rows.filter(r => isVerifiedRecord(r) || canNikhilVerifyHpclUnverified(r));
@@ -721,15 +728,24 @@
                   <i class="fa-solid fa-check"></i> Verify
                 </button>`;
             } else if (isNikhilAdmin(userObj) && isVerified) {
+              const pendingEditRequest = String(record.editRequestStatus || "").toLowerCase() === "pending";
               html = `
                 <button class="sf-btn sf-btn-neutral" style="height:26px;padding:0 10px;font-size:11px;" onclick='handleEditClick("${encoded}")'>
                   <i class="fa-solid fa-pen"></i> Edit
                 </button>
                 <button class="sf-btn sf-btn-danger" style="height:26px;padding:0 10px;font-size:11px;margin-left:4px;" onclick='deleteStatus("${record._id}")'>
                   <i class="fa-solid fa-trash"></i>
-                </button>`;
+                </button>
+                ${pendingEditRequest ? `<button class="sf-btn sf-btn-success" style="height:26px;padding:0 10px;font-size:11px;margin-left:4px;" onclick='approveVerifiedEdit("${record._id}")'><i class="fa-solid fa-unlock"></i> Approve Edit</button>` : ""}`;
             } else if (isAnuragAdmin(userObj) && isVerified) {
-              html = `<span class="sf-badge sf-badge-green"><i class="fa-solid fa-lock"></i> Verified</span>`;
+              const requestStatus = String(record.editRequestStatus || "none").toLowerCase();
+              if (canAnuragEditApprovedVerified(record, userObj)) {
+                html = `<button class="sf-btn sf-btn-neutral" style="height:26px;padding:0 10px;font-size:11px;" onclick='handleEditClick("${encoded}")'><i class="fa-solid fa-pen"></i> Edit</button>`;
+              } else if (requestStatus === "pending") {
+                html = `<span class="sf-badge sf-badge-amber"><i class="fa-solid fa-clock"></i> Edit Pending</span>`;
+              } else {
+                html = `<button class="sf-btn sf-btn-warn" style="height:26px;padding:0 10px;font-size:11px;" onclick='requestVerifiedEdit("${record._id}")'><i class="fa-solid fa-unlock-keyhole"></i> Request Edit</button>`;
+              }
             }
             return `<td style="text-align:center;">${html}</td>`;
           }
@@ -779,7 +795,7 @@
 
       Object.entries(record).forEach(([key, value]) => {
         if (key === "_id") { form.innerHTML += `<input type="hidden" name="${key}" value="${value}" />`; return; }
-        if (key === "actions") return;
+        if (key === "actions" || key.startsWith("editRequest")) return;
         if ((key === "isVerified" || key === "taskGenerated") && !allowSys) return;
         const ro = key === "planId" ? "readonly" : "";
         form.innerHTML += `
@@ -812,6 +828,38 @@
       });
       if (res.ok) { await fetchStatusRecords(); closeModal(); showToast("Record updated successfully."); }
       else showToast("Error updating record.", "error");
+    }
+
+    async function requestVerifiedEdit(id) {
+      const reason = prompt("Nikhil approval ke liye edit reason enter karein:", "");
+      if (reason === null) return;
+      const res = await fetch(`${baseUrl}/requestVerifiedEdit/${id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ reason: reason.trim() }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok && json.success) {
+        showToast(json.message || "Edit request sent to Nikhil.");
+        await fetchStatusRecords();
+      } else {
+        showToast(json.message || "Edit request failed.", "error");
+      }
+    }
+
+    async function approveVerifiedEdit(id) {
+      if (!confirm("Approve Anurag edit access for this verified HPCL record?")) return;
+      const res = await fetch(`${baseUrl}/approveVerifiedEdit/${id}`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok && json.success) {
+        showToast(json.message || "Edit access approved.");
+        await fetchStatusRecords();
+      } else {
+        showToast(json.message || "Approval failed.", "error");
+      }
     }
 
     let deleteTargetId = null;
