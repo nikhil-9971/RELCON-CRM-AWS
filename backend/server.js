@@ -30,6 +30,7 @@ const aiAgentRoutes            = require("./routes/aiAgent");
 const dailyWorksheetRoutes     = require("./routes/dailyWorksheet");
 const noteTaskRoutes           = require("./routes/noteTasks");
 const notificationRoutes       = require("./routes/notifications");
+const roTimelineRoutes         = require("./routes/roTimeline");
 const errorLogRoutes           = require('./routes/errorLogs');
 const { serverLogsRouter }     = require('./routes/serverLogs');  // ✅ NEW
 const { httpLogger }           = require('./utils/logger');       // ✅ NEW
@@ -109,6 +110,7 @@ app.use("/api/ai", aiAgentRoutes);
 app.use("/api", dailyWorksheetRoutes);
 app.use("/api", noteTaskRoutes);
 app.use("/api", notificationRoutes);
+app.use("/api", roTimelineRoutes);
 app.use("/api/materialManagement", materialManagement);
 app.use("/api/invoiceManagement", invoiceManagement);
 app.use("/api/attendance", attendance);

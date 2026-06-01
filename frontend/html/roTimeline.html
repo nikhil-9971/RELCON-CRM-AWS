@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>RO Timeline | RELCON CRM</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <script src="config.js"></script>
+  <style>
+    :root{
+      --sf-blue:#0176d3;--sf-blue-dk:#014486;--sf-blue-lt:#e8f4fd;
+      --sf-green:#2e844a;--sf-green-lt:#eaf5ea;--sf-red:#ba0517;--sf-red-lt:#fef1ee;
+      --sf-orange:#dd5a0c;--sf-orange-lt:#fff3e0;--sf-purple:#6b3fa0;--sf-purple-lt:#f5f0ff;
+      --sf-teal:#0e7490;--sf-teal-lt:#ecfeff;--sf-navy:#1a2e4a;
+      --bg:#f3f2f2;--surface:#fff;--surface2:#f9f9f9;--border:#dddbda;
+      --txt:#080707;--txt2:#3e3e3c;--txt3:#706e6b;--txt4:#aeaeac;
+      --r-sm:4px;--r:6px;--r-lg:8px;--sh-sm:0 2px 4px rgba(0,0,0,.09);
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--txt);font-size:13px;min-height:100vh}
+    .strip{height:52px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;padding:0 20px;position:sticky;top:0;z-index:10;box-shadow:0 1px 3px rgba(15,23,42,.07)}
+    .strip-icon{width:30px;height:30px;border-radius:6px;background:var(--sf-blue-lt);color:var(--sf-blue);display:flex;align-items:center;justify-content:center}
+    .strip-title{font-size:14px;font-weight:800}
+    .body{padding:16px 20px 26px}
+    .header{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);padding:14px 18px;margin-bottom:12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+    .header-icon{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#0176d3,#0e7490);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px}
+    .title{font-size:18px;font-weight:800;letter-spacing:-.2px}
+    .meta{font-size:12px;color:var(--txt3);margin-top:2px}
+    .search{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .input{height:34px;border:1px solid var(--border);border-radius:var(--r-sm);padding:0 11px;background:var(--surface);font-family:inherit;font-size:12px;outline:none;min-width:220px;text-transform:uppercase}
+    .input:focus{border-color:var(--sf-blue);box-shadow:0 0 0 3px rgba(1,118,211,.12)}
+    .btn{height:34px;border:1px solid transparent;border-radius:var(--r-sm);padding:0 13px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+    .btn-primary{background:var(--sf-blue);color:#fff}.btn-primary:hover{background:var(--sf-blue-dk)}
+    .btn-neutral{background:var(--surface);color:var(--txt2);border-color:var(--border)}.btn-neutral:hover{background:var(--surface2)}
+    .master{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);padding:14px 16px;margin-bottom:12px;display:none}
+    .master.show{display:block}
+    .master-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+    .field{background:var(--surface2);border:1px solid #ecebea;border-radius:var(--r);padding:9px 10px}
+    .field-label{font-size:10px;font-weight:800;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px}
+    .field-value{font-size:12px;font-weight:700;color:var(--txt);margin-top:3px;word-break:break-word}
+    .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px;margin-bottom:12px}
+    .kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);padding:12px 14px;border-left:3px solid var(--sf-blue)}
+    .kpi.green{border-left-color:var(--sf-green)}.kpi.orange{border-left-color:var(--sf-orange)}.kpi.purple{border-left-color:var(--sf-purple)}.kpi.red{border-left-color:var(--sf-red)}.kpi.teal{border-left-color:var(--sf-teal)}
+    .kpi-num{font-size:22px;font-weight:800;line-height:1;color:var(--sf-navy)}
+    .kpi-label{font-size:10px;color:var(--txt3);font-weight:800;text-transform:uppercase;letter-spacing:.4px;margin-top:4px}
+    .toolbar{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);padding:10px 14px;margin-bottom:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .select{height:32px;border:1px solid var(--border);border-radius:var(--r-sm);padding:0 9px;background:var(--surface);font-family:inherit;font-size:12px}
+    .count{margin-left:auto;font-size:11px;color:var(--txt3);font-weight:700}
+    .timeline{background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--r-lg) var(--r-lg);box-shadow:var(--sh-sm);padding:8px 0 4px}
+    .empty{padding:34px 18px;text-align:center;color:var(--txt3)}
+    .event{display:grid;grid-template-columns:116px 28px 1fr;gap:10px;padding:12px 16px;position:relative}
+    .event:not(:last-child)::after{content:"";position:absolute;left:145px;top:42px;bottom:-10px;width:2px;background:#e5e7eb}
+    .date{font-size:11px;color:var(--txt3);font-weight:700;text-align:right;padding-top:3px}
+    .dot{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;z-index:1;background:var(--sf-blue)}
+    .event.green .dot{background:var(--sf-green)}.event.orange .dot{background:var(--sf-orange)}.event.red .dot{background:var(--sf-red)}.event.purple .dot{background:var(--sf-purple)}.event.teal .dot{background:var(--sf-teal)}
+    .content{border:1px solid #ecebea;border-radius:var(--r-lg);padding:11px 13px;background:#fff}
+    .event-head{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap}
+    .event-title{font-size:13px;font-weight:800;color:var(--txt);flex:1;min-width:180px}
+    .badge{font-size:10px;font-weight:800;border-radius:999px;padding:2px 8px;background:var(--sf-blue-lt);color:var(--sf-blue);white-space:nowrap}
+    .event.green .badge{background:var(--sf-green-lt);color:var(--sf-green)}.event.orange .badge{background:var(--sf-orange-lt);color:var(--sf-orange)}.event.red .badge{background:var(--sf-red-lt);color:var(--sf-red)}.event.purple .badge{background:var(--sf-purple-lt);color:var(--sf-purple)}.event.teal .badge{background:var(--sf-teal-lt);color:var(--sf-teal)}
+    .subtitle{font-size:12px;color:var(--txt3);margin-top:4px;line-height:1.45}
+    .details{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:7px;margin-top:10px}
+    .detail{background:var(--surface2);border:1px solid #f0efee;border-radius:var(--r-sm);padding:7px 8px}
+    .detail-k{font-size:9px;color:var(--txt4);font-weight:800;text-transform:uppercase;letter-spacing:.4px}
+    .detail-v{font-size:11px;color:var(--txt2);font-weight:600;margin-top:2px;word-break:break-word}
+    .toast{position:fixed;right:14px;bottom:14px;background:#0f172a;color:#fff;border-radius:8px;padding:10px 12px;font-size:12px;display:none;z-index:50}
+    .toast.show{display:block}
+    @media(max-width:720px){
+      .body{padding:10px}.header{align-items:flex-start}.search{margin-left:0;width:100%}.input{min-width:0;flex:1}.event{grid-template-columns:1fr;gap:6px}.date{text-align:left}.event:not(:last-child)::after{display:none}.dot{display:none}
+    }
+  </style>
+</head>
+<body>
+  <div class="strip">
+    <div class="strip-icon"><i class="fa-solid fa-timeline"></i></div>
+    <span class="strip-title">RO Timeline</span>
+  </div>
+
+  <main class="body">
+    <section class="header">
+      <div class="header-icon"><i class="fa-solid fa-route"></i></div>
+      <div>
+        <div class="title">Site History Timeline</div>
+        <div class="meta">Plans, statuses, incidents, material requests, and tasks in one chronological view.</div>
+      </div>
+      <div class="search">
+        <input class="input" id="roInput" placeholder="Enter RO Code" onkeydown="if(event.key==='Enter') loadTimeline()"/>
+        <button class="btn btn-primary" onclick="loadTimeline()"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
+        <button class="btn btn-neutral" onclick="resetTimeline()"><i class="fa-solid fa-rotate-left"></i> Clear</button>
+      </div>
+    </section>
+
+    <section class="master" id="masterBox"></section>
+    <section class="kpis" id="kpiBox"></section>
+
+    <section class="toolbar">
+      <select class="select" id="typeFilter" onchange="renderTimeline()">
+        <option value="">All Events</option>
+        <option value="plan">Daily Plans</option>
+        <option value="hpcl-status">HPCL Status</option>
+        <option value="rbml-status">JioBP/RBML Status</option>
+        <option value="bpcl-status">BPCL Status</option>
+        <option value="incident">Incidents</option>
+        <option value="material">Material</option>
+        <option value="task">Tasks</option>
+      </select>
+      <select class="select" id="sortOrder" onchange="renderTimeline()">
+        <option value="desc">Newest First</option>
+        <option value="asc">Oldest First</option>
+      </select>
+      <span class="count" id="eventCount">No RO loaded</span>
+    </section>
+    <section class="timeline" id="timelineBox">
+      <div class="empty">Search any RO code to see complete site history.</div>
+    </section>
+  </main>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const baseUrl = window.BACKEND_URL || "http://localhost:3000";
+    const token = new URLSearchParams(location.search).get("token") || localStorage.getItem("token") || "";
+    let timelineData = null;
+
+    function esc(value){
+      return String(value ?? "").replace(/[&<>"']/g, ch => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[ch]));
+    }
+    function fmtDate(value){
+      if(!value) return "—";
+      const d = new Date(value);
+      if(Number.isNaN(d.getTime())) return String(value).slice(0, 16);
+      return d.toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" });
+    }
+    function showToast(message){
+      const el=document.getElementById("toast");
+      el.textContent=message; el.classList.add("show");
+      setTimeout(()=>el.classList.remove("show"),2600);
+    }
+    function iconFor(type){
+      const map = {
+        "plan":"fa-calendar-check",
+        "hpcl-status":"fa-oil-can",
+        "rbml-status":"fa-gas-pump",
+        "bpcl-status":"fa-microchip",
+        "incident":"fa-triangle-exclamation",
+        "task":"fa-list-check",
+        "material":"fa-boxes-packing"
+      };
+      return map[type] || "fa-circle";
+    }
+    function renderMaster(master){
+      const box=document.getElementById("masterBox");
+      if(!master){ box.classList.remove("show"); box.innerHTML=""; return; }
+      const fields=[
+        ["RO Code", master.roCode], ["RO Name", master.roName], ["Region", master.region], ["Zone", master.zone],
+        ["Phase", master.phase], ["Engineer", master.engineer], ["AMC Qtr", master.amcQtr], ["Site Status", master.siteStatus],
+        ["Connectivity", master.connectivityType], ["BOS IP", master.bosIP], ["FCC IP", master.fccIP], ["Active", master.siteActivestatus]
+      ];
+      box.innerHTML = `<div class="master-grid">${fields.map(([k,v])=>`<div class="field"><div class="field-label">${esc(k)}</div><div class="field-value">${esc(v||"—")}</div></div>`).join("")}</div>`;
+      box.classList.add("show");
+    }
+    function renderKpis(summary={}){
+      const data=[
+        ["Total Events", summary.totalEvents||0, ""],
+        ["Plans", summary.plans||0, "green"],
+        ["Statuses", (summary.hpclStatuses||0)+(summary.rbmlStatuses||0)+(summary.bpclStatuses||0), "teal"],
+        ["Incidents", summary.incidents||0, "red"],
+        ["Tasks", summary.tasks||0, "orange"],
+        ["Materials", summary.materials||0, "purple"],
+      ];
+      document.getElementById("kpiBox").innerHTML = data.map(([label,value,tone])=>`<div class="kpi ${tone}"><div class="kpi-num">${value}</div><div class="kpi-label">${label}</div></div>`).join("");
+    }
+    function renderTimeline(){
+      const box=document.getElementById("timelineBox");
+      if(!timelineData){ box.innerHTML='<div class="empty">Search any RO code to see complete site history.</div>'; return; }
+      const type=document.getElementById("typeFilter").value;
+      const order=document.getElementById("sortOrder").value;
+      let events=[...(timelineData.events||[])];
+      if(type) events=events.filter(e=>e.type===type);
+      events.sort((a,b)=>{
+        const av=new Date(a.date).getTime()||0, bv=new Date(b.date).getTime()||0;
+        return order==="asc" ? av-bv : bv-av;
+      });
+      document.getElementById("eventCount").textContent = `${events.length} events for ${timelineData.roCode}`;
+      if(!events.length){ box.innerHTML='<div class="empty">No events found for selected filter.</div>'; return; }
+      box.innerHTML = events.map(event=>{
+        const details=Object.entries(event.details||{}).filter(([,v])=>v!==undefined&&v!==null&&String(v).trim()!=="");
+        return `<article class="event ${esc(event.tone||"blue")}">
+          <div class="date">${fmtDate(event.date)}</div>
+          <div class="dot"><i class="fa-solid ${iconFor(event.type)}"></i></div>
+          <div class="content">
+            <div class="event-head">
+              <div class="event-title">${esc(event.title)}</div>
+              <span class="badge">${esc(event.label)}</span>
+              ${event.status ? `<span class="badge">${esc(event.status)}</span>` : ""}
+            </div>
+            ${event.subtitle ? `<div class="subtitle">${esc(event.subtitle)}</div>` : ""}
+            ${details.length ? `<div class="details">${details.map(([k,v])=>`<div class="detail"><div class="detail-k">${esc(k)}</div><div class="detail-v">${esc(v)}</div></div>`).join("")}</div>` : ""}
+          </div>
+        </article>`;
+      }).join("");
+    }
+    async function loadTimeline(){
+      const roCode=document.getElementById("roInput").value.trim().toUpperCase();
+      if(!roCode) return showToast("RO Code enter karo");
+      document.getElementById("timelineBox").innerHTML='<div class="empty">Loading timeline...</div>';
+      try{
+        const res=await fetch(`${baseUrl}/roTimeline/${encodeURIComponent(roCode)}`, { headers:{ Authorization:`Bearer ${token}` } });
+        const data=await res.json();
+        if(!res.ok) throw new Error(data.error || data.details || "Timeline load failed");
+        timelineData=data;
+        renderMaster(data.master);
+        renderKpis(data.summary);
+        renderTimeline();
+      }catch(err){
+        timelineData=null;
+        document.getElementById("eventCount").textContent="Load failed";
+        document.getElementById("timelineBox").innerHTML=`<div class="empty">${esc(err.message)}</div>`;
+      }
+    }
+    function resetTimeline(){
+      timelineData=null;
+      document.getElementById("roInput").value="";
+      document.getElementById("typeFilter").value="";
+      document.getElementById("sortOrder").value="desc";
+      document.getElementById("masterBox").classList.remove("show");
+      document.getElementById("masterBox").innerHTML="";
+      document.getElementById("kpiBox").innerHTML="";
+      document.getElementById("eventCount").textContent="No RO loaded";
+      renderTimeline();
+    }
+
+    const initialRo = new URLSearchParams(location.search).get("roCode");
+    if(initialRo){ document.getElementById("roInput").value=initialRo.toUpperCase(); loadTimeline(); }
+  </script>
+</body>
+</html>

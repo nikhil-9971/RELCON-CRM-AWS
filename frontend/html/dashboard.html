@@ -931,6 +931,7 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
       <button id="invoiceManagementLink" class="nav-item" style="display:none" onclick="loadPage('invoiceManagement.html', this)"><i class="fa-solid fa-file-invoice-dollar"></i><span class="nav-txt">Invoice Management</span></button>
       <button id="incidentId" class="nav-item" style="display:none" onclick="loadPage('incident.html', this)"><i class="fa-solid fa-triangle-exclamation"></i><span class="nav-txt">Incident Manager</span></button>
       <button class="nav-item" onclick="loadPage('activeVsFaulty.html', this)"><i class="fa-solid fa-scale-balanced"></i><span class="nav-txt">Active vs Faulty</span></button>
+      <button class="nav-item" onclick="loadPage('roTimeline.html', this)"><i class="fa-solid fa-timeline"></i><span class="nav-txt">RO Timeline</span></button>
       <button class="nav-item" id="roMasterLink" onclick="loadPage('romaster.html', this)"><i class="fa-solid fa-database"></i><span class="nav-txt">RO Master</span></button>
 
       <div class="nav-label">Admin</div>
@@ -1283,6 +1284,7 @@ const pageNames = {
   'materialrequirement.html':'Material Requirement','incident.html':'Incident Manager',
   'materialrequestbuilder.html':'Material Request Builder',
   'romaster.html':'RO Master','activeVsFaulty.html':'Active vs Faulty',
+  'roTimeline.html':'RO Timeline',
   'logsViewer.html':'Logs Viewer','materialManagement.html':'Material Management',
   'invoiceManagement.html':'Invoice Management','userManagement.html':'User Management',
   'attendance.html':'Attendance'
@@ -1312,6 +1314,7 @@ const pageSlugs = {
   'incident.html':'incident-manager',
   'romaster.html':'ro-master',
   'activeVsFaulty.html':'active-vs-faulty',
+  'roTimeline.html':'ro-timeline',
   'logsViewer.html':'logs-viewer',
   'userManagement.html':'user-management',
   'attendance.html':'attendance'
