@@ -8,6 +8,7 @@ const {
   normalizeStatusLabel,
   isRequirementGivenToHQOStatus,
 } = require("../services/mailer");
+const { scopeByEngineer } = require("../utils/accessScope");
 
 function isAdmin(req) {
   return String(req.user?.role || "").toLowerCase() === "admin";
@@ -251,7 +252,7 @@ async function triggerMaterialRequestUpdateNotifications(previous, updated) {
 
 router.get("/", verifyToken, async (req, res) => {
   try {
-    const data = await MaterialRequestBuilder.find().sort({ createdAt: -1 });
+    const data = await MaterialRequestBuilder.find(scopeByEngineer(req.user, "engineer")).sort({ createdAt: -1 });
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch material requests" });

@@ -10,6 +10,7 @@ const BPCLStatus = require("../models/BPCLStatus");
 const Incident = require("../models/Incident");
 const Task = require("../models/Task");
 const MaterialRequirement = require("../models/MaterialRequirement");
+const { isAdminUser, scopeByEngineer } = require("../utils/accessScope");
 
 function normalizeRoCode(value = "") {
   return String(value || "").trim().toUpperCase();
@@ -64,13 +65,19 @@ router.get("/roTimeline/:roCode", verifyToken, async (req, res) => {
     if (!roCode) return res.status(400).json({ error: "RO code is required" });
 
     const roRegex = regexExact(roCode);
+    const admin = isAdminUser(req.user);
+    const roScope = { roCode: roRegex };
+    const planScope = { ...roScope, ...scopeByEngineer(req.user, "engineer") };
+    const incidentScope = { ...roScope, ...scopeByEngineer(req.user, "assignEngineer") };
+    const taskScope = { ...roScope, ...scopeByEngineer(req.user, "engineer") };
+    const materialScope = { ...roScope, ...scopeByEngineer(req.user, "engineer") };
 
     const [master, plans, incidents, tasks, materialRequirements] = await Promise.all([
       ROMaster.findOne({ roCode: roRegex }).lean(),
-      DailyPlan.find({ roCode: roRegex }).sort({ date: -1, createdAt: -1 }).lean(),
-      Incident.find({ roCode: roRegex }).sort({ incidentDate: -1 }).lean(),
-      Task.find({ roCode: roRegex }).sort({ createdAt: -1 }).lean(),
-      MaterialRequirement.find({ roCode: roRegex }).sort({ date: -1, createdAt: -1 }).lean(),
+      DailyPlan.find(planScope).sort({ date: -1, createdAt: -1 }).lean(),
+      Incident.find(incidentScope).sort({ incidentDate: -1 }).lean(),
+      Task.find(taskScope).sort({ createdAt: -1 }).lean(),
+      MaterialRequirement.find(materialScope).sort({ date: -1, createdAt: -1 }).lean(),
     ]);
 
     const planIds = plans.map((plan) => plan._id).filter(Boolean);
@@ -276,7 +283,7 @@ router.get("/roTimeline/:roCode", verifyToken, async (req, res) => {
 
     res.json({
       roCode,
-      master: master || null,
+      master: (admin || events.length) ? master || null : null,
       summary: {
         plans: plans.length,
         hpclStatuses: hpclStatuses.length,
