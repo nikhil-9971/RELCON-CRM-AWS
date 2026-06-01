@@ -10,6 +10,7 @@ const {
   sendStatusMaterialUsageAlertToAdmins,
 } = require("../services/mailer");
 const { clearCacheByPrefix } = require("../utils/cache");
+const { isAdminUser, canAccessEngineerRecord } = require("../utils/accessScope");
 
 function clearStatusDependentCaches() {
   clearCacheByPrefix("daily-plans:");
@@ -103,9 +104,10 @@ router.get(
 // ✅ GET All Jio BP Status with Role-Based Access
 router.get("/getAllJioBPStatus", authMiddleware, async (req, res) => {
   try {
-    // 🔓 No role-based restriction here — frontend will filter
     const statuses = await JioBPStatus.find({}).populate("planId");
-    res.status(200).json(statuses);
+    res.status(200).json(
+      statuses.filter((status) => isAdminUser(req.user) || canAccessEngineerRecord(req.user, status.planId?.engineer))
+    );
   } catch (err) {
     console.error("❌ Error fetching Jio BP statuses:", err);
     res.status(500).json({ success: false, message: "Server error" });

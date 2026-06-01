@@ -7,6 +7,7 @@ const XLSX = require("xlsx");
 const MaterialManagement = require("../models/MaterialManagement");
 const User = require("../models/User");
 const { verifyToken, requireRole } = require("./auth");
+const { isAdminUser, currentEngineerName } = require("../utils/accessScope");
 const {
   normalizeItemStatus,
   validateRow,
@@ -149,6 +150,7 @@ router.get("/", verifyToken, async (req, res) => {
     } = req.query;
 
     const query = { isActive: true };
+    if (!isAdminUser(req.user)) query.engineerName = new RegExp(`^${currentEngineerName(req.user).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i");
 
     if (search) {
       const re = new RegExp(search, "i");
@@ -161,7 +163,7 @@ router.get("/", verifyToken, async (req, res) => {
       ];
     }
 
-    if (engineerName) query.engineerName = new RegExp(engineerName, "i");
+    if (engineerName && isAdminUser(req.user)) query.engineerName = new RegExp(engineerName, "i");
     if (itemType)     query.itemType     = new RegExp(itemType, "i");    // free-text itemType
     if (itemStatus)   query.itemStatus   = normalizeItemStatus(itemStatus);
     if (String(lowStock).toLowerCase() === "true") query.qty = { $lte: 1 };
@@ -190,24 +192,28 @@ router.get("/", verifyToken, async (req, res) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 router.get("/stats", verifyToken, async (req, res) => {
   try {
-    const result = await getOrSetCache(makeCacheKey("material-management:stats", req.query), MATERIAL_CACHE_TTL_MS, async () => {
+    const scope = !isAdminUser(req.user)
+      ? { engineerName: new RegExp(`^${currentEngineerName(req.user).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") }
+      : {};
+    const activeScope = { isActive: true, ...scope };
+    const result = await getOrSetCache(makeCacheKey("material-management:stats", { ...req.query, user: req.user?.username, role: req.user?.role }), MATERIAL_CACHE_TTL_MS, async () => {
       const [total, byStatus, byType, byEngineer] = await Promise.all([
-        MaterialManagement.countDocuments({ isActive: true }),
+        MaterialManagement.countDocuments(activeScope),
 
         // UI mein "OK Items" aur "Not OK (Faulty)" stat cards hain
         MaterialManagement.aggregate([
-          { $match: { isActive: true } },
+          { $match: activeScope },
           { $group: { _id: "$itemStatus", count: { $sum: 1 } } },
         ]),
 
         MaterialManagement.aggregate([
-          { $match: { isActive: true } },
+          { $match: activeScope },
           { $group: { _id: "$itemType", count: { $sum: 1 }, totalQty: { $sum: "$qty" } } },
           { $sort: { count: -1 } },
         ]),
 
         MaterialManagement.aggregate([
-          { $match: { isActive: true } },
+          { $match: activeScope },
           { $group: { _id: "$engineerName", count: { $sum: 1 }, totalQty: { $sum: "$qty" } } },
           { $sort: { totalQty: -1 } },
           { $limit: 10 },
@@ -217,9 +223,9 @@ router.get("/stats", verifyToken, async (req, res) => {
       // UI ke stat cards: statOk, statFaulty
       const okCount     = byStatus.find(s => s._id === "OK")?.count || 0;
       const faultyCount = byStatus.find(s => s._id === "Not Ok (Faulty)")?.count || 0;
-      const lowStockCount = await MaterialManagement.countDocuments({ isActive: true, qty: { $lte: 1 } });
+      const lowStockCount = await MaterialManagement.countDocuments({ ...activeScope, qty: { $lte: 1 } });
       const recentTransfers = await MaterialManagement.aggregate([
-        { $match: { isActive: true, transferHistory: { $exists: true, $ne: [] } } },
+        { $match: { ...activeScope, transferHistory: { $exists: true, $ne: [] } } },
         { $unwind: "$transferHistory" },
         { $sort: { "transferHistory.createdAt": -1 } },
         { $limit: 8 },

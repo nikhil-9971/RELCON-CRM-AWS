@@ -2,6 +2,27 @@ const express = require("express");
 const mongoose = require("mongoose");
 const router = express.Router();
 const Incident = require("../models/Incident"); // Mongoose model
+const jwt = require("jsonwebtoken");
+const { isAdminUser, scopeByEngineer } = require("../utils/accessScope");
+const SECRET = process.env.JWT_SECRET || "relcon-secret-key";
+
+function optionalAuth(req, _res, next) {
+  const authHeader = req.headers.authorization || "";
+  if (authHeader.startsWith("Bearer ")) {
+    try {
+      req.user = jwt.verify(authHeader.split(" ")[1], SECRET);
+    } catch {
+      req.user = jwt.decode(authHeader.split(" ")[1]) || {};
+    }
+  }
+  next();
+}
+
+function incidentScope(user = {}) {
+  if (!user?.username && !user?.engineerName) return {};
+  if (isAdminUser(user)) return {};
+  return scopeByEngineer(user, "assignEngineer");
+}
 
 // ========== 1. BULK IMPORT INCIDENT ========== //
 // incidentRoutes.js
@@ -72,9 +93,9 @@ router.put("/updateIncidentStatus", async (req, res) => {
 });
 
 // ========== 3. GET ALL INCIDENTS ========== //
-router.get("/getAllIncidents", async (req, res) => {
+router.get("/getAllIncidents", optionalAuth, async (req, res) => {
   try {
-    const incidents = await Incident.find().sort({ incidentDate: -1 });
+    const incidents = await Incident.find(incidentScope(req.user)).sort({ incidentDate: -1 });
     res.json({ success: true, incidents });
   } catch (err) {
     console.error("Fetch error:", err.message);
@@ -83,9 +104,9 @@ router.get("/getAllIncidents", async (req, res) => {
 });
 
 // ✅ Alias for DB Explorer
-router.get("/getIncidents", async (req, res) => {
+router.get("/getIncidents", optionalAuth, async (req, res) => {
   try {
-    const incidents = await Incident.find().sort({ incidentDate: -1 });
+    const incidents = await Incident.find(incidentScope(req.user)).sort({ incidentDate: -1 });
     res.json(incidents); // DB Explorer expects an array
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -93,7 +114,7 @@ router.get("/getIncidents", async (req, res) => {
 });
 
 // ✅ New route to fetch incidents by RO Code and Status
-router.get("/getIncidentsByRoCodeAndStatus", async (req, res) => {
+router.get("/getIncidentsByRoCodeAndStatus", optionalAuth, async (req, res) => {
   const { roCode, status } = req.query;
 
   if (!roCode || !status) {
@@ -106,6 +127,7 @@ router.get("/getIncidentsByRoCodeAndStatus", async (req, res) => {
     const incidents = await Incident.find({
       roCode: roCode.trim(),
       status: status.trim(),
+      ...incidentScope(req.user),
     }).select("roCode siteName region incidentId status");
 
     res.json({ success: true, incidents });

@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const Task = require("../models/Task");
 const authMiddleware = require("../middleware/authMiddleware");
+const { isAdminUser, scopeByEngineer, canAccessEngineerRecord } = require("../utils/accessScope");
 const {
   sendTaskNotificationEmail,
   sendTaskClosureEmail,
@@ -86,7 +87,7 @@ async function appendFollowUpIfNeeded(task, { status, followUp }) {
 // GET /getTasks
 router.get("/getTasks", authMiddleware, async (req, res) => {
   try {
-    const tasks = await Task.find().sort({ createdAt: -1 });
+    const tasks = await Task.find(scopeByEngineer(req.user, "engineer")).sort({ createdAt: -1 });
     res.json(tasks.map(mergeTaskMeta));
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch tasks" });
@@ -146,6 +147,9 @@ router.get("/getTask/:id", authMiddleware, async (req, res) => {
   try {
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ error: "Task not found" });
+    if (!canAccessEngineerRecord(req.user, task.engineer) && !canAccessEngineerRecord(req.user, task.assignedTo)) {
+      return res.status(403).json({ error: "Access denied" });
+    }
     res.json(mergeTaskMeta(task));
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch task" });

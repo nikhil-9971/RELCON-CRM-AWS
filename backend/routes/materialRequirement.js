@@ -1,6 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const MaterialRequirement = require("../models/MaterialRequirement");
+const verifyToken = require("../middleware/authMiddleware");
+const { isAdminUser, currentEngineerName, scopeByEngineer } = require("../utils/accessScope");
 
 function normalizePayload(body = {}) {
   const lineItems = Array.isArray(body.lineItems)
@@ -68,9 +70,9 @@ function normalizePayload(body = {}) {
 }
 
 // 🔹 GET all
-router.get("/", async (req, res) => {
+router.get("/", verifyToken, async (req, res) => {
   try {
-    const data = await MaterialRequirement.find().sort({ createdAt: -1 });
+    const data = await MaterialRequirement.find(scopeByEngineer(req.user, "engineer")).sort({ createdAt: -1 });
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: "Server Error" });
@@ -79,9 +81,10 @@ router.get("/", async (req, res) => {
 
 // 🔹 POST new
 // 🔹 POST new (overwrite if same engineer + roCode + date exists)
-router.post("/", async (req, res) => {
+router.post("/", verifyToken, async (req, res) => {
   try {
     const payload = normalizePayload(req.body);
+    if (!isAdminUser(req.user)) payload.engineer = currentEngineerName(req.user);
     const { engineer, roCode, date } = payload;
 
     // check if entry already exists for this engineer + roCode + date
@@ -110,9 +113,15 @@ router.post("/", async (req, res) => {
 });
 
 // 🔹 PUT update
-router.put("/:id", async (req, res) => {
+router.put("/:id", verifyToken, async (req, res) => {
   try {
     const payload = normalizePayload(req.body);
+    if (!isAdminUser(req.user)) payload.engineer = currentEngineerName(req.user);
+    const current = await MaterialRequirement.findById(req.params.id).lean();
+    if (!current) return res.status(404).json({ error: "Record not found" });
+    if (!isAdminUser(req.user) && String(current.engineer || "").trim().toLowerCase() !== currentEngineerName(req.user).toLowerCase()) {
+      return res.status(403).json({ error: "Access denied" });
+    }
     const updated = await MaterialRequirement.findByIdAndUpdate(
       req.params.id,
       payload,
@@ -125,8 +134,13 @@ router.put("/:id", async (req, res) => {
 });
 
 // 🔹 DELETE
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", verifyToken, async (req, res) => {
   try {
+    const current = await MaterialRequirement.findById(req.params.id).lean();
+    if (!current) return res.status(404).json({ error: "Record not found" });
+    if (!isAdminUser(req.user) && String(current.engineer || "").trim().toLowerCase() !== currentEngineerName(req.user).toLowerCase()) {
+      return res.status(403).json({ error: "Access denied" });
+    }
     await MaterialRequirement.findByIdAndDelete(req.params.id);
     res.json({ message: "Deleted successfully" });
   } catch (err) {

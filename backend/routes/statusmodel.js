@@ -22,6 +22,7 @@ const {
 
 const verifyToken = require("../middleware/authMiddleware");
 const { clearCacheByPrefix } = require("../utils/cache");
+const { isAdminUser, canAccessEngineerRecord } = require("../utils/accessScope");
 
 const SECRET = process.env.JWT_SECRET || "relcon-secret-key";
 
@@ -296,7 +297,9 @@ router.get("/getMergedStatusRecords", verifyToken, async (req, res) => {
   try {
     const statusRecords = await Status.find().populate("planId");
     const merged = await Promise.all(
-      statusRecords.map(async (record) => {
+      statusRecords
+      .filter((record) => isAdminUser(req.user) || canAccessEngineerRecord(req.user, record.planId?.engineer))
+      .map(async (record) => {
         const plan = record.planId || {};
         const status = record || {};
         const taskExists = await Task.exists({ statusId: status._id });
@@ -364,7 +367,9 @@ router.get("/getStatusRecords", verifyToken, async (req, res) => {
   try {
     const statusRecords = await Status.find().populate("planId");
     const merged = await Promise.all(
-      statusRecords.map(async (record) => {
+      statusRecords
+      .filter((record) => isAdminUser(req.user) || canAccessEngineerRecord(req.user, record.planId?.engineer))
+      .map(async (record) => {
         const plan = record.planId || {};
         const status = record || {};
         const taskExists = await Task.exists({ statusId: status._id });

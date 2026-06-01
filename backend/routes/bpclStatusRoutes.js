@@ -7,6 +7,7 @@ const DailyPlan = require("../models/DailyPlan");
 const authMiddleware = require("../middleware/authMiddleware");
 const { sendVerificationCorrectionEmail } = require("../services/mailer");
 const { clearCacheByPrefix } = require("../utils/cache");
+const { isAdminUser, canAccessEngineerRecord } = require("../utils/accessScope");
 
 function clearStatusDependentCaches() {
   clearCacheByPrefix("daily-plans:");
@@ -116,7 +117,9 @@ router.get("/getAllBPCLStatus", authMiddleware, async (req, res) => {
       .sort({ createdAt: -1 })
       .lean();
 
-    res.status(200).json(statuses);
+    res.status(200).json(
+      statuses.filter((status) => isAdminUser(req.user) || canAccessEngineerRecord(req.user, status.planId?.engineer))
+    );
   } catch (err) {
     console.error("❌ Error fetching BPCL statuses:", err);
     res.status(500).json({
