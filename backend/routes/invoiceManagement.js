@@ -14,9 +14,21 @@ const {
 
 const router = express.Router();
 const INVOICE_CACHE_TTL_MS = 2 * 60 * 1000;
+const INVOICE_DENIED_USERNAMES = new Set(["anuag.mishra", "anurag.mishra"]);
 
 function clearInvoiceCaches() {
   clearCacheByPrefix("invoice-management:");
+}
+
+function denyInvoiceBlockedUser(req, res, next) {
+  const username = String(req.user?.username || "").trim().toLowerCase();
+  if (INVOICE_DENIED_USERNAMES.has(username)) {
+    return res.status(403).json({
+      success: false,
+      message: "Access denied. You do not have permission to access Invoice Management.",
+    });
+  }
+  return next();
 }
 
 const upload = multer({
@@ -263,7 +275,7 @@ async function getNextInvoiceSno() {
   return Math.max(1, Number(latest?.sno || 0) + 1);
 }
 
-router.get("/", verifyToken, requireRole(["Admin"]), async (req, res) => {
+router.get("/", verifyToken, requireRole(["Admin"]), denyInvoiceBlockedUser, async (req, res) => {
   try {
     const page = Math.max(1, Number(req.query.page) || 1);
     const limit = Math.min(500, Math.max(1, Number(req.query.limit) || 100));
@@ -282,7 +294,7 @@ router.get("/", verifyToken, requireRole(["Admin"]), async (req, res) => {
   }
 });
 
-router.get("/stats", verifyToken, requireRole(["Admin"]), async (req, res) => {
+router.get("/stats", verifyToken, requireRole(["Admin"]), denyInvoiceBlockedUser, async (req, res) => {
   try {
     const result = await getOrSetCache(makeCacheKey("invoice-management:stats", req.query), INVOICE_CACHE_TTL_MS, async () => {
       const query = buildQuery(req.query);
@@ -321,7 +333,7 @@ router.get("/stats", verifyToken, requireRole(["Admin"]), async (req, res) => {
   }
 });
 
-router.post("/", verifyToken, requireRole(["Admin"]), async (req, res) => {
+router.post("/", verifyToken, requireRole(["Admin"]), denyInvoiceBlockedUser, async (req, res) => {
   try {
     const nextSno = await getNextInvoiceSno();
     const payload = normalizeInvoicePayload(req.body, nextSno);
@@ -345,7 +357,7 @@ router.post("/", verifyToken, requireRole(["Admin"]), async (req, res) => {
   }
 });
 
-router.put("/:id", verifyToken, requireRole(["Admin"]), async (req, res) => {
+router.put("/:id", verifyToken, requireRole(["Admin"]), denyInvoiceBlockedUser, async (req, res) => {
   try {
     const existing = await InvoiceManagement.findById(req.params.id);
     if (!existing) {
@@ -377,7 +389,7 @@ router.put("/:id", verifyToken, requireRole(["Admin"]), async (req, res) => {
   }
 });
 
-router.post("/bulk-upload", verifyToken, requireRole(["Admin"]), upload.single("file"), async (req, res) => {
+router.post("/bulk-upload", verifyToken, requireRole(["Admin"]), denyInvoiceBlockedUser, upload.single("file"), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, message: "Upload file is required" });
@@ -434,7 +446,7 @@ router.post("/bulk-upload", verifyToken, requireRole(["Admin"]), upload.single("
   }
 });
 
-router.get("/export/excel", verifyToken, requireRole(["Admin"]), async (req, res) => {
+router.get("/export/excel", verifyToken, requireRole(["Admin"]), denyInvoiceBlockedUser, async (req, res) => {
   try {
     const query = buildQuery(req.query);
     const records = await InvoiceManagement.find(query).sort({ sno: 1, createdAt: 1 }).lean();
@@ -460,7 +472,7 @@ router.get("/export/excel", verifyToken, requireRole(["Admin"]), async (req, res
   }
 });
 
-router.delete("/admin/clear-all", verifyToken, requireRole(["Admin"]), async (req, res) => {
+router.delete("/admin/clear-all", verifyToken, requireRole(["Admin"]), denyInvoiceBlockedUser, async (req, res) => {
   try {
     const result = await InvoiceManagement.deleteMany({});
     clearInvoiceCaches();
@@ -471,7 +483,7 @@ router.delete("/admin/clear-all", verifyToken, requireRole(["Admin"]), async (re
   }
 });
 
-router.delete("/:id", verifyToken, requireRole(["Admin"]), async (req, res) => {
+router.delete("/:id", verifyToken, requireRole(["Admin"]), denyInvoiceBlockedUser, async (req, res) => {
   try {
     const deleted = await InvoiceManagement.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).json({ success: false, message: "Invoice record not found" });

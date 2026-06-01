@@ -365,6 +365,7 @@
     const HEADERS = (extra = {}) => ({ Authorization: `Bearer ${TOKEN()}`, ...extra });
     const INR = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 });
     const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (s) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[s]));
+    const INVOICE_DENIED_USERNAMES = new Set(["anuag.mishra", "anurag.mishra"]);
 
     let currentFilters = { search: "", region: "", monthLabel: "", billingType: "", invoiceNumber: "", invoiceDate: "", invoiceSubmissionDateToAccountDepartment: "", invoiceSubmissionDateToRegion: "" };
     let currentPage = 1;
@@ -424,6 +425,13 @@
       const res = await fetch(`${API_BASE}/user`, { headers: HEADERS() });
       if (!res.ok) throw new Error("Session expired. Please login again.");
       return res.json();
+    }
+
+    function showAccessDenied(message = "Access denied. You do not have permission to access Invoice Management.") {
+      document.getElementById("app").style.display = "none";
+      document.getElementById("accessState").style.display = "block";
+      document.querySelector("#accessState h3").textContent = "Access Denied";
+      document.querySelector("#accessState p").textContent = message;
     }
 
     function readFilters() {
@@ -724,14 +732,17 @@
       try {
         const user = await fetchUser();
         if (String(user.role || "").toLowerCase() !== "admin") {
-          document.getElementById("accessState").style.display = "block";
+          showAccessDenied("This module is available only for admin users. Please log in with an admin account to manage invoices.");
+          return;
+        }
+        if (INVOICE_DENIED_USERNAMES.has(String(user.username || "").trim().toLowerCase())) {
+          showAccessDenied();
           return;
         }
         document.getElementById("app").style.display = "block";
         await refreshAll(1);
       } catch (err) {
-        document.getElementById("accessState").style.display = "block";
-        document.querySelector("#accessState p").textContent = err.message || "Unable to load this module.";
+        showAccessDenied(err.message || "Unable to load this module.");
       }
     });
 
