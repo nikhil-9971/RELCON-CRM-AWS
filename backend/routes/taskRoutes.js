@@ -40,6 +40,7 @@ function normalizeTaskPayload(body = {}, currentTask = null) {
     assignedTo: String(body.assignedTo ?? currentTask?.assignedTo ?? currentTask?.completedBy ?? "").trim(),
     slaDays: Number(body.slaDays ?? currentTask?.slaDays ?? 2) || 2,
     earthingStatus: String(body.earthingStatus ?? currentTask?.earthingStatus ?? "").trim(),
+    dgStatus: String(body.dgStatus ?? currentTask?.dgStatus ?? "").trim(),
     voltageReading: String(body.voltageReading ?? currentTask?.voltageReading ?? "").trim(),
     duOffline: String(body.duOffline ?? currentTask?.duOffline ?? "").trim(),
     duRemark: String(body.duRemark ?? currentTask?.duRemark ?? "").trim(),

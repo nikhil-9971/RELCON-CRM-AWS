@@ -72,6 +72,10 @@ function editRequestView(status = {}) {
   };
 }
 
+function isNonStandardDgStatus(value = "") {
+  return String(value || "").trim().toUpperCase() === "NON STANDARD DG";
+}
+
 function hasHpclActionRequiredIssue(status = {}) {
   const duOffline = String(status.duOffline || "").trim().toUpperCase();
   const tankOffline = String(status.tankOffline || "").trim().toUpperCase();
@@ -79,7 +83,8 @@ function hasHpclActionRequiredIssue(status = {}) {
   return Boolean(
     (duOffline && duOffline !== "ALL OK") ||
     (tankOffline && tankOffline !== "ALL OK") ||
-    (earthingStatus && earthingStatus !== "OK")
+    (earthingStatus && earthingStatus !== "OK") ||
+    isNonStandardDgStatus(status.dgStatus)
   );
 }
 
@@ -118,6 +123,7 @@ function generateEmailContent({
   duOffline,
   duRemark,
   duDependency,
+  dgStatus,
   tankOffline,
   tankRemark,
   tankDependency,
@@ -150,6 +156,12 @@ function generateEmailContent({
     );
   }
 
+  if (isNonStandardDgStatus(dgStatus)) {
+    observationLines.push(
+      "4. Dealer is using Non Standard DG at this site.",
+    );
+  }
+
   const actionItems = [];
   if (earthingStatus === "NOT OK") {
     actionItems.push(
@@ -169,6 +181,11 @@ function generateEmailContent({
   ) {
     actionItems.push(
       "- Kindly resolve the listed HPCL dependency points and restore normal operation at the earliest.",
+    );
+  }
+  if (isNonStandardDgStatus(dgStatus)) {
+    actionItems.push(
+      "- In this subjected site dealer using non standard DG and due to which automation hardware will get damage and it will be replaced on chargeable basis.",
     );
   }
 
@@ -896,6 +913,7 @@ router.put("/verifyStatus/:id", verifyToken, async (req, res) => {
     // ✅ Task Generation — only if admin + anurag.mishra
     const {
       earthingStatus,
+      dgStatus,
       duOffline,
       voltageReading,
       duRemark,
@@ -915,7 +933,8 @@ router.put("/verifyStatus/:id", verifyToken, async (req, res) => {
           (duDependency === "HPCL" || duDependency === "BOTH")) ||
         (tankOffline &&
           tankOffline !== "ALL OK" &&
-          (tankDependency === "HPCL" || tankDependency === "BOTH"))) &&
+          (tankDependency === "HPCL" || tankDependency === "BOTH")) ||
+        isNonStandardDgStatus(dgStatus)) &&
       req.user?.username === "anurag.mishra" &&
       req.user?.role === "admin"
     ) {
@@ -933,6 +952,7 @@ router.put("/verifyStatus/:id", verifyToken, async (req, res) => {
         (tankDependency === "HPCL" || tankDependency === "BOTH")
       )
         issues.push(`Tank Offline: ${tankOffline}`);
+      if (isNonStandardDgStatus(dgStatus)) issues.push("Non Standard DG");
 
       const issueSummary = issues.join(" + ");
 
@@ -954,11 +974,13 @@ router.put("/verifyStatus/:id", verifyToken, async (req, res) => {
           duOffline,
           duRemark,
           duDependency,
+          dgStatus,
           tankOffline,
           tankRemark,
           tankDependency,
         }),
         earthingStatus,
+        dgStatus,
         voltageReading,
         duOffline,
         duDependency,

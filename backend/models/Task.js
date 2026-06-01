@@ -45,6 +45,7 @@ const taskSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
   // ✅ Add these for UI display
   earthingStatus: String,
+  dgStatus: String,
   voltageReading: String,
   duOffline: String,
   duRemark: String,

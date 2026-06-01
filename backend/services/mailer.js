@@ -402,6 +402,9 @@ function detectTaskIssueType(task = {}) {
   if (normalizeStatusLabel(task.earthingStatus) && normalizeStatusLabel(task.earthingStatus) !== "ok") {
     flags.push("Earthing");
   }
+  if (normalizeStatusLabel(task.dgStatus) === "nonstandarddg") {
+    flags.push("Non Standard DG");
+  }
   if (normalizeStatusLabel(task.duOffline) && normalizeStatusLabel(task.duOffline) !== "allok") {
     flags.push("DU Offline");
   }
@@ -415,14 +418,15 @@ function detectTaskIssueType(task = {}) {
 
 function getTaskPriority(task = {}) {
   const hasEarthingIssue = normalizeStatusLabel(task.earthingStatus) && normalizeStatusLabel(task.earthingStatus) !== "ok";
+  const hasDgIssue = normalizeStatusLabel(task.dgStatus) === "nonstandarddg";
   const hasDuIssue = normalizeStatusLabel(task.duOffline) && normalizeStatusLabel(task.duOffline) !== "allok";
   const hasTankIssue = normalizeStatusLabel(task.tankOffline) && normalizeStatusLabel(task.tankOffline) !== "allok";
   const duCount = Number.parseInt(String(task.duOffline || "").match(/\d+/)?.[0] || "0", 10);
   const tankCount = Number.parseInt(String(task.tankOffline || "").match(/\d+/)?.[0] || "0", 10);
 
-  if (hasEarthingIssue && (hasDuIssue || hasTankIssue)) return "Critical";
+  if (hasEarthingIssue && (hasDuIssue || hasTankIssue || hasDgIssue)) return "Critical";
   if ((hasDuIssue && duCount >= 4) || (hasTankIssue && tankCount >= 4)) return "Critical";
-  if (hasEarthingIssue || hasDuIssue || hasTankIssue) return "High";
+  if (hasEarthingIssue || hasDgIssue || hasDuIssue || hasTankIssue) return "High";
   if (task.status === "Resolved" || task.status === "Done") return "Low";
   return "Medium";
 }
@@ -465,6 +469,7 @@ function formatTaskMailRows(task = {}) {
     ["Region", task.region || "—"],
     ["Visit Date", formatDateOnlyIST(task.date)],
     ["Engineer", task.engineer || "—"],
+    ["DG Status", task.dgStatus || "—"],
     ["Issue Type", detectTaskIssueType(task)],
     ["Priority", task.priority || getTaskPriority(task)],
     ["Task Status", task.status || "Pending"],
@@ -479,6 +484,9 @@ function buildTaskObservationList(task = {}) {
   const items = [];
   if (normalizeStatusLabel(task.earthingStatus) && normalizeStatusLabel(task.earthingStatus) !== "ok") {
     items.push(`Earthing status is ${task.earthingStatus}${task.voltageReading ? ` (Voltage Reading: ${task.voltageReading})` : ""}.`);
+  }
+  if (normalizeStatusLabel(task.dgStatus) === "nonstandarddg") {
+    items.push("In this subjected site dealer using non standard DG and due to which automation hardware will get damage and it will be replaced on chargeable basis.");
   }
   if (normalizeStatusLabel(task.duOffline) && normalizeStatusLabel(task.duOffline) !== "allok") {
     items.push(`DU offline observation: ${task.duOffline}${task.duRemark ? ` | Remark: ${task.duRemark}` : ""}.`);
@@ -506,7 +514,7 @@ function cleanTaskEmailContent(value = "") {
     if (/^dear\b/i.test(line)) continue;
     if (/^regards[,\s]*$/i.test(line)) break;
     if (/^(relcon systems|nikhil trivedi)$/i.test(line)) continue;
-    if (/^(customer|ro code|ro name|region|visit date|engineer|issue type|priority|status|reply status|assigned to|mail date|next follow-up)\s*:/i.test(line)) continue;
+    if (/^(customer|ro code|ro name|region|visit date|engineer|dg status|issue type|priority|status|reply status|assigned to|mail date|next follow-up)\s*:/i.test(line)) continue;
     if (normalized.includes("please find below the site observation requiring your action")) continue;
     if (normalized.includes("during our site review") && normalized.includes("requires your support")) continue;
     if (normalized.includes("kindly arrange the necessary corrective action")) continue;
@@ -2457,10 +2465,12 @@ function isHpclActionRequiredStatusRecord(record = {}) {
   const duDependency = String(record.duDependency || "").trim().toUpperCase();
   const tankOffline = String(record.tankOffline || "").trim().toUpperCase();
   const tankDependency = String(record.tankDependency || "").trim().toUpperCase();
+  const dgStatus = String(record.dgStatus || "").trim().toUpperCase();
 
   return earthingStatus === "NOT OK"
     || (duOffline && duOffline !== "ALL OK" && ["HPCL", "BOTH"].includes(duDependency))
-    || (tankOffline && tankOffline !== "ALL OK" && ["HPCL", "BOTH"].includes(tankDependency));
+    || (tankOffline && tankOffline !== "ALL OK" && ["HPCL", "BOTH"].includes(tankDependency))
+    || dgStatus === "NON STANDARD DG";
 }
 
 function isUsefulHpclSpareText(value = "", emptyLabels = []) {
@@ -2492,8 +2502,10 @@ function buildHpclActionRequiredIssue(record = {}) {
   const duDependency = String(record.duDependency || "").trim().toUpperCase();
   const tankOffline = String(record.tankOffline || "").trim();
   const tankDependency = String(record.tankDependency || "").trim().toUpperCase();
+  const dgStatus = String(record.dgStatus || "").trim().toUpperCase();
 
   if (earthingStatus === "NOT OK") issues.push(`Earthing NOT OK${record.voltageReading ? ` (${record.voltageReading})` : ""}`);
+  if (dgStatus === "NON STANDARD DG") issues.push("Non Standard DG");
   if (duOffline && duOffline.toUpperCase() !== "ALL OK" && ["HPCL", "BOTH"].includes(duDependency)) {
     issues.push(`DU Offline: ${duOffline}${record.duRemark ? ` | ${record.duRemark}` : ""}`);
   }
@@ -3372,6 +3384,7 @@ async function sendHpclActionRequiredUnverifiedEmail() {
           issue: buildHpclVerificationPendingIssue(record),
           earthingStatus: record.earthingStatus || "—",
           voltageReading: record.voltageReading || "—",
+          dgStatus: record.dgStatus || "—",
           duOffline: record.duOffline || "—",
           duDependency: record.duDependency || "—",
           tankOffline: record.tankOffline || "—",
@@ -3411,6 +3424,7 @@ async function sendHpclActionRequiredUnverifiedEmail() {
       { key: "issue", label: "Action Required Issue" },
       { key: "earthingStatus", label: "Earthing" },
       { key: "voltageReading", label: "Voltage" },
+      { key: "dgStatus", label: "DG Status" },
       { key: "duOffline", label: "DU Offline" },
       { key: "duDependency", label: "DU Dependency" },
       { key: "tankOffline", label: "Tank Offline" },

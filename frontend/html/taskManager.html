@@ -152,6 +152,7 @@
     .badge-obs-earth{background:#fef1ee;color:#ba0517;font-size:9px;padding:1px 6px;}
     .badge-obs-du{background:#fff8e6;color:#b8860b;font-size:9px;padding:1px 6px;}
     .badge-obs-tank{background:var(--sf-blue-lt);color:var(--sf-blue);font-size:9px;padding:1px 6px;}
+    .badge-obs-dg{background:#f5f0ff;color:#6b3fa0;font-size:9px;padding:1px 6px;}
 
     /* Action buttons */
     .sf-ab{display:flex;gap:3px;align-items:center;}
@@ -570,6 +571,7 @@
       <select id="filterObs" class="sf-input sf-select" style="width:150px;" onchange="applyFilter()">
         <option value="">All Observations</option>
         <option value="earth">⚡ Earthing Issue</option>
+        <option value="dg">Non Standard DG</option>
         <option value="du">⛽ DU Offline</option>
         <option value="tank">🛢 Tank Offline</option>
       </select>
@@ -780,6 +782,10 @@
           <input type="text" id="mEarth" class="sf-modal-input" placeholder="OK / Faulty…"/>
         </div>
         <div class="sf-modal-field">
+          <label class="sf-modal-label">DG Status</label>
+          <input type="text" id="mDg" class="sf-modal-input" placeholder="Standard DG / Non Standard DG"/>
+        </div>
+        <div class="sf-modal-field">
           <label class="sf-modal-label">DU Offline</label>
           <input type="text" id="mDu" class="sf-modal-input" placeholder="ALL OK / count…"/>
         </div>
@@ -892,7 +898,7 @@ function cleanTaskEmailContent(value=''){
     if(/^dear\b/i.test(line)) continue;
     if(/^regards[,\s]*$/i.test(line)) break;
     if(/^(relcon systems|nikhil trivedi)$/i.test(line)) continue;
-    if(/^(customer|ro code|ro name|region|visit date|engineer|issue type|priority|status|reply status|assigned to|mail date|next follow-up)\s*:/i.test(line)) continue;
+    if(/^(customer|ro code|ro name|region|visit date|engineer|dg status|issue type|priority|status|reply status|assigned to|mail date|next follow-up)\s*:/i.test(line)) continue;
     if(normalized.includes('please find below the site observation requiring your action')) continue;
     if(normalized.includes('during our site review') && normalized.includes('requires your support')) continue;
     if(normalized.includes('kindly arrange the necessary corrective action')) continue;
@@ -1062,6 +1068,7 @@ function applyFilter(){
     if(priority && taskPriority(task)!==priority) return false;
     if(reply && taskReply(task)!==reply) return false;
     if(obs==='earth' && (task.earthingStatus==='OK'||!task.earthingStatus)) return false;
+    if(obs==='dg'    && String(task.dgStatus||'').trim().toUpperCase()!=='NON STANDARD DG') return false;
     if(obs==='du'    && (!task.duOffline||task.duOffline==='ALL OK')) return false;
     if(obs==='tank'  && (!task.tankOffline||task.tankOffline==='ALL OK')) return false;
     if(fr && (task.date||'')<fr) return false;
@@ -1118,6 +1125,7 @@ function renderTable(){
     const isPendingRow=task.status==='Pending';
     let obs=[];
     if(task.earthingStatus&&task.earthingStatus!=='OK') obs.push(`<span class="sf-badge badge-obs-earth"><i class="fa-solid fa-bolt" style="font-size:8px;"></i> Earth: ${esc(task.earthingStatus)}</span>`);
+    if(String(task.dgStatus||'').trim().toUpperCase()==='NON STANDARD DG') obs.push(`<span class="sf-badge badge-obs-dg"><i class="fa-solid fa-triangle-exclamation" style="font-size:8px;"></i> DG: ${esc(task.dgStatus)}</span>`);
     if(task.duOffline&&task.duOffline!=='ALL OK') obs.push(`<span class="sf-badge badge-obs-du"><i class="fa-solid fa-gas-pump" style="font-size:8px;"></i> DU: ${esc(task.duOffline)}</span>`);
     if(task.tankOffline&&task.tankOffline!=='ALL OK') obs.push(`<span class="sf-badge badge-obs-tank"><i class="fa-solid fa-database" style="font-size:8px;"></i> Tank: ${esc(task.tankOffline)}</span>`);
 
@@ -1339,6 +1347,7 @@ function viewDetail(idx){
   if(!task) return;
   let obs=[];
   if(task.earthingStatus&&task.earthingStatus!=='OK') obs.push(`<span class="sf-badge badge-obs-earth">⚡ Earth: ${esc(task.earthingStatus)}</span>`);
+  if(String(task.dgStatus||'').trim().toUpperCase()==='NON STANDARD DG') obs.push(`<span class="sf-badge badge-obs-dg">DG: ${esc(task.dgStatus)}</span>`);
   if(task.duOffline&&task.duOffline!=='ALL OK') obs.push(`<span class="sf-badge badge-obs-du">⛽ DU: ${esc(task.duOffline)}</span>`);
   if(task.tankOffline&&task.tankOffline!=='ALL OK') obs.push(`<span class="sf-badge badge-obs-tank">🛢 Tank: ${esc(task.tankOffline)}</span>`);
   const statusMap={Pending:'badge-pending',Mailed:'badge-mailed',Inprocess:'badge-inprocess','Follow-up':'badge-followup',Resolved:'badge-resolved',Done:'badge-resolved'};
@@ -1394,7 +1403,7 @@ function openAddModal(){
   editMode=false;
   document.getElementById('editTaskId').value='';
   document.getElementById('taskModalTitle').innerHTML=`<i class="fa-solid fa-plus" style="color:var(--sf-green);"></i> Add New Task`;
-  ['mRoCode','mRoName','mRegion','mEarth','mDu','mTank','mIssue','mIssueType','mEmailContent','mClosureSummary','mCustomerEmail','mCcEmails'].forEach(id=>document.getElementById(id).value='');
+  ['mRoCode','mRoName','mRegion','mEarth','mDg','mDu','mTank','mIssue','mIssueType','mEmailContent','mClosureSummary','mCustomerEmail','mCcEmails'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('mDate').value=today();
   document.getElementById('mMailDate').value='';
   document.getElementById('mNextFollowUp').value='';
@@ -1431,6 +1440,7 @@ function openEditModal(idx){
   document.getElementById('mIssueType').value=task.issueType||task.computedIssueType||'';
   document.getElementById('mIssue').value=task.issue||'';
   document.getElementById('mEarth').value=task.earthingStatus||'';
+  document.getElementById('mDg').value=task.dgStatus||'';
   document.getElementById('mDu').value=task.duOffline||'';
   document.getElementById('mTank').value=task.tankOffline||'';
   document.getElementById('mEmailContent').value=task.emailContent||'';
@@ -1459,6 +1469,7 @@ async function saveTaskModal(){
     issueType:document.getElementById('mIssueType').value.trim(),
     issue:document.getElementById('mIssue').value.trim(),
     earthingStatus:document.getElementById('mEarth').value.trim(),
+    dgStatus:document.getElementById('mDg').value.trim(),
     duOffline:document.getElementById('mDu').value.trim(),
     tankOffline:document.getElementById('mTank').value.trim(),
     emailContent:document.getElementById('mEmailContent').value.trim(),
@@ -1500,7 +1511,7 @@ function exportToExcel(){
   showToast('Excel exported','success'); toggleExportMenu();
 }
 function exportFiltered(){
-  const keys=['roCode','roName','region','date','engineer','customer','issueType','priority','status','replyStatus','assignedTo','mailDate','nextFollowUpDate','customerEmail','ccEmails','earthingStatus','duOffline','tankOffline','completedBy','closureSummary'];
+  const keys=['roCode','roName','region','date','engineer','customer','issueType','priority','status','replyStatus','assignedTo','mailDate','nextFollowUpDate','customerEmail','ccEmails','earthingStatus','dgStatus','duOffline','tankOffline','completedBy','closureSummary'];
   const csv=[keys.join(','),...filteredTasks.map(r=>keys.map(k=>`"${String(r[k]??'').replaceAll('"','""')}"`).join(','))].join('\n');
   const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
   a.download=`Tasks_Filtered_${today()}.csv`;a.click();
