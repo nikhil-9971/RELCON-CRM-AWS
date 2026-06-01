@@ -3,250 +3,631 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>RO Explorer | RELCON CRM</title>
+  <title>RO Explorer — RELCON CRM</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
   <script src="config.js"></script>
   <style>
-    :root{
-      --brand:#0176d3;--brand-dark:#014486;--brand-soft:#e8f4fd;
-      --green:#2e844a;--green-soft:#eaf5ea;--red:#ba0517;--red-soft:#fef1ee;
-      --orange:#dd5a0c;--orange-soft:#fff3e0;--teal:#0e7490;--teal-soft:#ecfeff;
-      --bg:#f3f2f2;--surface:#fff;--surface2:#f9f9f9;--border:#dddbda;
-      --txt:#080707;--txt2:#3e3e3c;--txt3:#706e6b;--txt4:#aeaeac;
-      --r-sm:4px;--r:6px;--r-lg:8px;--sh-sm:0 2px 4px rgba(0,0,0,.09);
+    :root {
+      --sf-blue:#0176d3; --sf-blue-dk:#014486; --sf-blue-lt:#e8f4fd; --sf-blue-hover:#0b5faa;
+      --sf-navy:#1a2e4a;
+      --sf-green:#2e844a; --sf-green-lt:#eaf5ea;
+      --sf-red:#ba0517; --sf-red-lt:#fef1ee;
+      --sf-orange:#dd5a0c; --sf-orange-lt:#fff3e0;
+      --sf-yellow:#b8860b; --sf-yellow-lt:#fff8e6;
+      --sf-purple:#6b3fa0; --sf-purple-lt:#f5f0ff;
+      --sf-teal:#0e7490; --sf-teal-lt:#ecfeff;
+      --bg:#f3f2f2; --surface:#fff; --surface2:#f9f9f9;
+      --border:#dddbda; --border-lt:#f3f2f2;
+      --txt:#080707; --txt2:#3e3e3c; --txt3:#706e6b; --txt4:#aeaeac;
+      --r-sm:4px; --r:6px; --r-lg:8px;
+      --sh-sm:0 2px 4px rgba(0,0,0,0.09); --sh-md:0 8px 24px rgba(0,0,0,0.12);
     }
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--txt);font-size:13px;min-height:100vh}
-    ::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:#c8c6c4;border-radius:4px}
-    .topbar{height:52px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;padding:0 20px;position:sticky;top:0;z-index:20;box-shadow:0 1px 3px rgba(15,23,42,.07)}
-    .topbar i{width:30px;height:30px;border-radius:6px;background:var(--brand-soft);color:var(--brand);display:flex;align-items:center;justify-content:center}
-    .topbar-title{font-size:14px;font-weight:800}.topbar-note{font-size:11px;color:var(--txt3);font-weight:600;margin-left:auto}
-    .body{padding:16px 20px 28px}
-    .header{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);padding:14px 18px;margin-bottom:12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-    .header-icon{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#0176d3,#0e7490);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
-    .title{font-size:18px;font-weight:800;letter-spacing:-.2px}.meta{font-size:12px;color:var(--txt3);margin-top:2px}
-    .search{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-    .input{height:34px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);padding:0 11px;font-family:inherit;font-size:12px;outline:none;min-width:220px;text-transform:uppercase}
-    .input:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(1,118,211,.12)}
-    .btn{height:34px;border:1px solid transparent;border-radius:var(--r-sm);padding:0 13px;font-family:inherit;font-size:12px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
-    .btn-primary{background:var(--brand);color:#fff}.btn-primary:hover{background:var(--brand-dark)}
-    .btn-neutral{background:var(--surface);color:var(--txt2);border-color:var(--border)}.btn-neutral:hover{background:var(--surface2)}
-    .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px}
-    .kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);padding:12px 14px;border-left:3px solid var(--brand)}
-    .kpi.green{border-left-color:var(--green)}.kpi.orange{border-left-color:var(--orange)}.kpi.teal{border-left-color:var(--teal)}
-    .kpi-num{font-size:22px;font-weight:800;line-height:1;color:#1a2e4a}.kpi-label{font-size:10px;color:var(--txt3);font-weight:800;text-transform:uppercase;letter-spacing:.4px;margin-top:4px}
-    .layout{display:grid;grid-template-columns:260px 1fr;gap:12px;align-items:start}
-    .side{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);overflow:hidden;position:sticky;top:68px}
-    .side-head{height:38px;padding:0 12px;display:flex;align-items:center;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--txt3);background:var(--surface2);border-bottom:1px solid var(--border)}
-    .collection-btn{width:100%;border:0;background:#fff;padding:10px 12px;text-align:left;display:flex;align-items:center;gap:8px;border-bottom:1px solid #f0efee;cursor:pointer;font-family:inherit}
-    .collection-btn:hover,.collection-btn.active{background:var(--brand-soft)}.collection-name{font-size:12px;font-weight:800;color:var(--txt2);flex:1}.collection-count{font-size:11px;font-weight:800;color:var(--brand)}
-    .content{min-width:0}
-    .empty{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);padding:38px 18px;text-align:center;color:var(--txt3)}
-    .section{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);margin-bottom:12px;overflow:hidden}
-    .section-head{padding:11px 14px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
-    .section-title{font-size:13px;font-weight:800;flex:1}.pill{font-size:10px;font-weight:800;border-radius:999px;padding:2px 8px;background:var(--brand-soft);color:var(--brand)}
-    .record{padding:12px 14px;border-bottom:1px solid #f0efee}.record:last-child{border-bottom:0}
-    .record-title{display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;margin-bottom:8px}
-    .record-title strong{font-size:13px;color:var(--txt);word-break:break-word}.record-id{font-size:10px;color:var(--txt4);font-weight:700}
-    .fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:7px}
-    .field{background:var(--surface2);border:1px solid #f0efee;border-radius:var(--r-sm);padding:7px 8px;min-width:0}
-    .field-k{font-size:9px;color:var(--txt4);font-weight:800;text-transform:uppercase;letter-spacing:.4px}.field-v{font-size:11px;color:var(--txt2);font-weight:650;margin-top:2px;word-break:break-word;white-space:pre-wrap}
-    details{margin-top:9px}summary{cursor:pointer;color:var(--brand);font-size:11px;font-weight:800}
-    pre{margin-top:8px;background:#0f172a;color:#e5e7eb;border-radius:var(--r);padding:10px;font-size:11px;line-height:1.45;overflow:auto;max-height:340px}
-    .toast{position:fixed;right:14px;bottom:14px;background:#0f172a;color:#fff;border-radius:8px;padding:10px 12px;font-size:12px;display:none;z-index:50}.toast.show{display:block}
-    @media(max-width:850px){.body{padding:10px}.search{margin-left:0;width:100%}.input{min-width:0;flex:1}.layout{grid-template-columns:1fr}.side{position:static}.topbar-note{display:none}}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{font-size:13px;-webkit-font-smoothing:antialiased}
+    body{font-family:Inter,-apple-system,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh}
+    ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-thumb{background:#c8c6c4;border-radius:3px}
+
+    .dv-strip{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:52px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:200;box-shadow:0 1px 3px rgba(15,23,42,.07)}
+    .dv-strip-icon{width:28px;height:28px;background:var(--sf-blue-lt);border-radius:5px;display:flex;align-items:center;justify-content:center;color:var(--sf-blue);font-size:13px}
+    .dv-strip-title{font-size:14px;font-weight:700;color:var(--txt);letter-spacing:-.2px}
+    .dv-strip-sep{width:1px;height:18px;background:var(--border)}
+    .dv-strip-meta{font-size:10px;font-weight:700;color:var(--txt4);background:var(--surface2);border:1px solid var(--border);padding:2px 9px;border-radius:9999px}
+    .dv-strip-spacer{flex:1}
+
+    .sf-body{padding:16px 20px}
+    .kpi-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:14px}
+    .kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 16px;box-shadow:var(--sh-sm);display:flex;flex-direction:column;gap:4px;border-left:3px solid transparent;cursor:pointer;transition:box-shadow .15s,transform .15s}
+    .kpi-card:hover{box-shadow:var(--sh-md);transform:translateY(-1px)}
+    .kpi-card.active-filter{box-shadow:0 0 0 2px var(--sf-blue);border-left-color:var(--sf-blue)!important}
+    .kpi-card.blue{border-left-color:var(--sf-blue)}.kpi-card.green{border-left-color:var(--sf-green)}.kpi-card.orange{border-left-color:var(--sf-orange)}.kpi-card.red{border-left-color:var(--sf-red)}.kpi-card.purple{border-left-color:var(--sf-purple)}.kpi-card.teal{border-left-color:var(--sf-teal)}
+    .kpi-num{font-size:24px;font-weight:700;line-height:1;color:var(--sf-navy)}
+    .kpi-num.blue{color:var(--sf-blue)}.kpi-num.green{color:var(--sf-green)}.kpi-num.orange{color:var(--sf-orange)}.kpi-num.red{color:var(--sf-red)}.kpi-num.purple{color:var(--sf-purple)}.kpi-num.teal{color:var(--sf-teal)}
+    .kpi-label{font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px}
+
+    .sf-page-header{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 20px;margin-bottom:12px;display:flex;align-items:center;gap:14px;box-shadow:var(--sh-sm);flex-wrap:wrap}
+    .sf-page-icon{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#0176d3,#0e7490);display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;box-shadow:0 2px 8px rgba(1,118,211,.35);flex-shrink:0}
+    .sf-page-title{font-size:18px;font-weight:700;color:var(--txt);letter-spacing:-.3px}
+    .sf-page-meta{font-size:12px;color:var(--txt3);margin-top:2px}
+    .sf-page-actions{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .ro-search{position:relative}
+    .ro-search i{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--txt4);font-size:11px}
+    .ro-search input{padding-left:30px;width:210px;text-transform:uppercase}
+
+    .sf-tabs{display:flex;gap:2px;padding:0 20px;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto}
+    .sf-tab{font-family:Inter,sans-serif;font-size:12px;font-weight:500;padding:10px 16px;cursor:pointer;border:none;background:transparent;color:var(--txt3);border-bottom:3px solid transparent;transition:all .15s;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+    .sf-tab:hover{color:var(--txt);background:var(--surface2)}
+    .sf-tab.active{color:var(--sf-blue);border-bottom-color:var(--sf-blue);font-weight:600}
+    .sf-tab-badge{background:var(--sf-red-lt);color:var(--sf-red);font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;min-width:18px;text-align:center}
+    .sf-tab.active .sf-tab-badge{background:var(--sf-blue-lt);color:var(--sf-blue)}
+
+    .sf-toolbar{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);padding:12px 20px;margin-bottom:10px;display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}
+    .sf-filter-group{display:flex;flex-direction:column;gap:4px}
+    .sf-filter-label{font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px}
+    .sf-input,.sf-select{font-family:Inter,sans-serif;font-size:12px;color:var(--txt);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:5px 9px;height:32px;outline:none;transition:border-color .15s,box-shadow .15s}
+    .sf-input:focus,.sf-select:focus{border-color:var(--sf-blue);box-shadow:0 0 0 3px rgba(1,118,211,.12)}
+    .sf-input::placeholder{color:var(--txt4)}
+    .sf-search-wrap{position:relative}
+    .sf-search-wrap i{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--txt4);font-size:11px;pointer-events:none}
+    .sf-search-input{padding-left:28px;width:230px}
+    .sf-select{-webkit-appearance:none;appearance:none;padding-right:26px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath fill='%23aeaeac' d='M0 0l5 7 5-7z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;cursor:pointer}
+    .sf-toolbar-spacer{flex:1}
+
+    .sf-btn{font-family:Inter,sans-serif;font-size:12px;font-weight:500;padding:0 14px;height:32px;border-radius:var(--r-sm);cursor:pointer;border:none;display:inline-flex;align-items:center;gap:6px;transition:all .15s;white-space:nowrap}
+    .sf-btn-primary{background:var(--sf-blue);color:#fff;box-shadow:0 1px 3px rgba(1,118,211,.3)}
+    .sf-btn-primary:hover{background:var(--sf-blue-hover);transform:translateY(-1px)}
+    .sf-btn-neutral{background:var(--surface);color:var(--txt);border:1px solid var(--border)}
+    .sf-btn-neutral:hover{background:var(--bg)}
+    .sf-btn-success{background:var(--sf-green);color:#fff}.sf-btn-warn{background:var(--sf-orange);color:#fff}.sf-btn-purple{background:var(--sf-purple);color:#fff}
+    .sf-btn:disabled{opacity:.48;cursor:not-allowed;transform:none}
+
+    .sf-table-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);overflow:hidden}
+    .sf-table-header{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--surface2);flex-wrap:wrap}
+    .sf-table-title{font-size:12px;font-weight:700;color:var(--txt);text-transform:uppercase;letter-spacing:.4px;display:flex;align-items:center;gap:6px}
+    .sf-record-count{background:var(--sf-blue-lt);color:var(--sf-blue);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px}
+    .insight-rail{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-bottom:10px}
+    .insight{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);padding:11px 13px;border-left:3px solid var(--sf-blue)}
+    .insight.warn{border-left-color:var(--sf-orange)}.insight.good{border-left-color:var(--sf-green)}.insight.danger{border-left-color:var(--sf-red)}
+    .insight-title{font-size:10px;font-weight:800;color:var(--txt3);letter-spacing:.45px;text-transform:uppercase}
+    .insight-text{font-size:12px;color:var(--txt);font-weight:650;margin-top:4px;line-height:1.4}
+
+    .sf-table-wrap{overflow:auto;max-height:calc(100vh - 430px)}
+    table{width:100%;border-collapse:collapse;font-size:11px;min-width:1180px}
+    thead th{background:var(--sf-navy)!important;color:#e8f4fd!important;font-size:10px!important;font-weight:600!important;text-transform:uppercase!important;letter-spacing:.6px!important;padding:9px 12px!important;text-align:left!important;white-space:nowrap!important;border:none!important;border-right:1px solid #253d5b!important;position:sticky;top:0;z-index:10}
+    thead th:last-child{border-right:none!important}
+    tbody tr{border-bottom:1px solid var(--border-lt);transition:background .1s}
+    tbody tr:hover{background:#f0f8ff}
+    tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!important;vertical-align:middle!important;border:none!important;border-bottom:1px solid var(--border-lt)!important;white-space:nowrap}
+    .site-code{font-weight:800;color:var(--sf-blue);font-size:12px}.muted{color:var(--txt4);font-size:10px}.cell-main{font-weight:700;color:var(--txt)}.cell-sub{font-size:10px;color:var(--txt3);margin-top:2px;max-width:300px;overflow:hidden;text-overflow:ellipsis}
+    .sf-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;white-space:nowrap}
+    .badge-blue{background:var(--sf-blue-lt);color:var(--sf-blue)}.badge-green{background:var(--sf-green-lt);color:var(--sf-green)}.badge-orange{background:var(--sf-orange-lt);color:var(--sf-orange)}.badge-red{background:var(--sf-red-lt);color:var(--sf-red)}.badge-purple{background:var(--sf-purple-lt);color:var(--sf-purple)}.badge-teal{background:var(--sf-teal-lt);color:var(--sf-teal)}
+    .sf-ab{display:flex;gap:3px;align-items:center;justify-content:center}
+    .sf-action-btn{font-size:10px;font-weight:500;height:24px;padding:0 7px;border-radius:var(--r-sm);cursor:pointer;border:none;display:inline-flex;align-items:center;gap:3px;transition:all .12s;font-family:Inter,sans-serif}
+    .sf-ab-view{background:var(--sf-blue-lt);color:var(--sf-blue);border:1px solid #c5dff5}.sf-ab-copy{background:var(--sf-purple-lt);color:var(--sf-purple);border:1px solid #d4b8f0}.sf-ab-open{background:var(--sf-green-lt);color:var(--sf-green);border:1px solid #a3d9a5}
+    .sf-action-btn:hover{filter:brightness(.96);transform:translateY(-1px)}
+
+    .sf-pagination{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--border);background:var(--surface2);flex-wrap:wrap;gap:8px}
+    .sf-pagination-info{font-size:11px;color:var(--txt3)}.sf-pag-controls{display:flex;align-items:center;gap:4px}
+    .sf-page-btn{width:30px;height:30px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);color:var(--txt2);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;font-family:Inter,sans-serif}
+    .sf-page-btn:hover{background:var(--sf-blue-lt);border-color:var(--sf-blue);color:var(--sf-blue)}.sf-page-btn.active{background:var(--sf-blue);border-color:var(--sf-blue);color:#fff;font-weight:700}.sf-page-btn:disabled{opacity:.4;cursor:not-allowed}
+
+    .sf-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;display:none;align-items:center;justify-content:center}
+    .sf-overlay.open{display:flex}
+    .sf-modal{background:var(--surface);border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.25);width:92%;max-width:900px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
+    .sf-modal-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface2);flex-shrink:0}
+    .sf-modal-title{font-size:15px;font-weight:700;color:var(--txt);display:flex;align-items:center;gap:8px}.sf-modal-close{background:none;border:none;cursor:pointer;color:var(--txt3);font-size:16px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:var(--r-sm)}
+    .sf-modal-close:hover{background:var(--sf-red-lt);color:var(--sf-red)}.sf-modal-body{flex:1;min-height:0;overflow:auto;padding:20px}.sf-modal-footer{padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;background:var(--surface2);flex-shrink:0}
+    .det-section{margin-bottom:16px}.det-section-title{font-size:11px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:10px}
+    .det-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}.det-field{display:flex;flex-direction:column;gap:2px}.det-label{font-size:10px;font-weight:600;color:var(--txt4);text-transform:uppercase;letter-spacing:.4px}.det-value{font-size:12px;color:var(--txt);font-weight:500;word-break:break-word}
+    .det-box{background:#0f172a;color:#e5e7eb;border:1px solid #1e293b;border-radius:var(--r);padding:12px;font-size:11px;line-height:1.55;font-family:SFMono-Regular,Consolas,monospace;white-space:pre-wrap;word-break:break-all;max-height:360px;overflow:auto}
+    .sf-loader{position:fixed;inset:0;background:rgba(255,255,255,.72);z-index:600;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px}.sf-loader.hidden{display:none}
+    .sf-spinner-lg{width:42px;height:42px;border:3px solid var(--border);border-top-color:var(--sf-blue);border-radius:50%;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}.sf-loader-text{font-size:12px;font-weight:700;color:var(--txt2)}
+    .sf-toast{position:fixed;top:20px;right:20px;z-index:9999;min-width:280px;max-width:380px;background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--sh-md);border:1px solid var(--border);display:flex;align-items:flex-start;gap:10px;padding:12px 14px;transform:translateX(120%);transition:transform .35s cubic-bezier(.34,1.56,.64,1)}.sf-toast.show{transform:translateX(0)}.sf-toast-icon{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;background:var(--sf-green-lt);color:var(--sf-green)}.sf-toast.error .sf-toast-icon{background:var(--sf-red-lt);color:var(--sf-red)}.sf-toast-title{font-size:12px;font-weight:700;color:var(--txt)}.sf-toast-msg{font-size:11px;color:var(--txt3);margin-top:1px}
+    .empty-state{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);padding:34px 18px;text-align:center;color:var(--txt3);font-weight:600}
+    @media(max-width:760px){.sf-body{padding:10px}.sf-page-actions{margin-left:0;width:100%}.ro-search,.ro-search input{width:100%}.sf-table-wrap{max-height:none}.dv-strip-meta{display:none}.sf-tabs{padding:0 10px}.sf-toolbar{padding:10px}}
   </style>
 </head>
 <body>
-  <div class="topbar">
-    <i class="fa-solid fa-magnifying-glass-chart"></i>
-    <div class="topbar-title">RO Explorer</div>
-    <div class="topbar-note">Admin only</div>
+  <div class="dv-strip">
+    <div class="dv-strip-icon"><i class="fa-solid fa-magnifying-glass-chart"></i></div>
+    <div class="dv-strip-title">RO Explorer</div>
+    <div class="dv-strip-sep"></div>
+    <div class="dv-strip-meta" id="dateBadge">—</div>
+    <div class="dv-strip-spacer"></div>
+    <div class="dv-strip-meta" id="lastSyncTime">Not synced</div>
   </div>
 
-  <main class="body">
-    <section class="header">
-      <div class="header-icon"><i class="fa-solid fa-database"></i></div>
+  <main class="sf-body">
+    <div class="kpi-row" id="kpiRow">
+      <div class="kpi-card blue active-filter" onclick="setKpiFilter('all')" id="kpiAllCard"><div class="kpi-num blue" id="kpiTotal">0</div><div class="kpi-label"><i class="fa-solid fa-layer-group"></i> Total Records</div></div>
+      <div class="kpi-card green" onclick="setKpiFilter('verified')" id="kpiVerifiedCard"><div class="kpi-num green" id="kpiVerified">0</div><div class="kpi-label"><i class="fa-solid fa-circle-check"></i> Verified</div></div>
+      <div class="kpi-card orange" onclick="setKpiFilter('open')" id="kpiOpenCard"><div class="kpi-num orange" id="kpiOpen">0</div><div class="kpi-label"><i class="fa-solid fa-bolt"></i> Open Work</div></div>
+      <div class="kpi-card red" onclick="setKpiFilter('issues')" id="kpiIssuesCard"><div class="kpi-num red" id="kpiIssues">0</div><div class="kpi-label"><i class="fa-solid fa-triangle-exclamation"></i> Issues</div></div>
+      <div class="kpi-card purple" onclick="setKpiFilter('materials')" id="kpiMaterialsCard"><div class="kpi-num purple" id="kpiMaterials">0</div><div class="kpi-label"><i class="fa-solid fa-boxes-packing"></i> Materials</div></div>
+      <div class="kpi-card teal" onclick="setKpiFilter('audit')" id="kpiAuditCard"><div class="kpi-num teal" id="kpiAudit">0</div><div class="kpi-label"><i class="fa-solid fa-clock-rotate-left"></i> Audit/Notify</div></div>
+    </div>
+
+    <div class="sf-page-header">
+      <div class="sf-page-icon"><i class="fa-solid fa-database"></i></div>
       <div>
-        <div class="title">RO Code Database View</div>
-        <div class="meta">Search one RO code and inspect every related CRM collection in one place.</div>
+        <div class="sf-page-title">RO Command Center</div>
+        <div class="sf-page-meta">One RO code, all linked database records, raw payloads, exports and source navigation.</div>
       </div>
-      <div class="search">
-        <input id="roInput" class="input" placeholder="Enter RO Code"/>
-        <button class="btn btn-primary" onclick="searchRo()"><i class="fa-solid fa-search"></i> Search</button>
-        <button class="btn btn-neutral" onclick="exportJson()" id="exportBtn" disabled><i class="fa-solid fa-download"></i> JSON</button>
+      <div class="sf-page-actions">
+        <div class="ro-search">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input class="sf-input" id="roInput" placeholder="Enter RO Code"/>
+        </div>
+        <button class="sf-btn sf-btn-primary" onclick="searchRo()"><i class="fa-solid fa-rotate-right"></i> Sync Data</button>
+        <button class="sf-btn sf-btn-neutral" onclick="openTimeline()" id="timelineBtn" disabled><i class="fa-solid fa-timeline"></i> Timeline</button>
+        <button class="sf-btn sf-btn-purple" onclick="exportJson()" id="jsonBtn" disabled><i class="fa-solid fa-code"></i> JSON</button>
       </div>
-    </section>
+    </div>
 
-    <section id="summary" class="summary" style="display:none"></section>
+    <div class="insight-rail" id="insights" style="display:none"></div>
 
-    <section class="layout" id="resultLayout" style="display:none">
-      <aside class="side">
-        <div class="side-head">Collections</div>
-        <div id="collectionNav"></div>
-      </aside>
-      <div class="content" id="results"></div>
-    </section>
+    <div class="sf-table-card" style="border-radius:var(--r-lg) var(--r-lg) 0 0;overflow:visible;border-bottom:none;">
+      <div class="sf-tabs" id="tabs"></div>
+    </div>
 
-    <div class="empty" id="emptyState">
-      <i class="fa-solid fa-circle-info" style="font-size:22px;color:var(--brand);margin-bottom:8px"></i>
-      <div style="font-weight:800;color:var(--txt2);margin-bottom:4px">Enter an RO code to start.</div>
-      <div>Only admin users can use this database explorer.</div>
+    <div class="sf-toolbar" style="border-radius:0;border-top:none;margin-bottom:0;border-bottom:none;">
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">Search Records</label>
+        <div class="sf-search-wrap">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input id="recordSearch" class="sf-input sf-search-input" placeholder="Field, value, id..." oninput="applyFilters()"/>
+        </div>
+      </div>
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">Collection</label>
+        <select id="collectionFilter" class="sf-input sf-select" style="width:190px" onchange="applyFilters()"><option value="">All Collections</option></select>
+      </div>
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">Status</label>
+        <select id="statusFilter" class="sf-input sf-select" style="width:140px" onchange="applyFilters()"><option value="">All Status</option></select>
+      </div>
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">From Date</label>
+        <input id="fromDate" type="date" class="sf-input" onchange="applyFilters()"/>
+      </div>
+      <div class="sf-filter-group">
+        <label class="sf-filter-label">To Date</label>
+        <input id="toDate" type="date" class="sf-input" onchange="applyFilters()"/>
+      </div>
+      <button class="sf-btn sf-btn-neutral" onclick="clearFilters()" style="align-self:flex-end"><i class="fa-solid fa-rotate-left"></i> Clear</button>
+      <div class="sf-toolbar-spacer"></div>
+      <div class="sf-filter-group" style="align-self:flex-end">
+        <label class="sf-filter-label">Rows/Page</label>
+        <select id="rowsPerPageSel" class="sf-input sf-select" style="width:80px" onchange="rowsPerPage=+this.value;currentPage=1;renderTable()">
+          <option value="10">10</option><option value="25" selected>25</option><option value="50">50</option><option value="100">100</option>
+        </select>
+      </div>
+      <button class="sf-btn sf-btn-success" onclick="exportCsv()" id="csvBtn" disabled><i class="fa-solid fa-file-csv"></i> CSV</button>
+    </div>
+
+    <div class="sf-table-card" style="border-radius:0 0 var(--r-lg) var(--r-lg);border-top:none;">
+      <div class="sf-table-header">
+        <div class="sf-table-title"><i class="fa-solid fa-table-cells-large" style="color:var(--sf-blue)"></i> Database Records</div>
+        <span class="sf-record-count" id="recordCountBadge">No data</span>
+      </div>
+      <div class="sf-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Collection</th>
+              <th>Site / Source</th>
+              <th>Date</th>
+              <th>Status</th>
+              <th>Owner</th>
+              <th>Highlights</th>
+              <th>Record ID</th>
+              <th style="text-align:center">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="recordTableBody">
+            <tr><td colspan="8"><div class="empty-state">Enter an RO code and sync data.</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="sf-pagination">
+        <div class="sf-pagination-info" id="pageInfo">—</div>
+        <div class="sf-pag-controls" id="paginationControls"></div>
+      </div>
     </div>
   </main>
-  <div class="toast" id="toast"></div>
 
-  <script>
-    const baseUrl = window.BACKEND_URL || "/api";
-    const qs = new URLSearchParams(location.search || "");
-    const token = qs.get("token") || localStorage.getItem("token") || "";
-    let currentData = null;
+  <div class="sf-overlay" id="detailModal">
+    <div class="sf-modal">
+      <div class="sf-modal-header">
+        <div class="sf-modal-title"><i class="fa-solid fa-file-lines" style="color:var(--sf-blue)"></i> Record Details</div>
+        <button class="sf-modal-close" onclick="closeDetailModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="sf-modal-body" id="detailBody"></div>
+      <div class="sf-modal-footer">
+        <button class="sf-btn sf-btn-neutral" onclick="copyActiveRecord()"><i class="fa-solid fa-copy"></i> Copy JSON</button>
+        <button class="sf-btn sf-btn-neutral" onclick="closeDetailModal()"><i class="fa-solid fa-xmark"></i> Close</button>
+      </div>
+    </div>
+  </div>
 
-    function esc(value){
-      return String(value ?? "").replace(/[&<>"']/g, ch => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[ch]));
-    }
-    function toast(message){
-      const el = document.getElementById("toast");
-      el.textContent = message;
-      el.classList.add("show");
-      setTimeout(() => el.classList.remove("show"), 3200);
-    }
-    function valueText(value){
-      if(value === null || value === undefined || value === "") return "-";
-      if(Array.isArray(value)) return value.length ? value.map(v => typeof v === "object" ? JSON.stringify(v) : String(v)).join(", ") : "-";
-      if(typeof value === "object") return JSON.stringify(value);
-      return String(value);
-    }
-    function pick(record, keys){
-      const out = [];
-      keys.forEach(key => {
-        const value = key.split(".").reduce((obj, part) => obj && obj[part], record);
-        if(value !== undefined && value !== null && String(value).trim() !== "") out.push({ key, value });
-      });
-      return out;
-    }
-    function displayFields(record, collectionKey){
-      const common = ["roCode","roName","siteName","region","zone","phase","engineer","assignEngineer","date","incidentDate","status","isVerified","createdAt","updatedAt"];
-      const byCollection = {
-        roMaster:["siteStatus","connectivityType","bosIP","fccIP","siteActivestatus","lastAMCqtr"],
-        dailyPlans:["purpose","issueType","incidentId","completionStatus","arrivalTime","leaveTime","whatDone"],
-        hpclStatus:["planId.roCode","planId.roName","planId.engineer","workCompletion","spareUsed","activeSpare","faultySpare","spareRequirment","earthingStatus","duOffline","tankOffline","oms03"],
-        jioBpStatus:["planId.roCode","planId.roName","planId.engineer","hpsdId","diagnosis","solution","activeMaterialUsed","faultyMaterialDetails","spareRequired","oms03"],
-        bpclStatus:["planId.roCode","planId.roName","planId.engineer","class1DeviceCount","class2DeviceCount","relconAtgProvided","relconAtgCount","jioSimNumber","airtelSimNumber"],
-        atgStatus:["planId.roCode","planId.roName","planId.engineer","atgIssuetype","bfrStatus","resolvedStatus","supportPerson","remark"],
-        incidents:["incidentId","complaintRemark","closeRemark","incidentcloseDate"],
-        tasks:["customer","issueType","issue","priority","replyStatus","assignedTo","mailDate","nextFollowUpDate","closureSummary"],
-        materialRequirements:["customer","materialSummary","material","materialType","quantity","materialDispatchStatus","deliveryStatus","docketNumber","poNumber"],
-        materialRequests:["requestMode","clientRequirement","materialSummary","quantity","materialDispatchStatus","deliveryStatus","materialRequestTo","createdByName","updatedByName"],
-        notifications:["type","title","message","recipientUsername","isRead","visitDate"],
-        auditTrails:["action","recordType","modifiedBy","engineerName","visitDate","timestamp","url","statusCode"],
+  <div id="loader" class="sf-loader hidden"><div class="sf-spinner-lg"></div><div class="sf-loader-text">Loading RO data...</div></div>
+  <div id="sf-toast" class="sf-toast"><div class="sf-toast-icon" id="sf-toast-icon"><i class="fa-solid fa-check"></i></div><div><div class="sf-toast-title" id="sf-toast-title">Success</div><div class="sf-toast-msg" id="sf-toast-msg"></div></div></div>
+
+<script>
+const baseUrl = window.BACKEND_URL || "/api";
+const qs = new URLSearchParams(location.search || "");
+const token = qs.get("token") || localStorage.getItem("token") || "";
+let currentData = null;
+let flatRecords = [];
+let filteredRecords = [];
+let activeTab = "all";
+let activeKpi = "all";
+let currentPage = 1;
+let rowsPerPage = 25;
+let activeRecord = null;
+
+const collectionMeta = {
+  roMaster:{label:"RO Master", group:"master", icon:"fa-database", tone:"blue", source:"romaster.html"},
+  dailyPlans:{label:"Daily Plans", group:"plans", icon:"fa-calendar-check", tone:"blue", source:"dataView.html"},
+  hpclStatus:{label:"HPCL Status", group:"status", icon:"fa-clipboard-check", tone:"green", source:"statusRecords.html"},
+  jioBpStatus:{label:"JioBP/RBML Status", group:"status", icon:"fa-gas-pump", tone:"purple", source:"jioBPreport.html"},
+  bpclStatus:{label:"BPCL Status", group:"status", icon:"fa-oil-can", tone:"teal", source:"bpclStatusreport.html"},
+  atgStatus:{label:"ATG Status", group:"status", icon:"fa-satellite-dish", tone:"orange", source:"atgRecords.html"},
+  incidents:{label:"Incidents", group:"work", icon:"fa-triangle-exclamation", tone:"red", source:"incident.html"},
+  tasks:{label:"Tasks", group:"work", icon:"fa-list-check", tone:"orange", source:"taskManager.html"},
+  materialRequirements:{label:"Material Requirements", group:"materials", icon:"fa-boxes-packing", tone:"purple", source:"materialrequirement.html"},
+  materialRequests:{label:"Material Requests", group:"materials", icon:"fa-diagram-project", tone:"purple", source:"materialrequestbuilder.html"},
+  notifications:{label:"Notifications", group:"audit", icon:"fa-bell", tone:"teal", source:"dashboard"},
+  auditTrails:{label:"Audit Trails", group:"audit", icon:"fa-clock-rotate-left", tone:"teal", source:"auditReport.html"},
+};
+const tabs = [
+  {key:"all", label:"All Records", icon:"fa-layer-group"},
+  {key:"master", label:"Master", icon:"fa-database"},
+  {key:"plans", label:"Plans", icon:"fa-calendar-check"},
+  {key:"status", label:"Statuses", icon:"fa-clipboard-check"},
+  {key:"work", label:"Work Queue", icon:"fa-bolt"},
+  {key:"materials", label:"Materials", icon:"fa-boxes-packing"},
+  {key:"audit", label:"Audit/Notify", icon:"fa-clock-rotate-left"},
+];
+
+document.getElementById("dateBadge").textContent = new Date().toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" });
+
+function esc(value){return String(value ?? "").replace(/[&<>"']/g, ch => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[ch]));}
+function fmtDate(value){if(!value)return "—"; const d=new Date(value); if(Number.isNaN(d.getTime())) return String(value).slice(0, 10) || "—"; return d.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"});}
+function normalizeDate(value){if(!value)return ""; const text=String(value).trim(); if(/^\d{4}-\d{2}-\d{2}/.test(text)) return text.slice(0,10); const d=new Date(text); return Number.isNaN(d.getTime()) ? "" : d.toISOString().slice(0,10);}
+function getPath(obj, path){return path.split(".").reduce((acc, key) => acc && acc[key], obj);}
+function firstValue(record, keys){for(const key of keys){const val=getPath(record,key); if(val!==undefined&&val!==null&&String(val).trim()!=="") return val;} return "";}
+function showLoader(msg="Loading RO data..."){document.querySelector(".sf-loader-text").textContent=msg;document.getElementById("loader").classList.remove("hidden");}
+function hideLoader(){document.getElementById("loader").classList.add("hidden");}
+function showToast(title,type="success",msg=""){
+  const icons={success:"fa-check",error:"fa-xmark",warn:"fa-exclamation",info:"fa-circle-info"};
+  const t=document.getElementById("sf-toast");
+  document.getElementById("sf-toast-icon").innerHTML=`<i class="fa-solid ${icons[type]||"fa-check"}"></i>`;
+  document.getElementById("sf-toast-title").textContent=title;
+  document.getElementById("sf-toast-msg").textContent=msg;
+  t.className="sf-toast "+type;
+  setTimeout(()=>t.classList.add("show"),10);
+  setTimeout(()=>t.classList.remove("show"),3800);
+}
+function isVerified(record){return record.isVerified===true || record.isVerified==="true" || !!record.verifiedAt;}
+function isOpenWork(item){
+  const raw = item.raw || {};
+  const status = String(firstValue(raw, ["status","completionStatus","incidentStatus","materialDispatchStatus","deliveryStatus","replyStatus"]) || "").toLowerCase();
+  if(item.group === "work") return !["close","closed","resolved","done","complete","completed"].some(v => status.includes(v));
+  if(item.group === "materials") return !["delivered","received","closed","complete"].some(v => status.includes(v));
+  return false;
+}
+function hasIssue(item){
+  const raw = item.raw || {};
+  const blob = JSON.stringify(raw).toLowerCase();
+  return item.key === "incidents" || blob.includes("offline") || blob.includes("not ok") || blob.includes("non standard") || blob.includes("faulty") || blob.includes("pending");
+}
+function statusText(record, key){
+  if(["hpclStatus","jioBpStatus","bpclStatus"].includes(key)) return isVerified(record) ? "Verified" : "Unverified";
+  if(key === "notifications") return record.isRead ? "Read" : "Unread";
+  return firstValue(record, ["status","completionStatus","incidentStatus","materialDispatchStatus","deliveryStatus","replyStatus","action"]) || "—";
+}
+function ownerText(record){return firstValue(record, ["engineer","assignEngineer","planId.engineer","createdByName","updatedByName","recipientUsername","modifiedBy","engineerName","createdBy"]) || "—";}
+function dateText(record){return firstValue(record, ["date","incidentDate","materialRequestDate","mailDate","visitDate","timestamp","createdAt","updatedAt","planId.date"]) || "";}
+function titleText(record, key){
+  return firstValue(record, ["roCode","planId.roCode","incidentId","title","subject","materialSummary","clientRequirement","recordType"]) || collectionMeta[key]?.label || "Record";
+}
+function subtitleText(record, key){
+  return firstValue(record, ["roName","siteName","planId.roName","issue","issueType","purpose","message","complaintRemark","material","materialSummary","action"]) || collectionMeta[key]?.label || "";
+}
+function highlightText(record, key){
+  const parts = [];
+  const candidates = ["region","planId.region","phase","planId.phase","purpose","issueType","diagnosis","solution","activeSpare","faultySpare","spareRequirmentname","complaintRemark","closureSummary","docketNumber","poNumber","url"];
+  candidates.forEach(k => { const v = getPath(record,k); if(v!==undefined&&v!==null&&String(v).trim()) parts.push(`${k}: ${Array.isArray(v)?v.join(", "):v}`); });
+  if(Array.isArray(record.lineItems) && record.lineItems.length) parts.push(`lineItems: ${record.lineItems.length}`);
+  return parts.slice(0,3).join(" | ");
+}
+function recordUrl(item){
+  const raw = item.raw || {};
+  if(item.key === "hpclStatus" && raw._id) return `statusRecords.html?recordId=${encodeURIComponent(raw._id)}`;
+  if(item.key === "jioBpStatus") return `jioBPreport.html?roCode=${encodeURIComponent(item.roCode)}`;
+  if(item.key === "bpclStatus") return `bpclStatusreport.html?roCode=${encodeURIComponent(item.roCode)}`;
+  if(item.key === "atgStatus") return `atgRecords.html?roCode=${encodeURIComponent(item.roCode)}`;
+  return collectionMeta[item.key]?.source || "";
+}
+function flattenData(data){
+  const rows = [];
+  (data.collections || []).forEach(col => {
+    const meta = collectionMeta[col.key] || {label:col.label, group:"other", icon:"fa-table", tone:"blue"};
+    (col.records || []).forEach((record, index) => {
+      const row = {
+        uid:`${col.key}:${record._id || index}`,
+        key:col.key,
+        collection:meta.label || col.label,
+        group:meta.group,
+        icon:meta.icon,
+        tone:meta.tone,
+        roCode:firstValue(record, ["roCode","planId.roCode"]) || data.roCode,
+        title:titleText(record, col.key),
+        subtitle:subtitleText(record, col.key),
+        status:statusText(record, col.key),
+        owner:ownerText(record),
+        date:dateText(record),
+        dateIso:normalizeDate(dateText(record)),
+        highlights:highlightText(record, col.key),
+        recordId:record._id || record.statusRecordId || "",
+        raw:record,
       };
-      const fields = pick(record, [...common, ...(byCollection[collectionKey] || [])]);
-      return fields.slice(0, 18);
-    }
-    function titleFor(record, collectionKey, fallback){
-      return record.roCode || record.planId?.roCode || record.incidentId || record.title || record.subject || record.materialSummary || record._id || fallback;
-    }
-    function renderSummary(data){
-      const s = data.summary || {};
-      document.getElementById("summary").style.display = "grid";
-      document.getElementById("summary").innerHTML = `
-        <div class="kpi"><div class="kpi-num">${esc(data.roCode)}</div><div class="kpi-label">RO Code</div></div>
-        <div class="kpi green"><div class="kpi-num">${Number(s.totalRecords || 0)}</div><div class="kpi-label">Total Records</div></div>
-        <div class="kpi teal"><div class="kpi-num">${Number(s.collectionsWithData || 0)}</div><div class="kpi-label">Collections With Data</div></div>
-        <div class="kpi orange"><div class="kpi-num">${(s.planIds || []).length}</div><div class="kpi-label">Linked Daily Plans</div></div>
-      `;
-    }
-    function renderResults(data){
-      const collections = data.collections || [];
-      document.getElementById("emptyState").style.display = "none";
-      document.getElementById("resultLayout").style.display = "grid";
-      document.getElementById("exportBtn").disabled = false;
-      document.getElementById("collectionNav").innerHTML = collections.map((col, idx) => `
-        <button class="collection-btn ${idx === 0 ? "active" : ""}" onclick="scrollToCollection('${esc(col.key)}', this)">
-          <i class="fa-solid fa-table"></i><span class="collection-name">${esc(col.label)}</span><span class="collection-count">${Number(col.count || 0)}</span>
-        </button>
-      `).join("");
-      document.getElementById("results").innerHTML = collections.map(col => `
-        <section class="section" id="section-${esc(col.key)}">
-          <div class="section-head">
-            <i class="fa-solid fa-folder-open"></i>
-            <div class="section-title">${esc(col.label)}</div>
-            <span class="pill">${Number(col.count || 0)} record${Number(col.count || 0) === 1 ? "" : "s"}</span>
-            ${col.truncated ? '<span class="pill" style="background:var(--orange-soft);color:var(--orange)">Partial results</span>' : ""}
-          </div>
-          ${(col.records || []).length ? col.records.map((record, index) => renderRecord(record, col, index)).join("") : '<div class="empty" style="box-shadow:none;border:0;border-radius:0">No records found in this collection.</div>'}
-        </section>
-      `).join("");
-    }
-    function renderRecord(record, col, index){
-      const fields = displayFields(record, col.key);
-      return `
-        <article class="record">
-          <div class="record-title">
-            <strong>${esc(titleFor(record, col.key, `${col.label} #${index + 1}`))}</strong>
-            <span class="record-id">${esc(record._id || "")}</span>
-          </div>
-          <div class="fields">
-            ${fields.map(field => `
-              <div class="field">
-                <div class="field-k">${esc(field.key)}</div>
-                <div class="field-v">${esc(valueText(field.value))}</div>
-              </div>
-            `).join("")}
-          </div>
-          <details>
-            <summary>Raw database document</summary>
-            <pre>${esc(JSON.stringify(record, null, 2))}</pre>
-          </details>
-        </article>
-      `;
-    }
-    function scrollToCollection(key, btn){
-      document.querySelectorAll(".collection-btn").forEach(item => item.classList.remove("active"));
-      btn?.classList.add("active");
-      document.getElementById(`section-${key}`)?.scrollIntoView({ behavior:"smooth", block:"start" });
-    }
-    async function searchRo(){
-      const roCode = document.getElementById("roInput").value.trim().toUpperCase();
-      if(!roCode) return toast("Please enter RO Code.");
-      document.getElementById("emptyState").style.display = "block";
-      document.getElementById("emptyState").innerHTML = '<div style="font-weight:800;color:var(--txt2)">Loading database records...</div>';
-      document.getElementById("resultLayout").style.display = "none";
-      document.getElementById("summary").style.display = "none";
-      document.getElementById("exportBtn").disabled = true;
-      try{
-        const res = await fetch(`${baseUrl}/roExplorer/${encodeURIComponent(roCode)}`, { headers:{ Authorization:`Bearer ${token}` } });
-        const data = await res.json().catch(() => ({}));
-        if(!res.ok) throw new Error(data.error || "Unable to fetch RO data.");
-        currentData = data;
-        renderSummary(data);
-        renderResults(data);
-      }catch(err){
-        currentData = null;
-        document.getElementById("emptyState").innerHTML = `<div style="font-weight:800;color:var(--red);margin-bottom:4px">Unable to load RO data.</div><div>${esc(err.message || "Server error")}</div>`;
-        toast(err.message || "Server error");
-      }
-    }
-    function exportJson(){
-      if(!currentData) return;
-      const blob = new Blob([JSON.stringify(currentData, null, 2)], { type:"application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `ro-explorer-${currentData.roCode || "data"}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-    document.getElementById("roInput").addEventListener("keydown", e => {
-      if(e.key === "Enter") searchRo();
+      row.searchBlob = JSON.stringify(record).toLowerCase();
+      row.verified = isVerified(record);
+      row.open = isOpenWork(row);
+      row.issue = hasIssue(row);
+      rows.push(row);
     });
-    const initialRo = qs.get("roCode");
-    if(initialRo){
-      document.getElementById("roInput").value = initialRo.toUpperCase();
-      searchRo();
-    }
-  </script>
+  });
+  return rows;
+}
+function renderTabs(){
+  const counts = Object.fromEntries(tabs.map(t => [t.key, t.key==="all" ? flatRecords.length : flatRecords.filter(r => r.group === t.key).length]));
+  document.getElementById("tabs").innerHTML = tabs.map(t => `
+    <button class="sf-tab ${activeTab===t.key?"active":""}" onclick="switchTab('${t.key}')">
+      <i class="fa-solid ${t.icon}"></i> ${esc(t.label)}
+      <span class="sf-tab-badge">${counts[t.key] || 0}</span>
+    </button>
+  `).join("");
+}
+function updateKpis(){
+  const verified = flatRecords.filter(r => r.verified).length;
+  const open = flatRecords.filter(r => r.open).length;
+  const issues = flatRecords.filter(r => r.issue).length;
+  const materials = flatRecords.filter(r => r.group === "materials").length;
+  const audit = flatRecords.filter(r => r.group === "audit").length;
+  document.getElementById("kpiTotal").textContent = flatRecords.length;
+  document.getElementById("kpiVerified").textContent = verified;
+  document.getElementById("kpiOpen").textContent = open;
+  document.getElementById("kpiIssues").textContent = issues;
+  document.getElementById("kpiMaterials").textContent = materials;
+  document.getElementById("kpiAudit").textContent = audit;
+}
+function renderInsights(){
+  if(!currentData){document.getElementById("insights").style.display="none";return;}
+  const master = flatRecords.find(r => r.key === "roMaster")?.raw || {};
+  const lastPlan = flatRecords.filter(r => r.key === "dailyPlans").sort((a,b)=>String(b.dateIso).localeCompare(String(a.dateIso)))[0];
+  const openWork = flatRecords.filter(r => r.open).length;
+  const unverified = flatRecords.filter(r => ["hpclStatus","jioBpStatus","bpclStatus"].includes(r.key) && !r.verified).length;
+  document.getElementById("insights").style.display="grid";
+  document.getElementById("insights").innerHTML = `
+    <div class="insight good"><div class="insight-title">Site Master</div><div class="insight-text">${esc(master.roName || "No master record")} ${master.region ? `| ${esc(master.region)}` : ""} ${master.phase ? `| ${esc(master.phase)}` : ""}</div></div>
+    <div class="insight"><div class="insight-title">Latest Visit</div><div class="insight-text">${lastPlan ? `${esc(fmtDate(lastPlan.date))} | ${esc(lastPlan.owner)} | ${esc(lastPlan.subtitle || "Plan")}` : "No daily plan found"}</div></div>
+    <div class="insight ${openWork ? "warn" : "good"}"><div class="insight-title">Open Work</div><div class="insight-text">${openWork} active task / incident / material item${openWork === 1 ? "" : "s"}</div></div>
+    <div class="insight ${unverified ? "danger" : "good"}"><div class="insight-title">Verification</div><div class="insight-text">${unverified} unverified status record${unverified === 1 ? "" : "s"}</div></div>
+  `;
+}
+function populateFilters(){
+  const collectionOptions = [...new Map(flatRecords.map(r => [r.key, r.collection])).entries()].sort((a,b)=>a[1].localeCompare(b[1]));
+  document.getElementById("collectionFilter").innerHTML = '<option value="">All Collections</option>' + collectionOptions.map(([key,label]) => `<option value="${esc(key)}">${esc(label)}</option>`).join("");
+  const statuses = [...new Set(flatRecords.map(r => r.status).filter(Boolean))].sort();
+  document.getElementById("statusFilter").innerHTML = '<option value="">All Status</option>' + statuses.map(status => `<option>${esc(status)}</option>`).join("");
+}
+function switchTab(tab){activeTab=tab;currentPage=1;renderTabs();applyFilters();}
+function setKpiFilter(kpi){
+  activeKpi = kpi;
+  document.querySelectorAll(".kpi-card").forEach(c => c.classList.remove("active-filter"));
+  const ids = {all:"kpiAllCard",verified:"kpiVerifiedCard",open:"kpiOpenCard",issues:"kpiIssuesCard",materials:"kpiMaterialsCard",audit:"kpiAuditCard"};
+  document.getElementById(ids[kpi])?.classList.add("active-filter");
+  currentPage=1; applyFilters();
+}
+function applyFilters(){
+  const query = document.getElementById("recordSearch").value.trim().toLowerCase();
+  const collection = document.getElementById("collectionFilter").value;
+  const status = document.getElementById("statusFilter").value;
+  const from = document.getElementById("fromDate").value;
+  const to = document.getElementById("toDate").value;
+  filteredRecords = flatRecords.filter(row => {
+    if(activeTab !== "all" && row.group !== activeTab) return false;
+    if(activeKpi === "verified" && !row.verified) return false;
+    if(activeKpi === "open" && !row.open) return false;
+    if(activeKpi === "issues" && !row.issue) return false;
+    if(activeKpi === "materials" && row.group !== "materials") return false;
+    if(activeKpi === "audit" && row.group !== "audit") return false;
+    if(collection && row.key !== collection) return false;
+    if(status && row.status !== status) return false;
+    if(from && row.dateIso && row.dateIso < from) return false;
+    if(to && row.dateIso && row.dateIso > to) return false;
+    if(query && !`${row.collection} ${row.title} ${row.subtitle} ${row.status} ${row.owner} ${row.highlights} ${row.recordId} ${row.searchBlob}`.toLowerCase().includes(query)) return false;
+    return true;
+  });
+  renderTable();
+}
+function clearFilters(){
+  ["recordSearch","collectionFilter","statusFilter","fromDate","toDate"].forEach(id => document.getElementById(id).value = "");
+  activeTab = "all"; activeKpi = "all"; currentPage = 1;
+  renderTabs(); setKpiFilter("all");
+}
+function toneBadge(row){
+  const cls = {blue:"badge-blue",green:"badge-green",orange:"badge-orange",red:"badge-red",purple:"badge-purple",teal:"badge-teal"}[row.tone] || "badge-blue";
+  return `<span class="sf-badge ${cls}"><i class="fa-solid ${row.icon}"></i> ${esc(row.collection)}</span>`;
+}
+function statusBadge(row){
+  const text = String(row.status || "—");
+  const low = text.toLowerCase();
+  const cls = low.includes("verified") || low.includes("resolved") || low.includes("close") || low.includes("delivered") || low.includes("read") ? "badge-green" :
+    low.includes("pending") || low.includes("unverified") || low.includes("unread") ? "badge-orange" :
+    low.includes("fault") || low.includes("fail") ? "badge-red" : "badge-blue";
+  return `<span class="sf-badge ${cls}">${esc(text)}</span>`;
+}
+function renderTable(){
+  const tbody = document.getElementById("recordTableBody");
+  if(!currentData){
+    tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state">Enter an RO code and sync data.</div></td></tr>';
+    document.getElementById("recordCountBadge").textContent = "No data";
+    document.getElementById("pageInfo").textContent = "—";
+    document.getElementById("paginationControls").innerHTML = "";
+    return;
+  }
+  const total = filteredRecords.length;
+  const start = (currentPage - 1) * rowsPerPage;
+  const pageRows = filteredRecords.slice(start, start + rowsPerPage);
+  document.getElementById("recordCountBadge").textContent = `${total} record${total === 1 ? "" : "s"}`;
+  if(!pageRows.length){
+    tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state">No records match current filters.</div></td></tr>';
+  } else {
+    tbody.innerHTML = pageRows.map(row => `
+      <tr>
+        <td>${toneBadge(row)}</td>
+        <td><div class="site-code">${esc(row.roCode || currentData.roCode)}</div><div class="cell-sub">${esc(row.subtitle || row.title)}</div></td>
+        <td>${esc(fmtDate(row.date))}</td>
+        <td>${statusBadge(row)}</td>
+        <td>${esc(row.owner)}</td>
+        <td><div class="cell-main">${esc(row.title)}</div><div class="cell-sub">${esc(row.highlights || "—")}</div></td>
+        <td><span class="muted">${esc(row.recordId || "—")}</span></td>
+        <td><div class="sf-ab">
+          <button class="sf-action-btn sf-ab-view" onclick="openDetail('${esc(row.uid)}')" title="View details"><i class="fa-solid fa-eye"></i> View</button>
+          <button class="sf-action-btn sf-ab-copy" onclick="copyRecord('${esc(row.uid)}')" title="Copy JSON"><i class="fa-solid fa-copy"></i></button>
+          ${recordUrl(row) ? `<button class="sf-action-btn sf-ab-open" onclick="openSource('${esc(row.uid)}')" title="Open source page"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>` : ""}
+        </div></td>
+      </tr>
+    `).join("");
+  }
+  renderPagination(total);
+}
+function renderPagination(total){
+  const info = document.getElementById("pageInfo");
+  const controls = document.getElementById("paginationControls");
+  const totalPages = Math.max(1, Math.ceil(total / rowsPerPage));
+  if(currentPage > totalPages) currentPage = totalPages;
+  const from = total === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1;
+  const to = Math.min(total, currentPage * rowsPerPage);
+  info.textContent = `Showing ${from}-${to} of ${total} records`;
+  controls.innerHTML = "";
+  const prev = document.createElement("button");
+  prev.className = "sf-page-btn"; prev.innerHTML = '<i class="fa-solid fa-chevron-left"></i>'; prev.disabled = currentPage === 1;
+  prev.onclick = () => { if(currentPage > 1){ currentPage--; renderTable(); } };
+  controls.appendChild(prev);
+  const max = 7;
+  let sp = Math.max(1, currentPage - Math.floor(max / 2));
+  let ep = Math.min(totalPages, sp + max - 1);
+  if(ep - sp < max - 1) sp = Math.max(1, ep - max + 1);
+  for(let i=sp;i<=ep;i++){
+    const btn = document.createElement("button");
+    btn.className = "sf-page-btn" + (i === currentPage ? " active" : "");
+    btn.textContent = i;
+    btn.onclick = () => { currentPage = i; renderTable(); };
+    controls.appendChild(btn);
+  }
+  const next = document.createElement("button");
+  next.className = "sf-page-btn"; next.innerHTML = '<i class="fa-solid fa-chevron-right"></i>'; next.disabled = currentPage === totalPages;
+  next.onclick = () => { if(currentPage < totalPages){ currentPage++; renderTable(); } };
+  controls.appendChild(next);
+}
+async function searchRo(){
+  const roCode = document.getElementById("roInput").value.trim().toUpperCase();
+  if(!roCode) return showToast("RO Code required", "warn", "Please enter an RO code first.");
+  showLoader("Fetching every linked record...");
+  try{
+    const res = await fetch(`${baseUrl}/roExplorer/${encodeURIComponent(roCode)}`, { headers:{ Authorization:`Bearer ${token}` } });
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok) throw new Error(data.error || "Unable to fetch RO data.");
+    currentData = data;
+    flatRecords = flattenData(data);
+    filteredRecords = [...flatRecords];
+    currentPage = 1; activeTab = "all"; activeKpi = "all";
+    updateKpis(); renderTabs(); renderInsights(); populateFilters(); setKpiFilter("all");
+    document.getElementById("jsonBtn").disabled = false;
+    document.getElementById("csvBtn").disabled = false;
+    document.getElementById("timelineBtn").disabled = false;
+    document.getElementById("lastSyncTime").textContent = new Date().toLocaleTimeString("en-IN", { hour:"2-digit", minute:"2-digit" });
+    showToast("RO data loaded", "success", `${flatRecords.length} records found across ${(data.collections || []).filter(c => c.count).length} collections.`);
+  }catch(err){
+    showToast("Sync failed", "error", err.message);
+  }
+  hideLoader();
+}
+function findRow(uid){return flatRecords.find(r => r.uid === uid);}
+function openDetail(uid){
+  const row = findRow(uid); if(!row) return;
+  activeRecord = row;
+  const raw = row.raw || {};
+  const fields = [
+    ["Collection", row.collection], ["RO Code", row.roCode], ["Title", row.title], ["Status", row.status],
+    ["Owner", row.owner], ["Date", fmtDate(row.date)], ["Record ID", row.recordId], ["Source", row.key],
+  ];
+  document.getElementById("detailBody").innerHTML = `
+    <div class="det-section">
+      <div class="det-section-title">Record Summary</div>
+      <div class="det-grid">${fields.map(([k,v]) => `<div class="det-field"><div class="det-label">${esc(k)}</div><div class="det-value">${esc(v || "—")}</div></div>`).join("")}</div>
+    </div>
+    <div class="det-section">
+      <div class="det-section-title">Highlights</div>
+      <div class="det-grid">${Object.entries(raw).slice(0, 24).map(([k,v]) => `<div class="det-field"><div class="det-label">${esc(k)}</div><div class="det-value">${esc(typeof v === "object" ? JSON.stringify(v) : (v ?? "—"))}</div></div>`).join("")}</div>
+    </div>
+    <div class="det-section">
+      <div class="det-section-title">Raw Database Document</div>
+      <div class="det-box">${esc(JSON.stringify(raw, null, 2))}</div>
+    </div>
+  `;
+  document.getElementById("detailModal").classList.add("open");
+}
+function closeDetailModal(){document.getElementById("detailModal").classList.remove("open");}
+async function copyText(text){try{await navigator.clipboard.writeText(text);showToast("Copied", "success");}catch{showToast("Copy failed", "error");}}
+function copyRecord(uid){const row=findRow(uid); if(row) copyText(JSON.stringify(row.raw, null, 2));}
+function copyActiveRecord(){if(activeRecord) copyText(JSON.stringify(activeRecord.raw, null, 2));}
+function openSource(uid){
+  const row = findRow(uid); if(!row) return;
+  const page = recordUrl(row);
+  if(!page || page === "dashboard") return showToast("No source page", "info");
+  if(window.parent && typeof window.parent.loadPage === "function") window.parent.loadPage(page);
+  else window.location.href = page;
+}
+function openTimeline(){
+  if(!currentData?.roCode) return;
+  const page = `roTimeline.html?roCode=${encodeURIComponent(currentData.roCode)}`;
+  if(window.parent && typeof window.parent.loadPage === "function") window.parent.loadPage(page);
+  else window.location.href = page;
+}
+function exportJson(){
+  if(!currentData) return;
+  const blob = new Blob([JSON.stringify(currentData, null, 2)], { type:"application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `ro-explorer-${currentData.roCode || "data"}.json`; a.click();
+  URL.revokeObjectURL(url);
+}
+function csvValue(value){return `"${String(value ?? "").replace(/"/g,'""')}"`;}
+function exportCsv(){
+  const rows = filteredRecords.map(r => ({
+    collection:r.collection, roCode:r.roCode, title:r.title, subtitle:r.subtitle, date:fmtDate(r.date), status:r.status, owner:r.owner, highlights:r.highlights, recordId:r.recordId,
+  }));
+  if(!rows.length) return showToast("No rows to export", "warn");
+  const headers = Object.keys(rows[0]);
+  const csv = [headers.join(","), ...rows.map(row => headers.map(h => csvValue(row[h])).join(","))].join("\n");
+  const blob = new Blob([csv], { type:"text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `ro-explorer-${currentData?.roCode || "data"}-filtered.csv`; a.click();
+  URL.revokeObjectURL(url);
+}
+document.getElementById("roInput").addEventListener("keydown", e => { if(e.key === "Enter") searchRo(); });
+document.addEventListener("keydown", e => { if(e.key === "Escape") closeDetailModal(); });
+renderTabs();
+updateKpis();
+const initialRo = qs.get("roCode");
+if(initialRo){document.getElementById("roInput").value = initialRo.toUpperCase(); searchRo();}
+</script>
 </body>
 </html>
