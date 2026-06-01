@@ -1632,7 +1632,7 @@ async function fetchNotifications(){
     const unread=rows.filter(n=>!n.isRead).length;
     updateNotificationBadge(unread);
     notificationListEl.innerHTML=rows.map(n=>`
-      <div class="nt-item ${n.isRead?'read':''}" onclick="openNotification('${crmEsc(n._id)}','${crmEsc(n.link||'statusRecords.html')}')">
+      <div class="nt-item ${n.isRead?'read':''}" data-notification-id="${crmEsc(n._id)}" data-link="${crmEsc(n.link||'statusRecords.html')}" data-record-id="${crmEsc(n.statusRecordId||'')}" data-ro-code="${crmEsc(n.roCode||'')}">
         <div class="nt-icon"><i class="fa-solid fa-circle-exclamation"></i></div>
         <div style="min-width:0;flex:1;">
           <div class="nt-title">${crmEsc(n.title)}</div>
@@ -1641,6 +1641,9 @@ async function fetchNotifications(){
         </div>
       </div>
     `).join("");
+    notificationListEl.querySelectorAll(".nt-item").forEach(item=>{
+      item.addEventListener("click",()=>openNotification(item.dataset.notificationId,item.dataset.link,item.dataset.recordId,item.dataset.roCode));
+    });
   }catch(err){
     console.error("Failed to fetch notifications",err);
     notificationListEl.innerHTML='<div class="nt-empty">Unable to load notifications.</div>';
@@ -1654,13 +1657,22 @@ async function toggleNotificationDropdown(){
   notificationDropdownEl.classList.toggle("open",willOpen);
   if(willOpen) await fetchNotifications();
 }
-async function openNotification(id,link){
+function buildNotificationLink(link,recordId,roCode){
+  const page=link||"statusRecords.html";
+  const hasRecordParam=/[?&](recordId|statusRecordId|id)=/.test(page);
+  if(!recordId||hasRecordParam) return page;
+  const separator=page.includes("?")?"&":"?";
+  let target=`${page}${separator}recordId=${encodeURIComponent(recordId)}`;
+  if(roCode) target+=`&roCode=${encodeURIComponent(roCode)}`;
+  return target;
+}
+async function openNotification(id,link,recordId="",roCode=""){
   try{
     await fetch(`${baseUrl}/notifications/${encodeURIComponent(id)}/read`,{method:"PUT",headers:{Authorization:`Bearer ${token}`}});
   }catch(err){console.error("Failed to mark notification read",err);}
   notificationDropdownEl?.classList.remove("open");
   refreshNotificationCount();
-  loadPage(link||"statusRecords.html");
+  loadPage(buildNotificationLink(link,recordId,roCode));
 }
 async function markAllNotificationsRead(){
   try{

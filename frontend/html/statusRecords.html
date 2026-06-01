@@ -171,6 +171,7 @@
     tbody tr { border-bottom: 1px solid var(--border-lt); transition: background 0.1s; }
     tbody tr:last-child { border-bottom: none; }
     tbody tr:hover { background: #f0f8ff; }
+    tbody tr.sf-target-record { background: #fff8e6; box-shadow: inset 3px 0 0 var(--sf-orange); }
     tbody td { padding: 7px 12px !important; font-size: 11px !important; color: var(--txt2) !important; vertical-align: middle !important; border: none !important; border-bottom: 1px solid var(--border-lt) !important; white-space: nowrap; }
     tbody td:first-child { font-weight: 600; color: var(--sf-blue) !important; }
 
@@ -576,13 +577,38 @@
       return rows.filter(isVerifiedRecord);
     }
 
+    function getTargetRecordFromUrl() {
+      const params = new URLSearchParams(window.location.search || "");
+      return {
+        id: (params.get("recordId") || params.get("statusRecordId") || params.get("id") || "").trim(),
+        roCode: (params.get("roCode") || "").trim().toLowerCase(),
+      };
+    }
+
+    function applyTargetRecordFilter(rows = []) {
+      const target = getTargetRecordFromUrl();
+      if (!target.id && !target.roCode) return rows;
+      const matched = rows.filter(row => {
+        const sameId = target.id && String(row._id || "") === target.id;
+        const sameRo = target.roCode && String(row.roCode || "").trim().toLowerCase() === target.roCode;
+        return sameId || sameRo;
+      });
+      if (!matched.length) {
+        showToast("Notification ka record aapke current access me nahi mila.", "error");
+        return rows;
+      }
+      document.getElementById("searchInput").value = matched[0].roCode || target.id || target.roCode;
+      currentPage = 1;
+      return matched;
+    }
+
     async function fetchStatusRecords() {
       showLoader();
       const res = await fetch(`${baseUrl}/getMergedStatusRecords`, { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       allStatusData = data;
       const user = JSON.parse(localStorage.getItem("user")) || {};
-      filteredData = visibleRowsForUser(data, user);
+      filteredData = applyTargetRecordFilter(visibleRowsForUser(data, user));
       renderTable(filteredData);
       hideLoader();
     }
@@ -783,7 +809,10 @@
           return `<td>${cell}</td>`;
         }).join("");
 
-        return `<tr>${cells}</tr>`;
+        const target = getTargetRecordFromUrl();
+        const isTargetRecord = (target.id && String(record._id || "") === target.id) ||
+          (target.roCode && String(record.roCode || "").trim().toLowerCase() === target.roCode);
+        return `<tr class="${isTargetRecord ? 'sf-target-record' : ''}">${cells}</tr>`;
       }).join("");
     }
 

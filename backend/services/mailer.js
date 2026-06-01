@@ -2582,7 +2582,7 @@ async function upsertHpclVerificationPendingNotifications(assignments = []) {
               roName: row.roName || "",
               visitDate: row.date || "",
               severity: "warning",
-              link: "statusRecords.html",
+              link: `statusRecords.html?recordId=${encodeURIComponent(row.statusRecordId)}`,
               isRead: false,
               readAt: null,
               payload: row,
