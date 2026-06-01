@@ -9,6 +9,7 @@
 // ═══════════════════════════════════════════════════════
 
 const mongoose = require('mongoose');
+const { AuditTrail } = require('../models/AuditLog');
 
 /* ── Server Log Schema ── */
 const ServerLogSchema = new mongoose.Schema({
@@ -73,6 +74,107 @@ async function saveLog(level, message, data) {
   } catch {
     buffer.push(entry);
   }
+}
+
+const SENSITIVE_KEYS = new Set([
+  'password',
+  'pass',
+  'token',
+  'authorization',
+  'secret',
+  'session_secret',
+  'smtp_pass',
+  'google_client_secret',
+  'mongo_uri',
+]);
+
+function sanitizeForAudit(value, depth = 0) {
+  if (depth > 4) return '[MaxDepth]';
+  if (value == null) return value;
+  if (Array.isArray(value)) return value.slice(0, 25).map((item) => sanitizeForAudit(item, depth + 1));
+  if (typeof value !== 'object') {
+    const text = String(value);
+    return text.length > 500 ? `${text.slice(0, 500)}...` : value;
+  }
+
+  const out = {};
+  for (const [key, raw] of Object.entries(value)) {
+    const normalizedKey = String(key || '').toLowerCase();
+    if (SENSITIVE_KEYS.has(normalizedKey) || normalizedKey.includes('password') || normalizedKey.includes('token') || normalizedKey.includes('secret')) {
+      out[key] = '[REDACTED]';
+    } else {
+      out[key] = sanitizeForAudit(raw, depth + 1);
+    }
+  }
+  return out;
+}
+
+function shouldAuditRequest(req) {
+  if (!req.path || !req.path.startsWith('/api')) return false;
+  if (req.path.startsWith('/api/audit')) return false;
+  if (req.path.startsWith('/api/audit/serverLogs/stream')) return false;
+  if (req.path.startsWith('/api/chat/history')) return false;
+  if (req.path.startsWith('/api/chat/unread-count')) return false;
+  if (req.path.startsWith('/api/notifications/unread-count')) return false;
+  return ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method);
+}
+
+function getAuditUser(req, tokenUser = '') {
+  return tokenUser
+    || req.user?.engineerName
+    || req.user?.username
+    || req.body?.engineerName
+    || req.body?.username
+    || req.body?.createdByName
+    || req.body?.createdByUsername
+    || 'anonymous';
+}
+
+function inferRecordType(req) {
+  const path = String(req.path || '').replace(/^\/api\/?/, '');
+  const first = path.split('/').filter(Boolean)[0] || 'api';
+  if (first === 'saveDailyPlan') return 'daily-plan';
+  if (first === 'updateStatus' || first === 'verifyStatus' || first === 'saveStatus') return 'hpcl-status';
+  if (first === 'jioBP') return 'jiobp-status';
+  if (first === 'bpclStatus') return 'bpcl-status';
+  return first;
+}
+
+async function saveActivityAudit(req, res, durationMs, tokenUser = '') {
+  if (!shouldAuditRequest(req)) return;
+
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim()
+    || req.socket?.remoteAddress
+    || '';
+  const body = sanitizeForAudit(req.body || {});
+  const query = sanitizeForAudit(req.query || {});
+
+  const entry = {
+    modifiedBy: getAuditUser(req, tokenUser),
+    action: `${req.method} ${req.path}`,
+    recordType: inferRecordType(req),
+    timestamp: new Date(),
+    before: {},
+    after: {
+      body,
+      query,
+      params: sanitizeForAudit(req.params || {}),
+      status: res.statusCode,
+    },
+    roCode: req.body?.roCode || req.query?.roCode || '',
+    roName: req.body?.roName || req.body?.siteName || '',
+    visitDate: req.body?.date || req.body?.visitDate || req.body?.incidentDate || '',
+    engineerName: req.body?.engineer || req.body?.engineerName || req.body?.assignEngineer || '',
+    method: req.method,
+    url: req.originalUrl || req.path,
+    statusCode: res.statusCode,
+    ip,
+    userAgent: String(req.headers['user-agent'] || '').slice(0, 300),
+    durationMs,
+    requestId: req._requestId || '',
+  };
+
+  AuditTrail.create(entry).catch(() => {});
 }
 
 /* ── Override console methods ── */
@@ -170,6 +272,8 @@ function httpLogger(req, res, next) {
         user = p.engineerName || p.username || p.name || '';
       }
     } catch {}
+
+    saveActivityAudit(req, res, durationMs, user);
 
     const entry = {
       level,

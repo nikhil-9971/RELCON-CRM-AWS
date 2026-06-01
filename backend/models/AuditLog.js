@@ -20,7 +20,18 @@ const auditTrailSchema = new mongoose.Schema({
   roName: String, // ✅ new
   visitDate: String, // ✅ new
   engineerName: String, // ✅ new
+  method: String,
+  url: String,
+  statusCode: Number,
+  ip: String,
+  userAgent: String,
+  durationMs: Number,
+  requestId: String,
 });
+
+auditTrailSchema.index({ timestamp: -1 });
+auditTrailSchema.index({ modifiedBy: 1, timestamp: -1 });
+auditTrailSchema.index({ action: 1, timestamp: -1 });
 
 // ✅ Email logs for tracking outgoing mails
 const emailLogSchema = new mongoose.Schema({
