@@ -414,6 +414,7 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
 .od-user{
   display:flex;align-items:center;gap:9px;
   padding:7px 14px;font-size:12px;color:var(--txt2);
+  cursor:pointer;
 }
 .od-user:hover{background:var(--page-bg);}
 .od-avatar{
@@ -423,6 +424,8 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
   color:#fff;font-size:10px;font-weight:700;
 }
 .od-uname{font-size:12px;font-weight:500;color:var(--txt);}
+.od-action{margin-left:auto;color:var(--txt4);font-size:10px;opacity:0;transition:opacity .12s,color .12s;}
+.od-user:hover .od-action{opacity:1;color:var(--brand);}
 .od-urole{font-size:10px;color:var(--txt4);text-transform:uppercase;letter-spacing:.4px;}
 .od-indicator{width:7px;height:7px;border-radius:50%;background:#22c55e;margin-left:auto;flex-shrink:0;}
 .od-empty{padding:14px 16px;font-size:12px;color:var(--txt4);text-align:center;}
@@ -1110,13 +1113,14 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
   <div class="chat-hdr" style="flex-direction:column;padding:0;">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px 8px;">
       <div class="chat-hdr-left">
-        <div class="chat-hdr-icon"><i class="fa-solid fa-comments" style="color:#fff;font-size:14px;"></i></div>
+        <div class="chat-hdr-icon" id="chatHeaderIcon"><i class="fa-solid fa-comments" style="color:#fff;font-size:14px;"></i></div>
         <div>
-          <span class="chat-hdr-title">Team Chat</span>
+          <span class="chat-hdr-title" id="chatHeaderTitle">Team Chat</span>
           <div class="chat-hdr-live"><div class="chat-live-dot"></div><span class="chat-live-txt" id="onlineLiveTxt">Live</span></div>
         </div>
       </div>
       <div style="display:flex;gap:5px;align-items:center;">
+        <button id="groupChatBtn" onclick="openGroupChat()" title="Back to team chat" style="display:none;width:24px;height:24px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:5px;cursor:pointer;align-items:center;justify-content:center;font-size:11px;transition:background .15s;" onmouseover="this.style.background='rgba(255,255,255,.3)'" onmouseout="this.style.background='rgba(255,255,255,.15)'"><i class="fa-solid fa-users"></i></button>
         <button onclick="window.open('teamChat.html','_blank')" title="Open full chat" style="width:24px;height:24px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:5px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;transition:background .15s;" onmouseover="this.style.background='rgba(255,255,255,.3)'" onmouseout="this.style.background='rgba(255,255,255,.15)'"><i class="fa-solid fa-up-right-from-square"></i></button>
         <button class="chat-hdr-close" onclick="document.getElementById('chatBox').style.display='none'"><i class="fa-solid fa-xmark"></i></button>
       </div>
@@ -1166,7 +1170,7 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
     </div>
     <!-- Input row -->
     <div style="display:flex;align-items:center;gap:6px;padding:3px 10px 8px;">
-      <input type="text" id="chatInput" placeholder="Message #general…" style="flex:1;border:1.5px solid var(--border);border-radius:9999px;padding:7px 14px;font-size:12.5px;color:var(--txt);background:var(--surface2);outline:none;font-family:var(--font);transition:border-color .15s,box-shadow .15s;" onfocus="this.style.borderColor='#059669';this.style.boxShadow='0 0 0 2px rgba(5,150,105,.15)'" onblur="this.style.borderColor='';this.style.boxShadow=''"/>
+      <input type="text" id="chatInput" placeholder="Message #general..." style="flex:1;border:1.5px solid var(--border);border-radius:9999px;padding:7px 14px;font-size:12.5px;color:var(--txt);background:var(--surface2);outline:none;font-family:var(--font);transition:border-color .15s,box-shadow .15s;" onfocus="this.style.borderColor='#059669';this.style.boxShadow='0 0 0 2px rgba(5,150,105,.15)'" onblur="this.style.borderColor='';this.style.boxShadow=''"/>
       <button id="sendBtn" style="height:32px;padding:0 12px;background:linear-gradient(135deg,#059669,#10B981);color:#fff;border:none;border-radius:9999px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .15s;font-family:var(--font);" onmouseover="this.style.background='#047857'" onmouseout="this.style.background='linear-gradient(135deg,#059669,#10B981)'"><i class="fa-solid fa-paper-plane"></i> Send</button>
     </div>
   </div>
@@ -1263,15 +1267,24 @@ function updateOnlineUI(users){
     const name = typeof u === 'string' ? u : (u.name||u.engineerName||u.username||'User');
     const role = (typeof u === 'object' && u.role) ? u.role : '';
     const initial = name[0]?.toUpperCase() || '?';
-    return `<div class="od-user">
-      <div class="od-avatar">${initial}</div>
+    const safeName=crmEsc(name);
+    const safeRole=crmEsc(role);
+    return `<div class="od-user" data-chat-user="${crmEsc(name)}" title="Open chat with ${crmEsc(name)}">
+      <div class="od-avatar">${crmEsc(initial)}</div>
       <div>
-        <div class="od-uname">${name}</div>
-        ${role ? `<div class="od-urole">${role}</div>` : ''}
+        <div class="od-uname">${safeName}</div>
+        ${role ? `<div class="od-urole">${safeRole}</div>` : ''}
       </div>
+      <i class="fa-solid fa-message od-action"></i>
       <div class="od-indicator"></div>
     </div>`;
   }).join('');
+  list.querySelectorAll(".od-user").forEach(item=>{
+    item.addEventListener("click",()=>{
+      const name=item.dataset.chatUser||"";
+      if(name) openDirectChat(name);
+    });
+  });
 }
 
 const pageNames = {
@@ -1566,6 +1579,7 @@ const CHAT_READ_SYNC_KEY="relcon_chat_read_at";
 
 let unreadsMentionCount=0;
 let unreadDmCount=0;
+let activeChatPeer="";
 const badgeEl=document.getElementById("mentionBadge");
 const mobileBadgeEl=document.getElementById("mobileMentionBadge");
 const fabBadgeEl=document.getElementById("mentionBadgeChat");
@@ -1707,8 +1721,13 @@ function initWS(){
     if(msg.type==="call_signal") handleGlobalCallSignal(msg);
     if(msg.type==="group"&&msg.from!==currentUser) renderMessage(msg);
     if(msg.type==="dm"&&msg.from!==currentUser){
-      unreadDmCount+=1;
-      updateMentionBadge();
+      if(activeChatPeer&&msg.from===activeChatPeer){
+        renderMessage(msg);
+        markDirectChatRead(activeChatPeer);
+      }else{
+        unreadDmCount+=1;
+        updateMentionBadge();
+      }
     }
     if(msg.type==="message_deleted"){
       const el=document.querySelector(`[data-message-id="${msg.messageId}"]`);
@@ -1967,6 +1986,48 @@ function cleanupGlobalCall(){
 function clearMentionNotifications(){unreadsMentionCount=0;updateMentionBadge();}
 function openChatBox(){document.getElementById("chatBox").style.display="flex";clearMentionNotifications();setTimeout(scrolltoBottom,0);}
 chatInput.addEventListener("focus",()=>clearMentionNotifications());
+function setChatModeHeader(){
+  const isDm=Boolean(activeChatPeer);
+  const title=document.getElementById("chatHeaderTitle");
+  const icon=document.getElementById("chatHeaderIcon");
+  const groupBtn=document.getElementById("groupChatBtn");
+  if(title) title.textContent=isDm?activeChatPeer:"Team Chat";
+  if(icon) icon.innerHTML=isDm?'<i class="fa-solid fa-message" style="color:#fff;font-size:14px;"></i>':'<i class="fa-solid fa-comments" style="color:#fff;font-size:14px;"></i>';
+  if(groupBtn) groupBtn.style.display=isDm?"flex":"none";
+  if(chatInput) chatInput.placeholder=isDm?`Message ${activeChatPeer}...`:"Message #general...";
+}
+async function openDirectChat(peerName){
+  const peer=String(peerName||"").trim();
+  if(!peer||peer.toLowerCase()===currentUser.toLowerCase()) return;
+  activeChatPeer=peer;
+  document.getElementById("onlineDropdown")?.classList.remove("open");
+  openChatBox();
+  setChatModeHeader();
+  replyContext=null;
+  document.getElementById("replyBox").style.display="none";
+  await loadDirectHistory(peer);
+  await markDirectChatRead(peer);
+}
+async function openGroupChat(){
+  activeChatPeer="";
+  setChatModeHeader();
+  replyContext=null;
+  document.getElementById("replyBox").style.display="none";
+  openChatBox();
+  await loadGroupHistory();
+}
+async function markDirectChatRead(peer){
+  if(!peer||!currentUser) return;
+  try{
+    await fetch(`${baseUrl}/chat/mark-read`,{
+      method:"POST",
+      headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json"},
+      body:JSON.stringify({from:peer,to:currentUser})
+    });
+    localStorage.setItem(CHAT_READ_SYNC_KEY,String(Date.now()));
+    await refreshChatUnreadCount();
+  }catch(err){console.error("Failed to mark direct chat read",err);}
+}
 async function refreshChatUnreadCount(){
   if(!token) return;
   try{
@@ -1985,6 +2046,12 @@ function scrolltoBottom(){try{chatMessages.scrollTop=chatMessages.scrollHeight;}
 function sendMessage(){
   const text=chatInput.value.trim();
   if(!text) return;
+  if(activeChatPeer){
+    const payload={type:"dm",from:currentUser,to:activeChatPeer,text:text,createdAt:new Date().toISOString()};
+    if(replyContext){payload.replyTo={from:replyContext.from,text:replyContext.text};replyContext=null;document.getElementById("replyBox").style.display="none";}
+    if(ws&&ws.readyState===WebSocket.OPEN){ws.send(JSON.stringify(payload));renderMessage(payload);chatInput.value="";}
+    return;
+  }
   chatbotFlow(text,currentUser).then(intercepted=>{
     if(intercepted){renderMessage({from:currentUser,text});chatInput.value="";return;}
     const payload={type:"group",from:currentUser,text:text,createdAt:new Date().toISOString()};
@@ -2044,12 +2111,28 @@ async function deleteMessage(messageId,messageElement){
 
 async function loadGroupHistory(){
   try{
+    if(activeChatPeer) return;
     const res=await fetch(`${baseUrl}/chat/history/group`,{headers:{Authorization:`Bearer ${token}`}});
     const data=await res.json();
     chatMessages.innerHTML="";
     const sorted=data.sort((a,b)=>new Date(a.createdAt||0)-new Date(b.createdAt||0));
     sorted.forEach(renderMessage);scrolltoBottom();
   }catch(err){console.error("Failed to load chat",err);}
+}
+
+async function loadDirectHistory(peer){
+  try{
+    const res=await fetch(`${baseUrl}/chat/history/${encodeURIComponent(currentUser)}/${encodeURIComponent(peer)}`,{headers:{Authorization:`Bearer ${token}`}});
+    if(!res.ok) throw new Error("Unable to load direct chat");
+    const data=await res.json();
+    chatMessages.innerHTML="";
+    const sorted=data.sort((a,b)=>new Date(a.createdAt||0)-new Date(b.createdAt||0));
+    sorted.forEach(renderMessage);
+    scrolltoBottom();
+  }catch(err){
+    console.error("Failed to load direct chat",err);
+    chatMessages.innerHTML='<div style="padding:12px;text-align:center;color:var(--txt4);font-size:12px;">Unable to load direct chat.</div>';
+  }
 }
 
 chatInput.addEventListener("input",()=>{
