@@ -2017,7 +2017,13 @@ function cleanupGlobalCall(){
   setGlobalCallVideos();
 }
 function clearMentionNotifications(){unreadsMentionCount=0;updateMentionBadge();}
-function openChatBox(){document.getElementById("chatBox").style.display="flex";clearMentionNotifications();setTimeout(scrolltoBottom,0);}
+function openChatBox(){
+  document.getElementById("chatBox").style.display="flex";
+  clearMentionNotifications();
+  if(activeChatPeer) markDirectChatRead(activeChatPeer);
+  else markAllDirectChatsRead();
+  setTimeout(scrolltoBottom,0);
+}
 chatInput.addEventListener("focus",()=>clearMentionNotifications());
 function setChatModeHeader(){
   const isDm=Boolean(activeChatPeer);
@@ -2055,11 +2061,24 @@ async function markDirectChatRead(peer){
     await fetch(`${baseUrl}/chat/mark-read`,{
       method:"POST",
       headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json"},
-      body:JSON.stringify({from:peer,to:currentUser})
+      body:JSON.stringify({from:peer})
     });
     localStorage.setItem(CHAT_READ_SYNC_KEY,String(Date.now()));
     await refreshChatUnreadCount();
   }catch(err){console.error("Failed to mark direct chat read",err);}
+}
+async function markAllDirectChatsRead(){
+  if(!token) return;
+  try{
+    await fetch(`${baseUrl}/chat/mark-read`,{
+      method:"POST",
+      headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json"},
+      body:JSON.stringify({})
+    });
+    unreadDmCount=0;
+    updateMentionBadge();
+    localStorage.setItem(CHAT_READ_SYNC_KEY,String(Date.now()));
+  }catch(err){console.error("Failed to mark all direct chats read",err);}
 }
 async function refreshChatUnreadCount(){
   if(!token) return;

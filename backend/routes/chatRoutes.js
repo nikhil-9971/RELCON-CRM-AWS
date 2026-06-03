@@ -55,12 +55,21 @@ router.get("/history/:user1/:user2", authMiddleware, async (req, res) => {
   }
 });
 
-// Mark all from->to as read
-router.post("/mark-read", async (req, res) => {
-  const { from, to } = req.body; // mark messages in room where to is current user
-  const roomId = [from, to].sort().join("__");
+// Mark DMs as read. Pass `from` to mark one room, or omit it to mark all DMs for current user.
+router.post("/mark-read", authMiddleware, async (req, res) => {
+  const { from } = req.body;
+  const currentUser = currentChatUser(req);
+  if (!currentUser) return res.status(401).json({ error: "User not found in token" });
+
+  const query = {
+    to: currentUser,
+    read: false,
+    roomId: { $ne: "group" },
+  };
+  if (from) query.roomId = [from, currentUser].sort().join("__");
+
   try {
-    const result = await Chat.updateMany({ roomId, to, read: false }, { read: true });
+    const result = await Chat.updateMany(query, { read: true });
     res.json({ success: true, modifiedCount: result.modifiedCount || 0 });
   } catch (err) {
     res
