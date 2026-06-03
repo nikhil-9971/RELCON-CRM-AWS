@@ -140,6 +140,19 @@ function inferRecordType(req) {
   return first;
 }
 
+function sendDeleteAlertEmail(entry) {
+  if (entry.method !== 'DELETE' || entry.statusCode >= 400) return;
+  try {
+    const { sendRecordDeleteAlertToNikhil } = require('../services/mailer');
+    if (typeof sendRecordDeleteAlertToNikhil !== 'function') return;
+    sendRecordDeleteAlertToNikhil(entry).catch((err) => {
+      _warn('[DeleteAlertEmail] failed:', err?.message || err);
+    });
+  } catch (err) {
+    _warn('[DeleteAlertEmail] unavailable:', err?.message || err);
+  }
+}
+
 async function saveActivityAudit(req, res, durationMs, tokenUser = '') {
   if (!shouldAuditRequest(req)) return;
 
@@ -175,6 +188,7 @@ async function saveActivityAudit(req, res, durationMs, tokenUser = '') {
   };
 
   AuditTrail.create(entry).catch(() => {});
+  sendDeleteAlertEmail(entry);
 }
 
 /* ── Override console methods ── */

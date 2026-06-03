@@ -1875,6 +1875,92 @@ async function getUserEmailsByUsernames(usernames = []) {
   )];
 }
 
+async function sendRecordDeleteAlertToNikhil(activity = {}) {
+  const reportType = "CRM Record Delete Alert";
+  const recipients = await getUserEmailsByUsernames(["nikhil.trivedi"]);
+  const toRecipients = recipients.length ? recipients : [normalizeEmail(MAIL_TO)].filter(Boolean);
+  const subject = `CRM record deleted by ${activity.modifiedBy || "unknown user"}`;
+  if (!toRecipients.length) {
+    await EmailLog.create({
+      type: reportType,
+      subject: "Skipped: Nikhil recipient missing for delete alert",
+      to: "",
+      status: "failure",
+      error: "nikhil.trivedi email not found and MAIL_TO missing",
+      meta: activity,
+    });
+    return { ok: false, reason: "missing_nikhil_email" };
+  }
+
+  const rows = [
+    ["Deleted By", activity.modifiedBy || "anonymous"],
+    ["Record Type", activity.recordType || "api"],
+    ["Action", activity.action || `${activity.method || "DELETE"} ${activity.path || ""}`],
+    ["URL", activity.url || ""],
+    ["Status Code", activity.statusCode || ""],
+    ["RO Code", activity.roCode || ""],
+    ["RO Name", activity.roName || ""],
+    ["Visit Date", activity.visitDate || ""],
+    ["Engineer", activity.engineerName || ""],
+    ["IP Address", activity.ip || ""],
+    ["Time", formatDateTimeIST(activity.timestamp || new Date())],
+    ["Request ID", activity.requestId || ""],
+  ];
+  const meta = activity.after || {};
+  const htmlRows = rows
+    .filter(([, value]) => String(value || "").trim())
+    .map(([label, value]) => `
+      <tr>
+        <td style="padding:8px 10px;border:1px solid #e2e8f0;background:#f8fafc;font-weight:700;color:#334155;width:160px;">${htmlEscape(label)}</td>
+        <td style="padding:8px 10px;border:1px solid #e2e8f0;color:#0f172a;">${htmlEscape(value)}</td>
+      </tr>
+    `).join("");
+  const requestSnapshot = htmlEscape(JSON.stringify(meta, null, 2));
+  const html = `
+    <div style="font-family:Arial,sans-serif;color:#0f172a;line-height:1.5;">
+      <h2 style="margin:0 0 10px;color:#991b1b;">CRM Record Delete Alert</h2>
+      <p style="margin:0 0 14px;">A delete action was completed in RELCON CRM.</p>
+      <table style="border-collapse:collapse;width:100%;max-width:820px;font-size:13px;">${htmlRows}</table>
+      <h3 style="margin:18px 0 8px;font-size:14px;color:#334155;">Request Snapshot</h3>
+      <pre style="white-space:pre-wrap;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;font-size:12px;color:#334155;">${requestSnapshot}</pre>
+    </div>
+  `;
+  const text = [
+    "CRM Record Delete Alert",
+    ...rows.filter(([, value]) => String(value || "").trim()).map(([label, value]) => `${label}: ${value}`),
+    "",
+    `Request Snapshot: ${JSON.stringify(meta)}`,
+  ].join("\n");
+
+  try {
+    const info = await transporter.sendMail({
+      from: getDefaultOutgoingFromHeader(),
+      to: toRecipients.join(", "),
+      subject,
+      html,
+      text,
+    });
+    await EmailLog.create({
+      type: reportType,
+      subject,
+      to: toRecipients.join(", "),
+      status: "success",
+      meta: { ...activity, messageId: info?.messageId || "" },
+    });
+    return { ok: true, recipients: toRecipients };
+  } catch (err) {
+    await EmailLog.create({
+      type: reportType,
+      subject,
+      to: toRecipients.join(", "),
+      status: "failure",
+      error: err?.message || String(err),
+      meta: activity,
+    });
+    throw err;
+  }
+}
+
 function getISTDayRangeUTC(dateISO = getCurrentISTDateParts().dateISO) {
   const start = new Date(`${dateISO}T00:00:00+05:30`);
   const end = new Date(`${dateISO}T23:59:59.999+05:30`);
@@ -6163,6 +6249,7 @@ module.exports = {
   sendMaterialDispatchNotification,
   sendDailyVerificationCorrectionReportToNikhil,
   sendBiweeklyCorrectionAnalyticsReportToNikhil,
+  sendRecordDeleteAlertToNikhil,
   sendTaskNotificationEmail,
   sendTaskClosureEmail,
   sendTaskEscalationEmail,
