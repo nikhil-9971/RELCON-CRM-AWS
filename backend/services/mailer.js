@@ -22,6 +22,7 @@ const zlib = require("zlib");
 const { EmailLog } = require("../models/AuditLog");
 const MaterialManagement = require("../models/MaterialManagement");
 const MaterialUploadSchedule = require("../models/MaterialUploadSchedule");
+const MaterialRequirement = require("../models/MaterialRequirement");
 const User = require("../models/User");
 const Attendance = require("../models/Attendance");
 const DailyPlan = require("../models/DailyPlan");
@@ -5421,6 +5422,294 @@ async function sendDailyPlanCompletionSummaryToNikhil({ dateISO } = {}) {
   }
 }
 
+function addDaysISO(dateISO, days) {
+  const [year, month, day] = String(dateISO || "").slice(0, 10).split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  date.setUTCDate(date.getUTCDate() + days);
+  return [
+    date.getUTCFullYear(),
+    String(date.getUTCMonth() + 1).padStart(2, "0"),
+    String(date.getUTCDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function getPreviousISTDateISO(baseDate = new Date()) {
+  return addDaysISO(getCurrentISTDateParts(baseDate).dateISO, -1);
+}
+
+function getWeeklySpareReportRange({ endDateISO = getPreviousISTDateISO() } = {}) {
+  const toDateISO = String(endDateISO || getPreviousISTDateISO()).slice(0, 10);
+  const fromDateISO = addDaysISO(toDateISO, -6);
+  return {
+    fromDateISO,
+    toDateISO,
+    startUTC: new Date(`${fromDateISO}T00:00:00+05:30`),
+    endUTC: new Date(`${toDateISO}T23:59:59.999+05:30`),
+  };
+}
+
+function getStatusSubmittedAt(status = {}) {
+  return status.createdAt || status.updatedAt || "";
+}
+
+function planCustomerLabel(plan = {}, fallback = "") {
+  const phase = String(plan.phase || "").toUpperCase();
+  if (fallback) return String(fallback).toUpperCase();
+  if (phase.includes("RBML") || phase.includes("JIO")) return "RBML";
+  if (phase.includes("BPCL")) return "BPCL";
+  return "HPCL";
+}
+
+function buildWeeklyStatusRows({ plans = [], hpclStatuses = [], rbmlStatuses = [], mode = "usage" } = {}) {
+  const planById = new Map(plans.map((plan) => [String(plan._id || ""), plan]));
+  const rows = [];
+
+  for (const status of hpclStatuses) {
+    const plan = planById.get(String(status.planId || "")) || {};
+    if (mode === "usage" && !hasStatusMaterialUsage({ customer: "HPCL", status })) continue;
+    if (mode === "requirement" && !hasStatusRequirement({ customer: "HPCL", status })) continue;
+    rows.push({
+      Customer: "HPCL",
+      VisitDate: plan.date || "",
+      Engineer: plan.engineer || "",
+      Region: plan.region || "",
+      Phase: plan.phase || "",
+      ROCode: plan.roCode || "",
+      ROName: plan.roName || "",
+      SpareUsed: status.spareUsed || "",
+      ActiveMaterial: status.activeSpare || "",
+      FaultyMaterial: status.faultySpare || "",
+      SpareRequirement: status.spareRequirment || status.spareRequirement || "",
+      RequiredSpare: status.spareRequirmentname || status.spareRequirementName || "",
+      WorkCompletion: status.workCompletion || "",
+      SubmittedAt: getStatusSubmittedAt(status) ? formatDateTimeIST(getStatusSubmittedAt(status)) : "",
+      Verified: status.isVerified ? "Yes" : "No",
+    });
+  }
+
+  for (const status of rbmlStatuses) {
+    const plan = planById.get(String(status.planId || "")) || {};
+    if (mode === "usage" && !hasStatusMaterialUsage({ customer: "RBML", status })) continue;
+    if (mode === "requirement" && !hasStatusRequirement({ customer: "RBML", status })) continue;
+    rows.push({
+      Customer: "RBML",
+      VisitDate: plan.date || "",
+      Engineer: plan.engineer || "",
+      Region: plan.region || "",
+      Phase: plan.phase || "",
+      ROCode: plan.roCode || "",
+      ROName: plan.roName || "",
+      SpareUsed: status.activeMaterialUsed || "",
+      ActiveMaterial: status.usedMaterialDetails || "",
+      FaultyMaterial: status.faultyMaterialDetails || "",
+      SpareRequirement: status.spareRequired || "",
+      RequiredSpare: status.materialRequirement || "",
+      WorkCompletion: status.status || "",
+      SubmittedAt: getStatusSubmittedAt(status) ? formatDateTimeIST(getStatusSubmittedAt(status)) : "",
+      Verified: status.isVerified ? "Yes" : "No",
+    });
+  }
+
+  return rows.sort((a, b) => String(a.VisitDate).localeCompare(String(b.VisitDate)) || String(a.Engineer).localeCompare(String(b.Engineer)));
+}
+
+function buildMaterialRequirementWeeklyRows(requirements = []) {
+  const rows = [];
+  for (const req of requirements) {
+    const lineItems = Array.isArray(req.lineItems) && req.lineItems.length ? req.lineItems : [null];
+    for (const item of lineItems) {
+      rows.push({
+        Customer: req.customer || "",
+        RequestDate: req.date || req.materialRequestDate || "",
+        Engineer: req.engineer || "",
+        Region: req.region || "",
+        Phase: req.phase || "",
+        ROCode: req.roCode || "",
+        ROName: req.roName || "",
+        Material: item?.materialName || req.materialSummary || req.material || "",
+        MaterialType: item?.materialType || req.materialType || "",
+        RequestType: item?.requestType || req.materialRequirementType || "",
+        Quantity: item?.quantity || req.quantity || "",
+        DispatchStatus: item?.materialStatus || req.materialDispatchStatus || "",
+        ChallanNumber: item?.challanNumber || req.challanNumber || "",
+        DocketNumber: item?.docketNumber || req.docketNumber || "",
+        DeliveryStatus: item?.deliveryStatus || req.deliveryStatus || "",
+        PONumber: item?.poNumber || req.poNumber || "",
+        Notes: item?.notes || req.remarks || "",
+      });
+    }
+  }
+  return rows.sort((a, b) => String(a.RequestDate).localeCompare(String(b.RequestDate)) || String(a.Engineer).localeCompare(String(b.Engineer)));
+}
+
+function appendReportSheet(workbook, name, rows) {
+  const sheetRows = rows.length ? rows : [{ Message: "No records found for this period" }];
+  const worksheet = XLSX.utils.json_to_sheet(sheetRows);
+  autosizeWorksheetColumns(worksheet, sheetRows);
+  XLSX.utils.book_append_sheet(workbook, worksheet, name);
+}
+
+function buildWeeklySpareRequirementWorkbook({ summaryRows = [], utilisationRows = [], requirementRows = [], materialRequestRows = [] } = {}) {
+  const workbook = XLSX.utils.book_new();
+  appendReportSheet(workbook, "Summary", summaryRows);
+  appendReportSheet(workbook, "Utilisation", utilisationRows);
+  appendReportSheet(workbook, "Requirements", requirementRows);
+  appendReportSheet(workbook, "Material Requests", materialRequestRows);
+  return XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+}
+
+async function sendWeeklySpareUtilisationRequirementReportToAdmins({ endDateISO, force = false } = {}) {
+  const reportType = "Weekly Spare Utilisation Requirement Report";
+  const { fromDateISO, toDateISO, startUTC, endUTC } = getWeeklySpareReportRange({ endDateISO });
+
+  try {
+    if (!force) {
+      const alreadySent = await EmailLog.findOne({
+        type: reportType,
+        status: "success",
+        "meta.fromDateISO": fromDateISO,
+        "meta.toDateISO": toDateISO,
+      }).lean();
+      if (alreadySent) return { ok: true, skipped: true, reason: "already_sent", fromDateISO, toDateISO };
+    }
+
+    const recipients = await getAdminNotificationEmails();
+    if (!recipients.length) {
+      await EmailLog.create({
+        type: reportType,
+        subject: `Skipped: admin recipients missing for ${fromDateISO} to ${toDateISO}`,
+        to: "",
+        status: "failure",
+        error: "No admin email found",
+        meta: { fromDateISO, toDateISO },
+      });
+      return { ok: false, reason: "missing_admin_email", fromDateISO, toDateISO };
+    }
+
+    const plans = await DailyPlan.find({ date: { $gte: fromDateISO, $lte: toDateISO } }).lean();
+    const planIds = plans.map((plan) => plan._id).filter(Boolean);
+    const [hpclStatuses, rbmlStatuses, materialRequirements] = await Promise.all([
+      Status.find({ planId: { $in: planIds } }).lean(),
+      JioBPStatus.find({ planId: { $in: planIds } }).lean(),
+      MaterialRequirement.find({
+        $or: [
+          { date: { $gte: fromDateISO, $lte: toDateISO } },
+          { materialRequestDate: { $gte: fromDateISO, $lte: toDateISO } },
+          { createdAt: { $gte: startUTC, $lte: endUTC } },
+        ],
+      }).lean(),
+    ]);
+
+    const utilisationRows = buildWeeklyStatusRows({ plans, hpclStatuses, rbmlStatuses, mode: "usage" });
+    const requirementRows = buildWeeklyStatusRows({ plans, hpclStatuses, rbmlStatuses, mode: "requirement" });
+    const materialRequestRows = buildMaterialRequirementWeeklyRows(materialRequirements);
+    const customers = [...new Set([...utilisationRows, ...requirementRows, ...materialRequestRows].map((row) => row.Customer).filter(Boolean))].join(", ") || "—";
+    const summaryRows = [
+      { Metric: "From Date", Value: fromDateISO },
+      { Metric: "To Date", Value: toDateISO },
+      { Metric: "Customers", Value: customers },
+      { Metric: "Spare/Material Utilisation Rows", Value: utilisationRows.length },
+      { Metric: "Requirement Rows", Value: requirementRows.length },
+      { Metric: "Material Request Rows", Value: materialRequestRows.length },
+      { Metric: "Generated At", Value: `${formatDateTimeIST(new Date())} IST` },
+    ];
+
+    const workbookBuffer = buildWeeklySpareRequirementWorkbook({
+      summaryRows,
+      utilisationRows,
+      requirementRows,
+      materialRequestRows,
+    });
+    const subject = `Weekly Spare Utilisation & Requirement Report | ${fromDateISO} to ${toDateISO}`;
+    const html = `
+      <div style="font-family:Arial,Helvetica,sans-serif;background:#f8fafc;padding:20px;color:#0f172a;">
+        <div style="max-width:760px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;">
+          <div style="background:#0f172a;color:#ffffff;padding:18px 22px;">
+            <div style="font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;opacity:.85;">Relcon CRM Weekly Report</div>
+            <h2 style="margin:6px 0 0;font-size:21px;">Spare Utilisation & Requirement Summary</h2>
+          </div>
+          <div style="padding:20px 22px;font-size:14px;line-height:1.6;">
+            <p>Dear Admin Team,</p>
+            <p>Please find attached the combined weekly Excel report for spare/material utilisation and requirements from <strong>${htmlEscape(fromDateISO)}</strong> to <strong>${htmlEscape(toDateISO)}</strong>.</p>
+            <table style="border-collapse:collapse;width:100%;font-size:13px;margin-top:12px;">
+              <tr><td style="border:1px solid #e2e8f0;padding:8px;font-weight:700;background:#f8fafc;">Utilisation Rows</td><td style="border:1px solid #e2e8f0;padding:8px;">${utilisationRows.length}</td></tr>
+              <tr><td style="border:1px solid #e2e8f0;padding:8px;font-weight:700;background:#f8fafc;">Requirement Rows</td><td style="border:1px solid #e2e8f0;padding:8px;">${requirementRows.length}</td></tr>
+              <tr><td style="border:1px solid #e2e8f0;padding:8px;font-weight:700;background:#f8fafc;">Material Request Rows</td><td style="border:1px solid #e2e8f0;padding:8px;">${materialRequestRows.length}</td></tr>
+            </table>
+            <p style="margin-top:16px;">Regards,<br><strong>Relcon CRM System</strong></p>
+          </div>
+        </div>
+      </div>
+    `;
+    const text = [
+      "Dear Admin Team,",
+      "",
+      `Please find attached the combined weekly Excel report for spare/material utilisation and requirements from ${fromDateISO} to ${toDateISO}.`,
+      "",
+      `Utilisation Rows: ${utilisationRows.length}`,
+      `Requirement Rows: ${requirementRows.length}`,
+      `Material Request Rows: ${materialRequestRows.length}`,
+      "",
+      "Regards,",
+      "Relcon CRM System",
+    ].join("\n");
+
+    const info = await transporter.sendMail({
+      from: getDefaultOutgoingFromHeader(),
+      to: recipients.join(", "),
+      subject,
+      html,
+      text,
+      attachments: [{
+        filename: `weekly_spare_utilisation_requirement_${fromDateISO}_to_${toDateISO}.xlsx`,
+        content: workbookBuffer,
+        contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      }],
+    });
+
+    await EmailLog.create({
+      type: reportType,
+      subject,
+      to: recipients.join(", "),
+      status: "success",
+      sentAt: new Date(),
+      meta: {
+        fromDateISO,
+        toDateISO,
+        utilisationRows: utilisationRows.length,
+        requirementRows: requirementRows.length,
+        materialRequestRows: materialRequestRows.length,
+        messageId: info?.messageId || "",
+      },
+    });
+
+    return {
+      ok: true,
+      fromDateISO,
+      toDateISO,
+      recipientCount: recipients.length,
+      utilisationRows: utilisationRows.length,
+      requirementRows: requirementRows.length,
+      materialRequestRows: materialRequestRows.length,
+    };
+  } catch (err) {
+    console.error("❌ Weekly spare utilisation requirement report error:", err.message || err);
+    try {
+      await EmailLog.create({
+        type: reportType,
+        subject: `Weekly spare utilisation requirement report failed | ${fromDateISO} to ${toDateISO}`,
+        to: "",
+        status: "failure",
+        error: err.message || String(err),
+        meta: { fromDateISO, toDateISO },
+      });
+    } catch (logErr) {
+      console.error("Failed to write EmailLog for weekly spare utilisation requirement report:", logErr?.message || logErr);
+    }
+    return { ok: false, error: err, fromDateISO, toDateISO };
+  }
+}
+
 async function sendPendingStatusReminderAlerts() {
   const reportType = "Pending Status Reminder Alert";
 
@@ -6038,6 +6327,19 @@ cron.schedule(
   { timezone: "Asia/Kolkata" }
 );
 
+// ─── Scheduler: every Monday 10:30 IST for weekly spare utilisation report ──
+
+cron.schedule(
+  "30 10 * * 1",
+  () => {
+    console.log("🔔 Weekly spare utilisation requirement report CRON TRIGGERED:", new Date().toISOString());
+    sendWeeklySpareUtilisationRequirementReportToAdmins().catch((e) =>
+      console.error("Weekly spare utilisation requirement report job error:", e)
+    );
+  },
+  { timezone: "Asia/Kolkata" }
+);
+
 // ─── Scheduler: daily 10:15 IST, sends DB backup only when 15 days are completed ─
 
 cron.schedule(
@@ -6215,6 +6517,11 @@ if (require.main === module) {
       .then((r) => { console.log("Correction analytics report done:", r); process.exit(r.ok ? 0 : 1); })
       .catch((e) => { console.error("❌ error:", e); process.exit(1); });
 
+  } else if (type === "weekly-spare-report") {
+    sendWeeklySpareUtilisationRequirementReportToAdmins({ endDateISO: dateArg, force: true })
+      .then((r) => { console.log("Weekly spare utilisation requirement report done:", r); process.exit(r.ok ? 0 : 1); })
+      .catch((e) => { console.error("❌ error:", e); process.exit(1); });
+
   } else if (type === "note-task-reminders") {
     processNoteTaskReminderEmails()
       .then((r) => { console.log("Note task reminder check done:", r); process.exit(r.ok ? 0 : 1); })
@@ -6235,6 +6542,7 @@ module.exports = {
   sendFaultyMaterialDispatchAlerts,
   sendFaultyProbeHQODispatchReminder,
   sendWeeklyUserMailSummaryToAdmins,
+  sendWeeklySpareUtilisationRequirementReportToAdmins,
   sendDatabaseBackupArchiveToAdmins,
   sendMonthlyAttendanceSheet,
   sendVerificationCorrectionEmail,
