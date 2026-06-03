@@ -1406,9 +1406,13 @@ function hideGlobalLoader(){
   document.getElementById("globalLoader").style.display="none";
 }
 
-function showToast(msg, type="success"){
+function showToast(msg, type="success", onClick){
   const t=document.createElement("div");
   t.className="toast "+type; t.textContent=msg;
+  if(typeof onClick==="function"){
+    t.style.cursor="pointer";
+    t.addEventListener("click",()=>{onClick();t.remove();});
+  }
   document.getElementById("toastContainer").appendChild(t);
   setTimeout(()=>t.remove(), 3500);
 }
@@ -1719,7 +1723,10 @@ function initWS(){
       clearTimeout(typingTimeout);typingTimeout=setTimeout(()=>{typingEl.textContent="";},2000);
     }
     if(msg.type==="call_signal") handleGlobalCallSignal(msg);
-    if(msg.type==="group"&&msg.from!==currentUser) renderMessage(msg);
+    if(msg.type==="group"&&msg.from!==currentUser){
+      if(!activeChatPeer) renderMessage(msg);
+      if(activeChatPeer||chatBoxEl.style.display!=="flex") notifyIncomingChatMessage(msg,"group");
+    }
     if(msg.type==="dm"&&msg.from!==currentUser){
       if(activeChatPeer&&msg.from===activeChatPeer){
         renderMessage(msg);
@@ -1727,6 +1734,7 @@ function initWS(){
       }else{
         unreadDmCount+=1;
         updateMentionBadge();
+        notifyIncomingChatMessage(msg,"dm");
       }
     }
     if(msg.type==="message_deleted"){
@@ -1735,6 +1743,31 @@ function initWS(){
     }
   };
   ws.onclose=()=>setTimeout(initWS,3000);
+}
+
+function chatMessagePreview(text){
+  const clean=String(text||"New message").replace(/\s+/g," ").trim();
+  return clean.length>90?`${clean.slice(0,87)}...`:clean;
+}
+function notifyIncomingChatMessage(msg,mode="dm"){
+  const from=String(msg.from||"User").trim()||"User";
+  const preview=chatMessagePreview(msg.text);
+  const openTarget=()=>mode==="dm"?openDirectChat(from):openGroupChat();
+  showToast(`${mode==="dm"?"New message from":"New team message from"} ${from}: ${preview}`,"info",openTarget);
+  if("Notification" in window&&Notification.permission==="granted"&&(document.hidden||chatBoxEl.style.display!=="flex")){
+    try{
+      const notification=new Notification(mode==="dm"?`Message from ${from}`:"New team chat message",{
+        body:preview,
+        tag:mode==="dm"?`relcon-dm-${from}`:"relcon-team-chat",
+        renotify:true,
+      });
+      notification.onclick=()=>{
+        window.focus();
+        openTarget();
+        notification.close();
+      };
+    }catch{}
+  }
 }
 
 function updateMentionBadge(){
