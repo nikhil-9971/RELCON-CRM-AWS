@@ -1133,8 +1133,11 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
             <select id="fccVersion" class="dv-modal-select"><option value="">Select</option><option>1.0.32(28-Mar-2026)</option><option>1.0.7(15-Apr-2026)</option></select></div>
           <div class="dv-field"><label class="dv-label">SFTP Config <span class="req">*</span></label>
             <select id="sftpConfig" class="dv-modal-select"><option value="">Select</option><option>Yes</option><option>No</option></select></div>
-          <div class="dv-field dv-form-full"><label class="dv-label">Wireless Slave Version <span class="req">*</span></label>
-            <textarea id="wirelessSlave" class="dv-modal-textarea" placeholder="1-02.00.60, 2-03.00.83 (PH - 09 to 12), 3- 03.0.90(V6 Type)(PH-13)"></textarea></div>
+          <div class="dv-field"><label class="dv-label">No. of Slave Installed <span class="req">*</span></label>
+            <input id="wirelessSlaveCount" class="dv-modal-input" type="number" min="0" step="1" onchange="renderWirelessSlaveFields()" oninput="renderWirelessSlaveFields()" placeholder="3"/></div>
+          <div class="dv-field dv-form-full hidden" id="wirelessSlaveContainer"></div>
+          <div class="dv-field dv-form-full"><label class="dv-label">Wireless Slave Version Detail <span class="req">*</span></label>
+            <textarea id="wirelessSlave" class="dv-modal-textarea" placeholder="1-02.00.60, 2-03.00.83 (PH - 09 to 12), 3-03.0.90(V6 Type)(PH-13)" readonly></textarea></div>
           <div class="dv-field"><label class="dv-label">Admin Password Updated <span class="req">*</span></label>
             <select id="adminPassword" class="dv-modal-select"><option value="">Select</option><option>Yes</option><option>No</option></select></div>
           <div class="dv-field"><label class="dv-label">Work Completion <span class="req">*</span></label>
@@ -1765,10 +1768,68 @@ async function submitATGStatus() {
 function handleATGButtonClick(planId, exists) { if(exists) return; allowATGModalOpen=true; openATGModal(planId); }
 
 /* ── STATUS MODAL (HPCL) ── */
+function getWirelessSlaveDetailsFromText(value = '') {
+  return String(value || '')
+    .split(',')
+    .map(v => v.trim().replace(/^\d+\s*[-.)]\s*/, '').trim())
+    .filter(Boolean);
+}
+function updateWirelessSlaveSummary() {
+  const details = [...document.querySelectorAll('.wirelessSlaveDetail')]
+    .map((input, index) => {
+      const value = input.value.trim();
+      return value ? `${index + 1}-${value}` : '';
+    })
+    .filter(Boolean);
+  document.getElementById('wirelessSlave').value = details.join(', ');
+}
+function renderWirelessSlaveFields(existingDetails = []) {
+  const countInput = document.getElementById('wirelessSlaveCount');
+  const container = document.getElementById('wirelessSlaveContainer');
+  const currentDetails = existingDetails.length
+    ? existingDetails
+    : [...document.querySelectorAll('.wirelessSlaveDetail')].map(input => input.value);
+  const count = Math.max(0, Number.parseInt(countInput?.value || '0', 10) || 0);
+
+  container.innerHTML = '';
+  if (!count) {
+    container.classList.add('hidden');
+    document.getElementById('wirelessSlave').value = '';
+    return;
+  }
+
+  container.classList.remove('hidden');
+  const label = document.createElement('label');
+  label.className = 'dv-label';
+  label.textContent = 'Wireless Slave Version Details';
+  container.appendChild(label);
+
+  for (let i = 1; i <= count; i++) {
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = `wirelessSlaveDetail_${i}`;
+    input.className = 'wirelessSlaveDetail dv-modal-input';
+    input.style.marginBottom = '6px';
+    input.placeholder = `Slave ${i} Version`;
+    input.value = currentDetails[i - 1] || '';
+    input.addEventListener('input', function() {
+      this.value = this.value.toUpperCase();
+      updateWirelessSlaveSummary();
+    });
+    container.appendChild(input);
+  }
+  updateWirelessSlaveSummary();
+}
+function populateWirelessSlaveFields(value = '') {
+  const details = getWirelessSlaveDetailsFromText(value);
+  document.getElementById('wirelessSlaveCount').value = details.length || '';
+  renderWirelessSlaveFields(details);
+}
 async function openStatusModal(planId) {
   document.getElementById('statusPlanId').value = planId;
   document.getElementById('statusModal').classList.remove('hidden');
   document.getElementById('statusForm').reset();
+  populateWirelessSlaveFields('');
   const currentPlan = fullData.find(p => p._id === planId);
   const roCode = currentPlan?.roCode;
   let latestVerifiedHpcl = null;
@@ -1780,6 +1841,7 @@ async function openStatusModal(planId) {
         latestVerifiedHpcl = d;
         if (d.probeMake) document.getElementById('probeMake').value = d.probeMake;
         if (d.probeSize) document.getElementById('probeSize').value = d.probeSize;
+        if (d.wirelessSlave) populateWirelessSlaveFields(d.wirelessSlave);
         showToast('Verified HPCL details loaded from last record.', 'info');
       }
     } catch {}
@@ -1834,6 +1896,13 @@ async function saveStatus() {
   const required = ['probeMake','probeSize','lowProductLock','highWaterSet','duSerialNumber','dgStatus','connectivityType','sim1Provider','sim1Number','sim2Provider','sim2Number','iemiNumber','bosVersion','fccVersion','wirelessSlave','sftpConfig','adminPassword','workCompletion','spareUsed','activeSpare','faultySpare','spareRequirment','spareRequirmentname','earthingStatus','voltageReading','duOffline','duDependency','duRemark','tankOffline','tankDependency','tankRemark','bosIP','fccIP','locationField'];
   const loc = document.getElementById('locationField').value;
   if (!loc || loc.includes('Fetching') || loc.includes('Unable') || loc.includes('not supported')) { showToast('Location not available. Please allow location access.', 'error'); return; }
+  const slaveCount = Number.parseInt(document.getElementById('wirelessSlaveCount')?.value || '0', 10) || 0;
+  if (slaveCount <= 0) { showToast('Please enter No. of Slave Installed', 'error'); document.getElementById('wirelessSlaveCount')?.focus(); return; }
+  for (let i = 1; i <= slaveCount; i++) {
+    const el = document.getElementById(`wirelessSlaveDetail_${i}`);
+    if (!el || !el.value.trim()) { showToast(`Please fill Wireless Slave ${i} Version`, 'error'); el?.focus(); return; }
+  }
+  updateWirelessSlaveSummary();
   for (const id of required) { const el=document.getElementById(id); if(!el||!el.value.trim()) { showToast(`Please fill in: ${id.replace(/([A-Z])/g,' $1')}`, 'error'); el?.focus(); return; } }
   const statusData = {};
   required.forEach(id => { statusData[id] = document.getElementById(id).value; });
