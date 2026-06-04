@@ -76,6 +76,16 @@ function isNonStandardDgStatus(value = "") {
   return String(value || "").trim().toUpperCase() === "NON STANDARD DG";
 }
 
+function hasHpclDependencyIssue(value = "", dependency = "") {
+  const normalizedValue = String(value || "").trim().toUpperCase();
+  const normalizedDependency = String(dependency || "").trim().toUpperCase();
+  return Boolean(
+    normalizedValue &&
+    normalizedValue !== "ALL OK" &&
+    ["HPCL", "BOTH"].includes(normalizedDependency)
+  );
+}
+
 function hasHpclActionRequiredIssue(status = {}) {
   const duOffline = String(status.duOffline || "").trim().toUpperCase();
   const tankOffline = String(status.tankOffline || "").trim().toUpperCase();
@@ -129,28 +139,21 @@ function generateEmailContent({
   tankDependency,
 }) {
   const observationLines = [];
+  const normalizedEarthingStatus = String(earthingStatus || "").trim().toUpperCase();
 
-  if (earthingStatus === "NOT OK") {
+  if (normalizedEarthingStatus === "NOT OK") {
     observationLines.push(
       `1. Earthing status is NOT OK${voltageReading ? ` (Voltage Reading: ${voltageReading})` : ""}.`,
     );
   }
 
-  if (
-    duOffline &&
-    duOffline !== "ALL OK" &&
-    (duDependency === "HPCL" || duDependency === "BOTH")
-  ) {
+  if (hasHpclDependencyIssue(duOffline, duDependency)) {
     observationLines.push(
       `2. DU offline count observed: ${duOffline}${duRemark ? ` | Remark: ${duRemark}` : ""}.`,
     );
   }
 
-  if (
-    tankOffline &&
-    tankOffline !== "ALL OK" &&
-    (tankDependency === "HPCL" || tankDependency === "BOTH")
-  ) {
+  if (hasHpclDependencyIssue(tankOffline, tankDependency)) {
     observationLines.push(
       `3. Tank offline count observed: ${tankOffline}${tankRemark ? ` | Remark: ${tankRemark}` : ""}.`,
     );
@@ -163,7 +166,7 @@ function generateEmailContent({
   }
 
   const actionItems = [];
-  if (earthingStatus === "NOT OK") {
+  if (normalizedEarthingStatus === "NOT OK") {
     actionItems.push(
       "- Earthing issue may impact automation equipment performance. Kindly arrange rectification on priority.",
     );
@@ -172,12 +175,8 @@ function generateEmailContent({
     );
   }
   if (
-    (duOffline &&
-      duOffline !== "ALL OK" &&
-      (duDependency === "HPCL" || duDependency === "BOTH")) ||
-    (tankOffline &&
-      tankOffline !== "ALL OK" &&
-      (tankDependency === "HPCL" || tankDependency === "BOTH"))
+    hasHpclDependencyIssue(duOffline, duDependency) ||
+    hasHpclDependencyIssue(tankOffline, tankDependency)
   ) {
     actionItems.push(
       "- Kindly resolve the listed HPCL dependency points and restore normal operation at the earliest.",
@@ -910,7 +909,7 @@ router.put("/verifyStatus/:id", verifyToken, async (req, res) => {
       });
     }
 
-    // ✅ Task Generation — only if admin + anurag.mishra
+    // ✅ Task Generation — after successful HPCL verification
     const {
       earthingStatus,
       dgStatus,
@@ -925,39 +924,28 @@ router.put("/verifyStatus/:id", verifyToken, async (req, res) => {
 
     let taskCreated = false;
 
-    if (
-      !updated.taskGenerated &&
-      (earthingStatus === "NOT OK" ||
-        (duOffline &&
-          duOffline !== "ALL OK" &&
-          (duDependency === "HPCL" || duDependency === "BOTH")) ||
-        (tankOffline &&
-          tankOffline !== "ALL OK" &&
-          (tankDependency === "HPCL" || tankDependency === "BOTH")) ||
-        isNonStandardDgStatus(dgStatus)) &&
-      req.user?.username === "anurag.mishra" &&
-      req.user?.role === "admin"
-    ) {
+    const hasExistingTask = updated.taskGenerated || await Task.exists({ statusId: String(updated._id) });
+    const normalizedEarthingStatus = String(earthingStatus || "").trim().toUpperCase();
+    const shouldGenerateTask = Boolean(
+      normalizedEarthingStatus === "NOT OK" ||
+      hasHpclDependencyIssue(duOffline, duDependency) ||
+      hasHpclDependencyIssue(tankOffline, tankDependency) ||
+      isNonStandardDgStatus(dgStatus)
+    );
+
+    if (!hasExistingTask && shouldGenerateTask) {
       const issues = [];
-      if (earthingStatus === "NOT OK") issues.push("Earthing NOT OK");
-      if (
-        duOffline &&
-        duOffline !== "ALL OK" &&
-        (duDependency === "HPCL" || duDependency === "BOTH")
-      )
+      if (normalizedEarthingStatus === "NOT OK") issues.push("Earthing NOT OK");
+      if (hasHpclDependencyIssue(duOffline, duDependency))
         issues.push(`DU Offline: ${duOffline}`);
-      if (
-        tankOffline &&
-        tankOffline !== "ALL OK" &&
-        (tankDependency === "HPCL" || tankDependency === "BOTH")
-      )
+      if (hasHpclDependencyIssue(tankOffline, tankDependency))
         issues.push(`Tank Offline: ${tankOffline}`);
       if (isNonStandardDgStatus(dgStatus)) issues.push("Non Standard DG");
 
       const issueSummary = issues.join(" + ");
 
       const taskPayload = {
-        statusId: updated._id,
+        statusId: String(updated._id),
         roCode: plan.roCode,
         region: plan.region,
         roName: plan.roName,
