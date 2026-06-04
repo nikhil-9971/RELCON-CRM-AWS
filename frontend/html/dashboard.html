@@ -1749,17 +1749,28 @@ function chatMessagePreview(text){
   const clean=String(text||"New message").replace(/\s+/g," ").trim();
   return clean.length>90?`${clean.slice(0,87)}...`:clean;
 }
+function requestSystemNotificationPermission(){
+  if(!("Notification" in window)) return;
+  if(Notification.permission==="default"){
+    try{Notification.requestPermission().catch(()=>{});}catch{}
+  }
+}
 function notifyIncomingChatMessage(msg,mode="dm"){
   const from=String(msg.from||"User").trim()||"User";
   const preview=chatMessagePreview(msg.text);
   const openTarget=()=>mode==="dm"?openDirectChat(from):openGroupChat();
   showToast(`${mode==="dm"?"New message from":"New team message from"} ${from}: ${preview}`,"info",openTarget);
-  if("Notification" in window&&Notification.permission==="granted"&&(document.hidden||chatBoxEl.style.display!=="flex")){
+  requestSystemNotificationPermission();
+  const shouldShowSystemNotification = mode==="dm" || document.hidden || chatBoxEl.style.display!=="flex";
+  if("Notification" in window&&Notification.permission==="granted"&&shouldShowSystemNotification){
     try{
       const notification=new Notification(mode==="dm"?`Message from ${from}`:"New team chat message",{
         body:preview,
+        icon:"./assets/HPCL.png",
+        badge:"./assets/HPCL.png",
         tag:mode==="dm"?`relcon-dm-${from}`:"relcon-team-chat",
         renotify:true,
+        requireInteraction:false,
       });
       notification.onclick=()=>{
         window.focus();
@@ -2018,6 +2029,7 @@ function cleanupGlobalCall(){
 }
 function clearMentionNotifications(){unreadsMentionCount=0;updateMentionBadge();}
 function openChatBox(){
+  requestSystemNotificationPermission();
   document.getElementById("chatBox").style.display="flex";
   clearMentionNotifications();
   if(activeChatPeer) markDirectChatRead(activeChatPeer);
