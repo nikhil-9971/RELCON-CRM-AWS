@@ -1802,6 +1802,142 @@ async function sendStatusMaterialUsageAlertToAdmins({ customer = "", plan = {}, 
   }
 }
 
+function getPendingStatusConfirmationTriggerLabel(plan = {}) {
+  const reminderSent = Boolean(plan?.reminder24SentAt);
+  const warningSent = Boolean(plan?.warning48SentAt);
+
+  if (!reminderSent && !warningSent) return "";
+  if (reminderSent && warningSent) return "Reminder + Escalation Warning";
+  if (warningSent) return "Escalation Warning";
+  return "Reminder";
+}
+
+function buildPendingStatusConfirmationEmail({ customer = "", plan = {}, actorName = "" } = {}) {
+  const customerLabel = String(customer || plan.customer || plan.phase || "Status").trim().toUpperCase();
+  const triggerLabel = getPendingStatusConfirmationTriggerLabel(plan);
+  const subject = `Confirmation: ${customerLabel} Pending Status Filled | ${plan.roCode || "RO"} | ${plan.roName || "Site"}`;
+  const rows = [
+    ["Customer", customerLabel],
+    ["Engineer", actorName || plan.engineer || "—"],
+    ["Visit Date", formatDateOnlyIST(plan.date) || "—"],
+    ["RO Code", plan.roCode || "—"],
+    ["RO Name", plan.roName || "—"],
+    ["Region", plan.region || "—"],
+    ["Phase", plan.phase || "—"],
+    ["Pending Mail Trigger", triggerLabel || "—"],
+    ["Saved On", `${formatDateTimeIST(new Date())} IST`],
+  ];
+
+  const tableRows = rows.map(([label, value], index) => `
+    <tr style="background:${index % 2 === 0 ? "#ffffff" : "#f8fafc"};">
+      <td style="width:210px;padding:10px 12px;border-bottom:1px solid #e5edf5;font-weight:700;color:#334155;">${htmlEscape(label)}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #e5edf5;color:#0f172a;line-height:1.5;">${htmlEscape(value)}</td>
+    </tr>
+  `).join("");
+
+  const html = `
+    <div style="font-family:Arial,Helvetica,sans-serif;background:#f1f5f9;padding:22px;color:#0f172a;">
+      <div style="max-width:760px;margin:0 auto;background:#ffffff;border:1px solid #dbe3ee;border-radius:14px;overflow:hidden;">
+        <div style="background:#0f766e;color:#ffffff;padding:18px 22px;">
+          <div style="font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;opacity:.9;">Relcon CRM Status Confirmation</div>
+          <div style="margin-top:6px;font-size:20px;font-weight:800;line-height:1.25;">${htmlEscape(customerLabel)} Pending Status Filled</div>
+        </div>
+        <div style="padding:20px 22px;">
+          <p style="margin:0 0 14px;font-size:14px;line-height:1.6;">The engineer has now filled the pending status record after a reminder or escalation warning was already sent. Please review the submitted details below.</p>
+          <table style="width:100%;border-collapse:collapse;border:1px solid #e5edf5;border-radius:10px;overflow:hidden;font-size:13px;">${tableRows}</table>
+          <p style="margin:14px 0 0;color:#64748b;font-size:12px;">This confirmation is sent to admin role users only.</p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const text = [
+    `${customerLabel} Pending Status Filled Confirmation`,
+    "",
+    "The engineer has now filled the pending status record after a reminder or escalation warning was already sent.",
+    "",
+    ...rows.map(([label, value]) => `${label}: ${value}`),
+    "",
+    "This confirmation is sent to admin role users only.",
+  ].join("\n");
+
+  return { subject, html, text, triggerLabel };
+}
+
+async function sendPendingStatusConfirmationToAdmins({ customer = "", plan = {}, actorName = "" } = {}) {
+  const triggerLabel = getPendingStatusConfirmationTriggerLabel(plan);
+  if (!triggerLabel) {
+    return { ok: true, skipped: true, reason: "no_pending_reminder_or_warning" };
+  }
+
+  const recipients = await getAdminNotificationEmails();
+  if (!recipients.length) {
+    await EmailLog.create({
+      type: "pending-status-confirmation",
+      subject: "Skipped: admin recipient missing",
+      to: "",
+      status: "failure",
+      error: "No admin recipient email found",
+      meta: {
+        customer,
+        planId: String(plan._id || plan.id || ""),
+        roCode: plan.roCode || "",
+        roName: plan.roName || "",
+        engineer: actorName || plan.engineer || "",
+        triggerLabel,
+      },
+    });
+    return { ok: false, skipped: true, reason: "missing_admin_email" };
+  }
+
+  const { subject, html, text } = buildPendingStatusConfirmationEmail({ customer, plan, actorName });
+  try {
+    const info = await transporter.sendMail({
+      from: getDefaultOutgoingFromHeader(),
+      to: recipients.join(", "),
+      subject,
+      html,
+      text,
+    });
+
+    await EmailLog.create({
+      type: "pending-status-confirmation",
+      subject,
+      to: recipients.join(", "),
+      status: "success",
+      sentAt: new Date(),
+      meta: {
+        customer,
+        planId: String(plan._id || plan.id || ""),
+        roCode: plan.roCode || "",
+        roName: plan.roName || "",
+        engineer: actorName || plan.engineer || "",
+        triggerLabel,
+        messageId: info?.messageId || "",
+      },
+    });
+
+    return { ok: true, messageId: info?.messageId || "", recipients, triggerLabel };
+  } catch (err) {
+    await EmailLog.create({
+      type: "pending-status-confirmation",
+      subject,
+      to: recipients.join(", "),
+      status: "failure",
+      error: err.message || String(err),
+      meta: {
+        customer,
+        planId: String(plan._id || plan.id || ""),
+        roCode: plan.roCode || "",
+        roName: plan.roName || "",
+        engineer: actorName || plan.engineer || "",
+        triggerLabel,
+      },
+    });
+    throw err;
+  }
+}
+
 function prettifyFieldName(field = "") {
   return String(field || "")
     .replace(/([a-z])([A-Z])/g, "$1 $2")
@@ -6962,6 +7098,7 @@ module.exports = {
   sendTaskEscalationEmail,
   sendStatusRequirementAlertToAdmins,
   sendStatusMaterialUsageAlertToAdmins,
+  sendPendingStatusConfirmationToAdmins,
   processPendingTaskEscalations,
   processNoteTaskReminderEmails,
   buildTaskSubject,

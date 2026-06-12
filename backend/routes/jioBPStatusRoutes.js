@@ -8,6 +8,7 @@ const {
   sendVerificationCorrectionEmail,
   sendStatusRequirementAlertToAdmins,
   sendStatusMaterialUsageAlertToAdmins,
+  sendPendingStatusConfirmationToAdmins,
 } = require("../services/mailer");
 const { clearCacheByPrefix } = require("../utils/cache");
 const { isAdminUser, canAccessEngineerRecord } = require("../utils/accessScope");
@@ -68,6 +69,14 @@ router.post("/saveJioBPStatus", authMiddleware, async (req, res) => {
       actorUsername: req.user?.username || "",
       actorEmail: req.user?.email || "",
     }).catch((mailErr) => console.error("RBML material usage alert email error:", mailErr?.message || mailErr));
+
+    if (!existing) {
+      sendPendingStatusConfirmationToAdmins({
+        customer: "RBML",
+        plan: updatedPlan?.toObject ? updatedPlan.toObject() : (updatedPlan || {}),
+        actorName: updatedPlan?.engineer || req.user?.engineerName || req.user?.username || "",
+      }).catch((mailErr) => console.error("RBML pending status confirmation email error:", mailErr?.message || mailErr));
+    }
 
     res.status(200).json({
       success: true,

@@ -5,7 +5,10 @@ const router = express.Router();
 const BPCLStatus = require("../models/BPCLStatus");
 const DailyPlan = require("../models/DailyPlan");
 const authMiddleware = require("../middleware/authMiddleware");
-const { sendVerificationCorrectionEmail } = require("../services/mailer");
+const {
+  sendVerificationCorrectionEmail,
+  sendPendingStatusConfirmationToAdmins,
+} = require("../services/mailer");
 const { clearCacheByPrefix } = require("../utils/cache");
 const { isAdminUser, canAccessEngineerRecord } = require("../utils/accessScope");
 
@@ -39,6 +42,7 @@ router.post("/saveBPCLStatus", authMiddleware, async (req, res) => {
     }
 
     let status = await BPCLStatus.findOne({ planId });
+    const isNewStatus = !status;
 
     if (status) {
       Object.assign(status, req.body);
@@ -57,6 +61,15 @@ router.post("/saveBPCLStatus", authMiddleware, async (req, res) => {
       statusSaved: true,
     });
     clearStatusDependentCaches();
+
+    const updatedPlan = await DailyPlan.findById(planId);
+    if (isNewStatus) {
+      sendPendingStatusConfirmationToAdmins({
+        customer: "BPCL",
+        plan: updatedPlan?.toObject ? updatedPlan.toObject() : (updatedPlan || {}),
+        actorName: updatedPlan?.engineer || req.user?.engineerName || req.user?.username || "",
+      }).catch((mailErr) => console.error("BPCL pending status confirmation email error:", mailErr?.message || mailErr));
+    }
 
     res.status(200).json({
       success: true,

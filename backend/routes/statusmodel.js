@@ -18,6 +18,7 @@ const {
   getTaskCustomer,
   sendStatusRequirementAlertToAdmins,
   sendStatusMaterialUsageAlertToAdmins,
+  sendPendingStatusConfirmationToAdmins,
 } = require("../services/mailer");
 
 const verifyToken = require("../middleware/authMiddleware");
@@ -256,6 +257,7 @@ router.post("/saveStatus", async (req, res) => {
       locationField,
     } = req.body;
 
+    const existingStatus = await Status.findOne({ planId }).select("_id").lean();
     const savedStatus = await Status.findOneAndUpdate(
       { planId },
       {
@@ -321,6 +323,14 @@ router.post("/saveStatus", async (req, res) => {
       actorUsername: actorUser?.username || "",
       actorEmail: actorUser?.email || "",
     }).catch((mailErr) => console.error("Material usage alert email error:", mailErr?.message || mailErr));
+
+    if (!existingStatus) {
+      sendPendingStatusConfirmationToAdmins({
+        customer: isHpclPlan ? "HPCL" : (updatedPlan?.phase || "Status"),
+        plan: updatedPlan || {},
+        actorName: updatedPlan?.engineer || actorUser?.engineerName || actorUser?.username || "",
+      }).catch((mailErr) => console.error("Pending status confirmation email error:", mailErr?.message || mailErr));
+    }
 
     res.send("Status saved");
   } catch (err) {
