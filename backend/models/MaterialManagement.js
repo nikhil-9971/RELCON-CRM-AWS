@@ -84,6 +84,10 @@ const materialManagementSchema = new mongoose.Schema(
       enum: ["OK", "Not Ok (Faulty)", "Under Repair", "Scrapped"],
       default: "OK",
     },
+    faultyMaterialCreatedAt: {
+      type: Date,
+      default: null,
+    },
     engineerName: {
       type: String,
       required: true,

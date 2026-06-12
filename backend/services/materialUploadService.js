@@ -15,6 +15,46 @@ function normalizeItemStatus(status = "") {
   return status;
 }
 
+function normalizeHeader(value = "") {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+function parseFlexibleDate(value) {
+  if (value === null || value === undefined || value === "") return null;
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : new Date(value.getTime());
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const parsed = XLSX.SSF.parse_date_code(value);
+    if (!parsed) return null;
+    const date = new Date(Date.UTC(parsed.y, parsed.m - 1, parsed.d));
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  const text = String(value).trim();
+  if (!text) return null;
+
+  const dmy = text.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/);
+  if (dmy) {
+    const [, day, month, year] = dmy;
+    const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  const ymd = text.match(/^(\d{4})[\/.-](\d{1,2})[\/.-](\d{1,2})$/);
+  if (ymd) {
+    const [, year, month, day] = ymd;
+    const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  const parsed = new Date(text);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 function validateRow(row) {
   const errors = [];
   if (!row.itemCode) errors.push("itemCode is required");
@@ -43,18 +83,41 @@ function parseWorkbookRows(fileBuffer) {
   const workbook = XLSX.read(fileBuffer, { type: "buffer" });
   const sheetName = workbook.SheetNames[0];
   const sheet = workbook.Sheets[sheetName];
-  return XLSX.utils.sheet_to_json(sheet, { defval: "" });
+  return XLSX.utils.sheet_to_json(sheet, { defval: "", raw: true });
 }
 
 function normalizeUploadRow(row) {
+  const normalized = {};
+  for (const [key, value] of Object.entries(row || {})) {
+    normalized[normalizeHeader(key)] = value;
+  }
+
   return {
-    serialNumber: (row["Serial Number"] || row.serialNumber || row.SNo || "").toString().trim(),
-    itemCode: (row["Item Code"] || row.itemCode || "").toString().trim(),
-    itemName: (row["Item Name"] || row.itemName || "").toString().trim(),
-    qty: row.Qty ?? row.qty ?? row.Quantity ?? 0,
-    itemType: (row["Item Type"] || row.itemType || "").toString().trim(),
-    itemStatus: normalizeItemStatus((row["Item Status"] || row.itemStatus || "OK").toString().trim()),
-    engineerName: (row.Engineer || row.engineerName || row["Engineer Name"] || "").toString().trim(),
+    serialNumber: (
+      normalized.serialnumber ||
+      normalized.sno ||
+      normalized.serialno ||
+      ""
+    ).toString().trim(),
+    itemCode: (normalized.itemcode || "").toString().trim(),
+    itemName: (normalized.itemname || "").toString().trim(),
+    qty: normalized.qty ?? normalized.quantity ?? 0,
+    itemType: (normalized.itemtype || "").toString().trim(),
+    itemStatus: normalizeItemStatus((normalized.itemstatus || "OK").toString().trim()),
+    engineerName: (
+      normalized.engineer ||
+      normalized.engineername ||
+      ""
+    ).toString().trim(),
+    faultyMaterialCreatedAt: parseFlexibleDate(
+      normalized.faultymaterialcreationdate ||
+      normalized.faultymaterialcreateddate ||
+      normalized.faultymaterialcreatedat ||
+      normalized.creationdate ||
+      normalized.createdat ||
+      normalized.faultymaterialdate ||
+      ""
+    ),
   };
 }
 
@@ -80,6 +143,7 @@ async function importMaterialFileBuffer(fileBuffer, options = {}) {
       itemCode: row.itemCode.toUpperCase(),
       itemType: row.itemType.toUpperCase(),
       serialNumber: row.serialNumber || `MAT-${Date.now()}-${index}`,
+      ...(row.faultyMaterialCreatedAt && { faultyMaterialCreatedAt: row.faultyMaterialCreatedAt }),
       uploadedBy: actor,
     });
   });
@@ -154,4 +218,6 @@ module.exports = {
   sanitizeSchedule,
   importMaterialFileBuffer,
   UPLOAD_SCHEDULE_KEY,
+  normalizeHeader,
+  parseFlexibleDate,
 };

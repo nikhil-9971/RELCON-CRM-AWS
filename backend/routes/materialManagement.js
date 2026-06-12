@@ -14,6 +14,7 @@ const {
   getOrCreateUploadSchedule,
   sanitizeSchedule,
   importMaterialFileBuffer,
+  parseFlexibleDate,
 } = require("../services/materialUploadService");
 const {
   clearCacheByPrefix,
@@ -23,6 +24,7 @@ const {
 } = require("../utils/cache");
 
 const MATERIAL_CACHE_TTL_MS = 2 * 60 * 1000;
+const DEFAULT_TIMEZONE = "Asia/Kolkata";
 
 function clearMaterialCaches() {
   clearCacheByPrefix("material-management:");
@@ -55,6 +57,54 @@ function buildTransferEntry({ type, qty, fromEngineer = "", toEngineer = "", not
     createdBy,
     createdAt: new Date(),
   };
+}
+
+function isFaultyMaterialStatus(itemStatus = "") {
+  const value = String(itemStatus || "").toLowerCase();
+  return value.includes("faulty") || value.includes("not ok");
+}
+
+function getDatePartsInTimeZone(value, timeZone = DEFAULT_TIMEZONE) {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const out = {};
+  parts.forEach((part) => {
+    if (part.type !== "literal") out[part.type] = part.value;
+  });
+  return out.year && out.month && out.day ? out : null;
+}
+
+function getUtcDateFromParts(parts) {
+  if (!parts?.year || !parts?.month || !parts?.day) return null;
+  return new Date(Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day)));
+}
+
+function formatDateForDisplay(value, timeZone = DEFAULT_TIMEZONE) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone,
+  });
+}
+
+function getAgeingDays(value, referenceDate = new Date(), timeZone = DEFAULT_TIMEZONE) {
+  const startParts = getDatePartsInTimeZone(value, timeZone);
+  const refParts = getDatePartsInTimeZone(referenceDate, timeZone);
+  const startDate = getUtcDateFromParts(startParts);
+  const refDate = getUtcDateFromParts(refParts);
+  if (!startDate || !refDate) return null;
+  const diff = Math.floor((refDate.getTime() - startDate.getTime()) / 86400000);
+  return Number.isFinite(diff) ? Math.max(0, diff) : null;
 }
 
 router.get("/engineers", verifyToken, requireRole(["Admin", "Manager"]), async (req, res) => {
@@ -345,10 +395,12 @@ router.post("/", verifyToken, requireRole(["Admin"]), async (req, res) => {
       itemType,
       itemStatus,      // ← NEW
       engineerName,
+      faultyMaterialCreatedAt,
 
     } = req.body;
 
     const normalizedStatus = normalizeItemStatus(itemStatus);
+    const parsedFaultyMaterialCreatedAt = parseFlexibleDate(faultyMaterialCreatedAt);
     const errors = validateRow({ itemCode, itemName, qty, itemType, itemStatus: normalizedStatus, engineerName });
     if (errors.length)
       return res.status(400).json({ success: false, message: "Validation failed", errors });
@@ -367,6 +419,7 @@ router.post("/", verifyToken, requireRole(["Admin"]), async (req, res) => {
       qty: Number(qty),
       itemType: itemType.toUpperCase(),
       itemStatus: normalizedStatus,
+      ...(parsedFaultyMaterialCreatedAt && { faultyMaterialCreatedAt: parsedFaultyMaterialCreatedAt }),
       engineerName,
       
       uploadedBy: req.user?.name || req.user?.email || "Admin",
@@ -395,6 +448,7 @@ router.put("/:id", verifyToken, requireRole(["Admin", "Manager"]), async (req, r
       itemType,
       itemStatus,      // ← NEW
       engineerName,
+      faultyMaterialCreatedAt,
 
     } = req.body;
 
@@ -403,6 +457,7 @@ router.put("/:id", verifyToken, requireRole(["Admin", "Manager"]), async (req, r
       return res.status(404).json({ success: false, message: "Record not found" });
 
     const normalizedStatus = itemStatus ? normalizeItemStatus(itemStatus) : "";
+    const parsedFaultyMaterialCreatedAt = parseFlexibleDate(faultyMaterialCreatedAt);
     if (itemStatus && !["OK", "Not Ok (Faulty)", "Under Repair", "Scrapped"].includes(normalizedStatus))
       return res.status(400).json({ success: false, message: "itemStatus must be one of: OK, Not Ok (Faulty), Under Repair, Scrapped" });
 
@@ -423,6 +478,7 @@ router.put("/:id", verifyToken, requireRole(["Admin", "Manager"]), async (req, r
           ...(qty !== undefined          && { qty: Number(qty) }),
           ...(itemType                   && { itemType: itemType.toUpperCase() }),
           ...(normalizedStatus           && { itemStatus: normalizedStatus }),
+          ...(parsedFaultyMaterialCreatedAt && { faultyMaterialCreatedAt: parsedFaultyMaterialCreatedAt }),
           ...(engineerName               && { engineerName }),
          
         },
@@ -488,6 +544,12 @@ router.get("/export/excel", verifyToken, requireRole(["Admin", "Manager"]), asyn
       "Item Type":     d.itemType,
       "Item Status":   d.itemStatus,               // ← NEW column
       "Engineer":      d.engineerName,
+      "Faulty Material Creation Date": isFaultyMaterialStatus(d.itemStatus)
+        ? formatDateForDisplay(d.faultyMaterialCreatedAt || d.createdAt)
+        : "—",
+      "Ageing (Days)": isFaultyMaterialStatus(d.itemStatus)
+        ? (getAgeingDays(d.faultyMaterialCreatedAt || d.createdAt) ?? 0)
+        : "",
       "Created At":    new Date(d.createdAt).toLocaleDateString("en-IN"),
     }));
 

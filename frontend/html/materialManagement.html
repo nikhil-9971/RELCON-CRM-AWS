@@ -95,7 +95,7 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var
 .sf-table-title{font-size:12px;font-weight:700;color:var(--txt);text-transform:uppercase;letter-spacing:0.4px;display:flex;align-items:center;gap:6px;}
 .sf-record-count{background:var(--sf-blue-lt);color:var(--sf-blue);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;}
 .sf-table-wrap{overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 360px);}
-table{width:100%;border-collapse:collapse;font-size:11px;min-width:980px;}
+table{width:100%;border-collapse:collapse;font-size:11px;min-width:1180px;}
 thead th{background:var(--sf-navy)!important;color:#e8f4fd!important;font-size:10px!important;font-weight:600!important;text-transform:uppercase!important;letter-spacing:0.6px!important;padding:9px 12px!important;text-align:left!important;white-space:nowrap!important;border:none!important;border-right:1px solid #253d5b!important;position:sticky;top:0;z-index:10;}
 thead th:last-child{border-right:none!important;}
 tbody tr{border-bottom:1px solid var(--border-lt);transition:background 0.1s;}
@@ -114,6 +114,9 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
 .badge-status-other{background:var(--sf-yellow-lt);color:var(--sf-yellow);}
 
 .code-chip{font-size:11px;font-weight:700;font-family:'SFMono-Regular','Consolas',monospace;background:var(--surface2);border:1px solid var(--border);padding:2px 8px;border-radius:var(--r-sm);color:var(--sf-blue);letter-spacing:.3px;}
+.date-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:var(--r-sm);background:var(--surface2);border:1px solid var(--border);font-size:11px;color:var(--txt2);white-space:nowrap;}
+.age-pill{display:inline-flex;align-items:center;justify-content:center;min-width:54px;height:22px;padding:0 8px;border-radius:999px;background:linear-gradient(135deg,#dd5a0c,#f97316);color:#fff;font-size:10px;font-weight:700;white-space:nowrap;}
+.age-pill.zero{background:linear-gradient(135deg,#b8860b,#dd5a0c);}
 .qty-pill{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:22px;padding:0 8px;background:linear-gradient(135deg,#18a999,#0e7490);color:#fff;border-radius:999px;font-size:11px;font-weight:700;}
 .action-group{display:flex;gap:3px;align-items:center;}
 .act-btn{font-size:10px;font-weight:500;height:24px;width:24px;border-radius:var(--r-sm);cursor:pointer;border:none;display:inline-flex;align-items:center;justify-content:center;transition:all 0.12s;font-family:'Inter',sans-serif;background:var(--surface);}
@@ -350,7 +353,7 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
   .sf-toolbar-spacer{display:none;}
   .sf-tabs{padding:0 12px;}
   .sf-table-wrap{max-height:50vh;}
-  table{font-size:11px;min-width:880px;}
+  table{font-size:11px;min-width:1080px;}
   thead th{padding:7px 8px!important;font-size:9px!important;}
   tbody td{padding:6px 8px!important;font-size:11px!important;}
   .ops-actions{grid-template-columns:1fr;}
@@ -552,14 +555,16 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
             <th style="width:70px;">Qty</th>
             <th style="width:130px;">Item Status</th>
             <th>Engineer</th>
+            <th style="width:160px;">Faulty Material Creation Date</th>
+            <th style="width:95px;">Ageing</th>
             <th style="width:130px;">Actions</th>
           </tr>
         </thead>
         <tbody id="tableBody">
           <!-- skeleton rows -->
-          <tr><td colspan="8"><div class="skeleton" style="height:32px;margin:6px;border-radius:6px;"></div></td></tr>
-          <tr><td colspan="8"><div class="skeleton" style="height:32px;margin:6px;border-radius:6px;opacity:.7;"></div></td></tr>
-          <tr><td colspan="8"><div class="skeleton" style="height:32px;margin:6px;border-radius:6px;opacity:.4;"></div></td></tr>
+          <tr><td colspan="10"><div class="skeleton" style="height:32px;margin:6px;border-radius:6px;"></div></td></tr>
+          <tr><td colspan="10"><div class="skeleton" style="height:32px;margin:6px;border-radius:6px;opacity:.7;"></div></td></tr>
+          <tr><td colspan="10"><div class="skeleton" style="height:32px;margin:6px;border-radius:6px;opacity:.4;"></div></td></tr>
         </tbody>
       </table>
     </div>
@@ -780,10 +785,11 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
           <span class="csv-col-tag required">Qty</span>
           <span class="csv-col-tag required">Item Status</span>
           <span class="csv-col-tag required">Engineer</span>
+          <span class="csv-col-tag">Faulty Material Creation Date</span>
         </div>
         <div style="margin-top:8px;font-size:11.5px;color:var(--txt3);">
           <i class="fa-solid fa-circle-info" style="color:var(--sf-blue);"></i>
-          Item Status: <strong>OK, Not Ok (Faulty)</strong> etc.
+          Item Status: <strong>OK, Not Ok (Faulty)</strong> etc. Faulty Material Creation Date is optional, but recommended for <strong>Not OK</strong> rows so ageing can be shown from the original faulty date.
         </div>
       </div>
 
@@ -1231,7 +1237,7 @@ async function loadData(page = 1) {
 function renderTable(data) {
   const tbody = document.getElementById('tableBody');
   if (!data.length) {
-    tbody.innerHTML = `<tr><td colspan="8">
+    tbody.innerHTML = `<tr><td colspan="10">
       <div class="empty-state">
         <div class="empty-icon"><i class="fa-solid fa-box-open"></i></div>
         <div class="empty-title">No records found</div>
@@ -1258,6 +1264,13 @@ function renderTable(data) {
     else if (statusLower.includes('faulty') || statusLower.includes('not ok')) { statusClass = 'badge-status-faulty'; statusIcon = 'fa-circle-xmark'; }
 
     const displayStatus = rawStatus || '—';
+    const faultyMaterialDate = getFaultyMaterialCreationDate(r);
+    const isFaultyMaterial = isFaultyMaterialRecord(r);
+    const ageingDays = getFaultyMaterialAgeingDays(r);
+    const ageingLabel = ageingDays === null
+      ? '—'
+      : `${ageingDays} day${ageingDays === 1 ? '' : 's'}`;
+    const faultyDateLabel = formatMaterialDate(faultyMaterialDate);
 
     return `
     <tr>
@@ -1277,6 +1290,18 @@ function renderTable(data) {
           <div style="width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#2563EB,#7C3AED);display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:700;flex-shrink:0;">${(r.engineerName||'?')[0].toUpperCase()}</div>
           <span style="font-size:12px;">${esc(r.engineerName)}</span>
         </div>
+      </td>
+      <td>
+        ${isFaultyMaterial
+          ? `<span class="date-chip"><i class="fa-regular fa-calendar" style="font-size:9px;color:var(--sf-blue);"></i>${esc(faultyDateLabel)}</span>`
+          : `<span style="font-size:11px;color:var(--txt4);">—</span>`
+        }
+      </td>
+      <td>
+        ${isFaultyMaterial
+          ? `<span class="age-pill${ageingDays === 0 ? ' zero' : ''}">${esc(ageingLabel)}</span>`
+          : `<span style="font-size:11px;color:var(--txt4);">—</span>`
+        }
       </td>
       <td>
         <div class="action-group">
@@ -1417,6 +1442,8 @@ function openDetailModal(id) {
     ['Item Name', rec.itemName],
     ['Item Type', rec.itemType],
     ['Engineer', rec.engineerName],
+    ['Faulty Material Creation Date', isFaultyMaterialRecord(rec) ? formatMaterialDate(getFaultyMaterialCreationDate(rec)) : '—'],
+    ['Ageing', isFaultyMaterialRecord(rec) ? formatAgeingLabel(getFaultyMaterialAgeingDays(rec)) : '—'],
     ['Quantity', rec.qty],
     ['Status', rec.itemStatus || '—'],
     ['Serial Number', rec.serialNumber],
@@ -1748,10 +1775,10 @@ async function doUpload() {
 // CSV Template Download — CSV ke exact columns ke sath
 function downloadTemplate() {
   const rows = [
-    ['Item Code','Item Name','Item Type','Qty','Item Status','Engineer'],
-    ['G1j22405125','BOS CARD','HPCL','1','OK','Amit Kumar'],
-    ['9ZJ33379402','5V SMPS','RBML','1','Not Ok (Faulty)','Rajan Pandey'],
-    ['G1j22405125','12V SMPS','BPCL','1','OK','Amit Kumar'],
+    ['Item Code','Item Name','Item Type','Qty','Item Status','Engineer','Faulty Material Creation Date'],
+    ['G1j22405125','BOS CARD','HPCL','1','OK','Amit Kumar',''],
+    ['9ZJ33379402','5V SMPS','RBML','1','Not Ok (Faulty)','Rajan Pandey','2026-06-01'],
+    ['G1j22405125','12V SMPS','BPCL','1','OK','Amit Kumar',''],
   ];
   const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
   const a = document.createElement('a');
@@ -1792,6 +1819,86 @@ async function exportExcel() {
 // ═══════════════════════════════════════════════════════════════════════════
 function v(id) { return (document.getElementById(id)?.value || '').trim(); }
 function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function parseMaterialDate(value) {
+  if (value === null || value === undefined || value === '') return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const parsed = new Date(Math.round((value - 25569) * 86400000));
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const text = String(value).trim();
+  if (!text) return null;
+
+  const dmy = text.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/);
+  if (dmy) {
+    const [, day, month, year] = dmy;
+    const parsed = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const ymd = text.match(/^(\d{4})[\/.-](\d{1,2})[\/.-](\d{1,2})$/);
+  if (ymd) {
+    const [, year, month, day] = ymd;
+    const parsed = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const parsed = new Date(text);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function getDatePartsInTimeZone(value, timeZone = DEFAULT_TIMEZONE) {
+  const date = parseMaterialDate(value);
+  if (!date) return null;
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const out = {};
+  parts.forEach(part => {
+    if (part.type !== 'literal') out[part.type] = part.value;
+  });
+  return out.year && out.month && out.day ? out : null;
+}
+
+function getFaultyMaterialCreationDate(record = {}) {
+  return record.faultyMaterialCreatedAt || record.faultyMaterialCreationDate || record.createdAt || null;
+}
+
+function isFaultyMaterialRecord(record = {}) {
+  const status = String(record.itemStatus || record.remarks || '').toLowerCase();
+  return status.includes('faulty') || status.includes('not ok');
+}
+
+function formatMaterialDate(value) {
+  const date = parseMaterialDate(value);
+  if (!date) return '—';
+  return date.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    timeZone: DEFAULT_TIMEZONE,
+  });
+}
+
+function getFaultyMaterialAgeingDays(record = {}) {
+  if (!isFaultyMaterialRecord(record)) return null;
+  const createdParts = getDatePartsInTimeZone(getFaultyMaterialCreationDate(record));
+  const todayParts = getDatePartsInTimeZone(new Date());
+  if (!createdParts || !todayParts) return null;
+  const created = new Date(Date.UTC(Number(createdParts.year), Number(createdParts.month) - 1, Number(createdParts.day)));
+  const today = new Date(Date.UTC(Number(todayParts.year), Number(todayParts.month) - 1, Number(todayParts.day)));
+  const diff = Math.floor((today.getTime() - created.getTime()) / 86400000);
+  return Number.isFinite(diff) ? Math.max(0, diff) : null;
+}
+
+function formatAgeingLabel(days) {
+  if (days === null || days === undefined) return '—';
+  return `${days} day${days === 1 ? '' : 's'}`;
+}
 function clearForm() {
   ['fItemCode','fItemName','fItemType','fQty','fItemStatus','fEngineer']
     .forEach(id => { const el = document.getElementById(id); if(el){ el.value=''; el.classList.remove('error'); } });
