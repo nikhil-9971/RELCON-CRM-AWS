@@ -3809,6 +3809,403 @@ async function sendFaultyMaterialDispatchAlerts() {
   }
 }
 
+function getISTDateISO(value = new Date()) {
+  return getCurrentISTDateParts(value).dateISO;
+}
+
+function formatISTDateOnly(value = "") {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function getFaultyMaterialAgeingDays(record = {}, referenceDate = new Date()) {
+  const createdAt = record.faultyMaterialCreatedAt || record.createdAt;
+  if (!createdAt) return null;
+
+  const createdISO = getISTDateISO(createdAt);
+  const referenceISO = getISTDateISO(referenceDate);
+  if (!createdISO || !referenceISO) return null;
+
+  const created = new Date(`${createdISO}T00:00:00+05:30`);
+  const reference = new Date(`${referenceISO}T00:00:00+05:30`);
+  if (Number.isNaN(created.getTime()) || Number.isNaN(reference.getTime())) return null;
+
+  return Math.max(0, Math.floor((reference.getTime() - created.getTime()) / 86400000));
+}
+
+function getFaultyMaterialAgeingStage(ageDays) {
+  if (ageDays === null || ageDays === undefined) return null;
+  if (ageDays >= 20) return "critical";
+  if (ageDays >= 15) return "warning";
+  if (ageDays >= 8) return "reminder";
+  return null;
+}
+
+function getFaultyMaterialAgeingStageMeta(stage = "reminder") {
+  const stages = {
+    reminder: {
+      label: "Reminder",
+      subjectPrefix: "Reminder: Faulty Material Ageing 8+ Days",
+      header: "Faulty Material Reminder",
+      intro: "This faulty material has reached 8 days ageing. Please review it and prepare the dispatch plan.",
+      actionTitle: "Reminder",
+      actionText: "Please keep the material ready for dispatch and coordinate with the admin team if action is pending.",
+      heroBg: "linear-gradient(135deg,#0f172a,#1d4ed8)",
+      heroText: "#ffffff",
+      badgeBg: "#eff6ff",
+      badgeBorder: "#bfdbfe",
+      badgeText: "#1d4ed8",
+      noticeBg: "#eff6ff",
+      noticeBorder: "#bfdbfe",
+      noticeText: "#1e3a8a",
+    },
+    warning: {
+      label: "Warning",
+      subjectPrefix: "Warning: Faulty Material Dispatch to RELCON HQO (15+ Days)",
+      header: "Faulty Material Dispatch Required to RELCON HQO",
+      intro: "This faulty material has crossed 15 days ageing. Dispatch to RELCON HQO is required on priority.",
+      actionTitle: "Dispatch Required",
+      actionText: "Please arrange dispatch to RELCON HQO and share the dispatch confirmation with the admin team.",
+      heroBg: "linear-gradient(135deg,#7c2d12,#ea580c)",
+      heroText: "#ffffff",
+      badgeBg: "#fff7ed",
+      badgeBorder: "#fdba74",
+      badgeText: "#c2410c",
+      noticeBg: "#fff7ed",
+      noticeBorder: "#fdba74",
+      noticeText: "#9a3412",
+    },
+    critical: {
+      label: "Critical Warning",
+      subjectPrefix: "Critical Warning: Faulty Material Overdue (20+ Days) - Justification Required",
+      header: "Critical Escalation: Justification Required",
+      intro: "This faulty material has crossed 20 days ageing. Immediate action is required and justification must be shared.",
+      actionTitle: "Justification Required",
+      actionText: "Please share why the material has not been dispatched yet and confirm the immediate dispatch plan with the admin team.",
+      heroBg: "linear-gradient(135deg,#7f1d1d,#dc2626)",
+      heroText: "#ffffff",
+      badgeBg: "#fef2f2",
+      badgeBorder: "#fecaca",
+      badgeText: "#b91c1c",
+      noticeBg: "#fef2f2",
+      noticeBorder: "#fecaca",
+      noticeText: "#991b1b",
+    },
+  };
+
+  return stages[stage] || stages.reminder;
+}
+
+function buildFaultyMaterialAgeingTable(rows = []) {
+  if (!rows.length) return "";
+  const columns = [
+    { key: "serialNumber", label: "Serial No." },
+    { key: "itemCode", label: "Item Code" },
+    { key: "itemName", label: "Material Name" },
+    { key: "qty", label: "Qty" },
+    { key: "createdOn", label: "Faulty Created On" },
+    { key: "ageDaysLabel", label: "Ageing (Days)" },
+    { key: "remarks", label: "Remarks" },
+  ];
+  return buildTable(rows, columns, "Faulty Material Details");
+}
+
+function buildFaultyMaterialAgeingMailBody({
+  engineerName = "Engineer",
+  stage = "reminder",
+  materials = [],
+  totalQty = 0,
+  oldestAgeDays = 0,
+  generatedAt = formatDateTimeIST(new Date()),
+} = {}) {
+  const stageMeta = getFaultyMaterialAgeingStageMeta(stage);
+  const tableRows = materials.map((row) => ({
+    serialNumber: row.serialNumber || "—",
+    itemCode: row.itemCode || "—",
+    itemName: row.itemName || "—",
+    qty: Number(row.qty || 0),
+    createdOn: formatISTDateOnly(row.faultyMaterialCreatedAt || row.createdAt),
+    ageDaysLabel: `${Number(row.ageDays || 0)} day${Number(row.ageDays || 0) === 1 ? "" : "s"}`,
+    remarks: row.remarks || "—",
+  }));
+
+  const heroCards = [
+    { label: "Faulty Entries", value: materials.length, bg: stageMeta.badgeBg, border: stageMeta.badgeBorder, text: stageMeta.badgeText },
+    { label: "Total Qty", value: totalQty, bg: stageMeta.badgeBg, border: stageMeta.badgeBorder, text: stageMeta.badgeText },
+    { label: "Oldest Age", value: `${oldestAgeDays} day${oldestAgeDays === 1 ? "" : "s"}`, bg: stageMeta.badgeBg, border: stageMeta.badgeBorder, text: stageMeta.badgeText },
+    { label: "Stage", value: stageMeta.label, bg: stageMeta.badgeBg, border: stageMeta.badgeBorder, text: stageMeta.badgeText },
+  ];
+
+  return `
+    <div style="margin:0;padding:20px 12px;background:#f1f5f9;font:14px/1.6 Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a">
+      <div style="max-width:1080px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(15,23,42,.05)">
+        <div style="padding:18px 22px;background:${stageMeta.heroBg};color:${stageMeta.heroText}">
+          <p style="margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.9">Relcon CRM • Faulty Material Ageing Alert</p>
+          <h2 style="margin:0;font-size:22px;font-weight:700">${htmlEscape(stageMeta.header)}</h2>
+          <p style="margin:8px 0 0;font-size:13px;opacity:.95">${htmlEscape(stageMeta.intro)}</p>
+        </div>
+
+        <div style="padding:22px">
+          <p style="margin:0 0 14px;font-size:13px;color:#334155">
+            Dear <strong>${htmlEscape(engineerName)}</strong>,
+          </p>
+          <p style="margin:0 0 16px;font-size:13px;color:#475569">
+            The following faulty material items are pending under your name. Based on ageing, this notification is being sent in <strong>${htmlEscape(stageMeta.label)}</strong> mode and is copied to the admin team for tracking.
+          </p>
+
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+            ${heroCards.map((card) => `
+              <div style="background:${card.bg};border:1px solid ${card.border};border-radius:10px;padding:10px 12px;min-width:180px;flex:1 1 180px;">
+                <div style="font-size:11px;color:${card.text};text-transform:uppercase;letter-spacing:.05em">${htmlEscape(card.label)}</div>
+                <div style="font-size:24px;line-height:1.2;font-weight:800;color:${card.text}">${htmlEscape(String(card.value))}</div>
+              </div>
+            `).join("")}
+          </div>
+
+          ${buildFaultyMaterialAgeingTable(tableRows)}
+
+          <div style="margin-top:18px;padding:14px;background:${stageMeta.noticeBg};border:1px solid ${stageMeta.noticeBorder};border-radius:10px;color:${stageMeta.noticeText};font-size:13px">
+            <strong style="color:${stageMeta.noticeText}">${htmlEscape(stageMeta.actionTitle)}:</strong> ${htmlEscape(stageMeta.actionText)}
+          </div>
+
+          <p style="margin:18px 0 0;font-size:13px;color:#475569">
+            Generated on ${htmlEscape(generatedAt)} IST. This message is sent automatically every morning at 09:00 IST based on faulty material ageing.
+          </p>
+
+          <p style="margin:14px 0 0;font-size:13px;color:#475569">
+            Regards,<br>
+            <strong style="color:#0f172a">Relcon CRM System</strong>
+          </p>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function sendFaultyMaterialAgeingAlerts() {
+  const alertType = "Faulty Material Ageing Alert";
+
+  try {
+    const [faultyMaterials, users] = await Promise.all([
+      MaterialManagement.find({
+        isActive: true,
+        itemStatus: "Not Ok (Faulty)",
+        qty: { $gt: 0 },
+      })
+        .sort({ engineerName: 1, faultyMaterialCreatedAt: 1, createdAt: 1 })
+        .lean(),
+      User.find(ACTIVE_USER_QUERY, "username email role engineerName name").lean(),
+    ]);
+
+    const adminEmails = [...new Set(
+      users
+        .filter((user) => String(user.role || "").trim().toLowerCase() === "admin")
+        .map((user) => normalizeEmail(user.email))
+        .filter(Boolean)
+    )];
+    const adminRecipients = adminEmails.length ? adminEmails : [normalizeEmail(MAIL_TO)].filter(Boolean);
+
+    const grouped = new Map();
+    let skippedBelowThreshold = 0;
+
+    for (const item of faultyMaterials) {
+      const ageDays = getFaultyMaterialAgeingDays(item);
+      const stage = getFaultyMaterialAgeingStage(ageDays);
+      if (!stage) {
+        skippedBelowThreshold += 1;
+        continue;
+      }
+
+      const engineerName = String(item.engineerName || "").trim();
+      const engineerKey = engineerName.toLowerCase();
+      if (!engineerKey) continue;
+
+      const groupKey = `${engineerKey}::${stage}`;
+      if (!grouped.has(groupKey)) {
+        grouped.set(groupKey, {
+          engineerName,
+          engineerKey,
+          stage,
+          materials: [],
+        });
+      }
+
+      grouped.get(groupKey).materials.push({
+        ...item,
+        ageDays,
+      });
+    }
+
+    for (const group of grouped.values()) {
+      group.materials.sort((a, b) => (
+        Number(b.ageDays || 0) - Number(a.ageDays || 0)
+        || String(a.itemCode || "").localeCompare(String(b.itemCode || ""))
+      ));
+    }
+
+    const summary = {
+      sent: 0,
+      reminder: 0,
+      warning: 0,
+      critical: 0,
+      skippedBelowThreshold,
+      skippedNoEngineerEmail: 0,
+      skippedNoAdminEmail: 0,
+      skippedDuplicate: 0,
+      totalGroupsReviewed: grouped.size,
+      totalFaultyMaterials: faultyMaterials.length,
+    };
+
+    const todayISO = getISTDateISO();
+
+    for (const group of grouped.values()) {
+      const stageMeta = getFaultyMaterialAgeingStageMeta(group.stage);
+      const engineerEmails = getEngineerEmailsFromUsers(users, group.engineerName);
+      const engineerName = group.engineerName || "Engineer";
+      const totalQty = group.materials.reduce((sum, row) => sum + Number(row.qty || 0), 0);
+      const oldestAgeDays = group.materials[0]?.ageDays || 0;
+
+      if (!engineerEmails.length) {
+        summary.skippedNoEngineerEmail += 1;
+        await EmailLog.create({
+          type: alertType,
+          subject: `Skipped: missing engineer email for ${engineerName}`,
+          to: "",
+          status: "failure",
+          sentAt: new Date(),
+          meta: {
+            engineerName,
+            stage: group.stage,
+            totalQty,
+            materialRows: group.materials.length,
+            reason: "Engineer email not found in users collection",
+          },
+        });
+        continue;
+      }
+
+      if (!adminRecipients.length) {
+        summary.skippedNoAdminEmail += 1;
+        await EmailLog.create({
+          type: alertType,
+          subject: `Skipped: missing admin CC for ${engineerName}`,
+          to: engineerEmails.join(", "),
+          status: "failure",
+          sentAt: new Date(),
+          meta: {
+            engineerName,
+            stage: group.stage,
+            totalQty,
+            materialRows: group.materials.length,
+            reason: "No admin email found in users collection",
+          },
+        });
+        continue;
+      }
+
+      const existingLog = await EmailLog.findOne({
+        type: alertType,
+        status: "success",
+        "meta.scheduleDate": todayISO,
+        "meta.engineerKey": group.engineerKey,
+        "meta.stage": group.stage,
+      }).lean();
+
+      if (existingLog) {
+        summary.skippedDuplicate += 1;
+        continue;
+      }
+
+      const subject = `${stageMeta.subjectPrefix} | ${engineerName} | ${group.materials.length} Item(s)`;
+      const generatedAt = formatDateTimeIST(new Date());
+      const htmlBody = buildFaultyMaterialAgeingMailBody({
+        engineerName,
+        stage: group.stage,
+        materials: group.materials,
+        totalQty,
+        oldestAgeDays,
+        generatedAt,
+      });
+      const textBody = [
+        `${stageMeta.header} | ${engineerName}`,
+        "",
+        stageMeta.intro,
+        "",
+        `Faulty Entries: ${group.materials.length}`,
+        `Total Qty: ${totalQty}`,
+        `Oldest Age: ${oldestAgeDays} days`,
+        "",
+        ...group.materials.map((row, index) => `${index + 1}. ${row.itemCode || "—"} | ${row.itemName || "—"} | Qty ${Number(row.qty || 0)} | Created ${formatISTDateOnly(row.faultyMaterialCreatedAt || row.createdAt)} | Age ${Number(row.ageDays || 0)} days`),
+        "",
+        stageMeta.actionText,
+        "",
+        "Regards,",
+        "Relcon CRM System",
+        `Generated on ${generatedAt} IST`,
+      ].join("\n");
+
+      const info = await transporter.sendMail({
+        from: getDefaultOutgoingFromHeader(),
+        to: engineerEmails.join(", "),
+        cc: adminRecipients.join(", "),
+        subject,
+        html: htmlBody,
+        text: textBody,
+      });
+
+      await EmailLog.create({
+        type: alertType,
+        subject,
+        to: engineerEmails.join(", "),
+        status: "success",
+        sentAt: new Date(),
+        meta: {
+          cc: adminRecipients.join(", "),
+          engineerName,
+          engineerKey: group.engineerKey,
+          stage: group.stage,
+          scheduleDate: todayISO,
+          totalQty,
+          oldestAgeDays,
+          materialRows: group.materials.length,
+          messageId: info?.messageId || "",
+        },
+      });
+
+      summary.sent += 1;
+      summary[group.stage] += 1;
+    }
+
+    console.log("✅ Faulty material ageing alert summary:", summary);
+    return { ok: true, summary };
+  } catch (err) {
+    console.error("❌ Faulty material ageing alert error:", err.message);
+
+    try {
+      await EmailLog.create({
+        type: alertType,
+        subject: "Faulty material ageing alert - failure",
+        to: "",
+        status: "failure",
+        sentAt: new Date(),
+        meta: {
+          error: err.message || String(err),
+        },
+      });
+    } catch (logErr) {
+      console.error("Failed to write EmailLog for faulty material ageing alert:", logErr?.message || logErr);
+    }
+
+    return { ok: false, error: err };
+  }
+}
+
 async function sendFaultyProbeHQODispatchReminder() {
   const alertType = "Faulty Probe HQO Dispatch Reminder";
 
@@ -6294,13 +6691,13 @@ cron.schedule(
   { timezone: "Asia/Kolkata" }
 );
 
-// ─── Scheduler: daily 11:00 IST for faulty material dispatch alerts ──────────
+// ─── Scheduler: daily 09:00 IST for faulty material ageing alerts ───────────
 
 cron.schedule(
-  "0 11 * * *",
+  "0 9 * * *",
   () => {
-    console.log("🔔 Faulty material dispatch alert CRON TRIGGERED:", new Date().toISOString());
-    sendFaultyMaterialDispatchAlerts().catch((e) => console.error("Faulty material dispatch alert job error:", e));
+    console.log("🔔 Faulty material ageing alert CRON TRIGGERED:", new Date().toISOString());
+    sendFaultyMaterialAgeingAlerts().catch((e) => console.error("Faulty material ageing alert job error:", e));
   },
   { timezone: "Asia/Kolkata" }
 );
@@ -6461,9 +6858,10 @@ if (require.main === module) {
       .then((r) => { console.log("HPCL action required pending verification done:", r); process.exit(r.ok ? 0 : 1); })
       .catch((e) => { console.error("❌ error:", e); process.exit(1); });
 
-  } else if (type === "faulty-material") {
-    sendFaultyMaterialDispatchAlerts()
-      .then((r) => { console.log("Faulty material dispatch alert done:", r); process.exit(r.ok ? 0 : 1); })
+  } else if (type === "faulty-material" || type === "faulty-material-ageing") {
+    connectMongoForManualRun()
+      .then(() => sendFaultyMaterialAgeingAlerts())
+      .then((r) => { console.log("Faulty material ageing alert done:", r); process.exit(r.ok ? 0 : 1); })
       .catch((e) => { console.error("❌ error:", e); process.exit(1); });
 
   } else if (type === "attendance-monthly") {
@@ -6539,7 +6937,8 @@ module.exports = {
   sendPendingStatusEmail,
   sendUnverifiedStatusEmail,
   sendHpclActionRequiredUnverifiedEmail,
-  sendFaultyMaterialDispatchAlerts,
+  sendFaultyMaterialAgeingAlerts,
+  sendFaultyMaterialDispatchAlerts: sendFaultyMaterialAgeingAlerts,
   sendFaultyProbeHQODispatchReminder,
   sendWeeklyUserMailSummaryToAdmins,
   sendWeeklySpareUtilisationRequirementReportToAdmins,
