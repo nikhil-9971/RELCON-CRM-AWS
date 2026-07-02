@@ -8,6 +8,8 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.18.5/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 <style>
 /* ════════════════════════════════════════════════════
    RELCON CRM — Salesforce Lightning Design System
@@ -180,6 +182,13 @@ tbody tr.sf-total-row td{color:var(--txt)!important;font-weight:700!important;}
 .sf-modal-body{flex:1;min-height:0;overflow:auto;padding:16px 20px;}
 .sf-modal-footer{padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;background:var(--surface2);flex-shrink:0;}
 .amc-modal-meta{font-size:11px;color:var(--txt3);margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap;}
+.modal-tools{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-lg);}
+.modal-find{position:relative;flex:1 1 260px;min-width:220px;}
+.modal-find i{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--txt4);pointer-events:none;}
+.modal-find input{width:100%;height:32px;border:1px solid var(--border);border-radius:var(--r-sm);padding:0 10px 0 30px;font-family:'Inter',sans-serif;font-size:12px;color:var(--txt);background:var(--surface);outline:none;}
+.modal-find input:focus{border-color:var(--sf-blue);box-shadow:0 0 0 2px rgba(1,118,211,.12);}
+.modal-tools-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.modal-result-count{font-size:10px;font-weight:700;color:var(--txt3);background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:5px 9px;white-space:nowrap;}
 
 /* ════════════════════════════════════════════════
    RELCON CRM — Mobile Responsive CSS (All Pages)
@@ -469,9 +478,14 @@ tbody tr.sf-total-row td{color:var(--txt)!important;font-weight:700!important;}
           </button>
         </div>
       </div>
-      <button onclick="exportAMCVisitStatusCSV()" class="sf-btn sf-btn-success sf-btn-sm">
-        <i class="fa-solid fa-download"></i> Export CSV
-      </button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button id="overallAmcViewBtn" onclick="openAMCPendingModal('__ALL__')" class="sf-btn sf-btn-primary sf-btn-sm" style="display:none;">
+          <i class="fa-solid fa-eye"></i> Overall View
+        </button>
+        <button onclick="exportAMCVisitStatusCSV()" class="sf-btn sf-btn-success sf-btn-sm">
+          <i class="fa-solid fa-download"></i> Export CSV
+        </button>
+      </div>
     </div>
     <div class="sf-section-body no-pad">
       <div class="sf-table-wrap">
@@ -521,6 +535,9 @@ tbody tr.sf-total-row td{color:var(--txt)!important;font-weight:700!important;}
     <div class="sf-section-header">
       <div class="sf-section-title"><i class="fa-solid fa-microchip" style="color:var(--sf-orange);"></i> Power Protection PCB Installation Status (All Time)</div>
       <div style="display:flex;gap:8px;">
+        <button id="overallPcbViewBtn" onclick="openPcbInstallModal('__ALL__')" class="sf-btn sf-btn-primary sf-btn-sm" style="display:none;">
+          <i class="fa-solid fa-eye"></i> Overall View
+        </button>
         <button id="savePcbProvidedBtn" onclick="savePcbProvidedCounts()" class="sf-btn sf-btn-primary sf-btn-sm" style="display:none;">
           <i class="fa-solid fa-floppy-disk"></i> Save
         </button>
@@ -595,10 +612,23 @@ tbody tr.sf-total-row td{color:var(--txt)!important;font-weight:700!important;}
     </div>
     <div class="sf-modal-body">
       <div class="amc-modal-meta" id="amcPendingModalMeta"></div>
+      <div class="modal-tools">
+        <div class="modal-find">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input id="amcPendingFind" type="search" placeholder="Find engineer, RO code, RO name, region..." oninput="filterAMCPendingModal()"/>
+        </div>
+        <div class="modal-tools-actions">
+          <span class="modal-result-count" id="amcPendingResultCount">0 records</span>
+          <button class="sf-btn sf-btn-success sf-btn-sm" onclick="exportAMCPendingModalPDF()">
+            <i class="fa-solid fa-file-pdf"></i> PDF
+          </button>
+        </div>
+      </div>
       <div class="sf-table-wrap" style="max-height:60vh;">
         <table>
           <thead>
             <tr>
+              <th>Engineer</th>
               <th>RO Code</th>
               <th>RO Name</th>
               <th>Region</th>
@@ -632,10 +662,23 @@ tbody tr.sf-total-row td{color:var(--txt)!important;font-weight:700!important;}
     </div>
     <div class="sf-modal-body">
       <div class="amc-modal-meta" id="pcbInstallModalMeta"></div>
+      <div class="modal-tools">
+        <div class="modal-find">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input id="pcbInstallFind" type="search" placeholder="Find engineer, RO code, RO name, region..." oninput="filterPcbInstallModal()"/>
+        </div>
+        <div class="modal-tools-actions">
+          <span class="modal-result-count" id="pcbInstallResultCount">0 records</span>
+          <button class="sf-btn sf-btn-success sf-btn-sm" onclick="exportPcbInstallModalPDF()">
+            <i class="fa-solid fa-file-pdf"></i> PDF
+          </button>
+        </div>
+      </div>
       <div class="sf-table-wrap" style="max-height:60vh;">
         <table>
           <thead>
             <tr>
+              <th>Engineer</th>
               <th>Date</th>
               <th>RO Code</th>
               <th>RO Name</th>
@@ -1092,21 +1135,43 @@ function renderPcbInstallation(statusRecords, pcbProvidedCounts) {
     const viewDisabled = r.installed > 0 ? "" : "disabled";
     return `<tr><td>${escHtml(r.eng)}</td><td>${providedCell}</td><td>${r.todayInstalled}</td><td>${r.installed}</td><td style="color:${r.pending>0?'var(--sf-red)':'var(--sf-green)'};font-weight:600;">${r.pending}</td><td>${r.siteInstallCount}</td><td><button class="sf-icon-btn" ${viewDisabled} data-engineer="${escAttr(r.eng)}" onclick="openPcbInstallModal(this.dataset.engineer)" title="View PCB installation list"><i class="fa-solid fa-eye"></i></button></td></tr>`;
   }).join("");
-  if (rows.length > 0) tbody.innerHTML += `<tr class="sf-total-row"><td>Total</td><td>${totalProvided}</td><td>${totalTodayInstalled}</td><td>${totalInstalled}</td><td style="color:var(--sf-red);">${totalPending}</td><td>${totalSiteInstallCount}</td><td></td></tr>`;
+  if (rows.length > 0) {
+    const overallViewBtn = isAdmin && totalInstalled > 0
+      ? `<button class="sf-icon-btn" onclick="openPcbInstallModal('__ALL__')" title="View overall PCB installation list"><i class="fa-solid fa-eye"></i></button>`
+      : "";
+    tbody.innerHTML += `<tr class="sf-total-row"><td>Total</td><td>${totalProvided}</td><td>${totalTodayInstalled}</td><td>${totalInstalled}</td><td style="color:var(--sf-red);">${totalPending}</td><td>${totalSiteInstallCount}</td><td>${overallViewBtn}</td></tr>`;
+  }
   else tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--txt3);">No data</td></tr>`;
   if (saveBtn) saveBtn.style.display = isAdmin ? "" : "none";
 }
 
 function openPcbInstallModal(engineerName) {
   const detailMap = window.__pcbInstallDetailRows instanceof Map ? window.__pcbInstallDetailRows : new Map();
-  const rows = detailMap.get(String(engineerName || "").trim()) || [];
-  document.getElementById("pcbInstallModalTitle").textContent = `${engineerName} - PCB Installation List`;
-  document.getElementById("pcbInstallModalMeta").innerHTML = `<span class="sf-badge badge-green">Total Install: ${rows.length}</span>`;
+  const isOverall = String(engineerName || "") === "__ALL__";
+  const rows = isOverall
+    ? Array.from(detailMap.values()).flat()
+    : (detailMap.get(String(engineerName || "").trim()) || []);
+  rows.sort((a, b) =>
+    String(a.engineerName || "").localeCompare(String(b.engineerName || "")) ||
+    String(b.date || "").localeCompare(String(a.date || "")) ||
+    String(a.roCode || "").localeCompare(String(b.roCode || ""))
+  );
+  window.__pcbInstallModalRows = rows;
+  window.__pcbInstallModalTitle = isOverall ? "Overall PCB Installation List" : `${engineerName} - PCB Installation List`;
+  document.getElementById("pcbInstallModalTitle").textContent = window.__pcbInstallModalTitle;
+  document.getElementById("pcbInstallFind").value = "";
+  filterPcbInstallModal();
+  document.getElementById("pcbInstallModal").classList.add("open");
+}
 
+function renderPcbInstallModalRows(rows) {
   const tbody = document.getElementById("pcbInstallModalBody");
+  document.getElementById("pcbInstallModalMeta").innerHTML = `<span class="sf-badge badge-green">Total Install: ${window.__pcbInstallModalRows?.length || 0}</span>`;
+  document.getElementById("pcbInstallResultCount").textContent = `${rows.length} record${rows.length === 1 ? "" : "s"}`;
   tbody.innerHTML = rows.length
     ? rows.map((item) => `
         <tr>
+          <td>${escHtml(item.engineerName || "-")}</td>
           <td>${escHtml(item.date || "-")}</td>
           <td>${escHtml(item.roCode || "-")}</td>
           <td>${escHtml(item.roName || "-")}</td>
@@ -1115,9 +1180,17 @@ function openPcbInstallModal(engineerName) {
           <td>${escHtml(item.purpose || "-")}</td>
         </tr>
       `).join("")
-    : '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--txt3);">No PCB installation records found for this engineer.</td></tr>';
+    : '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--txt3);">No PCB installation records found.</td></tr>';
+}
 
-  document.getElementById("pcbInstallModal").classList.add("open");
+function filterPcbInstallModal() {
+  const rows = window.__pcbInstallModalRows || [];
+  const q = String(document.getElementById("pcbInstallFind")?.value || "").trim().toLowerCase();
+  const filtered = q
+    ? rows.filter((item) => [item.engineerName,item.date,item.roCode,item.roName,item.region,item.phase,item.purpose].some((v) => String(v || "").toLowerCase().includes(q)))
+    : rows;
+  window.__pcbInstallModalFilteredRows = filtered;
+  renderPcbInstallModalRows(filtered);
 }
 
 function closePcbInstallModal() {
@@ -1383,28 +1456,45 @@ function renderAMCVisitStatus(data, currentUser) {
     const totalPct = totalActiveAssigned > 0 ? ((totalCompleted / totalActiveAssigned) * 100).toFixed(1) : "0.0";
     const totalBadge = totalPct >= 70 ? "badge-green" : totalPct >= 40 ? "badge-yellow" : "badge-red";
     const totalBarClass = totalPct >= 70 ? "green" : totalPct >= 40 ? "yellow" : "red";
-    tbody.innerHTML += `<tr class="sf-total-row"><td>Total</td><td>${totalAssigned}</td><td>${totalCompleted}</td><td style="color:var(--sf-red);">${totalPending}</td><td>${totalInactive}</td><td><div style="display:flex;align-items:center;gap:6px;"><div class="amc-bar"><div class="amc-bar-fill ${totalBarClass}" style="width:${Math.min(100,totalPct)}%"></div></div><span class="sf-badge ${totalBadge}">${totalPct}%</span></div></td><td></td></tr>`;
+    const overallViewBtn = totalPending > 0
+      ? `<button class="sf-icon-btn" onclick="openAMCPendingModal('__ALL__')" title="View overall pending AMC list"><i class="fa-solid fa-eye"></i></button>`
+      : "";
+    tbody.innerHTML += `<tr class="sf-total-row"><td>Total</td><td>${totalAssigned}</td><td>${totalCompleted}</td><td style="color:var(--sf-red);">${totalPending}</td><td>${totalInactive}</td><td><div style="display:flex;align-items:center;gap:6px;"><div class="amc-bar"><div class="amc-bar-fill ${totalBarClass}" style="width:${Math.min(100,totalPct)}%"></div></div><span class="sf-badge ${totalBadge}">${totalPct}%</span></div></td><td>${overallViewBtn}</td></tr>`;
   }
 }
 
 function openAMCPendingModal(engineerName) {
   const detailedData = Array.isArray(window.__amcDetailedData) ? window.__amcDetailedData : [];
+  const isOverall = String(engineerName || "") === "__ALL__";
   const normalizedEngineer = String(engineerName || "").trim().toLowerCase();
   const pendingRows = detailedData
-    .filter((item) => String(item.engineerName || "").trim().toLowerCase() === normalizedEngineer)
+    .filter((item) => String(item.engineerName || "").trim().toUpperCase() !== "NAVAL KISHOR PANDEY")
+    .filter((item) => isOverall || String(item.engineerName || "").trim().toLowerCase() === normalizedEngineer)
     .filter((item) => String(item.amcStatus || "").trim().toLowerCase() === "pending")
-    .sort((a, b) => String(a.roCode || "").localeCompare(String(b.roCode || "")));
+    .sort((a, b) =>
+      String(a.engineerName || "").localeCompare(String(b.engineerName || "")) ||
+      String(a.roCode || "").localeCompare(String(b.roCode || ""))
+    );
 
-  document.getElementById("amcPendingModalTitle").textContent = `${engineerName} - Pending AMC List`;
+  window.__amcPendingModalRows = pendingRows;
+  window.__amcPendingModalTitle = isOverall ? "Overall Pending AMC List" : `${engineerName} - Pending AMC List`;
+  document.getElementById("amcPendingModalTitle").textContent = window.__amcPendingModalTitle;
+  document.getElementById("amcPendingFind").value = "";
+  filterAMCPendingModal();
+  document.getElementById("amcPendingModal").classList.add("open");
+}
+
+function renderAMCPendingModalRows(rows) {
+  const tbody = document.getElementById("amcPendingModalBody");
   document.getElementById("amcPendingModalMeta").innerHTML = `
-    <span class="sf-badge badge-red">Pending: ${pendingRows.length}</span>
+    <span class="sf-badge badge-red">Pending: ${window.__amcPendingModalRows?.length || 0}</span>
     <span class="sf-badge badge-yellow">Date: ${escHtml(document.getElementById("amcStartDate").value)} to ${escHtml(document.getElementById("amcEndDate").value)}</span>
   `;
-
-  const tbody = document.getElementById("amcPendingModalBody");
-  tbody.innerHTML = pendingRows.length
-    ? pendingRows.map((item) => `
+  document.getElementById("amcPendingResultCount").textContent = `${rows.length} record${rows.length === 1 ? "" : "s"}`;
+  tbody.innerHTML = rows.length
+    ? rows.map((item) => `
         <tr>
+          <td>${escHtml(item.engineerName || "-")}</td>
           <td>${escHtml(item.roCode || "-")}</td>
           <td>${escHtml(item.roName || "-")}</td>
           <td>${escHtml(item.region || "-")}</td>
@@ -1413,13 +1503,128 @@ function openAMCPendingModal(engineerName) {
           <td>${escHtml(item.siteActivestatus || "-")}</td>
         </tr>
       `).join("")
-    : '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--txt3);">No pending AMC found for this engineer.</td></tr>';
+    : '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--txt3);">No pending AMC found.</td></tr>';
+}
 
-  document.getElementById("amcPendingModal").classList.add("open");
+function filterAMCPendingModal() {
+  const rows = window.__amcPendingModalRows || [];
+  const q = String(document.getElementById("amcPendingFind")?.value || "").trim().toLowerCase();
+  const filtered = q
+    ? rows.filter((item) => [item.engineerName,item.roCode,item.roName,item.region,item.phase,item.amcQtr,item.siteActivestatus].some((v) => String(v || "").toLowerCase().includes(q)))
+    : rows;
+  window.__amcPendingModalFilteredRows = filtered;
+  renderAMCPendingModalRows(filtered);
 }
 
 function closeAMCPendingModal() {
   document.getElementById("amcPendingModal").classList.remove("open");
+}
+
+function generateOverviewPdf({ title, subtitle, headers, rows, filename, accent = [1, 118, 211] }) {
+  const jsPdfCtor = window.jspdf?.jsPDF;
+  if (!jsPdfCtor || !window.jspdf) {
+    alert("PDF library not loaded. Please check internet connection and try again.");
+    return;
+  }
+  if (!rows.length) {
+    alert("No records available for PDF.");
+    return;
+  }
+  const doc = new jsPdfCtor({ orientation: "landscape", unit: "pt", format: "a4" });
+  if (typeof doc.autoTable !== "function") {
+    alert("PDF table plugin not loaded. Please check internet connection and try again.");
+    return;
+  }
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const generatedAt = new Date().toLocaleString("en-IN");
+
+  doc.setFillColor(...accent);
+  doc.rect(0, 0, pageWidth, 58, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(17);
+  doc.text(title, 40, 28);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.text(subtitle, 40, 44);
+  doc.text(`Generated: ${generatedAt}`, pageWidth - 40, 44, { align: "right" });
+
+  doc.setTextColor(62, 62, 60);
+  doc.setFontSize(10);
+  doc.text(`Records: ${rows.length}`, 40, 78);
+
+  doc.autoTable({
+    head: [headers],
+    body: rows,
+    startY: 92,
+    theme: "grid",
+    styles: {
+      font: "helvetica",
+      fontSize: 8,
+      cellPadding: 4,
+      overflow: "linebreak",
+      valign: "top",
+      lineColor: [221, 219, 218],
+      lineWidth: 0.4,
+    },
+    headStyles: {
+      fillColor: [26, 46, 74],
+      textColor: [232, 244, 253],
+      fontStyle: "bold",
+      fontSize: 8,
+    },
+    alternateRowStyles: { fillColor: [249, 249, 249] },
+    margin: { left: 40, right: 40, top: 78, bottom: 34 },
+    didDrawPage: () => {
+      const pageCount = doc.internal.getNumberOfPages();
+      const page = doc.internal.getCurrentPageInfo().pageNumber;
+      doc.setFontSize(8);
+      doc.setTextColor(112, 110, 107);
+      doc.text("RELCON CRM", 40, doc.internal.pageSize.getHeight() - 16);
+      doc.text(`Page ${page} of ${pageCount}`, pageWidth - 40, doc.internal.pageSize.getHeight() - 16, { align: "right" });
+    },
+  });
+  doc.save(filename);
+}
+
+function exportAMCPendingModalPDF() {
+  const rows = window.__amcPendingModalFilteredRows || window.__amcPendingModalRows || [];
+  generateOverviewPdf({
+    title: window.__amcPendingModalTitle || "Pending AMC List",
+    subtitle: `AMC period: ${document.getElementById("amcStartDate").value || "-"} to ${document.getElementById("amcEndDate").value || "-"}`,
+    headers: ["Engineer", "RO Code", "RO Name", "Region", "Phase", "AMC QTR", "Site Active Status"],
+    rows: rows.map((item) => [
+      item.engineerName || "-",
+      item.roCode || "-",
+      item.roName || "-",
+      item.region || "-",
+      item.phase || "-",
+      item.amcQtr || "-",
+      item.siteActivestatus || "-",
+    ]),
+    filename: `pending_amc_${new Date().toLocaleDateString("en-CA")}.pdf`,
+    accent: [107, 63, 160],
+  });
+}
+
+function exportPcbInstallModalPDF() {
+  const rows = window.__pcbInstallModalFilteredRows || window.__pcbInstallModalRows || [];
+  generateOverviewPdf({
+    title: window.__pcbInstallModalTitle || "PCB Installation List",
+    subtitle: "Power Protection PCB Installation Status",
+    headers: ["Engineer", "Date", "RO Code", "RO Name", "Region", "Phase", "Purpose of Visit"],
+    rows: rows.map((item) => [
+      item.engineerName || "-",
+      item.date || "-",
+      item.roCode || "-",
+      item.roName || "-",
+      item.region || "-",
+      item.phase || "-",
+      item.purpose || "-",
+    ]),
+    filename: `pcb_installation_${new Date().toLocaleDateString("en-CA")}.pdf`,
+    accent: [221, 90, 12],
+  });
 }
 
 async function exportAMCVisitStatusCSV() {
