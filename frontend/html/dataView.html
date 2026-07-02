@@ -592,6 +592,42 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
 }
 .dv-brand-bar img { height: 30px; opacity: 0.85; }
 
+/* Completion modal visit context */
+.dv-visit-context {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 12px;
+  margin-bottom: 14px;
+}
+.dv-context-item {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.dv-context-label {
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--txt4);
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+}
+.dv-context-value {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--txt);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.dv-context-value.muted {
+  color: var(--txt4);
+  font-weight: 600;
+}
+
 /* ── TOAST ── */
 #dv-toast-container {
   position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
@@ -879,6 +915,7 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
   .dv-section-hd { font-size: 9px !important; padding: 10px 0 6px !important; margin-bottom: 8px !important; }
   .dv-brand-bar { padding: 6px 0 2px !important; margin-bottom: 8px !important; }
   .dv-brand-bar img { height: 24px !important; }
+  .dv-visit-context { grid-template-columns: 1fr !important; gap: 8px !important; padding: 10px !important; }
   .dv-form-grid, .dv-form-grid-3 { grid-template-columns: 1fr !important; gap: 8px !important; }
 }
 </style>
@@ -1215,6 +1252,24 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
     </div>
     <div class="dv-modal-body">
       <input type="hidden" id="completionPlanId"/>
+      <div class="dv-visit-context" aria-label="Visit details">
+        <div class="dv-context-item">
+          <span class="dv-context-label">RO Code</span>
+          <span class="dv-context-value" id="completionRoCode">—</span>
+        </div>
+        <div class="dv-context-item">
+          <span class="dv-context-label">RO Name</span>
+          <span class="dv-context-value" id="completionRoName">—</span>
+        </div>
+        <div class="dv-context-item">
+          <span class="dv-context-label">Engineer Name</span>
+          <span class="dv-context-value" id="completionEngineer">—</span>
+        </div>
+        <div class="dv-context-item">
+          <span class="dv-context-label">Purpose of Visit</span>
+          <span class="dv-context-value" id="completionPurpose">—</span>
+        </div>
+      </div>
       <div class="dv-field">
         <label class="dv-label">Enter Completion Notes</label>
         <textarea id="completionInput" rows="4" class="dv-modal-textarea" placeholder="Describe completion status…"></textarea>
@@ -1592,7 +1647,7 @@ function populateTable(data) {
 
     const v = (val) => val || `<span class="dv-cell-dash">—</span>`;
     const completionCell = loggedInUser.role === 'admin'
-      ? `<span class="dv-completion" onclick="openCompletionModal('${plan._id}', \`${plan.completionStatus||''}\`)">
+      ? `<span class="dv-completion" onclick="openCompletionModal('${plan._id}')">
           <i class="fa-solid fa-${plan.completionStatus ? 'pen-to-square' : 'plus'}"></i> ${plan.completionStatus || 'Add'}</span>`
       : v(plan.completionStatus);
 
@@ -1913,7 +1968,32 @@ async function saveStatus() {
 }
 
 /* ── COMPLETION ── */
-function openCompletionModal(planId, txt) { document.getElementById('completionPlanId').value=planId; document.getElementById('completionInput').value=txt||''; document.getElementById('completionModal').classList.remove('hidden'); }
+function setCompletionContext(plan) {
+  const valueOrDash = (value) => {
+    const clean = value == null ? '' : String(value).trim();
+    return clean || '—';
+  };
+  [
+    ['completionRoCode', plan?.roCode],
+    ['completionRoName', plan?.roName],
+    ['completionEngineer', plan?.engineer],
+    ['completionPurpose', plan?.purpose],
+  ].forEach(([id, value]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const text = valueOrDash(value);
+    el.textContent = text;
+    el.classList.toggle('muted', text === '—');
+  });
+}
+
+function openCompletionModal(planId) {
+  const plan = fullData.find(p => p._id === planId) || filteredData.find(p => p._id === planId) || {};
+  document.getElementById('completionPlanId').value = planId;
+  document.getElementById('completionInput').value = plan.completionStatus || '';
+  setCompletionContext(plan);
+  document.getElementById('completionModal').classList.remove('hidden');
+}
 function closeCompletionModal() { document.getElementById('completionModal').classList.add('hidden'); }
 async function saveCompletionStatus() {
   const id=document.getElementById('completionPlanId').value, text=document.getElementById('completionInput').value;
