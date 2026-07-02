@@ -33,8 +33,8 @@ const HPCL_AMC_PHASES = [
   "HPCL/Phase-XIII",
 ];
 const HPCL_AMC_VISIT_TYPES = ["PM Visit", "Issue & PM Visit", "ATG & PM Visit"];
-const DEFAULT_HPCL_AMC_START_DATE = "2026-04-01";
-const DEFAULT_HPCL_AMC_END_DATE = "2026-06-30";
+const DEFAULT_HPCL_AMC_START_DATE = "2026-07-01";
+const DEFAULT_HPCL_AMC_END_DATE = "2026-09-30";
 const EXCLUDED_PURPOSE_SUGGESTIONS = ["", "NO PLAN", "IN LEAVE"];
 
 function normalizeText(value = "") {
