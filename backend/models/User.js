@@ -10,6 +10,8 @@ const UserSchema = new mongoose.Schema({
   isActive: { type: Boolean, default: true },
   profilePhoto: { type: String, default: "" },
   pcbProvidedCount: { type: Number, default: 0 },
+  faultyPcbInHandCount: { type: Number, default: 0 },
+  faultyPcbDispatchToHoCount: { type: Number, default: 0 },
   externalUser: { type: Boolean, default: false },
   externalPending: { type: Boolean, default: false },
   googleVerified: { type: Boolean, default: false },

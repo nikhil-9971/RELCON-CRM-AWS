@@ -555,6 +555,8 @@ tbody tr.sf-total-row td{color:var(--txt)!important;font-weight:700!important;}
               <th>Total PCB Provided (A)</th>
               <th>Today PCB Installation</th>
               <th>Total PCB Install (B)</th>
+              <th>Faulty PCB In Hand</th>
+              <th>Faulty PCB Dispatch to HO</th>
               <th>PCB Installation Pending</th>
               <th>Site Wise Install Count</th>
               <th>View</th>
@@ -1039,8 +1041,22 @@ function renderEngineerMonthly(plans, ym) {
 }
 
 function normalizeText(s) { return String(s || "").trim().toUpperCase(); }
-function isPowerProtectionInstall(purpose) { const t = normalizeText(purpose); return t.includes("POWER PROTECTION PCB") && (t.includes("INSTALL") || t.includes("INSTAL")); }
+function isPowerProtectionInstall(purpose) { const t = normalizeText(purpose); return t.includes("POWER PROTECTION PCB") && !t.includes("REPLACE") && (t.includes("INSTALL") || t.includes("INSTAL")); }
+function isPowerProtectionReplace(purpose) { const t = normalizeText(purpose); return t.includes("POWER PROTECTION PCB") && t.includes("REPLACE"); }
 function isGsmModuleInstall(purpose) { const t = normalizeText(purpose); return (t.includes("GSM MODULE") && (t.includes("INSTALL") || t.includes("INSTAL"))) || t.includes("GSM MODULE INSTALLATION"); }
+function normalizePcbCountRecord(value) {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return {
+      provided: Math.max(0, Number(value.provided ?? value.pcbProvidedCount) || 0),
+      faultyInHand: Math.max(0, Number(value.faultyInHand ?? value.faultyPcbInHandCount) || 0),
+      faultyDispatchToHo: Math.max(0, Number(value.faultyDispatchToHo ?? value.faultyPcbDispatchToHoCount) || 0),
+    };
+  }
+  return { provided: Math.max(0, Number(value || 0) || 0), faultyInHand: 0, faultyDispatchToHo: 0 };
+}
+function getPcbCountRecord(pcbCounts, engineerName) {
+  return normalizePcbCountRecord(pcbCounts?.[engineerName]);
+}
 
 function renderRelconConnectivity(statusRecords) {
   const tbody = document.getElementById("relconConnectivityBody");
@@ -1084,15 +1100,18 @@ function renderPcbInstallation(statusRecords, pcbProvidedCounts) {
   if (userRole === "engineer" && currentEngineer) filteredRecords = filteredRecords.filter((r) => String(r.engineer || r.Engineer || r.engineerName || "").trim().toLowerCase() === currentEngineer.toLowerCase());
   const map = new Map();
   const detailMap = new Map();
+  const installedRoCodes = new Set();
   filteredRecords.forEach((r) => {
     const eng = String(r.engineer || r.Engineer || r.engineerName || "").trim() || "-";
-    if (!map.has(eng)) map.set(eng, { provided: Number(pcbProvidedCounts?.[eng] || 0) || 0, installed: 0, todayInstalled: 0, siteKeys: new Set() });
+    if (!map.has(eng)) map.set(eng, { ...getPcbCountRecord(pcbProvidedCounts, eng), installed: 0, todayInstalled: 0, siteKeys: new Set() });
     if (isPowerProtectionInstall(r.purpose || r.PurposeOfVisit || r.PURPOSEOFVISIT)) {
       map.get(eng).installed += 1;
       const recordDate = String(r.date || r.Date || r.DATE || "").slice(0, 10);
       if (recordDate === today) map.get(eng).todayInstalled += 1;
       const siteKey = `${String(r.roCode || r.ROCode || r.rocode || "").trim().toUpperCase()}||${String(r.roName || r.ROName || "").trim().toUpperCase()}`;
       if (siteKey !== "||") map.get(eng).siteKeys.add(siteKey);
+      const roCodeKey = String(r.roCode || r.ROCode || r.rocode || "").trim().toUpperCase();
+      if (roCodeKey) installedRoCodes.add(roCodeKey);
       if (!detailMap.has(eng)) detailMap.set(eng, []);
       detailMap.get(eng).push({
         engineerName: eng,
@@ -1105,6 +1124,22 @@ function renderPcbInstallation(statusRecords, pcbProvidedCounts) {
       });
     }
   });
+  filteredRecords.forEach((r) => {
+    const purpose = r.purpose || r.PurposeOfVisit || r.PURPOSEOFVISIT;
+    const roCodeKey = String(r.roCode || r.ROCode || r.rocode || "").trim().toUpperCase();
+    if (!installedRoCodes.has(roCodeKey) || !isPowerProtectionReplace(purpose)) return;
+    const eng = String(r.engineer || r.Engineer || r.engineerName || "").trim() || "-";
+    if (!detailMap.has(eng)) detailMap.set(eng, []);
+    detailMap.get(eng).push({
+      engineerName: eng,
+      date: String(r.date || r.Date || r.DATE || "").slice(0, 10),
+      roCode: String(r.roCode || r.ROCode || r.rocode || "").trim(),
+      roName: String(r.roName || r.ROName || "").trim(),
+      region: String(r.region || r.Region || "").trim(),
+      phase: String(r.phase || r.Phase || "").trim(),
+      purpose: String(purpose || "").trim(),
+    });
+  });
   detailMap.forEach((items) => items.sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")) || String(a.roCode || "").localeCompare(String(b.roCode || ""))));
   window.__pcbInstallDetailRows = detailMap;
   Object.entries(pcbProvidedCounts || {}).forEach(([eng, provided]) => {
@@ -1112,36 +1147,47 @@ function renderPcbInstallation(statusRecords, pcbProvidedCounts) {
     if (!name) return;
     if (!isEngineerRecordName(name)) return;
     if (userRole === "engineer" && currentEngineer && name.toLowerCase() !== currentEngineer.toLowerCase()) return;
-    if (!map.has(name)) map.set(name, { provided: Number(provided || 0) || 0, installed: 0, todayInstalled: 0, siteKeys: new Set() });
-    else map.get(name).provided = Number(provided || 0) || 0;
+    const counts = normalizePcbCountRecord(provided);
+    if (!map.has(name)) map.set(name, { ...counts, installed: 0, todayInstalled: 0, siteKeys: new Set() });
+    else Object.assign(map.get(name), counts);
   });
   const rows = Array.from(map.entries()).map(([eng, rec]) => ({
     eng,
     provided: rec.provided,
     todayInstalled: rec.todayInstalled,
     installed: rec.installed,
-    pending: Math.max(0, rec.provided - rec.installed),
+    faultyInHand: rec.faultyInHand,
+    faultyDispatchToHo: rec.faultyDispatchToHo,
+    pending: Math.max(0, rec.provided - (rec.installed + rec.faultyInHand + rec.faultyDispatchToHo)),
     siteInstallCount: rec.siteKeys?.size || 0,
   })).filter((r) => r.eng.toUpperCase() !== "NAVAL KISHOR PANDEY").sort((a, b) => a.eng.localeCompare(b.eng));
   const totalProvided = rows.reduce((sum, r) => sum + r.provided, 0);
   const totalInstalled = rows.reduce((sum, r) => sum + r.installed, 0);
+  const totalFaultyInHand = rows.reduce((sum, r) => sum + r.faultyInHand, 0);
+  const totalFaultyDispatchToHo = rows.reduce((sum, r) => sum + r.faultyDispatchToHo, 0);
   const totalPending = rows.reduce((sum, r) => sum + r.pending, 0);
   const totalTodayInstalled = rows.reduce((sum, r) => sum + r.todayInstalled, 0);
   const totalSiteInstallCount = rows.reduce((sum, r) => sum + r.siteInstallCount, 0);
   tbody.innerHTML = rows.map((r) => {
     const providedCell = isAdmin
-      ? `<input type="number" min="0" value="${r.provided}" data-eng="${escAttr(r.eng)}" style="width:80px;border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:11px;outline:none;" />`
+      ? `<input type="number" min="0" value="${r.provided}" data-eng="${escAttr(r.eng)}" data-pcb-field="provided" style="width:80px;border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:11px;outline:none;" />`
       : `<span>${r.provided}</span>`;
+    const faultyInHandCell = isAdmin
+      ? `<input type="number" min="0" value="${r.faultyInHand}" data-eng="${escAttr(r.eng)}" data-pcb-field="faultyInHand" style="width:80px;border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:11px;outline:none;" />`
+      : `<span>${r.faultyInHand}</span>`;
+    const faultyDispatchCell = isAdmin
+      ? `<input type="number" min="0" value="${r.faultyDispatchToHo}" data-eng="${escAttr(r.eng)}" data-pcb-field="faultyDispatchToHo" style="width:80px;border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:11px;outline:none;" />`
+      : `<span>${r.faultyDispatchToHo}</span>`;
     const viewDisabled = r.installed > 0 ? "" : "disabled";
-    return `<tr><td>${escHtml(r.eng)}</td><td>${providedCell}</td><td>${r.todayInstalled}</td><td>${r.installed}</td><td style="color:${r.pending>0?'var(--sf-red)':'var(--sf-green)'};font-weight:600;">${r.pending}</td><td>${r.siteInstallCount}</td><td><button class="sf-icon-btn" ${viewDisabled} data-engineer="${escAttr(r.eng)}" onclick="openPcbInstallModal(this.dataset.engineer)" title="View PCB installation list"><i class="fa-solid fa-eye"></i></button></td></tr>`;
+    return `<tr><td>${escHtml(r.eng)}</td><td>${providedCell}</td><td>${r.todayInstalled}</td><td>${r.installed}</td><td>${faultyInHandCell}</td><td>${faultyDispatchCell}</td><td style="color:${r.pending>0?'var(--sf-red)':'var(--sf-green)'};font-weight:600;">${r.pending}</td><td>${r.siteInstallCount}</td><td><button class="sf-icon-btn" ${viewDisabled} data-engineer="${escAttr(r.eng)}" onclick="openPcbInstallModal(this.dataset.engineer)" title="View PCB installation list"><i class="fa-solid fa-eye"></i></button></td></tr>`;
   }).join("");
   if (rows.length > 0) {
     const overallViewBtn = isAdmin && totalInstalled > 0
       ? `<button class="sf-icon-btn" onclick="openPcbInstallModal('__ALL__')" title="View overall PCB installation list"><i class="fa-solid fa-eye"></i></button>`
       : "";
-    tbody.innerHTML += `<tr class="sf-total-row"><td>Total</td><td>${totalProvided}</td><td>${totalTodayInstalled}</td><td>${totalInstalled}</td><td style="color:var(--sf-red);">${totalPending}</td><td>${totalSiteInstallCount}</td><td>${overallViewBtn}</td></tr>`;
+    tbody.innerHTML += `<tr class="sf-total-row"><td>Total</td><td>${totalProvided}</td><td>${totalTodayInstalled}</td><td>${totalInstalled}</td><td>${totalFaultyInHand}</td><td>${totalFaultyDispatchToHo}</td><td style="color:var(--sf-red);">${totalPending}</td><td>${totalSiteInstallCount}</td><td>${overallViewBtn}</td></tr>`;
   }
-  else tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--txt3);">No data</td></tr>`;
+  else tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--txt3);">No data</td></tr>`;
   if (saveBtn) saveBtn.style.display = isAdmin ? "" : "none";
 }
 
@@ -1166,7 +1212,7 @@ function openPcbInstallModal(engineerName) {
 
 function renderPcbInstallModalRows(rows) {
   const tbody = document.getElementById("pcbInstallModalBody");
-  document.getElementById("pcbInstallModalMeta").innerHTML = `<span class="sf-badge badge-green">Total Install: ${window.__pcbInstallModalRows?.length || 0}</span>`;
+  document.getElementById("pcbInstallModalMeta").innerHTML = `<span class="sf-badge badge-green">Total Records: ${window.__pcbInstallModalRows?.length || 0}</span>`;
   document.getElementById("pcbInstallResultCount").textContent = `${rows.length} record${rows.length === 1 ? "" : "s"}`;
   tbody.innerHTML = rows.length
     ? rows.map((item) => `
@@ -1201,12 +1247,14 @@ async function savePcbProvidedCounts() {
   try {
     const token = getToken();
     if (!token) { alert("User not logged in."); return; }
-    const inputs = document.querySelectorAll("#pcbInstallationBody input[data-eng]");
+    const inputs = document.querySelectorAll("#pcbInstallationBody input[data-eng][data-pcb-field]");
     const payload = {};
     inputs.forEach((inp) => {
       const eng = String(inp.getAttribute("data-eng") || "").trim();
+      const field = String(inp.getAttribute("data-pcb-field") || "").trim();
       if (!eng) return;
-      payload[eng] = Math.max(0, Number(inp.value || 0) || 0);
+      if (!payload[eng]) payload[eng] = { provided: 0, faultyInHand: 0, faultyDispatchToHo: 0 };
+      if (field in payload[eng]) payload[eng][field] = Math.max(0, Number(inp.value || 0) || 0);
     });
     const saveBtn = byId("savePcbProvidedBtn");
     if (saveBtn) {
@@ -1309,8 +1357,16 @@ function exportPcbInstallationExcel() {
     let pcbRecords = statusRecords.filter((r) => isPowerProtectionInstall(r.purpose || r.PurposeOfVisit || r.PURPOSEOFVISIT));
     pcbRecords = pcbRecords.filter((r) => isEngineerRecordName(r.engineer || r.Engineer || r.engineerName));
     if (userRole === "engineer" && currentEngineer) pcbRecords = pcbRecords.filter((r) => String(r.engineer || r.Engineer || r.engineerName || "").trim().toLowerCase() === currentEngineer.toLowerCase());
+    const installedRoCodes = new Set(pcbRecords.map((r) => String(r.roCode || r.ROCode || r.rocode || "").trim().toUpperCase()).filter(Boolean));
+    let pcbDetailRecords = statusRecords.filter((r) => {
+      const purpose = r.purpose || r.PurposeOfVisit || r.PURPOSEOFVISIT;
+      const roCode = String(r.roCode || r.ROCode || r.rocode || "").trim().toUpperCase();
+      return isPowerProtectionInstall(purpose) || (installedRoCodes.has(roCode) && isPowerProtectionReplace(purpose));
+    });
+    pcbDetailRecords = pcbDetailRecords.filter((r) => isEngineerRecordName(r.engineer || r.Engineer || r.engineerName));
+    if (userRole === "engineer" && currentEngineer) pcbDetailRecords = pcbDetailRecords.filter((r) => String(r.engineer || r.Engineer || r.engineerName || "").trim().toLowerCase() === currentEngineer.toLowerCase());
     const siteDetailMap = new Map();
-    pcbRecords.forEach((r) => {
+    pcbDetailRecords.forEach((r) => {
       const roCode = String(r.roCode || r.ROCode || r.rocode || "").trim();
       const roName = String(r.roName || r.ROName || "").trim();
       const siteKey = `${roCode || "-"}||${roName || "-"}`.toUpperCase();
@@ -1355,8 +1411,11 @@ function exportPcbInstallationExcel() {
     const summaryMap = {};
     const todayIso = new Date().toISOString().split("T")[0];
     pcbRecords.forEach((r) => {
-      const eng = String(r.engineer || r.Engineer || "").trim() || "Unknown";
-      if (!summaryMap[eng]) summaryMap[eng] = { Provided: Number(pcbProvidedCounts[eng] || 0) || 0, Today: 0, Total: 0, Pending: 0, SiteKeys: new Set() };
+      const eng = String(r.engineer || r.Engineer || r.engineerName || "").trim() || "Unknown";
+      if (!summaryMap[eng]) {
+        const counts = getPcbCountRecord(pcbProvidedCounts, eng);
+        summaryMap[eng] = { Provided: counts.provided, FaultyInHand: counts.faultyInHand, FaultyDispatchToHo: counts.faultyDispatchToHo, Today: 0, Total: 0, Pending: 0, SiteKeys: new Set() };
+      }
       summaryMap[eng].Total += 1;
       const d = String(r.date || r.Date || "").slice(0, 10);
       if (d === todayIso) summaryMap[eng].Today += 1;
@@ -1368,17 +1427,20 @@ function exportPcbInstallationExcel() {
       if (!name) return;
       if (!isEngineerRecordName(name)) return;
       if (userRole === "engineer" && currentEngineer && name.toLowerCase() !== currentEngineer.toLowerCase()) return;
-      if (!summaryMap[name]) summaryMap[name] = { Provided: Number(provided || 0) || 0, Today: 0, Total: 0, Pending: 0, SiteKeys: new Set() };
-      else summaryMap[name].Provided = Number(provided || 0) || 0;
+      const counts = normalizePcbCountRecord(provided);
+      if (!summaryMap[name]) summaryMap[name] = { Provided: counts.provided, FaultyInHand: counts.faultyInHand, FaultyDispatchToHo: counts.faultyDispatchToHo, Today: 0, Total: 0, Pending: 0, SiteKeys: new Set() };
+      else Object.assign(summaryMap[name], { Provided: counts.provided, FaultyInHand: counts.faultyInHand, FaultyDispatchToHo: counts.faultyDispatchToHo });
     });
-    const summaryRows = [["Engineer Name","Total PCB Provided (A)","Today PCB Installation","Total PCB Install (B)","Total PCB Installation Pending","Site Wise Install Count"]];
-    Object.entries(summaryMap).forEach(([eng, val]) => summaryRows.push([eng, val.Provided, val.Today, val.Total, Math.max(0, (val.Provided || 0) - val.Total), val.SiteKeys?.size || 0]));
+    const summaryRows = [["Engineer Name","Total PCB Provided (A)","Today PCB Installation","Total PCB Install (B)","Faulty PCB In Hand","Faulty PCB Dispatch to HO","Total PCB Installation Pending","Site Wise Install Count"]];
+    Object.entries(summaryMap).forEach(([eng, val]) => summaryRows.push([eng, val.Provided, val.Today, val.Total, val.FaultyInHand || 0, val.FaultyDispatchToHo || 0, Math.max(0, (val.Provided || 0) - (val.Total + (val.FaultyInHand || 0) + (val.FaultyDispatchToHo || 0))), val.SiteKeys?.size || 0]));
     const totalProvided = Object.values(summaryMap).reduce((sum, v) => sum + (v.Provided || 0), 0);
     const totalToday = Object.values(summaryMap).reduce((sum, v) => sum + v.Today, 0);
     const totalInstall = Object.values(summaryMap).reduce((sum, v) => sum + v.Total, 0);
-    const totalPending = Object.values(summaryMap).reduce((sum, v) => sum + Math.max(0, (v.Provided || 0) - v.Total), 0);
+    const totalFaultyInHand = Object.values(summaryMap).reduce((sum, v) => sum + (v.FaultyInHand || 0), 0);
+    const totalFaultyDispatchToHo = Object.values(summaryMap).reduce((sum, v) => sum + (v.FaultyDispatchToHo || 0), 0);
+    const totalPending = Object.values(summaryMap).reduce((sum, v) => sum + Math.max(0, (v.Provided || 0) - (v.Total + (v.FaultyInHand || 0) + (v.FaultyDispatchToHo || 0))), 0);
     const totalSiteInstall = Object.values(summaryMap).reduce((sum, v) => sum + (v.SiteKeys?.size || 0), 0);
-    summaryRows.push(["Total", totalProvided, totalToday, totalInstall, totalPending, totalSiteInstall]);
+    summaryRows.push(["Total", totalProvided, totalToday, totalInstall, totalFaultyInHand, totalFaultyDispatchToHo, totalPending, totalSiteInstall]);
     const ws1 = XLSX.utils.aoa_to_sheet(summaryRows);
     const ws2 = XLSX.utils.json_to_sheet(detailRows);
     const wb = XLSX.utils.book_new();

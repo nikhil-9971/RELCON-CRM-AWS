@@ -231,12 +231,16 @@ router.get("/pcb-provided-counts", verifyToken, async (req, res) => {
       const query = role === "admin"
         ? { role: { $in: ["engineer", "Engineer", "user", "User"] } }
         : { engineerName, role: { $in: ["engineer", "Engineer", "user", "User"] } };
-      const users = await User.find(query, "engineerName username pcbProvidedCount").lean();
+      const users = await User.find(query, "engineerName username pcbProvidedCount faultyPcbInHandCount faultyPcbDispatchToHoCount").lean();
       const counts = {};
       users.forEach((user) => {
         const key = String(user.engineerName || user.username || "").trim();
         if (!key) return;
-        counts[key] = Number(user.pcbProvidedCount || 0) || 0;
+        counts[key] = {
+          provided: Number(user.pcbProvidedCount || 0) || 0,
+          faultyInHand: Number(user.faultyPcbInHandCount || 0) || 0,
+          faultyDispatchToHo: Number(user.faultyPcbDispatchToHoCount || 0) || 0,
+        };
       });
       return counts;
     });
@@ -253,17 +257,28 @@ router.put("/pcb-provided-counts", verifyToken, async (req, res) => {
     }
     const counts = req.body && typeof req.body === "object" ? req.body : {};
     const updates = Object.entries(counts)
-      .map(([engineerName, value]) => ({
-        engineerName: String(engineerName || "").trim(),
-        pcbProvidedCount: Math.max(0, Number(value) || 0),
-      }))
+      .map(([engineerName, value]) => {
+        const item = value && typeof value === "object" && !Array.isArray(value) ? value : { provided: value };
+        return {
+          engineerName: String(engineerName || "").trim(),
+          pcbProvidedCount: Math.max(0, Number(item.provided) || 0),
+          faultyPcbInHandCount: Math.max(0, Number(item.faultyInHand) || 0),
+          faultyPcbDispatchToHoCount: Math.max(0, Number(item.faultyDispatchToHo) || 0),
+        };
+      })
       .filter((item) => item.engineerName);
 
     await Promise.all(
       updates.map((item) =>
         User.updateOne(
           { engineerName: item.engineerName },
-          { $set: { pcbProvidedCount: item.pcbProvidedCount } }
+          {
+            $set: {
+              pcbProvidedCount: item.pcbProvidedCount,
+              faultyPcbInHandCount: item.faultyPcbInHandCount,
+              faultyPcbDispatchToHoCount: item.faultyPcbDispatchToHoCount,
+            },
+          }
         )
       )
     );
@@ -271,13 +286,17 @@ router.put("/pcb-provided-counts", verifyToken, async (req, res) => {
 
     const users = await User.find(
       { role: { $in: ["engineer", "Engineer", "user", "User"] } },
-      "engineerName username pcbProvidedCount"
+      "engineerName username pcbProvidedCount faultyPcbInHandCount faultyPcbDispatchToHoCount"
     ).lean();
     const savedCounts = {};
     users.forEach((user) => {
       const key = String(user.engineerName || user.username || "").trim();
       if (!key) return;
-      savedCounts[key] = Number(user.pcbProvidedCount || 0) || 0;
+      savedCounts[key] = {
+        provided: Number(user.pcbProvidedCount || 0) || 0,
+        faultyInHand: Number(user.faultyPcbInHandCount || 0) || 0,
+        faultyDispatchToHo: Number(user.faultyPcbDispatchToHoCount || 0) || 0,
+      };
     });
     res.json({ success: true, counts: savedCounts });
   } catch (err) {
