@@ -1530,7 +1530,7 @@ function toggleSidebar(){document.getElementById("nav").classList.toggle("mobile
 let inactivityTimeout;
 function resetInactivityTimer(){
   clearTimeout(inactivityTimeout);
-  inactivityTimeout=setTimeout(()=>{alert("You were inactive for 30 minutes. Logging out.");logout();},30*60*1000);
+  inactivityTimeout=setTimeout(()=>{alert("You were inactive for 1 hour. Logging out.");logout();},60*60*1000);
 }
 ["click","mousemove","keydown","scroll","touchstart"].forEach(evt=>window.addEventListener(evt,resetInactivityTimer));
 
