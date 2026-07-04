@@ -2780,6 +2780,80 @@ function distributeRowsEvenly(rows = [], assignees = []) {
   return buckets;
 }
 
+async function assignHpclVerificationRows(rows = [], assignees = []) {
+  const buckets = assignees.map((assignee) => ({ ...assignee, rows: [] }));
+  if (!buckets.length) return buckets;
+
+  const byUsername = new Map(buckets.map((bucket) => [bucket.username, bucket]));
+  const updates = [];
+
+  rows.forEach((row) => {
+    const assignedUsername = String(row.verificationAssignedToUsername || "").trim().toLowerCase();
+    const bucket = byUsername.get(assignedUsername);
+    if (!bucket) return;
+    bucket.rows.push({
+      ...row,
+      assignedTo: bucket.label,
+      verificationAssignedToUsername: bucket.username,
+      verificationAssignedToName: bucket.label,
+    });
+  });
+
+  rows
+    .filter((row) => !byUsername.has(String(row.verificationAssignedToUsername || "").trim().toLowerCase()))
+    .forEach((row) => {
+      const bucket = buckets.reduce((least, current) =>
+        current.rows.length < least.rows.length ? current : least
+      , buckets[0]);
+      bucket.rows.push({
+        ...row,
+        assignedTo: bucket.label,
+        verificationAssignedToUsername: bucket.username,
+        verificationAssignedToName: bucket.label,
+      });
+      if (row.statusRecordId) {
+        updates.push({
+          updateOne: {
+            filter: {
+              _id: row.statusRecordId,
+              $or: [
+                { verificationAssignedToUsername: { $exists: false } },
+                { verificationAssignedToUsername: "" },
+                { verificationAssignedToUsername: null },
+              ],
+            },
+            update: {
+              $set: {
+                verificationAssignedToUsername: bucket.username,
+                verificationAssignedToName: bucket.label,
+                verificationAssignedAt: new Date(),
+              },
+            },
+          },
+        });
+      }
+    });
+
+  if (updates.length) await Status.bulkWrite(updates, { ordered: false });
+  return buckets;
+}
+
+function buildHpclVerificationPendingExcelAttachment(rows = [], columns = [], label = "assigned") {
+  const header = columns.map((column) => column.label);
+  const body = rows.map((row) => columns.map((column) => row[column.key] ?? ""));
+  const worksheet = XLSX.utils.aoa_to_sheet([header, ...body]);
+  worksheet["!cols"] = columns.map((column) => ({
+    wch: Math.min(Math.max(String(column.label || "").length + 4, 12), 34),
+  }));
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Pending Verification");
+  const safeLabel = String(label || "assigned").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "assigned";
+  return {
+    filename: `hpcl_status_verification_pending_${safeLabel}_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    content: Buffer.from(XLSX.write(workbook, { type: "buffer", bookType: "xlsx" })),
+  };
+}
+
 async function upsertHpclVerificationPendingNotifications(assignments = []) {
   const operations = [];
 
@@ -2787,6 +2861,22 @@ async function upsertHpclVerificationPendingNotifications(assignments = []) {
     for (const row of assignment.rows || []) {
       if (!row.statusRecordId) continue;
 
+      operations.push({
+        updateMany: {
+          filter: {
+            statusRecordId: row.statusRecordId,
+            type: "hpcl_verification_pending",
+            recipientUsername: { $ne: assignment.username },
+            isRead: false,
+          },
+          update: {
+            $set: {
+              isRead: true,
+              readAt: new Date(),
+            },
+          },
+        },
+      });
       operations.push({
         updateOne: {
           filter: {
@@ -3617,6 +3707,8 @@ async function sendHpclActionRequiredUnverifiedEmail() {
           faultySpare: record.faultySpare || "—",
           spareRequirement: record.spareRequirment || record.spareRequirement || "—",
           spareRequirementName: record.spareRequirmentname || record.spareRequirementName || "—",
+          verificationAssignedToUsername: String(record.verificationAssignedToUsername || "").trim().toLowerCase(),
+          verificationAssignedToName: record.verificationAssignedToName || "",
         };
       })
       .sort((a, b) => {
@@ -3631,10 +3723,11 @@ async function sendHpclActionRequiredUnverifiedEmail() {
       return { ok: true, skipped: true, count: 0 };
     }
 
-    const assignments = distributeRowsEvenly(rows, [
+    const assignees = [
       { username: "anurag.mishra", label: "Anurag Mishra", recipients: anuragRecipients },
       { username: "nikhil.trivedi", label: "Nikhil Trivedi", recipients: nikhilRecipients },
-    ]);
+    ];
+    const assignments = await assignHpclVerificationRows(rows, assignees);
 
     const columns = [
       { key: "serialNumber", label: "S. No." },
@@ -3686,11 +3779,13 @@ async function sendHpclActionRequiredUnverifiedEmail() {
       `;
 
       const subject = `HPCL Status Verification Pending | ${assignment.label} | ${assignment.rows.length}/${rows.length} Open`;
+      const attachment = buildHpclVerificationPendingExcelAttachment(assignment.rows, columns, assignment.label);
       const info = await transporter.sendMail({
         from: getDefaultOutgoingFromHeader(),
         to: assignment.recipients.join(", "),
         subject,
         html,
+        attachments: [attachment],
       });
       sentMessages.push({
         username: assignment.username,
@@ -3698,6 +3793,7 @@ async function sendHpclActionRequiredUnverifiedEmail() {
         to: assignment.recipients,
         count: assignment.rows.length,
         messageId: info?.messageId || "",
+        attachment: attachment.filename,
       });
     }
 

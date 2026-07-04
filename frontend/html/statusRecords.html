@@ -564,6 +564,12 @@
       return isHpclRecord(row) && !isVerifiedRecord(row) && (hasActionRequiredIssue(row) || hasSpareActivity(row));
     }
 
+    function isVerificationAssignedOwner(row = {}, user = {}) {
+      const assignedUsername = String(row.verificationAssignedToUsername || "").trim().toLowerCase();
+      if (!assignedUsername) return true;
+      return String(user.username || "").trim().toLowerCase() === assignedUsername;
+    }
+
     function canAnuragEditApprovedVerified(row = {}, user = {}) {
       return isAnuragAdmin(user) &&
         isVerifiedRecord(row) &&
@@ -746,7 +752,8 @@
           if (col.key === "actions") {
             let html = "";
             const userObj = { role, username };
-            const canVerifyUnverified = (isAnuragAdmin(userObj) && !isVerified) || (isNikhilAdmin(userObj) && canNikhilVerifyHpclUnverified(record));
+            const canVerifyUnverified = isVerificationAssignedOwner(record, userObj) &&
+              ((isAnuragAdmin(userObj) && !isVerified) || (isNikhilAdmin(userObj) && canNikhilVerifyHpclUnverified(record)));
             if (canVerifyUnverified) {
               html = `
                 <button class="sf-btn sf-btn-neutral" style="height:26px;padding:0 10px;font-size:11px;" onclick='handleEditClick("${encoded}")'>

@@ -116,6 +116,13 @@ function hasSpareActivity(status = {}) {
 }
 
 function canVerifyHpclStatus(user = {}, status = {}) {
+  const username = String(user.username || "").trim().toLowerCase();
+  const assignedUsername = String(status.verificationAssignedToUsername || "").trim().toLowerCase();
+  if (assignedUsername) {
+    return String(user.role || "").toLowerCase() === "admin" &&
+      username === assignedUsername &&
+      !status.isVerified;
+  }
   if (isAnuragAdmin(user)) return true;
   if (!isNikhilAdmin(user)) return false;
   const phase = String(status.planId?.phase || "").trim().toUpperCase();
@@ -397,6 +404,9 @@ router.get("/getMergedStatusRecords", verifyToken, async (req, res) => {
           locationField: status.locationField || "",
           isVerified: status.isVerified || false,
           taskGenerated: !!taskExists,
+          verificationAssignedToUsername: status.verificationAssignedToUsername || "",
+          verificationAssignedToName: status.verificationAssignedToName || "",
+          verificationAssignedAt: status.verificationAssignedAt || null,
           oms03: status.oms03 || "No",
           ...editRequestView(status),
         };
@@ -468,6 +478,9 @@ router.get("/getStatusRecords", verifyToken, async (req, res) => {
           locationField: status.locationField || "",
           isVerified: status.isVerified || false,
           taskGenerated: !!taskExists,
+          verificationAssignedToUsername: status.verificationAssignedToUsername || "",
+          verificationAssignedToName: status.verificationAssignedToName || "",
+          verificationAssignedAt: status.verificationAssignedAt || null,
           oms03: status.oms03 || "No",
           ...editRequestView(status),
         };

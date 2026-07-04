@@ -85,6 +85,9 @@ const StatusSchema = new mongoose.Schema({
     default: false,
   },
   taskGenerated: { type: Boolean, default: false },
+  verificationAssignedToUsername: { type: String, default: "" },
+  verificationAssignedToName: { type: String, default: "" },
+  verificationAssignedAt: { type: Date, default: null },
   verificationEditLog: {
     type: verificationEditLogSchema,
     default: () => ({ changes: [] }),
