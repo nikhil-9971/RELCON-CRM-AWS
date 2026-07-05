@@ -756,6 +756,13 @@ function makePcbSiteKey(record = {}) {
   const roName = recordRoName(record).toUpperCase();
   return roCode || roName;
 }
+function makePcbVisitKey(record = {}) {
+  return [
+    makePcbSiteKey(record),
+    recordDate(record),
+    normalizeText(recordPurpose(record)),
+  ].join("|");
+}
 function isVerifiedRecord(record = {}) {
   return String(record.isVerified).toLowerCase() === "true";
 }
@@ -1353,29 +1360,72 @@ function exportRelconConnectivityCSV() {
 
 function exportPcbInstallationExcel() {
   try {
-    let statusRecords = window.__statusRecords || [];
+    const statusRecords = window.__statusRecords || [];
+    const planRecords = window.__allPlans || [];
     const pcbProvidedCounts = window.__pcbProvidedCounts || {};
     const currentUser = window.__currentUser || {};
     const userRole = currentUser.role || "";
     const currentEngineer = currentUser.engineerName || currentUser.username || "";
-    let filteredRecords = statusRecords.filter((r) => isEngineerRecordName(recordEngineerName(r)));
+    const pcbVisitMap = new Map();
+    [...planRecords, ...statusRecords].forEach((r) => {
+      if (!isPowerProtectionPcbVisit(recordPurpose(r))) return;
+      const visitKey = makePcbVisitKey(r);
+      if (!visitKey.replace(/\|/g, "")) return;
+      if (!pcbVisitMap.has(visitKey)) pcbVisitMap.set(visitKey, r);
+    });
+    let filteredRecords = Array.from(pcbVisitMap.values()).filter((r) => isEngineerRecordName(recordEngineerName(r)));
     if (userRole === "engineer" && currentEngineer) filteredRecords = filteredRecords.filter((r) => recordEngineerName(r).toLowerCase() === currentEngineer.toLowerCase());
 
-    const pcbRecords = filteredRecords.filter((r) => isPowerProtectionPcbVisit(recordPurpose(r)));
-    const detailRows = pcbRecords
-      .map((r) => ({
-        EngineerName: recordEngineerName(r),
-        Region: recordRegion(r),
-        ROCode: recordRoCode(r),
-        ROName: recordRoName(r),
-        Phase: recordPhase(r),
-        Date: recordDate(r),
-        PurposeOfVisit: recordPurpose(r),
-      }))
+    const pcbRecords = filteredRecords;
+    const siteDetailMap = new Map();
+    pcbRecords.forEach((r) => {
+      const siteKey = makePcbSiteKey(r) || String(r._id || r.planId || "").trim();
+      if (!siteKey) return;
+      if (!siteDetailMap.has(siteKey)) {
+        siteDetailMap.set(siteKey, {
+          engineers: new Set(),
+          regions: new Set(),
+          roCode: recordRoCode(r),
+          roName: recordRoName(r),
+          phases: new Set(),
+          visits: [],
+        });
+      }
+      const row = siteDetailMap.get(siteKey);
+      const engineer = recordEngineerName(r);
+      const region = recordRegion(r);
+      const phase = recordPhase(r);
+      if (engineer) row.engineers.add(engineer);
+      if (region) row.regions.add(region);
+      if (phase) row.phases.add(phase);
+      row.visits.push({
+        date: recordDate(r),
+        purpose: recordPurpose(r),
+      });
+    });
+    const detailRows = Array.from(siteDetailMap.values())
+      .map((row) => {
+        const visits = row.visits
+          .filter((visit) => visit.date || visit.purpose)
+          .sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")) || String(a.purpose || "").localeCompare(String(b.purpose || "")));
+        const installCount = visits.filter((visit) => isPowerProtectionInstall(visit.purpose)).length;
+        const replaceCount = visits.filter((visit) => isPowerProtectionReplace(visit.purpose)).length;
+        return {
+          "Engineer Name": Array.from(row.engineers).sort().join(" | "),
+          Region: Array.from(row.regions).sort().join(" | "),
+          "RO Code": row.roCode,
+          "RO Name": row.roName,
+          Phase: Array.from(row.phases).sort().join(" | "),
+          Date: visits.map((visit) => visit.date).filter(Boolean).join("\n"),
+          "Purpose of Visit": visits.map((visit) => visit.purpose).filter(Boolean).join("\n"),
+          "Site Wise Total PCB Installation Count": visits.length,
+          "Install Count": installCount,
+          "Replace Count": replaceCount,
+        };
+      })
       .sort((a, b) =>
-        String(a.ROName || "").localeCompare(String(b.ROName || "")) ||
-        String(a.ROCode || "").localeCompare(String(b.ROCode || "")) ||
-        String(a.Date || "").localeCompare(String(b.Date || ""))
+        String(a["RO Name"] || "").localeCompare(String(b["RO Name"] || "")) ||
+        String(a["RO Code"] || "").localeCompare(String(b["RO Code"] || ""))
       );
     const summaryMap = {};
     const todayIso = new Date().toLocaleDateString("en-CA");
@@ -1412,6 +1462,10 @@ function exportPcbInstallationExcel() {
     summaryRows.push(["Total", totalProvided, totalToday, totalInstall, totalFaultyInHand, totalFaultyDispatchToHo, totalPending, totalSiteInstall]);
     const ws1 = XLSX.utils.aoa_to_sheet(summaryRows);
     const ws2 = XLSX.utils.json_to_sheet(detailRows);
+    ws2["!cols"] = [
+      { wch: 24 }, { wch: 18 }, { wch: 14 }, { wch: 28 }, { wch: 18 },
+      { wch: 16 }, { wch: 38 }, { wch: 30 }, { wch: 12 }, { wch: 12 },
+    ];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws1, "Summary");
     XLSX.utils.book_append_sheet(wb, ws2, "Details");
