@@ -72,6 +72,7 @@ function sanitizeDailyPlanUpdatePayload(body = {}) {
 
 async function getHPCLAMCValidationResult({
   roCode,
+  date,
   phase,
   issueType,
   startDate,
@@ -91,6 +92,11 @@ async function getHPCLAMCValidationResult({
   const isAMCVisit = HPCL_AMC_VISIT_TYPES.includes(normalizedIssueType);
   const windowStart = normalizeDate(startDate) || DEFAULT_HPCL_AMC_START_DATE;
   const windowEnd = normalizeDate(endDate) || DEFAULT_HPCL_AMC_END_DATE;
+  const planDate = normalizeDate(date);
+
+  if (planDate && (planDate < windowStart || planDate > windowEnd)) {
+    return { isValid: true };
+  }
 
   const query = {
     roCode: normalizedRoCode,
