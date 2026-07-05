@@ -756,13 +756,6 @@ function makePcbSiteKey(record = {}) {
   const roName = recordRoName(record).toUpperCase();
   return roCode || roName;
 }
-function makePcbVisitKey(record = {}) {
-  return [
-    makePcbSiteKey(record),
-    recordDate(record),
-    normalizeText(recordPurpose(record)),
-  ].join("|");
-}
 function isVerifiedRecord(record = {}) {
   return String(record.isVerified).toLowerCase() === "true";
 }
@@ -1360,23 +1353,15 @@ function exportRelconConnectivityCSV() {
 
 function exportPcbInstallationExcel() {
   try {
-    const statusRecords = window.__statusRecords || [];
     const planRecords = window.__allPlans || [];
     const pcbProvidedCounts = window.__pcbProvidedCounts || {};
     const currentUser = window.__currentUser || {};
     const userRole = currentUser.role || "";
     const currentEngineer = currentUser.engineerName || currentUser.username || "";
-    const pcbVisitMap = new Map();
-    [...planRecords, ...statusRecords].forEach((r) => {
-      if (!isPowerProtectionPcbVisit(recordPurpose(r))) return;
-      const visitKey = makePcbVisitKey(r);
-      if (!visitKey.replace(/\|/g, "")) return;
-      if (!pcbVisitMap.has(visitKey)) pcbVisitMap.set(visitKey, r);
-    });
-    let filteredRecords = Array.from(pcbVisitMap.values()).filter((r) => isEngineerRecordName(recordEngineerName(r)));
+    let filteredRecords = planRecords.filter((r) => isEngineerRecordName(recordEngineerName(r)));
     if (userRole === "engineer" && currentEngineer) filteredRecords = filteredRecords.filter((r) => recordEngineerName(r).toLowerCase() === currentEngineer.toLowerCase());
 
-    const pcbRecords = filteredRecords;
+    const pcbRecords = filteredRecords.filter((r) => isPowerProtectionPcbVisit(recordPurpose(r)));
     const siteDetailMap = new Map();
     pcbRecords.forEach((r) => {
       const siteKey = makePcbSiteKey(r) || String(r._id || r.planId || "").trim();
