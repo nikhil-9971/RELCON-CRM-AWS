@@ -736,7 +736,20 @@ function recordDate(record = {}) {
   return String(record.date || record.Date || record.uploadDate || record.planId?.date || "").slice(0, 10);
 }
 function recordPurpose(record = {}) {
-  return String(record.purpose || record.PurposeOfVisit || record.PURPOSEOFVISIT || record.planId?.purpose || "").trim();
+  const candidates = [
+    record.purpose,
+    record.PurposeOfVisit,
+    record.PURPOSEOFVISIT,
+    record.issueType,
+    record.IssueType,
+    record.ISSUETYPE,
+    record.planId?.purpose,
+    record.planId?.issueType,
+  ].map((value) => String(value || "").trim()).filter(Boolean);
+  return candidates.find(isPowerProtectionReplace)
+    || candidates.find(isPowerProtectionInstall)
+    || candidates[0]
+    || "";
 }
 function makePcbSiteKey(record = {}) {
   const roCode = recordRoCode(record).toUpperCase();
