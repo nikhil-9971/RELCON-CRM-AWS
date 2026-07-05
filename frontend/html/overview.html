@@ -735,6 +735,14 @@ function recordPhase(record = {}) {
 function recordDate(record = {}) {
   return String(record.date || record.Date || record.uploadDate || record.planId?.date || "").slice(0, 10);
 }
+function recordPurpose(record = {}) {
+  return String(record.purpose || record.PurposeOfVisit || record.PURPOSEOFVISIT || record.planId?.purpose || "").trim();
+}
+function makePcbSiteKey(record = {}) {
+  const roCode = recordRoCode(record).toUpperCase();
+  const roName = recordRoName(record).toUpperCase();
+  return roCode || roName;
+}
 function isVerifiedRecord(record = {}) {
   return String(record.isVerified).toLowerCase() === "true";
 }
@@ -1043,6 +1051,7 @@ function renderEngineerMonthly(plans, ym) {
 function normalizeText(s) { return String(s || "").trim().toUpperCase(); }
 function isPowerProtectionInstall(purpose) { const t = normalizeText(purpose); return t.includes("POWER PROTECTION PCB") && !t.includes("REPLACE") && (t.includes("INSTALL") || t.includes("INSTAL")); }
 function isPowerProtectionReplace(purpose) { const t = normalizeText(purpose); return t.includes("POWER PROTECTION PCB") && t.includes("REPLACE"); }
+function isPowerProtectionPcbVisit(purpose) { return isPowerProtectionInstall(purpose) || isPowerProtectionReplace(purpose); }
 function isGsmModuleInstall(purpose) { const t = normalizeText(purpose); return (t.includes("GSM MODULE") && (t.includes("INSTALL") || t.includes("INSTAL"))) || t.includes("GSM MODULE INSTALLATION"); }
 function normalizePcbCountRecord(value) {
   if (value && typeof value === "object" && !Array.isArray(value)) {
@@ -1094,50 +1103,32 @@ function renderPcbInstallation(statusRecords, pcbProvidedCounts) {
   const userRole = currentUser.role || "";
   const currentEngineer = currentUser.engineerName || currentUser.username || "";
   const isAdmin = userRole === "admin";
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date().toLocaleDateString("en-CA");
   let filteredRecords = statusRecords || [];
-  filteredRecords = filteredRecords.filter((r) => isEngineerRecordName(r.engineer || r.Engineer || r.engineerName));
-  if (userRole === "engineer" && currentEngineer) filteredRecords = filteredRecords.filter((r) => String(r.engineer || r.Engineer || r.engineerName || "").trim().toLowerCase() === currentEngineer.toLowerCase());
+  filteredRecords = filteredRecords.filter((r) => isEngineerRecordName(recordEngineerName(r)));
+  if (userRole === "engineer" && currentEngineer) filteredRecords = filteredRecords.filter((r) => recordEngineerName(r).toLowerCase() === currentEngineer.toLowerCase());
   const map = new Map();
   const detailMap = new Map();
-  const installedRoCodes = new Set();
   filteredRecords.forEach((r) => {
-    const eng = String(r.engineer || r.Engineer || r.engineerName || "").trim() || "-";
+    if (!isPowerProtectionPcbVisit(recordPurpose(r))) return;
+    const eng = recordEngineerName(r) || "-";
     if (!map.has(eng)) map.set(eng, { ...getPcbCountRecord(pcbProvidedCounts, eng), installed: 0, todayInstalled: 0, siteKeys: new Set() });
-    if (isPowerProtectionInstall(r.purpose || r.PurposeOfVisit || r.PURPOSEOFVISIT)) {
-      map.get(eng).installed += 1;
-      const recordDate = String(r.date || r.Date || r.DATE || "").slice(0, 10);
-      if (recordDate === today) map.get(eng).todayInstalled += 1;
-      const siteKey = `${String(r.roCode || r.ROCode || r.rocode || "").trim().toUpperCase()}||${String(r.roName || r.ROName || "").trim().toUpperCase()}`;
-      if (siteKey !== "||") map.get(eng).siteKeys.add(siteKey);
-      const roCodeKey = String(r.roCode || r.ROCode || r.rocode || "").trim().toUpperCase();
-      if (roCodeKey) installedRoCodes.add(roCodeKey);
-      if (!detailMap.has(eng)) detailMap.set(eng, []);
-      detailMap.get(eng).push({
-        engineerName: eng,
-        date: recordDate,
-        roCode: String(r.roCode || r.ROCode || r.rocode || "").trim(),
-        roName: String(r.roName || r.ROName || "").trim(),
-        region: String(r.region || r.Region || "").trim(),
-        phase: String(r.phase || r.Phase || "").trim(),
-        purpose: String(r.purpose || r.PurposeOfVisit || r.PURPOSEOFVISIT || "").trim(),
-      });
+    map.get(eng).installed += 1;
+    const statusDate = recordDate(r);
+    if (statusDate === today) map.get(eng).todayInstalled += 1;
+    const siteKey = makePcbSiteKey(r);
+    if (siteKey) {
+      map.get(eng).siteKeys.add(siteKey);
     }
-  });
-  filteredRecords.forEach((r) => {
-    const purpose = r.purpose || r.PurposeOfVisit || r.PURPOSEOFVISIT;
-    const roCodeKey = String(r.roCode || r.ROCode || r.rocode || "").trim().toUpperCase();
-    if (!installedRoCodes.has(roCodeKey) || !isPowerProtectionReplace(purpose)) return;
-    const eng = String(r.engineer || r.Engineer || r.engineerName || "").trim() || "-";
     if (!detailMap.has(eng)) detailMap.set(eng, []);
     detailMap.get(eng).push({
       engineerName: eng,
-      date: String(r.date || r.Date || r.DATE || "").slice(0, 10),
-      roCode: String(r.roCode || r.ROCode || r.rocode || "").trim(),
-      roName: String(r.roName || r.ROName || "").trim(),
-      region: String(r.region || r.Region || "").trim(),
-      phase: String(r.phase || r.Phase || "").trim(),
-      purpose: String(purpose || "").trim(),
+      date: statusDate,
+      roCode: recordRoCode(r),
+      roName: recordRoName(r),
+      region: recordRegion(r),
+      phase: recordPhase(r),
+      purpose: recordPurpose(r),
     });
   });
   detailMap.forEach((items) => items.sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")) || String(a.roCode || "").localeCompare(String(b.roCode || ""))));
@@ -1354,73 +1345,38 @@ function exportPcbInstallationExcel() {
     const currentUser = window.__currentUser || {};
     const userRole = currentUser.role || "";
     const currentEngineer = currentUser.engineerName || currentUser.username || "";
-    let pcbRecords = statusRecords.filter((r) => isPowerProtectionInstall(r.purpose || r.PurposeOfVisit || r.PURPOSEOFVISIT));
-    pcbRecords = pcbRecords.filter((r) => isEngineerRecordName(r.engineer || r.Engineer || r.engineerName));
-    if (userRole === "engineer" && currentEngineer) pcbRecords = pcbRecords.filter((r) => String(r.engineer || r.Engineer || r.engineerName || "").trim().toLowerCase() === currentEngineer.toLowerCase());
-    const installedRoCodes = new Set(pcbRecords.map((r) => String(r.roCode || r.ROCode || r.rocode || "").trim().toUpperCase()).filter(Boolean));
-    let pcbDetailRecords = statusRecords.filter((r) => {
-      const purpose = r.purpose || r.PurposeOfVisit || r.PURPOSEOFVISIT;
-      const roCode = String(r.roCode || r.ROCode || r.rocode || "").trim().toUpperCase();
-      return isPowerProtectionInstall(purpose) || (installedRoCodes.has(roCode) && isPowerProtectionReplace(purpose));
-    });
-    pcbDetailRecords = pcbDetailRecords.filter((r) => isEngineerRecordName(r.engineer || r.Engineer || r.engineerName));
-    if (userRole === "engineer" && currentEngineer) pcbDetailRecords = pcbDetailRecords.filter((r) => String(r.engineer || r.Engineer || r.engineerName || "").trim().toLowerCase() === currentEngineer.toLowerCase());
-    const siteDetailMap = new Map();
-    pcbDetailRecords.forEach((r) => {
-      const roCode = String(r.roCode || r.ROCode || r.rocode || "").trim();
-      const roName = String(r.roName || r.ROName || "").trim();
-      const siteKey = `${roCode || "-"}||${roName || "-"}`.toUpperCase();
-      if (!siteDetailMap.has(siteKey)) {
-        siteDetailMap.set(siteKey, {
-          EngineerName: new Set(),
-          Region: new Set(),
-          ROCode: roCode,
-          ROName: roName,
-          Phase: new Set(),
-          Date: new Set(),
-          PurposeOfVisit: new Set(),
-        });
-      }
-      const row = siteDetailMap.get(siteKey);
-      const eng = String(r.engineer || r.Engineer || r.engineerName || "").trim();
-      const region = String(r.region || r.Region || "").trim();
-      const phase = String(r.phase || r.Phase || "").trim();
-      const date = String(r.date || r.Date || r.DATE || "").slice(0, 10);
-      const purpose = String(r.purpose || r.PurposeOfVisit || r.PURPOSEOFVISIT || "").trim();
-      if (eng) row.EngineerName.add(eng);
-      if (region) row.Region.add(region);
-      if (phase) row.Phase.add(phase);
-      if (date) row.Date.add(date);
-      if (purpose) row.PurposeOfVisit.add(purpose);
-    });
-    const detailRows = Array.from(siteDetailMap.values())
-      .map((row) => {
-        const dates = Array.from(row.Date).sort();
-        return {
-          EngineerName: Array.from(row.EngineerName).sort().join(" | "),
-          Region: Array.from(row.Region).sort().join(" | "),
-          ROCode: row.ROCode,
-          ROName: row.ROName,
-          Phase: Array.from(row.Phase).sort().join(" | "),
-          Date: dates.join(" | "),
-          InstallVisitCount: dates.length,
-          PurposeOfVisit: Array.from(row.PurposeOfVisit).sort().join(" | "),
-        };
-      })
-      .sort((a, b) => String(a.ROName || "").localeCompare(String(b.ROName || "")) || String(a.ROCode || "").localeCompare(String(b.ROCode || "")));
+    let filteredRecords = statusRecords.filter((r) => isEngineerRecordName(recordEngineerName(r)));
+    if (userRole === "engineer" && currentEngineer) filteredRecords = filteredRecords.filter((r) => recordEngineerName(r).toLowerCase() === currentEngineer.toLowerCase());
+
+    const pcbRecords = filteredRecords.filter((r) => isPowerProtectionPcbVisit(recordPurpose(r)));
+    const detailRows = pcbRecords
+      .map((r) => ({
+        EngineerName: recordEngineerName(r),
+        Region: recordRegion(r),
+        ROCode: recordRoCode(r),
+        ROName: recordRoName(r),
+        Phase: recordPhase(r),
+        Date: recordDate(r),
+        PurposeOfVisit: recordPurpose(r),
+      }))
+      .sort((a, b) =>
+        String(a.ROName || "").localeCompare(String(b.ROName || "")) ||
+        String(a.ROCode || "").localeCompare(String(b.ROCode || "")) ||
+        String(a.Date || "").localeCompare(String(b.Date || ""))
+      );
     const summaryMap = {};
-    const todayIso = new Date().toISOString().split("T")[0];
+    const todayIso = new Date().toLocaleDateString("en-CA");
     pcbRecords.forEach((r) => {
-      const eng = String(r.engineer || r.Engineer || r.engineerName || "").trim() || "Unknown";
+      const eng = recordEngineerName(r) || "Unknown";
       if (!summaryMap[eng]) {
         const counts = getPcbCountRecord(pcbProvidedCounts, eng);
         summaryMap[eng] = { Provided: counts.provided, FaultyInHand: counts.faultyInHand, FaultyDispatchToHo: counts.faultyDispatchToHo, Today: 0, Total: 0, Pending: 0, SiteKeys: new Set() };
       }
       summaryMap[eng].Total += 1;
-      const d = String(r.date || r.Date || "").slice(0, 10);
+      const d = recordDate(r);
       if (d === todayIso) summaryMap[eng].Today += 1;
-      const siteKey = `${String(r.roCode || r.ROCode || r.rocode || "").trim().toUpperCase()}||${String(r.roName || r.ROName || "").trim().toUpperCase()}`;
-      if (siteKey !== "||") summaryMap[eng].SiteKeys.add(siteKey);
+      const siteKey = makePcbSiteKey(r);
+      if (siteKey) summaryMap[eng].SiteKeys.add(siteKey);
     });
     Object.entries(pcbProvidedCounts || {}).forEach(([eng, provided]) => {
       const name = String(eng || "").trim();
