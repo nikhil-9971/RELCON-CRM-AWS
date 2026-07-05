@@ -942,7 +942,7 @@ async function loadOverview() {
     sel.addEventListener("change", () => renderEngineerMonthly(window.__allPlans, sel.value));
     renderRelconConnectivity(window.__statusRecords);
     window.__pcbProvidedCounts = pcbProvidedCounts && typeof pcbProvidedCounts === "object" ? pcbProvidedCounts : {};
-    renderPcbInstallation(window.__statusRecords, window.__pcbProvidedCounts);
+    renderPcbInstallation(window.__allPlans, window.__pcbProvidedCounts);
 
     // Store for mail copy
     window.__unverifiedHpcl = unverifiedHpcl;
@@ -1108,7 +1108,7 @@ function renderRelconConnectivity(statusRecords) {
   }
 }
 
-function renderPcbInstallation(statusRecords, pcbProvidedCounts) {
+function renderPcbInstallation(planRecords, pcbProvidedCounts) {
   const tbody = document.getElementById("pcbInstallationBody");
   const saveBtn = document.getElementById("savePcbProvidedBtn");
   if (!tbody) return;
@@ -1117,7 +1117,7 @@ function renderPcbInstallation(statusRecords, pcbProvidedCounts) {
   const currentEngineer = currentUser.engineerName || currentUser.username || "";
   const isAdmin = userRole === "admin";
   const today = new Date().toLocaleDateString("en-CA");
-  let filteredRecords = statusRecords || [];
+  let filteredRecords = planRecords || [];
   filteredRecords = filteredRecords.filter((r) => isEngineerRecordName(recordEngineerName(r)));
   if (userRole === "engineer" && currentEngineer) filteredRecords = filteredRecords.filter((r) => recordEngineerName(r).toLowerCase() === currentEngineer.toLowerCase());
   const map = new Map();
@@ -1276,7 +1276,7 @@ async function savePcbProvidedCounts() {
     const json = await res.json();
     if (!res.ok) throw new Error(json?.error || "Failed to save PCB provided counts");
     window.__pcbProvidedCounts = json?.counts || payload;
-    renderPcbInstallation(window.__statusRecords, window.__pcbProvidedCounts);
+    renderPcbInstallation(window.__allPlans, window.__pcbProvidedCounts);
     alert("PCB provided counts saved successfully.");
   } catch (e) {
     console.error("save pcb provided counts error", e);
