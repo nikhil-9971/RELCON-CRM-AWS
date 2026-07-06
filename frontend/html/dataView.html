@@ -1428,6 +1428,11 @@ let fullData = [], filteredData = [], loggedInUser = null;
 let currentPage = 1;
 const rowsPerPage = 50;
 let currentSort = { key: null, direction: null };
+const AUTO_REFRESH_INTERVAL_MS = 10000;
+let autoRefreshTimer = null;
+let isRefreshingData = false;
+let lastDataSignature = "";
+let isTableCleared = false;
 
 // Init date chip
 document.getElementById('dateChip').textContent =
@@ -1481,13 +1486,22 @@ async function fetchUserSession() {
 }
 
 /* ── DATA FETCH ── */
-async function fetchAndStoreData() {
+function getPlanDataSignature(data = []) {
+  return data
+    .map(p => `${p._id || ''}:${p.updatedAt || p.createdAt || ''}:${p.statusSaved ? 1 : 0}:${p.jioBPStatusSaved ? 1 : 0}:${p.bpclStatusSaved ? 1 : 0}:${p.completionStatus || ''}`)
+    .sort()
+    .join('|');
+}
+
+async function fetchAndStoreData(options = {}) {
+  const { markAttendance = true } = options;
   const token = localStorage.getItem('token');
   const res = await fetch(`${baseUrl}/getDailyPlans`, { headers: { Authorization: `Bearer ${token}` } });
   const data = await res.json();
   fullData = data;
+  lastDataSignature = getPlanDataSignature(data);
   if (loggedInUser.role === 'admin') populateEngineerFilter(data);
-  await autoMarkAttendanceFromVisits(data, localStorage.getItem('token'));
+  if (markAttendance) await autoMarkAttendanceFromVisits(data, localStorage.getItem('token'));
 }
 
 function getTodayIST() {
@@ -1544,11 +1558,51 @@ async function autoMarkAttendanceFromVisits(plans, token) {
 
 function populateEngineerFilter(data) {
   const sel = document.getElementById('engineerFilter');
+  const currentValue = sel.value;
+  sel.innerHTML = '<option value="">All Engineers</option>';
   const names = [...new Set(data.map(p => p.engineer))].sort();
   names.forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; sel.appendChild(o); });
+  if ([...sel.options].some(o => o.value === currentValue)) sel.value = currentValue;
 }
 
 /* ── FILTER / SEARCH ── */
+function getDateFilteredData() {
+  const fromDate = document.getElementById('fromDate').value;
+  const toDate   = document.getElementById('toDate').value;
+  const engineer = document.getElementById('engineerFilter')?.value || '';
+  let data = [...fullData];
+  if (loggedInUser.role === 'engineer') data = data.filter(p => p.engineer === loggedInUser.engineerName);
+  if (engineer && loggedInUser.role === 'admin') data = data.filter(p => p.engineer === engineer);
+  if (fromDate) data = data.filter(p => new Date(p.date) >= new Date(fromDate));
+  if (toDate)   data = data.filter(p => new Date(p.date) <= new Date(toDate));
+  return data;
+}
+
+function getSearchFilteredData(data) {
+  const query = document.getElementById('searchInput').value.toLowerCase().trim();
+  return query ? data.filter(p => Object.values(p).some(v => v && String(v).toLowerCase().includes(query))) : data;
+}
+
+function applyCurrentSortToData(data) {
+  if (!currentSort.key || !currentSort.direction) return data;
+  const key = currentSort.key;
+  return [...data].sort((a,b) => {
+    const av = (a[key]||'').toString().toLowerCase(), bv = (b[key]||'').toString().toLowerCase();
+    return av < bv ? (currentSort.direction==='asc'?-1:1) : av > bv ? (currentSort.direction==='asc'?1:-1) : 0;
+  });
+}
+
+function renderCurrentView({ preservePage = false } = {}) {
+  isTableCleared = false;
+  const previousPage = currentPage;
+  filteredData = getDateFilteredData();
+  const result = applyCurrentSortToData(getSearchFilteredData(filteredData));
+  const maxPage = Math.max(1, Math.ceil(result.length / rowsPerPage));
+  currentPage = preservePage ? Math.min(previousPage, maxPage) : 1;
+  updateStats(result);
+  populateTable(result);
+}
+
 function applyFilter(btnEl = null) {
   const fromDate = document.getElementById('fromDate').value;
   const toDate   = document.getElementById('toDate').value;
@@ -1556,27 +1610,50 @@ function applyFilter(btnEl = null) {
   if (btnEl) { btnEl.disabled = true; document.getElementById('applyTxt').textContent = 'Loading…'; }
   showLoader();
   setTimeout(() => {
-    const engineer = document.getElementById('engineerFilter')?.value || '';
-    filteredData = fullData;
-    if (loggedInUser.role === 'engineer') filteredData = filteredData.filter(p => p.engineer === loggedInUser.engineerName);
-    if (engineer && loggedInUser.role === 'admin') filteredData = filteredData.filter(p => p.engineer === engineer);
-    if (fromDate) filteredData = filteredData.filter(p => new Date(p.date) >= new Date(fromDate));
-    if (toDate)   filteredData = filteredData.filter(p => new Date(p.date) <= new Date(toDate));
-    applySearch();
+    renderCurrentView();
     if (btnEl) { btnEl.disabled = false; document.getElementById('applyTxt').textContent = 'Apply'; }
     hideLoader();
   }, 400);
 }
 
 function applySearch() {
-  const query = document.getElementById('searchInput').value.toLowerCase().trim();
-  const src = filteredData.length ? filteredData : fullData;
-  const result = query ? src.filter(p => Object.values(p).some(v => v && String(v).toLowerCase().includes(query))) : filteredData;
-  currentPage = 1;
-  updateStats(result);
-  populateTable(result);
+  renderCurrentView();
 }
 const debouncedSearch = debounce(applySearch, 300);
+
+async function refreshDataViewInBackground() {
+  if (isRefreshingData || !loggedInUser) return;
+  isRefreshingData = true;
+  try {
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${baseUrl}/getDailyPlans`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+    });
+    if (!res.ok) throw new Error(`Refresh failed: ${res.status}`);
+    const data = await res.json();
+    const nextSignature = getPlanDataSignature(data);
+    if (nextSignature !== lastDataSignature) {
+      fullData = data;
+      lastDataSignature = nextSignature;
+      if (loggedInUser.role === 'admin') populateEngineerFilter(data);
+      if (!isTableCleared) renderCurrentView({ preservePage: true });
+    }
+  } catch (err) {
+    console.error('Background data refresh failed:', err);
+  } finally {
+    isRefreshingData = false;
+  }
+}
+
+function startDataViewAutoRefresh() {
+  if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+  autoRefreshTimer = setInterval(refreshDataViewInBackground, AUTO_REFRESH_INTERVAL_MS);
+}
+
+window.addEventListener('beforeunload', () => {
+  if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+});
 
 function clearFilter() {
   document.getElementById('searchInput').value = '';
@@ -1586,6 +1663,7 @@ function clearFilter() {
   document.getElementById('applyBtn').disabled = true;
   document.getElementById('tableBody').innerHTML = '';
   filteredData = [];
+  isTableCleared = true;
   updateStats([]);
 }
 
@@ -1734,15 +1812,7 @@ function sortTable(th) {
   currentSort.direction = (currentSort.key===key && currentSort.direction==='asc') ? 'desc'
     : (currentSort.key===key && currentSort.direction==='desc') ? null : 'asc';
   currentSort.key = key;
-  let data = [...filteredData];
-  if (currentSort.direction) {
-    data.sort((a,b) => {
-      const av = (a[key]||'').toString().toLowerCase(), bv = (b[key]||'').toString().toLowerCase();
-      return av < bv ? (currentSort.direction==='asc'?-1:1) : av > bv ? (currentSort.direction==='asc'?1:-1) : 0;
-    });
-  }
-  currentPage = 1;
-  populateTable(data);
+  renderCurrentView();
 }
 
 /* ── EDIT MODAL ── */
@@ -2379,6 +2449,7 @@ window.onload = async () => {
     await fetchAndStoreData();
     checkFilterValidity();
     document.getElementById('applyBtn').click();
+    startDataViewAutoRefresh();
   } catch(err) { console.error(err); showToast('Failed to load data.', 'error'); }
 };
 </script>
