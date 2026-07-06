@@ -418,8 +418,7 @@ router.post("/bulk-upload", verifyToken, requireRole(["Admin"]), denyInvoiceBloc
       return res.status(400).json({ success: false, message: "All rows are invalid", errors: errors.slice(0, 20) });
     }
 
-    const mode = String(req.body.mode || "append").trim().toLowerCase();
-    if (mode === "replace") await InvoiceManagement.deleteMany({});
+    const mode = "append";
 
     const importedBy = req.user?.engineerName || req.user?.username || "Admin";
     const payload = validRows.map((row) => ({

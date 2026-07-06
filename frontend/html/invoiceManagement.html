@@ -296,13 +296,12 @@
       <div id="bulkTab" class="tab-panel" style="display:none;">
         <div class="sf-panel">
           <div class="sf-panel-title"><i class="fa-solid fa-cloud-arrow-up"></i> Bulk Upload Invoices</div>
-          <div class="sf-panel-sub">Upload the complete invoice workbook in one shot. The upload format follows your sample Excel structure exactly, similar to the bulk upload flow in Material Management.</div>
+          <div class="sf-panel-sub">Upload invoice workbook rows in append mode. Existing invoice records will remain saved and new uploaded rows will be added below them.</div>
           <div class="sf-upload-grid">
             <div class="sf-filter-group">
               <div class="sf-filter-label">Invoice File</div>
               <input id="fileInput" class="sf-file" type="file" accept=".xlsx,.xls,.csv"/>
             </div>
-            <label class="sf-check"><input id="replaceMode" type="checkbox"/> Replace existing data</label>
             <button class="sf-btn sf-btn-primary" id="uploadBtn"><i class="fa-solid fa-upload"></i> Upload File</button>
             <button class="sf-btn sf-btn-purple" id="sampleBackBtn"><i class="fa-solid fa-table"></i> Back To Register</button>
           </div>
@@ -662,7 +661,7 @@
       if (!file) return showNote("bulkNote", "Please choose an Excel file first.", "error");
       const fd = new FormData();
       fd.append("file", file);
-      fd.append("mode", document.getElementById("replaceMode").checked ? "replace" : "append");
+      fd.append("mode", "append");
       const btn = document.getElementById("uploadBtn");
       btn.disabled = true;
       try {
