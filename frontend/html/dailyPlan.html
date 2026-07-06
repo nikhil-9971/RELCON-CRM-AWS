@@ -968,6 +968,9 @@
         purpose:    document.getElementById('purpose').value.toUpperCase(),
       };
 
+      const pcbValidationResult = await validatePowerProtectionPCB(data);
+      if (!pcbValidationResult.isValid) { showToast(pcbValidationResult.message, 'error'); return; }
+
       const validationResult = await validateHPCLAMC(data);
       if (!validationResult.isValid) { showToast(validationResult.message, 'error'); return; }
 
@@ -1127,6 +1130,27 @@
           endDate: HPCL_END_QTR_DATE,
         });
         const response = await fetch(`${baseUrl}/validateHPCLAMC?${params.toString()}`, {
+          credentials: 'include',
+        });
+        if (!response.ok) return { isValid: true };
+        return await response.json();
+      } catch {
+        return { isValid: true };
+      }
+    }
+
+    async function validatePowerProtectionPCB(data) {
+      const purpose = String(data.purpose || '').trim().toUpperCase().replace(/\s+/g, ' ');
+      if (!data.roCode || !purpose.includes('POWER PROTECTION PCB') || purpose.includes('REPLACE') || !purpose.includes('INSTAL')) {
+        return { isValid: true };
+      }
+
+      try {
+        const params = new URLSearchParams({
+          roCode: data.roCode || '',
+          purpose: data.purpose || '',
+        });
+        const response = await fetch(`${baseUrl}/validatePowerProtectionPCB?${params.toString()}`, {
           credentials: 'include',
         });
         if (!response.ok) return { isValid: true };

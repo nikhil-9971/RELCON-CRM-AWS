@@ -1785,7 +1785,14 @@ async function saveEdit() {
     body:JSON.stringify(updated), credentials:'include'
   });
   if (res.ok) { showToast('Record updated successfully.'); closeEditModal(); await fetchAndStoreData(); applyFilter(document.getElementById('applyBtn')); }
-  else showToast('Update failed.', 'error');
+  else {
+    let message = 'Update failed.';
+    try {
+      const result = await res.json();
+      if (result?.message) message = result.message;
+    } catch {}
+    showToast(message, 'error');
+  }
 }
 
 /* ── DELETE ── */

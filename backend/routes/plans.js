@@ -53,6 +53,17 @@ function formatDateForMessage(value = "") {
   return parsed.toLocaleDateString("en-GB");
 }
 
+function normalizePurposeText(value = "") {
+  return normalizeText(value).toUpperCase().replace(/\s+/g, " ");
+}
+
+function isPowerProtectionPcbInstallPurpose(value = "") {
+  const purpose = normalizePurposeText(value);
+  return purpose.includes("POWER PROTECTION PCB")
+    && !purpose.includes("REPLACE")
+    && (purpose.includes("INSTALL") || purpose.includes("INSTAL"));
+}
+
 function sanitizeDailyPlanUpdatePayload(body = {}) {
   const blockedFields = new Set([
     "_id",
@@ -68,6 +79,38 @@ function sanitizeDailyPlanUpdatePayload(body = {}) {
     payload[key] = value === null || value === undefined ? "" : value;
   }
   return payload;
+}
+
+async function getPowerProtectionPcbValidationResult({ roCode, purpose, excludePlanId }) {
+  const normalizedRoCode = normalizeText(roCode).toUpperCase();
+  if (!normalizedRoCode || !isPowerProtectionPcbInstallPurpose(purpose)) {
+    return { isValid: true };
+  }
+
+  const query = {
+    roCode: new RegExp(`^${normalizedRoCode.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i"),
+  };
+  if (excludePlanId) {
+    query._id = { $ne: excludePlanId };
+  }
+
+  const existingPlans = await DailyPlan.find(query).sort({ date: -1, createdAt: -1 }).lean();
+  const installedPlan = existingPlans.find((plan) => isPowerProtectionPcbInstallPurpose(plan.purpose));
+
+  if (!installedPlan) {
+    return { isValid: true };
+  }
+
+  const installDate = formatDateForMessage(installedPlan.date) || normalizeDate(installedPlan.date) || "-";
+  return {
+    isValid: false,
+    message: `POWER PROTECTION PCB ALREADY INSTALLED ON DATED ${installDate}. IF YOU WANT NEED TO REPLACE THEN WRITE-> REPLACE POWER PROTECTION PCB`,
+    latestPlan: {
+      date: normalizeDate(installedPlan.date),
+      engineer: normalizeText(installedPlan.engineer),
+      purpose: normalizeText(installedPlan.purpose),
+    },
+  };
 }
 
 async function getHPCLAMCValidationResult({
@@ -139,6 +182,11 @@ async function getHPCLAMCValidationResult({
 // ✅ Save Daily Plan
 router.post("/saveDailyPlan", async (req, res) => {
   try {
+    const pcbValidation = await getPowerProtectionPcbValidationResult(req.body || {});
+    if (!pcbValidation.isValid) {
+      return res.status(400).json(pcbValidation);
+    }
+
     const validation = await getHPCLAMCValidationResult(req.body || {});
     if (!validation.isValid) {
       return res.status(400).json(validation);
@@ -167,6 +215,16 @@ router.get("/validateHPCLAMC", async (req, res) => {
     res.json(validation);
   } catch (error) {
     console.error("Error validating HPCL AMC:", error);
+    res.status(500).json({ isValid: true });
+  }
+});
+
+router.get("/validatePowerProtectionPCB", async (req, res) => {
+  try {
+    const validation = await getPowerProtectionPcbValidationResult(req.query || {});
+    res.json(validation);
+  } catch (error) {
+    console.error("Error validating Power Protection PCB:", error);
     res.status(500).json({ isValid: true });
   }
 });
@@ -311,6 +369,14 @@ router.put("/updateDailyPlan/:id", async (req, res) => {
       return res.status(400).send("Invalid Daily Plan ID");
     }
     const payload = sanitizeDailyPlanUpdatePayload(req.body);
+    const pcbValidation = await getPowerProtectionPcbValidationResult({
+      ...payload,
+      excludePlanId: req.params.id,
+    });
+    if (!pcbValidation.isValid) {
+      return res.status(400).json(pcbValidation);
+    }
+
     const validation = await getHPCLAMCValidationResult({
       ...payload,
       excludePlanId: req.params.id,
