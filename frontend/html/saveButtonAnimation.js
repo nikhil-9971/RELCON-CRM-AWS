@@ -201,6 +201,11 @@
     observer.observe(document.documentElement, { childList: true, subtree: true });
   }
 
+  window.RelconSaveAnimation = {
+    start,
+    finish,
+  };
+
   function init() {
     injectStyle();
     scan(document);

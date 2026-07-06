@@ -437,7 +437,7 @@
       </div>
       <div class="sf-modal-footer">
         <button onclick="closeModal()" class="sf-btn sf-btn-neutral"><i class="fa-solid fa-xmark"></i> Cancel</button>
-        <button onclick="saveEdit()" class="sf-btn sf-btn-success"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
+        <button id="saveEditStatusBtn" onclick="saveEdit()" class="sf-btn sf-btn-success"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
       </div>
     </div>
   </div>
@@ -852,6 +852,7 @@
     function closeModal() { document.getElementById("editModal").classList.add("hidden"); }
 
     async function saveEdit() {
+      const saveBtn = document.getElementById("saveEditStatusBtn");
       const inputs = document.querySelectorAll('#editForm input');
       const updated = {};
       inputs.forEach(inp => {
@@ -863,12 +864,19 @@
         const r = allStatusData.find(x => x._id === updated._id);
         updated.isVerified = typeof r?.isVerified === "boolean" ? r.isVerified : false;
       }
-      const res = await fetch(`${baseUrl}/updateStatus/${updated._id}`, {
-        method: "PUT", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify(updated),
-      });
-      if (res.ok) { await fetchStatusRecords(); closeModal(); showToast("Record updated successfully."); }
-      else showToast("Error updating record.", "error");
+      saveBtn.disabled = true;
+      window.RelconSaveAnimation?.start?.(saveBtn);
+      try {
+        const res = await fetch(`${baseUrl}/updateStatus/${updated._id}`, {
+          method: "PUT", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify(updated),
+        });
+        if (res.ok) { await fetchStatusRecords(); closeModal(); showToast("Record updated successfully."); }
+        else showToast("Error updating record.", "error");
+      } finally {
+        saveBtn.disabled = false;
+        window.RelconSaveAnimation?.finish?.(saveBtn);
+      }
     }
 
     async function requestVerifiedEdit(id) {

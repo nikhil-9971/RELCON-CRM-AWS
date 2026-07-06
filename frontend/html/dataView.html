@@ -1235,7 +1235,7 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
     </div>
     <div class="dv-modal-footer">
       <button onclick="closeStatusModal()" class="dv-btn dv-btn-neutral"><i class="fa-solid fa-xmark"></i> Cancel</button>
-      <button onclick="saveStatus()" class="dv-btn dv-btn-success"><i class="fa-solid fa-floppy-disk"></i> Save Status</button>
+      <button id="saveStatusBtn" onclick="saveStatus()" class="dv-btn dv-btn-success"><i class="fa-solid fa-floppy-disk"></i> Save Status</button>
     </div>
   </div>
 </div>
@@ -2025,6 +2025,7 @@ async function openStatusModal(planId) {
 function closeStatusModal() { document.getElementById('statusModal').classList.add('hidden'); }
 
 async function saveStatus() {
+  const saveBtn = document.getElementById('saveStatusBtn');
   const required = ['probeMake','probeSize','lowProductLock','highWaterSet','duSerialNumber','dgStatus','connectivityType','sim1Provider','sim1Number','sim2Provider','sim2Number','iemiNumber','bosVersion','fccVersion','wirelessSlave','sftpConfig','adminPassword','workCompletion','spareUsed','activeSpare','faultySpare','spareRequirment','spareRequirmentname','earthingStatus','voltageReading','duOffline','duDependency','duRemark','tankOffline','tankDependency','tankRemark','bosIP','fccIP','locationField'];
   const loc = document.getElementById('locationField').value;
   if (!loc || loc.includes('Fetching') || loc.includes('Unable') || loc.includes('not supported')) { showToast('Location not available. Please allow location access.', 'error'); return; }
@@ -2039,9 +2040,16 @@ async function saveStatus() {
   const statusData = {};
   required.forEach(id => { statusData[id] = document.getElementById(id).value; });
   statusData.planId = document.getElementById('statusPlanId').value;
-  const res = await fetch(`${baseUrl}/saveStatus`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(statusData), credentials:'include' });
-  if (res.ok) { showToast('Status saved successfully.'); closeStatusModal(); await fetchAndStoreData(); applyFilter(document.getElementById('applyBtn')); }
-  else showToast('Error saving status.', 'error');
+  saveBtn.disabled = true;
+  window.RelconSaveAnimation?.start?.(saveBtn);
+  try {
+    const res = await fetch(`${baseUrl}/saveStatus`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(statusData), credentials:'include' });
+    if (res.ok) { showToast('Status saved successfully.'); closeStatusModal(); await fetchAndStoreData(); applyFilter(document.getElementById('applyBtn')); }
+    else showToast('Error saving status.', 'error');
+  } finally {
+    saveBtn.disabled = false;
+    window.RelconSaveAnimation?.finish?.(saveBtn);
+  }
 }
 
 /* ── COMPLETION ── */
