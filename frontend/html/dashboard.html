@@ -938,6 +938,7 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
       <button class="nav-item" id="roMasterLink" onclick="loadPage('romaster.html', this)"><i class="fa-solid fa-database"></i><span class="nav-txt">RO Master</span></button>
 
       <div class="nav-label">Admin</div>
+      <button id="engineerActivityLink" class="nav-item" style="display:none" onclick="loadPage('engineerActivity.html', this)"><i class="fa-solid fa-chart-simple"></i><span class="nav-txt">Engineer Activity</span></button>
       <button id="roExplorerLink" class="nav-item" style="display:none" onclick="loadPage('roExplorer.html', this)"><i class="fa-solid fa-magnifying-glass-chart"></i><span class="nav-txt">RO Explorer</span></button>
       <button id="logsViewerLink" class="nav-item" style="display:none" onclick="loadPage('logsViewer.html', this)"><i class="fa-solid fa-scroll"></i><span class="nav-txt">Logs Viewer</span></button>
       <button id="mongoExplorerLink" class="nav-item" style="display:none" onclick="loadPage('mongoExplorer.html', this)"><i class="fa-solid fa-server"></i><span class="nav-txt">DB Explorer</span></button>
@@ -1299,6 +1300,7 @@ const pageNames = {
   'materialrequestbuilder.html':'Material Request Builder',
   'romaster.html':'RO Master','activeVsFaulty.html':'Active vs Faulty',
   'roTimeline.html':'RO Timeline',
+  'engineerActivity.html':'Engineer Activity',
   'roExplorer.html':'RO Explorer',
   'logsViewer.html':'Logs Viewer','materialManagement.html':'Material Management',
   'invoiceManagement.html':'Invoice Management','userManagement.html':'User Management',
@@ -1330,6 +1332,7 @@ const pageSlugs = {
   'romaster.html':'ro-master',
   'activeVsFaulty.html':'active-vs-faulty',
   'roTimeline.html':'ro-timeline',
+  'engineerActivity.html':'engineer-activity',
   'roExplorer.html':'ro-explorer',
   'logsViewer.html':'logs-viewer',
   'userManagement.html':'user-management',
@@ -1512,6 +1515,7 @@ async function fetchUser(){
       document.getElementById("taskManagementLink").style.display="flex";
       document.getElementById("invoiceManagementLink").style.display="flex";
       document.getElementById("incidentId").style.display="flex";
+      document.getElementById("engineerActivityLink").style.display="flex";
       document.getElementById("roExplorerLink").style.display="flex";
     }
     if(user.role==="admin"&&user.engineerName==="Nikhil Trivedi"){

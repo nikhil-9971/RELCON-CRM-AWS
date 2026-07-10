@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Engineer Activity | RELCON CRM</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <script src="config.js"></script>
+  <style>
+    :root{
+      --blue:#2563eb;--blue-dk:#1d4ed8;--blue-lt:#eff6ff;
+      --green:#059669;--green-lt:#ecfdf5;--orange:#d97706;--orange-lt:#fffbeb;
+      --red:#dc2626;--red-lt:#fef2f2;--teal:#0f766e;--teal-lt:#ecfdf5;--purple:#7c3aed;--purple-lt:#f5f3ff;
+      --bg:#f1f5f9;--surface:#fff;--surface2:#f8fafc;--border:#e2e8f0;
+      --txt:#0f172a;--txt2:#334155;--txt3:#64748b;--txt4:#94a3b8;
+      --r:8px;--r-sm:6px;--shadow:0 1px 3px rgba(15,23,42,.08),0 1px 2px rgba(15,23,42,.04);
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--txt);font-size:13px;min-height:100vh}
+    .topbar{height:52px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;padding:0 22px;position:sticky;top:0;z-index:10;box-shadow:var(--shadow)}
+    .topbar-icon{width:30px;height:30px;border-radius:var(--r-sm);background:var(--blue-lt);color:var(--blue);display:flex;align-items:center;justify-content:center}
+    .topbar-title{font-size:14px;font-weight:800}
+    .topbar-meta{font-size:11px;color:var(--txt3);font-weight:700;margin-left:auto}
+    .page{padding:16px 20px 28px;max-width:1460px;margin:0 auto}
+    .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow)}
+    .hero{padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+    .hero-icon{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#2563eb,#0f766e);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px}
+    .hero h1{font-size:18px;letter-spacing:-.2px}
+    .hero p{font-size:12px;color:var(--txt3);margin-top:2px}
+    .filters{margin-left:auto;display:flex;align-items:end;gap:8px;flex-wrap:wrap}
+    .field{display:flex;flex-direction:column;gap:4px}
+    .field label{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--txt4);font-weight:800}
+    input,select{height:34px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);padding:0 10px;font:600 12px Inter,Arial,sans-serif;color:var(--txt);outline:none}
+    input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+    .btn{height:34px;border:1px solid transparent;border-radius:var(--r-sm);padding:0 13px;font:800 12px Inter,Arial,sans-serif;display:inline-flex;align-items:center;gap:7px;cursor:pointer}
+    .btn-primary{background:var(--blue);color:#fff}.btn-primary:hover{background:var(--blue-dk)}
+    .btn-neutral{background:var(--surface2);color:var(--txt2);border-color:var(--border)}
+    .kpis{display:grid;grid-template-columns:repeat(7,minmax(120px,1fr));gap:10px;margin-bottom:12px}
+    .kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);padding:12px 13px;border-left:3px solid var(--blue)}
+    .kpi.green{border-left-color:var(--green)}.kpi.orange{border-left-color:var(--orange)}.kpi.red{border-left-color:var(--red)}.kpi.teal{border-left-color:var(--teal)}.kpi.purple{border-left-color:var(--purple)}
+    .kpi-value{font-size:22px;font-weight:800;line-height:1;color:#1e293b}
+    .kpi-label{font-size:10px;color:var(--txt3);font-weight:800;text-transform:uppercase;letter-spacing:.4px;margin-top:5px}
+    .grid{display:grid;grid-template-columns:minmax(420px,.9fr) minmax(520px,1.1fr);gap:12px;align-items:start}
+    .card-head{height:46px;padding:0 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px;justify-content:space-between}
+    .card-title{font-size:13px;font-weight:800;display:flex;align-items:center;gap:8px}
+    .count{font-size:11px;color:var(--txt3);font-weight:800}
+    .table-wrap{overflow:auto;max-height:620px}
+    table{width:100%;border-collapse:collapse}
+    th{position:sticky;top:0;background:#1e3a8a;color:#fff;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.45px;padding:9px 10px;z-index:1;white-space:nowrap}
+    td{padding:10px;border-bottom:1px solid #eef2f7;vertical-align:middle;font-size:12px;color:var(--txt2);font-weight:600}
+    tbody tr:hover{background:#f8fbff}
+    .engineer{font-weight:800;color:var(--txt);min-width:150px}
+    .num{text-align:right;font-variant-numeric:tabular-nums}
+    .pending{color:var(--red);font-weight:900}
+    .activity-list{max-height:620px;overflow:auto;padding:4px 0}
+    .event{display:grid;grid-template-columns:86px 30px 1fr;gap:10px;padding:12px 14px;position:relative}
+    .event:not(:last-child)::after{content:"";position:absolute;left:113px;top:42px;bottom:-8px;width:2px;background:#e5e7eb}
+    .time{font-size:11px;color:var(--txt3);font-weight:800;text-align:right;padding-top:4px}
+    .dot{width:28px;height:28px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;z-index:1}
+    .event.status .dot{background:var(--green)}.event.material .dot{background:var(--purple)}.event.taskClosed .dot{background:var(--orange)}
+    .event-card{border:1px solid #edf2f7;border-radius:var(--r);background:#fff;padding:10px 12px}
+    .event-head{display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap}
+    .event-title{font-size:13px;font-weight:800;color:var(--txt);flex:1;min-width:180px}
+    .badge{font-size:10px;font-weight:800;border-radius:999px;padding:2px 8px;background:var(--blue-lt);color:var(--blue);white-space:nowrap}
+    .event.status .badge{background:var(--green-lt);color:var(--green)}.event.material .badge{background:var(--purple-lt);color:var(--purple)}.event.taskClosed .badge{background:var(--orange-lt);color:var(--orange)}
+    .subtitle{font-size:12px;color:var(--txt3);margin-top:5px;line-height:1.45}
+    .details{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:7px;margin-top:9px}
+    .detail{background:var(--surface2);border:1px solid #eef2f7;border-radius:var(--r-sm);padding:6px 8px}
+    .detail-k{font-size:9px;color:var(--txt4);font-weight:800;text-transform:uppercase;letter-spacing:.4px}
+    .detail-v{font-size:11px;color:var(--txt2);font-weight:700;margin-top:2px;word-break:break-word}
+    .empty{padding:36px 16px;text-align:center;color:var(--txt3);font-weight:700}
+    .toast{position:fixed;right:14px;bottom:14px;background:#0f172a;color:#fff;border-radius:8px;padding:10px 12px;font-size:12px;display:none;z-index:50}
+    .toast.show{display:block}
+    @media(max-width:1120px){.kpis{grid-template-columns:repeat(auto-fit,minmax(135px,1fr))}.grid{grid-template-columns:1fr}.filters{margin-left:0;width:100%}}
+    @media(max-width:640px){.page{padding:10px}.topbar-meta{display:none}.hero{align-items:flex-start}.filters,.field,input,select,.btn{width:100%}.event{grid-template-columns:1fr;gap:6px}.time{text-align:left}.dot,.event:not(:last-child)::after{display:none}.table-wrap,.activity-list{max-height:none}}
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-icon"><i class="fa-solid fa-chart-simple"></i></div>
+    <div class="topbar-title">Engineer Activity Timeline</div>
+    <div class="topbar-meta" id="topbarMeta">Daily productivity and pending view</div>
+  </div>
+
+  <main class="page">
+    <section class="panel hero">
+      <div class="hero-icon"><i class="fa-solid fa-user-clock"></i></div>
+      <div>
+        <h1>Daily Engineer Timeline</h1>
+        <p>Plan submitted, status filled, material requested, task closed, and pending counts in one admin view.</p>
+      </div>
+      <div class="filters">
+        <div class="field">
+          <label for="dateInput">Date</label>
+          <input id="dateInput" type="date"/>
+        </div>
+        <div class="field">
+          <label for="engineerInput">Engineer</label>
+          <input id="engineerInput" list="engineerList" placeholder="All engineers"/>
+          <datalist id="engineerList"></datalist>
+        </div>
+        <button class="btn btn-primary" onclick="loadActivity()"><i class="fa-solid fa-rotate"></i> Refresh</button>
+        <button class="btn btn-neutral" onclick="clearEngineer()"><i class="fa-solid fa-filter-circle-xmark"></i> Clear</button>
+      </div>
+    </section>
+
+    <section class="kpis" id="kpiBox"></section>
+
+    <section class="grid">
+      <div class="panel">
+        <div class="card-head">
+          <div class="card-title"><i class="fa-solid fa-users-line"></i> Engineer Productivity</div>
+          <span class="count" id="engineerCount">0 engineers</span>
+        </div>
+        <div class="table-wrap" id="summaryBox"></div>
+      </div>
+      <div class="panel">
+        <div class="card-head">
+          <div class="card-title"><i class="fa-solid fa-timeline"></i> Activity Timeline</div>
+          <span class="count" id="eventCount">0 events</span>
+        </div>
+        <div class="activity-list" id="timelineBox"><div class="empty">Loading activity...</div></div>
+      </div>
+    </section>
+  </main>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const baseUrl = window.BACKEND_URL || "http://localhost:3000";
+    const token = new URLSearchParams(location.search).get("token") || localStorage.getItem("token") || "";
+    let activityData = null;
+
+    function esc(value){
+      return String(value ?? "").replace(/[&<>"']/g, ch => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[ch]));
+    }
+    function todayISO(){
+      const now = new Date();
+      const offset = now.getTimezoneOffset() * 60000;
+      return new Date(now.getTime() - offset).toISOString().slice(0, 10);
+    }
+    function fmtTime(value){
+      if(!value) return "--";
+      const d = new Date(value);
+      if(Number.isNaN(d.getTime())) return String(value).slice(11, 16) || "--";
+      return d.toLocaleTimeString("en-IN", { hour:"2-digit", minute:"2-digit" });
+    }
+    function showToast(message){
+      const el = document.getElementById("toast");
+      el.textContent = message;
+      el.classList.add("show");
+      setTimeout(() => el.classList.remove("show"), 2600);
+    }
+    function iconFor(kind){
+      return ({ plan:"fa-calendar-check", status:"fa-clipboard-check", material:"fa-boxes-packing", taskClosed:"fa-circle-check" })[kind] || "fa-circle";
+    }
+    function renderKpis(totals = {}){
+      const rows = [
+        ["Activities", totals.totalActivity || 0, ""],
+        ["Active Engineers", totals.activeEngineers || 0, "teal"],
+        ["Plans", totals.plansSubmitted || 0, "green"],
+        ["Statuses", totals.statusesFilled || 0, "green"],
+        ["Material Requests", totals.materialRequests || 0, "purple"],
+        ["Tasks Closed", totals.tasksClosed || 0, "orange"],
+        ["Pending", (totals.pendingStatus || 0) + (totals.pendingTasks || 0), "red"],
+      ];
+      document.getElementById("kpiBox").innerHTML = rows.map(([label, value, tone]) => `
+        <div class="kpi ${tone}"><div class="kpi-value">${esc(value)}</div><div class="kpi-label">${esc(label)}</div></div>
+      `).join("");
+    }
+    function renderSummary(engineers = []){
+      document.getElementById("engineerCount").textContent = `${engineers.length} engineers`;
+      document.getElementById("engineerList").innerHTML = engineers.map(row => `<option value="${esc(row.engineer)}"></option>`).join("");
+      if(!engineers.length){
+        document.getElementById("summaryBox").innerHTML = '<div class="empty">No engineer activity found for selected date.</div>';
+        return;
+      }
+      document.getElementById("summaryBox").innerHTML = `
+        <table>
+          <thead><tr><th>Engineer</th><th>Plans</th><th>Status</th><th>Material</th><th>Closed</th><th>Pending Status</th><th>Pending Tasks</th></tr></thead>
+          <tbody>
+            ${engineers.map(row => `
+              <tr>
+                <td class="engineer">${esc(row.engineer)}</td>
+                <td class="num">${esc(row.plansSubmitted)}</td>
+                <td class="num">${esc(row.statusesFilled)}</td>
+                <td class="num">${esc(row.materialRequests)}</td>
+                <td class="num">${esc(row.tasksClosed)}</td>
+                <td class="num pending">${esc(row.pendingStatus)}</td>
+                <td class="num pending">${esc(row.pendingTasks)}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>`;
+    }
+    function renderTimeline(events = []){
+      document.getElementById("eventCount").textContent = `${events.length} events`;
+      const box = document.getElementById("timelineBox");
+      if(!events.length){
+        box.innerHTML = '<div class="empty">No timeline events found for selected date.</div>';
+        return;
+      }
+      box.innerHTML = events.map(event => {
+        const details = [
+          ["Engineer", event.engineer],
+          ["RO", [event.roCode, event.roName].filter(Boolean).join(" - ")],
+          ["Region", event.region],
+          ["Phase", event.phase],
+          ["Visit Date", event.visitDate],
+          ["Status", event.status],
+        ].filter(([,v]) => v !== undefined && v !== null && String(v).trim() !== "");
+        return `<article class="event ${esc(event.kind)}">
+          <div class="time">${fmtTime(event.time)}</div>
+          <div class="dot"><i class="fa-solid ${iconFor(event.kind)}"></i></div>
+          <div class="event-card">
+            <div class="event-head">
+              <div class="event-title">${esc(event.title || event.label)}</div>
+              <span class="badge">${esc(event.label)}</span>
+            </div>
+            ${event.subtitle ? `<div class="subtitle">${esc(event.subtitle)}</div>` : ""}
+            <div class="details">${details.map(([k,v]) => `<div class="detail"><div class="detail-k">${esc(k)}</div><div class="detail-v">${esc(v)}</div></div>`).join("")}</div>
+          </div>
+        </article>`;
+      }).join("");
+    }
+    async function loadActivity(){
+      const date = document.getElementById("dateInput").value || todayISO();
+      const engineer = document.getElementById("engineerInput").value.trim();
+      document.getElementById("timelineBox").innerHTML = '<div class="empty">Loading activity...</div>';
+      try{
+        const params = new URLSearchParams({ date });
+        if(engineer) params.set("engineer", engineer);
+        const res = await fetch(`${baseUrl}/engineerActivity?${params}`, { headers:{ Authorization:`Bearer ${token}` } });
+        const data = await res.json();
+        if(!res.ok || data.success === false) throw new Error(data.message || "Activity load failed");
+        activityData = data;
+        document.getElementById("dateInput").value = data.date || date;
+        document.getElementById("topbarMeta").textContent = `Showing ${data.date || date}`;
+        renderKpis(data.totals || {});
+        renderSummary(data.engineers || []);
+        renderTimeline(data.timeline || []);
+      }catch(err){
+        activityData = null;
+        renderKpis({});
+        renderSummary([]);
+        document.getElementById("eventCount").textContent = "Load failed";
+        document.getElementById("timelineBox").innerHTML = `<div class="empty">${esc(err.message)}</div>`;
+      }
+    }
+    function clearEngineer(){
+      document.getElementById("engineerInput").value = "";
+      loadActivity();
+    }
+
+    document.getElementById("dateInput").value = new URLSearchParams(location.search).get("date") || todayISO();
+    document.getElementById("engineerInput").addEventListener("keydown", event => {
+      if(event.key === "Enter") loadActivity();
+    });
+    loadActivity();
+  </script>
+</body>
+</html>
