@@ -29,6 +29,7 @@ const DailyPlan = require("../models/DailyPlan");
 const Status = require("../models/Status");
 const Task = require("../models/Task");
 const NoteTask = require("../models/NoteTask");
+const Incident = require("../models/Incident");
 const CRMNotification = require("../models/CRMNotification");
 const JioBPStatus = require("../models/jioBPStatus");
 const BPCLStatus = require("../models/BPCLStatus");
@@ -462,6 +463,14 @@ function getTaskAgingDays(task = {}) {
   return Math.max(0, Math.floor((Date.now() - start.getTime()) / 86400000));
 }
 
+function getIncidentAgingDays(incident = {}) {
+  const rawDate = String(incident.incidentDate || "").slice(0, 10);
+  if (!rawDate) return 0;
+  const start = new Date(`${rawDate}T00:00:00+05:30`);
+  if (Number.isNaN(start.getTime())) return 0;
+  return Math.max(0, Math.floor((Date.now() - start.getTime()) / 86400000));
+}
+
 function formatTaskMailRows(task = {}) {
   return [
     ["Customer", getTaskCustomer(task)],
@@ -777,6 +786,166 @@ async function processPendingTaskEscalations() {
   }
 
   return { ok: true, escalated };
+}
+
+function buildPendingIncidentReminderHtml({ engineerName = "", incidents = [], dateISO = "" } = {}) {
+  const rows = incidents
+    .map((incident, index) => `
+      <tr style="background:${index % 2 === 0 ? "#ffffff" : "#f8fafc"}">
+        <td style="padding:9px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#0f172a;white-space:nowrap;">${index + 1}</td>
+        <td style="padding:9px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#0f172a;white-space:nowrap;font-weight:700;">${htmlEscape(incident.incidentId || "—")}</td>
+        <td style="padding:9px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#0f172a;white-space:nowrap;">${htmlEscape(incident.roCode || "—")}</td>
+        <td style="padding:9px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#0f172a;min-width:180px;">${htmlEscape(incident.siteName || "—")}</td>
+        <td style="padding:9px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#0f172a;white-space:nowrap;">${htmlEscape(incident.region || "—")}</td>
+        <td style="padding:9px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#0f172a;white-space:nowrap;">${htmlEscape(formatDateOnlyIST(incident.incidentDate))}</td>
+        <td style="padding:9px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#991b1b;white-space:nowrap;font-weight:800;">${getIncidentAgingDays(incident)} days</td>
+        <td style="padding:9px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#334155;min-width:260px;">${htmlEscape(incident.complaintRemark || "—")}</td>
+      </tr>
+    `)
+    .join("");
+
+  return `
+  <div style="margin:0;padding:24px 12px;background:#eef3f8;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
+    <div style="max-width:980px;margin:0 auto;background:#ffffff;border:1px solid #dbe4ee;border-radius:16px;overflow:hidden;box-shadow:0 16px 38px rgba(15,23,42,.10);">
+      <div style="padding:24px 28px;background:linear-gradient(135deg,#0f172a 0%,#1d4ed8 55%,#0f766e 100%);color:#ffffff;">
+        <div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;opacity:.8;">RELCON CRM | Incident Follow-up</div>
+        <div style="margin-top:10px;font-size:24px;font-weight:800;line-height:1.2;">Pending Incident Reminder</div>
+        <div style="margin-top:8px;font-size:14px;line-height:1.6;opacity:.95;">Good Morning ${htmlEscape(engineerName || "Engineer")}, please review and close your assigned pending incidents.</div>
+      </div>
+      <div style="padding:24px 28px 28px;">
+        <p style="margin:0 0 16px;font-size:14px;line-height:1.7;color:#334155;">
+          Date: <strong style="color:#0f172a;">${htmlEscape(formatDateOnlyIST(dateISO))}</strong><br/>
+          Assigned Engineer: <strong style="color:#0f172a;">${htmlEscape(engineerName || "Unassigned")}</strong><br/>
+          Pending Incidents: <strong style="color:#b91c1c;">${incidents.length}</strong>
+        </p>
+        <div style="overflow:auto;border:1px solid #e2e8f0;border-radius:12px;background:#ffffff;">
+          <table style="width:100%;border-collapse:collapse;min-width:960px;">
+            <thead>
+              <tr>
+                ${["#", "Incident ID", "RO Code", "Site Name", "Region", "Incident Date", "Ageing", "Dealer Remark"].map((label) => `<th style="padding:10px;border-bottom:1px solid #cbd5e1;background:#1e3a8a;color:#ffffff;font-size:11px;text-transform:uppercase;letter-spacing:.05em;text-align:left;white-space:nowrap;">${label}</th>`).join("")}
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+        <div style="margin-top:18px;padding:14px 16px;border-radius:12px;background:#fff7ed;border:1px solid #fed7aa;color:#7c2d12;font-size:13px;line-height:1.7;">
+          Please update the incident status in RELCON CRM once the issue is resolved. Admin team is copied for tracking.
+        </div>
+        <div style="margin-top:22px;font-size:13px;color:#64748b;line-height:1.7;">
+          Regards,<br/>
+          <strong style="color:#0f172a;">${htmlEscape(DEFAULT_OUTGOING_MAIL_DISPLAY_NAME)}</strong><br/>
+          RELCON Systems
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function sendPendingIncidentReminderEmails({ dateISO = getCurrentISTDateParts().dateISO } = {}) {
+  const { weekdayShort } = getCurrentISTDateParts();
+  if (weekdayShort === "sun") {
+    return { ok: true, skipped: true, reason: "sunday_skip", dateISO };
+  }
+
+  const incidents = await Incident.find({
+    status: /^pending$/i,
+  }).sort({ assignEngineer: 1, incidentDate: 1 }).lean();
+
+  if (!incidents.length) {
+    await EmailLog.create({
+      type: "pending-incident-reminder",
+      subject: `No pending incidents | ${dateISO}`,
+      to: "",
+      status: "success",
+      meta: { reason: "no_pending_incidents", dateISO },
+    });
+    return { ok: true, sent: 0, skipped: true, reason: "no_pending_incidents", dateISO };
+  }
+
+  const users = await User.find(ACTIVE_USER_QUERY, "email role engineerName username name").lean();
+  const adminEmails = await getAdminNotificationEmails();
+  const grouped = new Map();
+
+  for (const incident of incidents) {
+    const engineerName = safe(incident.assignEngineer).trim() || "Unassigned";
+    if (!grouped.has(engineerName)) grouped.set(engineerName, []);
+    grouped.get(engineerName).push(incident);
+  }
+
+  const summary = {
+    ok: true,
+    dateISO,
+    totalPending: incidents.length,
+    engineers: grouped.size,
+    sent: 0,
+    skipped: 0,
+    failed: 0,
+    details: [],
+  };
+
+  for (const [engineerName, engineerIncidents] of grouped.entries()) {
+    const engineerEmails = getEngineerEmailsFromUsers(users, engineerName);
+    const toRecipients = engineerEmails.filter(Boolean);
+    const ccRecipients = adminEmails.filter((email) => !toRecipients.includes(email));
+    const subject = `Pending Incident Reminder | ${engineerName} | ${engineerIncidents.length} pending | ${formatDateOnlyIST(dateISO)}`;
+
+    if (!toRecipients.length) {
+      summary.skipped += 1;
+      summary.details.push({ engineerName, count: engineerIncidents.length, status: "skipped", reason: "engineer_email_missing" });
+      await EmailLog.create({
+        type: "pending-incident-reminder",
+        subject,
+        to: "",
+        status: "success",
+        meta: { engineerName, count: engineerIncidents.length, reason: "engineer_email_missing", dateISO, cc: ccRecipients },
+      });
+      continue;
+    }
+
+    try {
+      const html = buildPendingIncidentReminderHtml({ engineerName, incidents: engineerIncidents, dateISO });
+      const text = [
+        `Good Morning ${engineerName},`,
+        "",
+        `You have ${engineerIncidents.length} pending incident(s). Please update closure/status in RELCON CRM.`,
+        "",
+        ...engineerIncidents.map((incident, index) => `${index + 1}. ${incident.incidentId || "-"} | ${incident.roCode || "-"} | ${incident.siteName || "-"} | ${incident.region || "-"} | ${formatDateOnlyIST(incident.incidentDate)} | ${incident.complaintRemark || "-"}`),
+      ].join("\n");
+
+      const info = await transporter.sendMail({
+        from: getDefaultOutgoingFromHeader(),
+        to: toRecipients.join(", "),
+        cc: ccRecipients.length ? ccRecipients.join(", ") : undefined,
+        subject,
+        html,
+        text,
+      });
+
+      summary.sent += 1;
+      summary.details.push({ engineerName, count: engineerIncidents.length, status: "sent", to: toRecipients, cc: ccRecipients });
+      await EmailLog.create({
+        type: "pending-incident-reminder",
+        subject,
+        to: toRecipients.join(", "),
+        status: "success",
+        meta: { engineerName, count: engineerIncidents.length, dateISO, cc: ccRecipients, messageId: info?.messageId || "" },
+      });
+    } catch (err) {
+      summary.failed += 1;
+      summary.details.push({ engineerName, count: engineerIncidents.length, status: "failure", error: err.message || String(err) });
+      await EmailLog.create({
+        type: "pending-incident-reminder",
+        subject,
+        to: toRecipients.join(", "),
+        status: "failure",
+        error: err.message || String(err),
+        meta: { engineerName, count: engineerIncidents.length, dateISO, cc: ccRecipients },
+      });
+      console.error("❌ Pending incident reminder email error:", err.message || err);
+    }
+  }
+
+  return summary;
 }
 
 function parseISTDateTime(dateISO = "", timeValue = "") {
@@ -6923,6 +7092,17 @@ cron.schedule(
   { timezone: "Asia/Kolkata" }
 );
 
+// ─── Scheduler: daily 07:00 IST except Sunday for pending incident reminders ─
+
+cron.schedule(
+  "0 7 * * 1-6",
+  () => {
+    console.log("🔔 Pending incident reminder CRON TRIGGERED:", new Date().toISOString());
+    sendPendingIncidentReminderEmails().catch((e) => console.error("Pending incident reminder job error:", e));
+  },
+  { timezone: "Asia/Kolkata" }
+);
+
 // ─── Scheduler: daily 09:00 IST for faulty material ageing alerts ───────────
 
 cron.schedule(
@@ -7157,6 +7337,12 @@ if (require.main === module) {
       .then((r) => { console.log("Note task reminder check done:", r); process.exit(r.ok ? 0 : 1); })
       .catch((e) => { console.error("❌ error:", e); process.exit(1); });
 
+  } else if (type === "pending-incident-reminder" || type === "incident-reminder") {
+    connectMongoForManualRun()
+      .then(() => sendPendingIncidentReminderEmails({ dateISO: dateArg || getCurrentISTDateParts().dateISO }))
+      .then((r) => { console.log("Pending incident reminder done:", r); process.exit(r.ok ? 0 : 1); })
+      .catch((e) => { console.error("❌ error:", e); process.exit(1); });
+
   } else {
     // default = pending
     sendPendingStatusEmail({ forDateISO: dateArg })
@@ -7195,6 +7381,7 @@ module.exports = {
   sendStatusRequirementAlertToAdmins,
   sendStatusMaterialUsageAlertToAdmins,
   sendPendingStatusConfirmationToAdmins,
+  sendPendingIncidentReminderEmails,
   processPendingTaskEscalations,
   processNoteTaskReminderEmails,
   buildTaskSubject,
