@@ -72,6 +72,7 @@ function sanitizeDailyPlanUpdatePayload(body = {}) {
     "updatedAt",
     "statusSaved",
     "jioBPStatusSaved",
+    "bpclStatusSaved",
   ]);
   const payload = {};
   for (const [key, value] of Object.entries(body || {})) {
@@ -316,10 +317,16 @@ router.get("/getDailyPlans", verifyToken, async (req, res) => {
         jioStatusList.map((s) => [s.planId.toString(), true])
       );
 
+      const bpclStatusList = await BPCLStatus.find({}).lean();
+      const bpclStatusMap = new Map(
+        bpclStatusList.map((s) => [s.planId.toString(), true])
+      );
+
       return plans.map((plan) => ({
         ...plan,
         statusSaved: statusMap.has(plan._id.toString()),
         jioBPStatusSaved: jioStatusMap.has(plan._id.toString()),
+        bpclStatusSaved: bpclStatusMap.has(plan._id.toString()),
       }));
     });
     sendCachedJson(res, result);

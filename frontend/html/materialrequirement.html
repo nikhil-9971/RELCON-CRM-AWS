@@ -863,8 +863,23 @@ function handleRoCodeChange(roCode){
   }
 }
 function siteKey(row){return [row?.engineer||'',row?.roCode||'',row?.date||''].map(v=>String(v).trim().toLowerCase()).join('|');}
+function getPlanFromRecord(record){
+  return record?.planId && typeof record.planId === 'object' ? record.planId : null;
+}
+function getPlanIdValue(record){
+  return record?.planId && typeof record.planId === 'object' && record.planId._id
+    ? record.planId._id.toString()
+    : record?.planId?.toString();
+}
+function sourceSiteKey(record, plan){
+  return siteKey({
+    engineer: plan?.engineer || record?.engineer || '',
+    roCode: plan?.roCode || record?.roCode || '',
+    date: plan?.date || record?.date || '',
+  });
+}
 function inferCustomer(row){
-  const hay = `${row?.customer||''} ${row?.roName||''} ${row?.sourceType||''}`.toLowerCase();
+  const hay = `${row?.customer||''} ${row?.roName||''} ${row?.phase||''} ${row?.sourceType||''}`.toLowerCase();
   if(hay.includes('jiobp')||hay.includes('jio bp')||hay.includes('jio')) return 'JioBP';
   if(hay.includes('bpcl')) return 'BPCL';
   if(hay.includes('hpcl')) return 'HPCL';
@@ -916,7 +931,12 @@ function summarizeLineItems(items=[]){
     types: [...new Set(valid.map(item=>item.materialType).filter(Boolean))],
   };
 }
-function getSourceMaterial(record){return String(record?.materialRequirement || record?.spareRequirmentname || '').trim();}
+function getSourceMaterial(record){
+  const named = String(record?.materialRequirement || record?.spareRequirmentname || record?.spareRequirementName || '').trim();
+  if(named) return named;
+  const requirement = String(record?.spareRequirment || record?.spareRequirement || '').trim();
+  return /^(yes|required|requirement|spare required)$/i.test(requirement) ? '' : requirement;
+}
 function deriveUsedIn(row){return [row?.roCode,row?.roName,row?.phase].filter(Boolean).join(' - ');}
 function sortValue(value){
   if(value === null || value === undefined) return '';
@@ -1091,17 +1111,20 @@ async function fetchData(){
       ? fetchWithTimeout(`${baseUrl}/getUsers`,{headers:{Authorization:`Bearer ${token}`}}).catch(()=>null)
       : Promise.resolve(null);
 
-    const [hpclRes,jioRes,planRes,materialRes,usersRes] = await Promise.all([
+    const [hpclRes,jioRes,bpclRes,planRes,materialRes,usersRes] = await Promise.all([
       fetchWithTimeout(`${baseUrl}/getMergedStatusRecords`,{headers:{Authorization:`Bearer ${token}`}}),
       fetchWithTimeout(`${baseUrl}/jioBP/getAllJioBPStatus`,{headers:{Authorization:`Bearer ${token}`}}),
+      fetchWithTimeout(`${baseUrl}/bpclStatus/getAllBPCLStatus`,{headers:{Authorization:`Bearer ${token}`}}),
       fetchWithTimeout(`${baseUrl}/getDailyPlans`,{headers:{Authorization:`Bearer ${token}`}}),
       fetchWithTimeout(`${baseUrl}/materialRequirement`,{headers:{Authorization:`Bearer ${token}`}}),
       usersPromise,
     ]);
     if(!hpclRes.ok) throw new Error(`Status records failed: ${hpclRes.status}`);
+    if(!bpclRes.ok) throw new Error(`BPCL status records failed: ${bpclRes.status}`);
     if(!materialRes.ok) throw new Error(`Material data failed: ${materialRes.status}`);
     const hpclData     = await hpclRes.json().catch(()=>[]);
     const jioData      = await jioRes.json().catch(()=>[]);
+    const bpclData     = await bpclRes.json().catch(()=>[]);
     const planData     = await planRes.json().catch(()=>[]);
     const materialData = (await materialRes.json().catch(()=>[])).map(normalizeMaterialRecord);
     engineerUsers = usersRes?.ok ? await usersRes.json().catch(()=>[]) : [];
@@ -1113,11 +1136,14 @@ async function fetchData(){
     const materialMap=new Map(materialData.map(item=>[siteKey(item),item]));
     const sourceKeys=new Set();
 
-    const mergedSources=[...hpclData.map(r=>({record:r,sourceType:'HPCL/BPCL'})),...jioData.map(r=>({record:r,sourceType:'JioBP'}))].map(({record,sourceType})=>{
-      const planKey = typeof record.planId==='object'&&record.planId._id
-        ? record.planId._id.toString() : record.planId?.toString();
-      const plan=planMap[planKey];
-      const key = siteKey({ engineer:plan?.engineer, roCode:plan?.roCode, date:plan?.date });
+    const mergedSources=[
+      ...hpclData.map(r=>({record:r,sourceType:'HPCL'})),
+      ...jioData.map(r=>({record:r,sourceType:'JioBP'})),
+      ...bpclData.map(r=>({record:r,sourceType:'BPCL'})),
+    ].map(({record,sourceType})=>{
+      const planKey = getPlanIdValue(record);
+      const plan = getPlanFromRecord(record) || planMap[planKey];
+      const key = sourceSiteKey(record, plan);
       sourceKeys.add(key);
       return buildDisplayRow(record, plan, materialMap.get(key), sourceType);
     });

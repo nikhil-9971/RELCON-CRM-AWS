@@ -299,6 +299,9 @@
       { key:"class2Devices", label:"Class2 Devices" }, { key:"relconAtgProvided", label:"RELCON ATG Provided" },
       { key:"relconAtgCount", label:"RELCON ATG Count" }, { key:"relconAtgDetails", label:"RELCON ATG Details" },
       { key:"jioSimNumber", label:"Jio SIM Number" }, { key:"airtelSimNumber", label:"Airtel SIM Number" },
+      { key:"spareUsed", label:"Material Used" }, { key:"activeSpare", label:"Used Material" },
+      { key:"faultySpare", label:"Faulty Material" }, { key:"spareRequirment", label:"Material Req." },
+      { key:"spareRequirmentname", label:"Material Req. Name" },
       { key:"isVerified", label:"Verified" }, { key:"actions", label:"Actions" },
     ];
 
@@ -442,13 +445,15 @@
       form.innerHTML=`<input type="hidden" name="_id" value="${esc(record.bpclStatusId)}"/>`;
       const merged={...record};
       const skip=["__v","createdAt","updatedAt","_id","bpclStatusId","verifiedBy","verifiedAt","verificationEditLog","planId"];
-      const order=["engineer","region","roCode","roName","date","class1DeviceCount","class1Devices","class1WithoutSimCount","class1WithoutSimDevices","class2DeviceCount","class2Devices","relconAtgProvided","relconAtgCount","relconAtgDetails","jioSimNumber","airtelSimNumber","isVerified","createdBy"];
+      const order=["engineer","region","roCode","roName","date","class1DeviceCount","class1Devices","class1WithoutSimCount","class1WithoutSimDevices","class2DeviceCount","class2Devices","relconAtgProvided","relconAtgCount","relconAtgDetails","jioSimNumber","airtelSimNumber","spareUsed","activeSpare","faultySpare","spareRequirment","spareRequirmentname","isVerified","createdBy"];
       const keys=[...order.filter(k=>k in merged),...Object.keys(merged).filter(k=>!order.includes(k))];
       keys.forEach(key=>{
         if(skip.includes(key) || (key==="planId" && typeof merged[key]==="object")) return;
         const val=valueText(merged[key]);
         if(key==="relconAtgProvided"){
           form.innerHTML+=`<div class="sf-modal-field"><label class="sf-modal-label">${esc(key)}</label><select name="${esc(key)}" class="sf-modal-input"><option value="">Select</option><option value="YES" ${val==="YES"?"selected":""}>YES</option><option value="NO" ${val==="NO"?"selected":""}>NO</option></select></div>`;
+        }else if(["spareUsed","spareRequirment"].includes(key)){
+          form.innerHTML+=`<div class="sf-modal-field"><label class="sf-modal-label">${esc(key)}</label><select name="${esc(key)}" class="sf-modal-input"><option value="">Select</option><option value="Yes" ${val==="Yes"?"selected":""}>Yes</option><option value="No" ${val==="No"?"selected":""}>No</option></select></div>`;
         }else if(key==="isVerified"){
           form.innerHTML+=`<div class="sf-modal-field"><label class="sf-modal-label">${esc(key)}</label><select name="${esc(key)}" class="sf-modal-input"><option value="true" ${val==="true"||val==="Yes"?"selected":""}>true</option><option value="false" ${val==="false"||!val?"selected":""}>false</option></select></div>`;
         }else{

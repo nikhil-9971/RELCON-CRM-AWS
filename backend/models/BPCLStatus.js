@@ -99,6 +99,36 @@ const BPCLStatusSchema = new mongoose.Schema(
       trim: true,
     },
 
+    /* 🔹 MATERIAL / SPARE DETAILS */
+    spareUsed: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    activeSpare: {
+      type: String,
+      default: "",
+      uppercase: true,
+      trim: true,
+    },
+    faultySpare: {
+      type: String,
+      default: "",
+      uppercase: true,
+      trim: true,
+    },
+    spareRequirment: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    spareRequirmentname: {
+      type: String,
+      default: "",
+      uppercase: true,
+      trim: true,
+    },
+
     /* 🔹 COMMON */
     createdBy: {
       type: String,

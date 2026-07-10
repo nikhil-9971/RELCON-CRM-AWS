@@ -1399,6 +1399,16 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
           <input type="text" id="bpclJioSim" class="dv-modal-input" placeholder="JIO SIM Number"/></div>
         <div class="dv-field"><label class="dv-label">Airtel SIM Number</label>
           <input type="text" id="bpclAirtelSim" class="dv-modal-input" placeholder="Airtel SIM Number"/></div>
+        <div class="dv-field"><label class="dv-label">Any Material Used?</label>
+          <select id="bpclSpareUsed" class="dv-modal-select" onchange="applyBPCLMaterialAutoFieldLogic()"><option value="">Select</option><option>Yes</option><option>No</option></select></div>
+        <div class="dv-field dv-form-full"><label class="dv-label">Used Material Name & Code</label>
+          <input type="text" id="bpclActiveSpare" class="dv-modal-input" placeholder="1-DEVICE NAME (CODE)"/></div>
+        <div class="dv-field dv-form-full"><label class="dv-label">Faulty Material Name & Code</label>
+          <input type="text" id="bpclFaultySpare" class="dv-modal-input" placeholder="1-DEVICE NAME (CODE)"/></div>
+        <div class="dv-field"><label class="dv-label">Any Material Requirement?</label>
+          <select id="bpclSpareRequirment" class="dv-modal-select" onchange="applyBPCLMaterialAutoFieldLogic()"><option value="">Select</option><option>Yes</option><option>No</option></select></div>
+        <div class="dv-field dv-form-full"><label class="dv-label">Material Requirement Name</label>
+          <input type="text" id="bpclSpareRequirmentname" class="dv-modal-input" placeholder="Share material name required"/></div>
       </form>
     </div>
     <div class="dv-modal-footer">
@@ -2112,11 +2122,37 @@ function renderClass1WithoutSimDevices() { const c=Number(document.getElementByI
 function renderClass2Devices() { const c=Number(document.getElementById('class2Count').value), con=document.getElementById('class2DevicesContainer'); con.innerHTML=''; for(let i=0;i<c;i++) { const inp=document.createElement('input'); inp.type='text'; inp.className='class2Device dv-modal-input'; inp.style.marginBottom='6px'; inp.placeholder=`Class-2 Device ${i+1}`; con.appendChild(inp); } }
 function handleRelconATGChange() { const v=document.getElementById('relconAtgProvided').value; const cd=document.getElementById('relconAtgCountDiv'), rc=document.getElementById('relconAtgContainer'); if(v==='YES') { cd.classList.remove('hidden'); rc.classList.remove('hidden'); } else { cd.classList.add('hidden'); rc.classList.add('hidden'); document.getElementById('relconAtgCount').value=''; rc.innerHTML=''; } }
 function renderRelconATGFields() { const c=parseInt(document.getElementById('relconAtgCount').value||0), con=document.getElementById('relconAtgContainer'); con.innerHTML='<label class="dv-label">RELCON ATG Details</label>'; for(let i=1;i<=c;i++) { const inp=document.createElement('input'); inp.type='text'; inp.placeholder=`ATG ${i} - SBEM-EBMS-24523`; inp.className='dv-modal-input'; inp.style.marginBottom='6px'; inp.id=`relconAtg_${i}`; con.appendChild(inp); } }
+function applyBPCLMaterialAutoFieldLogic() {
+  const spareUsed=document.getElementById('bpclSpareUsed').value;
+  const spareReq=document.getElementById('bpclSpareRequirment').value;
+  const active=document.getElementById('bpclActiveSpare');
+  const faulty=document.getElementById('bpclFaultySpare');
+  const reqName=document.getElementById('bpclSpareRequirmentname');
+  if(spareUsed==='No') {
+    active.value='NO ACTIVE MATERIAL USED';
+    faulty.value='NO FAULTY MATERIAL CREATED';
+    active.readOnly=true;
+    faulty.readOnly=true;
+  } else {
+    active.readOnly=false;
+    faulty.readOnly=false;
+    if(spareUsed==='Yes' && active.value==='NO ACTIVE MATERIAL USED') active.value='';
+    if(spareUsed==='Yes' && faulty.value==='NO FAULTY MATERIAL CREATED') faulty.value='';
+  }
+  if(spareReq==='No') {
+    reqName.value='NO SPARE REQUIRE';
+    reqName.readOnly=true;
+  } else {
+    reqName.readOnly=false;
+    if(spareReq==='Yes' && reqName.value==='NO SPARE REQUIRE') reqName.value='';
+  }
+}
 function closeBPCLModal() { document.getElementById('bpclModal').classList.add('hidden'); }
 
 async function openBPCLModal(planId) {
   document.getElementById('bpclPlanId').value=planId;
   document.getElementById('bpclForm').reset();
+  applyBPCLMaterialAutoFieldLogic();
   ['class1DevicesContainer','class1DevicesContainerwithoutsim','class2DevicesContainer'].forEach(id => document.getElementById(id).innerHTML='');
   ['relconAtgCountDiv','relconAtgContainer'].forEach(id => document.getElementById(id).classList.add('hidden'));
   document.getElementById('relconAtgContainer').innerHTML='';
@@ -2139,13 +2175,19 @@ function populateBPCLFields(data) {
   if (data.relconAtgProvided==='YES') { document.getElementById('relconAtgProvided').value='YES'; document.getElementById('relconAtgCountDiv').classList.remove('hidden'); document.getElementById('relconAtgContainer').classList.remove('hidden'); document.getElementById('relconAtgCount').value=data.relconAtgCount||0; renderRelconATGFields(); data.relconAtgDetails?.forEach((v,i) => { const el=document.getElementById(`relconAtg_${i+1}`); if(el) el.value=v; }); } else { document.getElementById('relconAtgProvided').value='NO'; }
   document.getElementById('bpclJioSim').value=data.jioSimNumber||'';
   document.getElementById('bpclAirtelSim').value=data.airtelSimNumber||'';
+  document.getElementById('bpclSpareUsed').value=data.spareUsed||'';
+  document.getElementById('bpclActiveSpare').value=data.activeSpare||'';
+  document.getElementById('bpclFaultySpare').value=data.faultySpare||'';
+  document.getElementById('bpclSpareRequirment').value=data.spareRequirment||'';
+  document.getElementById('bpclSpareRequirmentname').value=data.spareRequirmentname||'';
+  applyBPCLMaterialAutoFieldLogic();
 }
 async function saveBPCLStatus() {
   const relconAtgProvided=document.getElementById('relconAtgProvided')?.value||'NO';
   const relconAtgCount=relconAtgProvided==='YES'?Number(document.getElementById('relconAtgCount')?.value||0):0;
   let relconAtgDetails=[];
   if (relconAtgProvided==='YES' && relconAtgCount>0) { for(let i=1;i<=relconAtgCount;i++) { const v=document.getElementById(`relconAtg_${i}`)?.value; if(v) relconAtgDetails.push(v); } }
-  const payload = { planId:document.getElementById('bpclPlanId').value, class1DeviceCount:Number(document.getElementById('class1Count').value), class1Devices:[...document.querySelectorAll('.class1Device')].map(i=>i.value), class1WithoutSimCount:Number(document.getElementById('class1Countwithoutsim').value), class1WithoutSimDevices:[...document.querySelectorAll('.class1WithoutSimDevice')].map(i=>i.value), class2DeviceCount:Number(document.getElementById('class2Count').value), class2Devices:[...document.querySelectorAll('.class2Device')].map(i=>i.value), relconAtgProvided, relconAtgCount, relconAtgDetails, jioSimNumber:document.getElementById('bpclJioSim').value, airtelSimNumber:document.getElementById('bpclAirtelSim').value };
+  const payload = { planId:document.getElementById('bpclPlanId').value, class1DeviceCount:Number(document.getElementById('class1Count').value), class1Devices:[...document.querySelectorAll('.class1Device')].map(i=>i.value), class1WithoutSimCount:Number(document.getElementById('class1Countwithoutsim').value), class1WithoutSimDevices:[...document.querySelectorAll('.class1WithoutSimDevice')].map(i=>i.value), class2DeviceCount:Number(document.getElementById('class2Count').value), class2Devices:[...document.querySelectorAll('.class2Device')].map(i=>i.value), relconAtgProvided, relconAtgCount, relconAtgDetails, jioSimNumber:document.getElementById('bpclJioSim').value, airtelSimNumber:document.getElementById('bpclAirtelSim').value, spareUsed:document.getElementById('bpclSpareUsed').value, activeSpare:document.getElementById('bpclActiveSpare').value.toUpperCase(), faultySpare:document.getElementById('bpclFaultySpare').value.toUpperCase(), spareRequirment:document.getElementById('bpclSpareRequirment').value, spareRequirmentname:document.getElementById('bpclSpareRequirmentname').value.toUpperCase() };
   const res=await fetch(`${baseUrl}/bpclStatus/saveBPCLStatus`, { method:'POST', headers:{'Content-Type':'application/json',Authorization:`Bearer ${localStorage.getItem('token')}`}, body:JSON.stringify(payload), credentials:'include' });
   if (res.ok) { showToast('BPCL Status saved.'); closeBPCLModal(); await fetchAndStoreData(); applyFilter(document.getElementById('applyBtn')); }
   else showToast('Failed to save BPCL Status.', 'error');
@@ -2414,6 +2456,11 @@ async function buildStatusPdf(planId) {
       ['Relcon ATG Details', asPdfList(st.relconAtgDetails)],
       ['JIO SIM Number', st.jioSimNumber],
       ['Airtel SIM Number', st.airtelSimNumber],
+      ['Any Material Used', st.spareUsed],
+      ['Used Material Details', st.activeSpare],
+      ['Faulty Material Details', st.faultySpare],
+      ['Any Material Requirement', st.spareRequirment],
+      ['Material Requirement Name', st.spareRequirmentname],
     ], y, pw, [14,116,144]);
   }
 
