@@ -788,48 +788,87 @@ async function processPendingTaskEscalations() {
   return { ok: true, escalated };
 }
 
-function buildPendingIncidentReminderHtml({ engineerName = "", incidents = [], dateISO = "" } = {}) {
-  const rows = incidents
-    .map((incident, index) => `
+function buildPendingIncidentRows(incidents = []) {
+  return incidents.map((incident, index) => ({
+    index: index + 1,
+    incidentId: incident.incidentId || "—",
+    roCode: incident.roCode || "—",
+    siteName: incident.siteName || "—",
+    region: incident.region || "—",
+    incidentDate: formatDateOnlyIST(incident.incidentDate),
+    ageing: `${getIncidentAgingDays(incident)} days`,
+    complaintRemark: incident.complaintRemark || "—",
+  }));
+}
+
+function buildPendingIncidentTableHtml(rows = []) {
+  const body = rows
+    .map((row, index) => `
       <tr style="background:${index % 2 === 0 ? "#ffffff" : "#f8fafc"}">
-        <td style="padding:9px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#0f172a;white-space:nowrap;">${index + 1}</td>
-        <td style="padding:9px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#0f172a;white-space:nowrap;font-weight:700;">${htmlEscape(incident.incidentId || "—")}</td>
-        <td style="padding:9px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#0f172a;white-space:nowrap;">${htmlEscape(incident.roCode || "—")}</td>
-        <td style="padding:9px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#0f172a;min-width:180px;">${htmlEscape(incident.siteName || "—")}</td>
-        <td style="padding:9px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#0f172a;white-space:nowrap;">${htmlEscape(incident.region || "—")}</td>
-        <td style="padding:9px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#0f172a;white-space:nowrap;">${htmlEscape(formatDateOnlyIST(incident.incidentDate))}</td>
-        <td style="padding:9px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#991b1b;white-space:nowrap;font-weight:800;">${getIncidentAgingDays(incident)} days</td>
-        <td style="padding:9px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#334155;min-width:260px;">${htmlEscape(incident.complaintRemark || "—")}</td>
+        <td style="padding:9px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#0f172a;white-space:nowrap;">${htmlEscape(String(row.index || index + 1))}</td>
+        <td style="padding:9px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#0f172a;white-space:nowrap;font-weight:700;">${htmlEscape(row.incidentId)}</td>
+        <td style="padding:9px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#0f172a;white-space:nowrap;">${htmlEscape(row.roCode)}</td>
+        <td style="padding:9px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#0f172a;min-width:180px;">${htmlEscape(row.siteName)}</td>
+        <td style="padding:9px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#0f172a;white-space:nowrap;">${htmlEscape(row.region)}</td>
+        <td style="padding:9px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#0f172a;white-space:nowrap;">${htmlEscape(row.incidentDate)}</td>
+        <td style="padding:9px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#991b1b;white-space:nowrap;font-weight:800;">${htmlEscape(row.ageing)}</td>
+        <td style="padding:9px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#334155;min-width:260px;">${htmlEscape(row.complaintRemark)}</td>
       </tr>
     `)
     .join("");
 
   return `
+    <div style="overflow:auto;border:1px solid #e2e8f0;border-radius:12px;background:#ffffff;">
+      <table style="width:100%;border-collapse:collapse;min-width:960px;">
+        <thead>
+          <tr>
+            ${["#", "Incident ID", "RO Code", "Site Name", "Region", "Incident Date", "Ageing", "Dealer Remark"].map((label) => `<th style="padding:10px;border-bottom:1px solid #cbd5e1;background:#1e3a8a;color:#ffffff;font-size:11px;text-transform:uppercase;letter-spacing:.05em;text-align:left;white-space:nowrap;">${label}</th>`).join("")}
+          </tr>
+        </thead>
+        <tbody>${body}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function buildPendingIncidentReminderHtml({ engineerName = "", incidents = [], dateISO = "" } = {}) {
+  const rows = buildPendingIncidentRows(incidents);
+  const topAgeing = rows.map((row) => row.ageing).join(", ") || "—";
+
+  return `
   <div style="margin:0;padding:24px 12px;background:#eef3f8;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
-    <div style="max-width:980px;margin:0 auto;background:#ffffff;border:1px solid #dbe4ee;border-radius:16px;overflow:hidden;box-shadow:0 16px 38px rgba(15,23,42,.10);">
+    <div style="max-width:1040px;margin:0 auto;background:#ffffff;border:1px solid #dbe4ee;border-radius:16px;overflow:hidden;box-shadow:0 16px 38px rgba(15,23,42,.10);">
       <div style="padding:24px 28px;background:linear-gradient(135deg,#0f172a 0%,#1d4ed8 55%,#0f766e 100%);color:#ffffff;">
-        <div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;opacity:.8;">RELCON CRM | Incident Follow-up</div>
-        <div style="margin-top:10px;font-size:24px;font-weight:800;line-height:1.2;">Pending Incident Reminder</div>
-        <div style="margin-top:8px;font-size:14px;line-height:1.6;opacity:.95;">Good Morning ${htmlEscape(engineerName || "Engineer")}, please review and close your assigned pending incidents.</div>
+        <div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;opacity:.8;">RELCON CRM | Combined Incident Follow-up</div>
+        <div style="margin-top:10px;font-size:24px;font-weight:800;line-height:1.2;">Combined Pending Incident Report</div>
+        <div style="margin-top:8px;font-size:14px;line-height:1.6;opacity:.95;">Good Morning ${htmlEscape(engineerName || "Engineer")}, please review the combined pending incident list below and close the open items at the earliest.</div>
       </div>
       <div style="padding:24px 28px 28px;">
-        <p style="margin:0 0 16px;font-size:14px;line-height:1.7;color:#334155;">
-          Date: <strong style="color:#0f172a;">${htmlEscape(formatDateOnlyIST(dateISO))}</strong><br/>
-          Assigned Engineer: <strong style="color:#0f172a;">${htmlEscape(engineerName || "Unassigned")}</strong><br/>
-          Pending Incidents: <strong style="color:#b91c1c;">${incidents.length}</strong>
-        </p>
-        <div style="overflow:auto;border:1px solid #e2e8f0;border-radius:12px;background:#ffffff;">
-          <table style="width:100%;border-collapse:collapse;min-width:960px;">
-            <thead>
-              <tr>
-                ${["#", "Incident ID", "RO Code", "Site Name", "Region", "Incident Date", "Ageing", "Dealer Remark"].map((label) => `<th style="padding:10px;border-bottom:1px solid #cbd5e1;background:#1e3a8a;color:#ffffff;font-size:11px;text-transform:uppercase;letter-spacing:.05em;text-align:left;white-space:nowrap;">${label}</th>`).join("")}
-              </tr>
-            </thead>
-            <tbody>${rows}</tbody>
-          </table>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:18px;">
+          <div style="border:1px solid #dbe4ee;border-radius:12px;padding:12px 14px;background:#f8fafc;">
+            <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#64748b;">Report Date</div>
+            <div style="margin-top:6px;font-size:13px;color:#0f172a;font-weight:600;">${htmlEscape(formatDateOnlyIST(dateISO))}</div>
+          </div>
+          <div style="border:1px solid #dbe4ee;border-radius:12px;padding:12px 14px;background:#f8fafc;">
+            <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#64748b;">Assigned Engineer</div>
+            <div style="margin-top:6px;font-size:13px;color:#0f172a;font-weight:600;">${htmlEscape(engineerName || "Unassigned")}</div>
+          </div>
+          <div style="border:1px solid #dbe4ee;border-radius:12px;padding:12px 14px;background:#f8fafc;">
+            <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#64748b;">Pending Incidents</div>
+            <div style="margin-top:6px;font-size:13px;color:#b91c1c;font-weight:700;">${incidents.length}</div>
+          </div>
+          <div style="border:1px solid #dbe4ee;border-radius:12px;padding:12px 14px;background:#f8fafc;">
+            <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#64748b;">Ageing Snapshot</div>
+            <div style="margin-top:6px;font-size:13px;color:#0f172a;font-weight:600;line-height:1.45;">${htmlEscape(topAgeing)}</div>
+          </div>
         </div>
+
+        <p style="margin:0 0 14px;font-size:13px;line-height:1.7;color:#334155;">
+          The table below combines all pending incidents assigned to you. Admin team is copied for tracking and follow-up.
+        </p>
+        ${buildPendingIncidentTableHtml(rows)}
         <div style="margin-top:18px;padding:14px 16px;border-radius:12px;background:#fff7ed;border:1px solid #fed7aa;color:#7c2d12;font-size:13px;line-height:1.7;">
-          Please update the incident status in RELCON CRM once the issue is resolved. Admin team is copied for tracking.
+          Please update the incident status in RELCON CRM once the issue is resolved. The same report is shared with the admin team for visibility.
         </div>
         <div style="margin-top:22px;font-size:13px;color:#64748b;line-height:1.7;">
           Regards,<br/>
@@ -839,6 +878,49 @@ function buildPendingIncidentReminderHtml({ engineerName = "", incidents = [], d
       </div>
     </div>
   </div>`;
+}
+
+function buildPendingIncidentReminderText({ engineerName = "", incidents = [], dateISO = "" } = {}) {
+  const rows = buildPendingIncidentRows(incidents);
+  const headers = ["#", "Incident ID", "RO Code", "Site Name", "Region", "Incident Date", "Ageing", "Dealer Remark"];
+  const tableRows = rows.length
+    ? rows.map((row) => [
+        String(row.index),
+        row.incidentId,
+        row.roCode,
+        row.siteName,
+        row.region,
+        row.incidentDate,
+        row.ageing,
+        row.complaintRemark,
+      ])
+    : [["-", "-", "-", "-", "-", "-", "-", "-"]];
+
+  const widths = headers.map((header, index) => Math.max(header.length, ...tableRows.map((row) => String(row[index] || "").length)));
+  const formatRow = (row) => row.map((value, index) => String(value || "").padEnd(widths[index])).join(" | ");
+  const separator = widths.map((width) => "-".repeat(width)).join("-+-");
+
+  return [
+    `Dear ${engineerName || "Engineer"},`,
+    "",
+    "Combined Pending Incident Report",
+    "",
+    `Report Date: ${formatDateOnlyIST(dateISO)}`,
+    `Assigned Engineer: ${engineerName || "Unassigned"}`,
+    `Pending Incidents: ${incidents.length}`,
+    "",
+    "The combined pending incident list is below. Please review and close the open items at the earliest.",
+    "",
+    formatRow(headers),
+    separator,
+    ...tableRows.map(formatRow),
+    "",
+    "Please update the incident status in RELCON CRM once the issue is resolved. Admin team is copied for tracking.",
+    "",
+    `Regards,`,
+    DEFAULT_OUTGOING_MAIL_DISPLAY_NAME,
+    "RELCON Systems",
+  ].join("\n");
 }
 
 async function sendPendingIncidentReminderEmails({ dateISO = getCurrentISTDateParts().dateISO } = {}) {
@@ -887,7 +969,7 @@ async function sendPendingIncidentReminderEmails({ dateISO = getCurrentISTDatePa
     const engineerEmails = getEngineerEmailsFromUsers(users, engineerName);
     const toRecipients = engineerEmails.filter(Boolean);
     const ccRecipients = adminEmails.filter((email) => !toRecipients.includes(email));
-    const subject = `Pending Incident Reminder | ${engineerName} | ${engineerIncidents.length} pending | ${formatDateOnlyIST(dateISO)}`;
+    const subject = `Combined Pending Incident Report | ${engineerName} | ${engineerIncidents.length} pending | ${formatDateOnlyIST(dateISO)}`;
 
     if (!toRecipients.length) {
       summary.skipped += 1;
@@ -904,13 +986,7 @@ async function sendPendingIncidentReminderEmails({ dateISO = getCurrentISTDatePa
 
     try {
       const html = buildPendingIncidentReminderHtml({ engineerName, incidents: engineerIncidents, dateISO });
-      const text = [
-        `Good Morning ${engineerName},`,
-        "",
-        `You have ${engineerIncidents.length} pending incident(s). Please update closure/status in RELCON CRM.`,
-        "",
-        ...engineerIncidents.map((incident, index) => `${index + 1}. ${incident.incidentId || "-"} | ${incident.roCode || "-"} | ${incident.siteName || "-"} | ${incident.region || "-"} | ${formatDateOnlyIST(incident.incidentDate)} | ${incident.complaintRemark || "-"}`),
-      ].join("\n");
+      const text = buildPendingIncidentReminderText({ engineerName, incidents: engineerIncidents, dateISO });
 
       const info = await transporter.sendMail({
         from: getDefaultOutgoingFromHeader(),
