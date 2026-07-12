@@ -149,6 +149,41 @@
     }
     .sf-field:nth-child(odd) { border-right: 1px solid var(--border-lt); }
 
+    /* Purpose suggestions stay attached to the input instead of opening the
+       browser's full-screen datalist picker on smaller screens. */
+    .purpose-suggestions {
+      position: absolute;
+      top: calc(100% - 8px);
+      left: 12px;
+      right: 12px;
+      z-index: 30;
+      max-height: 224px;
+      overflow-y: auto;
+      background: #fff;
+      border: 1px solid #b3d4f0;
+      border-radius: 0 0 var(--r) var(--r);
+      box-shadow: var(--sh-md);
+    }
+    .purpose-suggestions[hidden] { display: none; }
+    .purpose-suggestion {
+      display: block;
+      width: 100%;
+      padding: 9px 10px;
+      border: 0;
+      border-bottom: 1px solid var(--border-lt);
+      background: #fff;
+      color: var(--txt);
+      cursor: pointer;
+      font: 500 12px 'Inter', sans-serif;
+      text-align: left;
+    }
+    .purpose-suggestion:last-child { border-bottom: 0; }
+    .purpose-suggestion:hover, .purpose-suggestion:focus {
+      background: var(--sf-blue-lt);
+      color: var(--sf-blue-dk);
+      outline: none;
+    }
+
     .sf-label {
       font-size: 10px !important;
       font-weight: 600 !important;
@@ -795,8 +830,8 @@
           </div>
           <div class="sf-field sf-form-grid-full">
             <label class="sf-label"><i class="fa-solid fa-list-check"></i> Purpose of Visit <span class="req">*</span></label>
-            <input id="purpose" type="text" class="sf-input" list="purposeSuggestions" autocomplete="off" oninput="handlePurposeInput()" placeholder="Describe or choose purpose..." />
-            <datalist id="purposeSuggestions"></datalist>
+            <input id="purpose" type="text" class="sf-input" autocomplete="off" oninput="handlePurposeInput()" onfocus="showPurposeSuggestions()" onkeydown="handlePurposeSuggestionKeydown(event)" placeholder="Describe or choose purpose..." />
+            <div id="purposeSuggestions" class="purpose-suggestions" role="listbox" hidden></div>
           </div>
         </div>
 
@@ -859,6 +894,7 @@
     ];
     let remotePurposeSuggestions = [];
     let purposeSuggestTimer;
+    let visiblePurposeSuggestions = [];
 
     // Set date badge in header
     document.getElementById('currentDateBadge').textContent =
@@ -923,8 +959,45 @@
       const suggestions = [...DEFAULT_PURPOSE_SUGGESTIONS, ...remotePurposeSuggestions]
         .map(normalizePurpose)
         .filter(Boolean);
-      const unique = [...new Set(suggestions)].slice(0, 80);
-      list.innerHTML = unique.map((item) => `<option value="${escapeOptionValue(item)}"></option>`).join('');
+      const query = normalizePurpose(document.getElementById('purpose')?.value);
+      const unique = [...new Set(suggestions)];
+      visiblePurposeSuggestions = unique
+        .filter((item) => !query || item.includes(query))
+        .slice(0, 8);
+      list.innerHTML = visiblePurposeSuggestions.map((item, index) =>
+        `<button type="button" class="purpose-suggestion" role="option" data-index="${index}">${escapeOptionValue(item)}</button>`
+      ).join('');
+      list.querySelectorAll('.purpose-suggestion').forEach((button) => {
+        button.addEventListener('click', () => selectPurposeSuggestion(Number(button.dataset.index)));
+      });
+      list.hidden = !visiblePurposeSuggestions.length || document.activeElement?.id !== 'purpose';
+    }
+
+    function showPurposeSuggestions() {
+      renderPurposeSuggestions();
+    }
+
+    function hidePurposeSuggestions() {
+      document.getElementById('purposeSuggestions').hidden = true;
+    }
+
+    function selectPurposeSuggestion(index) {
+      const value = visiblePurposeSuggestions[index];
+      if (!value) return;
+      const input = document.getElementById('purpose');
+      input.value = value;
+      hidePurposeSuggestions();
+      input.focus();
+    }
+
+    function handlePurposeSuggestionKeydown(event) {
+      const list = document.getElementById('purposeSuggestions');
+      if (event.key === 'Escape') {
+        hidePurposeSuggestions();
+      } else if (event.key === 'ArrowDown' && !list.hidden) {
+        event.preventDefault();
+        list.querySelector('.purpose-suggestion')?.focus();
+      }
     }
 
     async function fetchPurposeSuggestions(query = '') {
@@ -945,9 +1018,14 @@
     function handlePurposeInput() {
       const input = document.getElementById('purpose');
       input.value = input.value.toUpperCase();
+      renderPurposeSuggestions();
       clearTimeout(purposeSuggestTimer);
       purposeSuggestTimer = setTimeout(() => fetchPurposeSuggestions(input.value), 250);
     }
+
+    document.addEventListener('click', (event) => {
+      if (!event.target.closest('#purpose') && !event.target.closest('#purposeSuggestions')) hidePurposeSuggestions();
+    });
 
     async function handleSubmit(event) {
       event.preventDefault();
