@@ -134,6 +134,10 @@ app.get("/login", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "login.html"));
 });
 
+app.get("/material-delivery-update", (req, res) => {
+  res.sendFile(path.join(__dirname, "..", "frontend", "html", "materialDeliveryUpdate.html"));
+});
+
 app.get("/external-meeting", (req, res) => {
   res.send(`<!doctype html>
 <html lang="en">

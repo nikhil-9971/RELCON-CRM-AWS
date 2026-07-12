@@ -1365,8 +1365,20 @@ function buildMaterialRequestProfessionalEmailHtml({
   intro = "",
   salutation = "Team",
   statusLabel = "",
+  actionLink = "",
+  actionLinkLabel = "Open Update Form",
 }) {
   const generatedAt = formatDateTimeIST(new Date());
+  const actionBlock = actionLink
+    ? `
+      <div style="margin:18px 0 8px;padding:16px 18px;border:1px solid #bfdbfe;background:#eff6ff;border-radius:14px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#1d4ed8;">Delivery Update</div>
+        <p style="margin:8px 0 12px;font-size:13px;line-height:1.7;color:#334155;">Please open the secure form below to confirm the delivery status and delivery date directly in RELCON CRM.</p>
+        <a href="${htmlEscape(actionLink)}" style="display:inline-flex;align-items:center;justify-content:center;padding:10px 16px;border-radius:999px;background:#1d4ed8;color:#ffffff;text-decoration:none;font-weight:700;font-size:13px;">${htmlEscape(actionLinkLabel)}</a>
+        <div style="margin-top:10px;font-size:12px;line-height:1.6;color:#475569;word-break:break-all;">${htmlEscape(actionLink)}</div>
+      </div>
+    `
+    : "";
 
   return `
     <div style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;font-size:14px;line-height:1.7;">
@@ -1374,6 +1386,7 @@ function buildMaterialRequestProfessionalEmailHtml({
       <p style="margin:0 0 12px;"><strong>${htmlEscape(title)}</strong></p>
       <p style="margin:0 0 18px;">${htmlEscape(intro)}</p>
       <p style="margin:0 0 16px;"><strong>Current Workflow Status:</strong> ${htmlEscape(statusLabel || request.materialDispatchStatus || "Pending")}</p>
+      ${actionBlock}
 
       <p style="margin:0 0 8px;"><strong>Request Details</strong></p>
       ${buildMaterialRequestSummaryTable(request)}
@@ -1504,6 +1517,7 @@ function buildMaterialRequestPlainText({
   greeting = "Team",
   intro = "",
   statusLabel = "",
+  actionLink = "",
 }) {
   const coordinatorName = request.coordinatorName || request.createdByName || request.updatedByName || "Nikhil Trivedi";
   return [
@@ -1531,6 +1545,7 @@ function buildMaterialRequestPlainText({
     `- Request Summary: ${request.materialSummary || "—"}`,
     `- Total Quantity: ${request.quantity || 0}`,
     `- Remarks: ${request.remarks || "—"}`,
+    actionLink ? `- Delivery Update Link: ${actionLink}` : "",
     "",
     "Material Line Details",
     buildMaterialLineItemsText(Array.isArray(request.lineItems) ? request.lineItems : []),
@@ -1646,6 +1661,8 @@ async function sendMaterialDispatchNotification(request = {}, notificationType =
         ? "The material request below has been updated to In Process. Please review the request details and line-wise material information below."
       : "The material request below has been updated to Dispatched. Please review the dispatch details, courier references, and docket information below.",
     statusLabel,
+    actionLink: notificationType === "transit" ? request.deliveryUpdateUrl || "" : "",
+    actionLinkLabel: "Open Delivery Update Form",
   });
   const text = buildMaterialRequestPlainText({
     request,
@@ -1658,6 +1675,7 @@ async function sendMaterialDispatchNotification(request = {}, notificationType =
         ? "The material request below has been marked as In Process. Please find the request details and line-wise status below."
       : "The material request below has been marked as Dispatched. Please find the dispatch references, docket details, and line-wise material details below.",
     statusLabel,
+    actionLink: notificationType === "transit" ? request.deliveryUpdateUrl || "" : "",
   });
   const ccRecipients = [...new Set(adminEmails.filter((email) => !toRecipients.includes(email)))];
 

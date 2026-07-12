@@ -1,4 +1,5 @@
 const express = require("express");
+const crypto = require("crypto");
 const router = express.Router();
 const MaterialRequestBuilder = require("../models/MaterialRequestBuilder");
 const verifyToken = require("../middleware/authMiddleware");
@@ -12,6 +13,96 @@ const { scopeByEngineer } = require("../utils/accessScope");
 
 function isAdmin(req) {
   return String(req.user?.role || "").toLowerCase() === "admin";
+}
+
+function normalizeDeliveryStatus(value = "") {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  const lower = text.toLowerCase();
+  if (lower.includes("deliver")) return "Delivered";
+  if (lower.includes("transit")) return "In Transit";
+  if (lower.includes("dispatch")) return "Dispatched";
+  if (lower.includes("process")) return "In Process";
+  return text;
+}
+
+function isTransitRequest(record = {}) {
+  return normalizeStatusLabel(record.materialDispatchStatus) === "In Transit";
+}
+
+function isDeliveryUpdateTokenValid(record = {}) {
+  return !record.deliveryUpdateTokenExpiresAt || record.deliveryUpdateTokenExpiresAt >= new Date();
+}
+
+function buildDeliveryUpdateUrl(req, token) {
+  const base = `${req.protocol}://${req.get("host")}`;
+  return `${base}/material-delivery-update?token=${encodeURIComponent(token)}`;
+}
+
+function buildPublicDeliverySnapshot(record = {}) {
+  return {
+    id: record._id?.toString?.() || record._id || "",
+    coordinatorName: record.coordinatorName || record.createdByName || "Nikhil Trivedi",
+    engineer: record.engineer || "",
+    engineerCode: record.engineerCode || "",
+    engineerEmailId: record.engineerEmailId || "",
+    engineerContactNumber: record.engineerContactNumber || "",
+    region: record.region || "",
+    customer: record.customer || "",
+    roCode: record.roCode || "",
+    roName: record.roName || "",
+    phase: record.phase || "",
+    date: record.date || "",
+    materialRequestTo: record.materialRequestTo || "",
+    materialRequestFromEmail: record.materialRequestFromEmail || "",
+    materialRequestDate: record.materialRequestDate || "",
+    destinationAddress: record.destinationAddress || "",
+    materialArrangeFrom: record.materialArrangeFrom || "",
+    materialDispatchStatus: record.materialDispatchStatus || "",
+    deliveryStatus: record.deliveryStatus || "",
+    materialReceivedDate: record.materialReceivedDate || "",
+    materialSummary: record.materialSummary || "",
+    lineItems: Array.isArray(record.lineItems) ? record.lineItems : [],
+    deliveryUpdateTokenExpiresAt: record.deliveryUpdateTokenExpiresAt || null,
+  };
+}
+
+async function ensureTransitDeliveryLink(record, req) {
+  if (!record || !isTransitRequest(record)) return record;
+  const token = record.deliveryUpdateToken || crypto.randomBytes(24).toString("hex");
+  const tokenExpiresAt = record.deliveryUpdateTokenExpiresAt || new Date(Date.now() + 15 * 24 * 60 * 60 * 1000);
+  const deliveryUpdateUrl = buildDeliveryUpdateUrl(req, token);
+  const needsPersist = !record.deliveryUpdateToken || !record.deliveryUpdateTokenExpiresAt;
+  if (needsPersist && record._id) {
+    await MaterialRequestBuilder.findByIdAndUpdate(record._id, {
+      deliveryUpdateToken: token,
+      deliveryUpdateTokenExpiresAt: tokenExpiresAt,
+    });
+  }
+  return {
+    ...record,
+    deliveryUpdateToken: token,
+    deliveryUpdateTokenExpiresAt: tokenExpiresAt,
+    deliveryUpdateUrl,
+  };
+}
+
+function applyDeliveryUpdateToRecord(record = {}, body = {}) {
+  const deliveryStatus = normalizeDeliveryStatus(body.deliveryStatus || body.materialDispatchStatus || record.deliveryStatus || "Delivered");
+  const deliveryDate = String(body.deliveryDate || body.materialReceivedDate || "").trim();
+  const remarks = String(body.remarks || record.remarks || "").trim();
+  const lineItems = Array.isArray(record.lineItems) ? record.lineItems.map((item) => ({
+    ...item,
+    deliveryStatus: deliveryStatus || item.deliveryStatus || "",
+    deliveryDate: deliveryDate || item.deliveryDate || "",
+  })) : [];
+  return {
+    materialDispatchStatus: deliveryStatus || record.materialDispatchStatus || "",
+    deliveryStatus,
+    materialReceivedDate: deliveryDate,
+    remarks,
+    lineItems,
+  };
 }
 
 function normalizeRequestMode(body = {}) {
@@ -251,6 +342,65 @@ async function triggerMaterialRequestUpdateNotifications(previous, updated) {
   }
 }
 
+router.get("/public/delivery/:token", async (req, res) => {
+  try {
+    const token = String(req.params.token || "").trim();
+    if (!token) return res.status(400).json({ error: "Missing token" });
+    const record = await MaterialRequestBuilder.findOne({ deliveryUpdateToken: token }).lean();
+    if (!record) return res.status(404).json({ error: "Invalid or expired link" });
+    if (!isDeliveryUpdateTokenValid(record)) return res.status(410).json({ error: "This delivery link has expired" });
+    res.json(buildPublicDeliverySnapshot(record));
+  } catch (err) {
+    res.status(500).json({ error: "Unable to load delivery update data" });
+  }
+});
+
+router.post("/public/delivery/:token", async (req, res) => {
+  try {
+    const token = String(req.params.token || "").trim();
+    if (!token) return res.status(400).json({ error: "Missing token" });
+
+    const existing = await MaterialRequestBuilder.findOne({ deliveryUpdateToken: token });
+    if (!existing) return res.status(404).json({ error: "Invalid or expired link" });
+    if (!isDeliveryUpdateTokenValid(existing)) return res.status(410).json({ error: "This delivery link has expired" });
+
+    const deliveryDate = String(req.body?.deliveryDate || req.body?.materialReceivedDate || "").trim();
+    const deliveryStatus = normalizeDeliveryStatus(req.body?.deliveryStatus || existing.deliveryStatus || "Delivered");
+    if (!deliveryDate) {
+      return res.status(400).json({ error: "Delivery date is required" });
+    }
+
+    const updateFields = {
+      ...applyDeliveryUpdateToRecord(existing.toObject(), {
+        deliveryDate,
+        deliveryStatus,
+        remarks: String(req.body?.remarks || "").trim(),
+      }),
+      deliveryUpdateSubmittedAt: new Date(),
+      deliveryUpdateSubmittedBy: String(req.body?.submittedBy || req.body?.submittedByName || "").trim(),
+    };
+
+    const updated = await MaterialRequestBuilder.findByIdAndUpdate(existing._id, updateFields, { new: true });
+    const updatedRecord = updated?.toObject ? updated.toObject() : updated;
+    const notificationType = normalizeStatusLabel(updateFields.deliveryStatus) === "In Transit" ? "transit" : "delivered";
+    let mailResult = { ok: false, skipped: true };
+    try {
+      mailResult = await sendMaterialDispatchNotification(updatedRecord, notificationType);
+    } catch (mailErr) {
+      console.error("Delivery update mail error:", mailErr?.message || mailErr);
+    }
+
+    res.json({
+      success: true,
+      message: "Delivery details updated successfully",
+      data: buildPublicDeliverySnapshot(updatedRecord),
+      mailSent: Boolean(mailResult?.ok),
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Unable to update delivery details" });
+  }
+});
+
 router.get("/", verifyToken, async (req, res) => {
   try {
     const data = await MaterialRequestBuilder.find(scopeByEngineer(req.user, "engineer")).sort({ createdAt: -1 });
@@ -267,7 +417,9 @@ router.post("/", verifyToken, async (req, res) => {
     }
     const payload = normalizePayload(req.body, req);
     const created = await MaterialRequestBuilder.create(payload);
-    await triggerMaterialRequestCreateNotifications(created.toObject ? created.toObject() : created);
+    const createdRecord = created.toObject ? created.toObject() : created;
+    const hydratedRecord = isTransitRequest(createdRecord) ? await ensureTransitDeliveryLink(createdRecord, req) : createdRecord;
+    await triggerMaterialRequestCreateNotifications(hydratedRecord);
     res.status(201).json(created);
   } catch (err) {
     res.status(400).json({ error: "Failed to create material request" });
@@ -283,7 +435,9 @@ router.put("/:id", verifyToken, async (req, res) => {
     if (!existing) return res.status(404).json({ error: "Material request not found" });
     const payload = normalizePayload({ ...existing.toObject(), ...req.body, createdByUsername: existing.createdByUsername, createdByName: existing.createdByName }, req);
     const updated = await MaterialRequestBuilder.findByIdAndUpdate(req.params.id, payload, { new: true });
-    await triggerMaterialRequestUpdateNotifications(existing.toObject(), updated?.toObject ? updated.toObject() : updated);
+    const updatedRecord = updated?.toObject ? updated.toObject() : updated;
+    const hydratedRecord = isTransitRequest(updatedRecord) ? await ensureTransitDeliveryLink(updatedRecord, req) : updatedRecord;
+    await triggerMaterialRequestUpdateNotifications(existing.toObject(), hydratedRecord);
     res.json(updated);
   } catch (err) {
     res.status(400).json({ error: "Failed to update material request" });

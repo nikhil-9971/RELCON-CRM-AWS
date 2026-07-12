@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Material Delivery Update — RELCON CRM</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+<style>
+:root{
+  --blue:#1d4ed8; --blue-lt:#eff6ff; --green:#166534; --green-lt:#ecfdf3; --orange:#b45309; --orange-lt:#fff7ed;
+  --red:#b91c1c; --red-lt:#fef2f2; --ink:#0f172a; --muted:#475569; --line:#dbe4ee; --bg:#eef3f8; --card:#ffffff;
+  --r:12px; --r-sm:8px; --shadow:0 18px 40px rgba(15,23,42,.12);
+}
+*{box-sizing:border-box} html,body{margin:0;height:100%}
+body{font-family:'Inter',Arial,sans-serif;background:linear-gradient(180deg,#f5f9fc 0%, #eef3f8 100%);color:var(--ink)}
+.shell{min-height:100vh;padding:24px}
+.panel{max-width:1080px;margin:0 auto;background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);overflow:hidden}
+.hero{padding:24px 28px;background:linear-gradient(135deg,#0f172a 0%,#1d4ed8 55%,#0f766e 100%);color:#fff}
+.eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;opacity:.8;font-weight:700}
+.title{margin-top:8px;font-size:26px;line-height:1.2;font-weight:800}
+.sub{margin-top:8px;font-size:14px;line-height:1.7;opacity:.95;max-width:860px}
+.body{padding:24px 28px 28px}
+.status-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:18px}
+.stat{border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:#f8fafc}
+.stat-label{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#64748b}
+.stat-value{margin-top:6px;font-size:13px;font-weight:700;color:var(--ink);line-height:1.45;word-break:break-word}
+.notice{margin:0 0 18px;padding:14px 16px;border-radius:14px;background:var(--blue-lt);border:1px solid #bfdbfe;color:#334155;line-height:1.7;font-size:13px}
+.grid{display:grid;grid-template-columns:1.2fr .8fr;gap:16px}
+.card{border:1px solid var(--line);border-radius:14px;padding:16px;background:#fff}
+.card-title{font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+.detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.field{display:flex;flex-direction:column;gap:4px}
+.label{font-size:10px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em}
+.value{font-size:13px;font-weight:600;color:#0f172a;line-height:1.45}
+.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px}
+table{width:100%;border-collapse:collapse;min-width:960px}
+th,td{padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:left;vertical-align:top}
+th{background:#1e3a8a;color:#fff;font-size:11px;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+tbody tr:nth-child(even){background:#f8fafc}
+td{font-size:12px;color:#0f172a}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+input,select,textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font:500 13px 'Inter',Arial,sans-serif;color:var(--ink);background:#fff;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(29,78,216,.12)}
+textarea{min-height:92px;resize:vertical}
+.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:16px}
+button{border:0;border-radius:999px;padding:0 16px;height:42px;font:800 13px 'Inter',Arial,sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.primary{background:var(--blue);color:#fff}
+.ghost{background:#fff;border:1px solid var(--line);color:var(--ink)}
+.success{background:var(--green);color:#fff}
+.hidden{display:none!important}
+.toast{margin-top:14px;padding:12px 14px;border-radius:12px;font-size:13px;line-height:1.6;border:1px solid var(--line);background:#fff;color:var(--ink)}
+.toast.ok{border-color:#bbf7d0;background:var(--green-lt);color:var(--green)}
+.toast.err{border-color:#fecaca;background:var(--red-lt);color:var(--red)}
+.toast.inf{border-color:#bfdbfe;background:var(--blue-lt);color:#1d4ed8}
+.footer-note{margin-top:18px;font-size:12px;color:#64748b;line-height:1.7}
+@media(max-width:860px){.shell{padding:12px}.hero,.body{padding:18px}.grid{grid-template-columns:1fr}.detail-grid,.form-grid{grid-template-columns:1fr}.title{font-size:22px}}
+@media print{body{background:#fff}.shell{padding:0}.actions,.footer-note{display:none}.panel{box-shadow:none;border:0}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="panel">
+    <div class="hero">
+      <div class="eyebrow">RELCON CRM | Delivery Confirmation</div>
+      <div class="title">Material Delivery Update Form</div>
+      <div class="sub">Please confirm the delivery status and delivery date from this secure link. Once submitted, the CRM record will update and the confirmation mail will be sent automatically.</div>
+    </div>
+    <div class="body">
+      <div id="loadNotice" class="notice">Loading request details...</div>
+      <div class="status-row">
+        <div class="stat"><div class="stat-label">Coordinator</div><div class="stat-value" id="coordinatorName">—</div></div>
+        <div class="stat"><div class="stat-label">Engineer</div><div class="stat-value" id="engineerName">—</div></div>
+        <div class="stat"><div class="stat-label">RO Code</div><div class="stat-value" id="roCode">—</div></div>
+        <div class="stat"><div class="stat-label">Current Status</div><div class="stat-value" id="currentStatus">—</div></div>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">Request Details</div>
+          <div class="detail-grid" id="detailGrid"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Delivery Update</div>
+          <div class="form-grid">
+            <div class="field">
+              <div class="label">Delivery Status</div>
+              <select id="deliveryStatus">
+                <option value="Delivered">Delivered</option>
+                <option value="In Transit">In Transit</option>
+              </select>
+            </div>
+            <div class="field">
+              <div class="label">Delivery Date</div>
+              <input id="deliveryDate" type="date"/>
+            </div>
+            <div class="field" style="grid-column:1/-1;">
+              <div class="label">Submitted By</div>
+              <input id="submittedBy" type="text" placeholder="Your name"/>
+            </div>
+            <div class="field" style="grid-column:1/-1;">
+              <div class="label">Remarks</div>
+              <textarea id="remarks" placeholder="Optional delivery note"></textarea>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="primary" id="submitBtn" onclick="submitUpdate()"><i class="fa-solid fa-paper-plane"></i> Submit Update</button>
+            <button class="ghost" onclick="window.location.reload()"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
+          </div>
+          <div id="toast" class="toast inf">Awaiting request details...</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="card-title">Material Lines</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Material Name</th>
+                <th>Material Type</th>
+                <th>Request Type</th>
+                <th>Qty</th>
+                <th>Material Status</th>
+                <th>Courier Name</th>
+                <th>Docket Number</th>
+                <th>Dispatch Date</th>
+                <th>PO Number</th>
+                <th>PO Date</th>
+              </tr>
+            </thead>
+            <tbody id="lineTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="footer-note" id="footerNote">
+        This form is linked to the pending in-transit material request and will update RELCON CRM immediately after submission.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = "/api";
+const token = new URLSearchParams(location.search).get("token") || "";
+let requestData = null;
+
+function esc(s){return String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function fmtDate(value){if(!value) return "—"; try{return new Date(value).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"});}catch{return value;}}
+function today(){return new Date().toISOString().slice(0,10);}
+function setToast(msg, kind="inf"){const el=document.getElementById("toast"); el.className=`toast ${kind}`; el.textContent=msg;}
+
+function renderDetails(row){
+  const details = [
+    ["Request Date", fmtDate(row.date)],
+    ["Request To", row.materialRequestTo || "—"],
+    ["HQO Email", row.materialRequestFromEmail || "—"],
+    ["Dispatch Follow-up Date", fmtDate(row.materialRequestDate)],
+    ["Destination Address", row.destinationAddress || "—"],
+    ["Arrange From", row.materialArrangeFrom || "—"],
+    ["Material Summary", row.materialSummary || "—"],
+    ["Customer", row.customer || "—"],
+    ["Phase", row.phase || "—"],
+    ["Engineer Email", row.engineerEmailId || "—"],
+    ["Engineer Contact", row.engineerContactNumber || "—"],
+    ["Delivery Date", row.materialReceivedDate ? fmtDate(row.materialReceivedDate) : "—"],
+  ];
+  document.getElementById("coordinatorName").textContent = row.coordinatorName || "Nikhil Trivedi";
+  document.getElementById("engineerName").textContent = row.engineer || "—";
+  document.getElementById("roCode").textContent = row.roCode || "—";
+  document.getElementById("currentStatus").textContent = row.materialDispatchStatus || "—";
+  document.getElementById("detailGrid").innerHTML = details.map(([label, value]) => `
+    <div class="field">
+      <div class="label">${esc(label)}</div>
+      <div class="value">${esc(value)}</div>
+    </div>
+  `).join("");
+}
+
+function renderLines(lines=[]){
+  const rows = lines.length ? lines : [{}];
+  document.getElementById("lineTableBody").innerHTML = rows.map((item, index) => `
+    <tr>
+      <td>${index + 1}</td>
+      <td>${esc(item.materialName || "—")}</td>
+      <td>${esc(item.materialType || "—")}</td>
+      <td>${esc(item.requestType || "—")}</td>
+      <td>${esc(item.quantity || 0)}</td>
+      <td>${esc(item.materialStatus || "—")}</td>
+      <td>${esc(item.dispatchCourier || "—")}</td>
+      <td>${esc(item.docketNumber || "—")}</td>
+      <td>${fmtDate(item.dispatchDate)}</td>
+      <td>${esc(item.poNumber || "—")}</td>
+      <td>${fmtDate(item.poDate)}</td>
+    </tr>
+  `).join("");
+}
+
+async function loadRequest(){
+  if(!token){
+    setToast("Delivery token is missing.", "err");
+    document.getElementById("loadNotice").className = "notice";
+    document.getElementById("loadNotice").textContent = "The delivery link is incomplete.";
+    return;
+  }
+  try{
+    const res = await fetch(`${API}/materialRequestBuilder/public/delivery/${encodeURIComponent(token)}`);
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok) throw new Error(data.error || "Unable to load delivery request");
+    requestData = data;
+    renderDetails(data);
+    renderLines(data.lineItems || []);
+    document.getElementById("deliveryStatus").value = data.deliveryStatus || "Delivered";
+    document.getElementById("deliveryDate").value = data.materialReceivedDate ? String(data.materialReceivedDate).slice(0,10) : today();
+    document.getElementById("submittedBy").value = data.engineer || "";
+    document.getElementById("loadNotice").className = "notice";
+    document.getElementById("loadNotice").textContent = "Request loaded successfully. Please confirm the delivery details below.";
+    setToast("Request loaded successfully.", "ok");
+  }catch(err){
+    document.getElementById("loadNotice").className = "notice";
+    document.getElementById("loadNotice").textContent = err.message;
+    setToast(err.message, "err");
+  }
+}
+
+async function submitUpdate(){
+  if(!token) return setToast("Delivery token is missing.", "err");
+  const deliveryStatus = document.getElementById("deliveryStatus").value;
+  const deliveryDate = document.getElementById("deliveryDate").value;
+  const submittedBy = document.getElementById("submittedBy").value.trim();
+  const remarks = document.getElementById("remarks").value.trim();
+  if(!deliveryDate) return setToast("Please select a delivery date.", "err");
+  const btn = document.getElementById("submitBtn");
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Submitting...';
+  try{
+    const res = await fetch(`${API}/materialRequestBuilder/public/delivery/${encodeURIComponent(token)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ deliveryStatus, deliveryDate, submittedBy, remarks }),
+    });
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok) throw new Error(data.error || "Update failed");
+    document.getElementById("loadNotice").className = "notice";
+    document.getElementById("loadNotice").textContent = "Delivery details updated in CRM. Confirmation mail has been processed.";
+    document.getElementById("currentStatus").textContent = data.data?.materialDispatchStatus || deliveryStatus;
+    document.getElementById("footerNote").textContent = data.mailSent
+      ? "CRM updated and notification mail sent."
+      : "CRM updated. Notification mail could not be sent, but the record has been saved.";
+    setToast("Delivery update submitted successfully.", "ok");
+  }catch(err){
+    setToast(err.message, "err");
+  }finally{
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Submit Update';
+  }
+}
+
+loadRequest();
+</script>
+</body>
+</html>
