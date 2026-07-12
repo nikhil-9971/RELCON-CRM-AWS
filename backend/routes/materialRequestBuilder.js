@@ -59,6 +59,7 @@ function normalizePayload(body = {}, req = {}) {
   return {
     requestMode,
     clientRequirement,
+    coordinatorName: String(body.coordinatorName || req.user?.engineerName || req.user?.username || "Nikhil Trivedi").trim() || "Nikhil Trivedi",
     engineer: clientMode ? clientRequirement : String(body.engineer || "").trim(),
     engineerCode: clientMode ? "NA" : String(body.engineerCode || "").trim(),
     engineerContactNumber: clientMode ? "" : String(body.engineerContactNumber || "").trim(),
@@ -83,9 +84,9 @@ function normalizePayload(body = {}, req = {}) {
     materialReceivedDate: String(body.materialReceivedDate || lineItems[0]?.deliveryDate || "").trim(),
     remarks: String(body.remarks || "").trim(),
     createdByUsername: String(body.createdByUsername || req.user?.username || "").trim(),
-    createdByName: String(body.createdByName || req.user?.engineerName || req.user?.username || "").trim(),
+    createdByName: String(body.createdByName || body.coordinatorName || req.user?.engineerName || req.user?.username || "Nikhil Trivedi").trim() || "Nikhil Trivedi",
     updatedByUsername: String(req.user?.username || "").trim(),
-    updatedByName: String(req.user?.engineerName || req.user?.username || "").trim(),
+    updatedByName: String(body.updatedByName || body.coordinatorName || req.user?.engineerName || req.user?.username || "Nikhil Trivedi").trim() || "Nikhil Trivedi",
     lineItems,
   };
 }

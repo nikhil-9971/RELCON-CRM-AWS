@@ -1247,6 +1247,7 @@ function buildMaterialRequestSummaryCards(request = {}) {
 
 function buildMaterialRequestSummaryTable(request = {}) {
   const rows = [
+    ["Coordinator Name", request.coordinatorName || request.createdByName || request.updatedByName || "Nikhil Trivedi"],
     ["Engineer Name", request.engineer || "—"],
     ["Engineer Code", request.engineerCode || "—"],
     ["Engineer Email", request.engineerEmailId || "—"],
@@ -1351,50 +1352,34 @@ function buildMaterialRequestEmailHtml({
 }
 
 function buildMaterialRequestCsvRows(request = {}) {
-  const base = {
-    Engineer: request.engineer || "",
-    EngineerCode: request.engineerCode || "",
-    EngineerEmail: request.engineerEmailId || "",
-    EngineerContact: request.engineerContactNumber || "",
-    Region: request.region || "",
-    Customer: request.customer || "",
-    ROCode: request.roCode || "",
-    ROName: request.roName || "",
-    Phase: request.phase || "",
-    MaterialRequestDate: request.date || "",
-    RequestGivenTo: request.materialRequestTo || "",
-    HQOEmail: request.materialRequestFromEmail || "",
-    DispatchFollowupDate: request.materialRequestDate || "",
-    DestinationAddress: request.destinationAddress || "",
-    ArrangeFrom: request.materialArrangeFrom || "",
-    RequestSummary: request.materialSummary || "",
-    OverallStatus: request.materialDispatchStatus || "",
-    TotalQuantity: request.quantity || 0,
-    Remarks: request.remarks || "",
-  };
-
   const lineItems = Array.isArray(request.lineItems) && request.lineItems.length
     ? request.lineItems
     : [{}];
 
-  return lineItems.map((item, index) => ({
-    ...base,
-    LineNo: index + 1,
-    MaterialName: item.materialName || "",
-    MaterialType: item.materialType || "",
-    RequestType: item.requestType || "",
-    Quantity: item.quantity || "",
-    LineStatus: item.materialStatus || "",
-    ChallanNumber: item.challanNumber || "",
-    ChallanDate: item.challanCreationDate || "",
-    DispatchCourier: item.dispatchCourier || "",
-    DocketNumber: item.docketNumber || "",
-    DispatchDate: item.dispatchDate || "",
-    DeliveryStatus: item.deliveryStatus || "",
-    DeliveryDate: item.deliveryDate || "",
-    PONumber: item.poNumber || "",
-    PODate: item.poDate || "",
-    LineNotes: item.notes || "",
+  return lineItems.map((item) => ({
+    "Coordinator Name": request.coordinatorName || request.createdByName || request.updatedByName || "Nikhil Trivedi",
+    "Engineer Name": request.engineer || "",
+    "Engineer Code": request.engineerCode || "",
+    "PO Number": item.poNumber || "",
+    "PO Date": item.poDate || "",
+    Customer: request.customer || "",
+    "RO Code": request.roCode || "",
+    "RO Name": request.roName || "",
+    Phase: request.phase || "",
+    "Request Date": request.materialRequestDate || "",
+    "Arrange From": request.materialArrangeFrom || "",
+    "Material Name": item.materialName || "",
+    "Material Type": item.materialType || "",
+    "Request Type": item.requestType || "",
+    Qty: item.quantity || "",
+    "Material Status": item.materialStatus || "",
+    "Challan No": item.challanNumber || "",
+    "Challan Date": item.challanCreationDate || "",
+    "Courier Name": item.dispatchCourier || "",
+    "Docket Number": item.docketNumber || "",
+    "Dispatch Date": item.dispatchDate || "",
+    "Dispatch Status": item.deliveryStatus || "",
+    "Delivery Date": item.deliveryDate || "",
   }));
 }
 
@@ -1444,6 +1429,7 @@ function buildMaterialRequestPlainText({
   intro = "",
   statusLabel = "",
 }) {
+  const coordinatorName = request.coordinatorName || request.createdByName || request.updatedByName || "Nikhil Trivedi";
   return [
     `Dear ${greeting},`,
     "",
@@ -1451,6 +1437,7 @@ function buildMaterialRequestPlainText({
     "",
     "Request Summary",
     `- Current Status: ${statusLabel || request.materialDispatchStatus || "Pending"}`,
+    `- Coordinator Name: ${coordinatorName}`,
     `- Engineer: ${request.engineer || "—"} (${request.engineerCode || "—"})`,
     `- Engineer Email: ${request.engineerEmailId || "—"}`,
     `- Engineer Contact: ${request.engineerContactNumber || "—"}`,
@@ -1472,7 +1459,7 @@ function buildMaterialRequestPlainText({
     "Material Line Details",
     buildMaterialLineItemsText(Array.isArray(request.lineItems) ? request.lineItems : []),
     "",
-    "A CSV attachment containing the full material request details is attached for record and operational follow-up.",
+    "A CSV attachment containing the full material request details is attached for operational follow-up and record control.",
     "",
     "Regards,",
     "Relcon CRM",
@@ -1516,13 +1503,13 @@ async function sendMaterialRequestNotification(request = {}) {
     request,
     salutation: "HQO Team",
     title: "Material Request Raised for HQO Review",
-    intro: "A material request has been raised and marked for HQO action. Kindly review the request details and material line information shared below and proceed with the necessary coordination.",
+    intro: "A new material request has been recorded and assigned for HQO review. Please review the request details and line-wise material information below, then coordinate the next action as needed.",
     statusLabel: "Requirement given to HQO",
   });
   const text = buildMaterialRequestPlainText({
     request,
     greeting: "HQO Team",
-    intro: "A material request has been raised and marked for HQO action. Please review the request details and proceed with the necessary coordination.",
+    intro: "A new material request has been recorded and assigned for HQO review. Please review the request details below and coordinate the next action as needed.",
     statusLabel: "Requirement given to HQO",
   });
 
@@ -1576,24 +1563,24 @@ async function sendMaterialDispatchNotification(request = {}, notificationType =
     salutation: request.engineer || "Team",
     title: notificationType === "delivered" ? "Material Delivery Confirmation" : notificationType === "transit" ? "Material In Transit" : notificationType === "process" ? "Material Request In Process" : "Material Dispatch Update",
     intro: notificationType === "delivered"
-      ? "This is to confirm that the material request referenced below has been updated to Delivered status. Please review the delivery details and line-wise material information for record confirmation."
+      ? "The material request below has been updated to Delivered. Please review the delivery details and line-wise material information for record confirmation."
       : notificationType === "transit"
-        ? "This is to inform you that the material request referenced below has been updated to In Transit status. Please review the transit details, courier references, and line-wise material information shared below."
+        ? "The material request below has been updated to In Transit. Please review the transit details, courier references, and line-wise material information below."
       : notificationType === "process"
-        ? "This is to inform you that the material request referenced below has been updated to In Process status. Please review the request details and line-wise material information shared below."
-      : "This is to inform you that the material request referenced below has been updated to Dispatched status. Please review the dispatch details, courier references, and docket information shared below.",
+        ? "The material request below has been updated to In Process. Please review the request details and line-wise material information below."
+      : "The material request below has been updated to Dispatched. Please review the dispatch details, courier references, and docket information below.",
     statusLabel,
   });
   const text = buildMaterialRequestPlainText({
     request,
     greeting: request.engineer || "Team",
     intro: notificationType === "delivered"
-      ? "This is to confirm that the material request below has been marked as Delivered. Please find the request details, dispatch references, and line-wise status below."
+      ? "The material request below has been marked as Delivered. Please find the request details, dispatch references, and line-wise status below."
       : notificationType === "transit"
-        ? "This is to inform you that the material request below has been marked as In Transit. Please find the transit references, docket details, and line-wise material details below."
+        ? "The material request below has been marked as In Transit. Please find the transit references, docket details, and line-wise material details below."
       : notificationType === "process"
-        ? "This is to inform you that the material request below has been marked as In Process. Please find the request details and line-wise status below."
-      : "This is to inform you that the material request below has been marked as Dispatched. Please find the dispatch references, docket details, and line-wise material details below.",
+        ? "The material request below has been marked as In Process. Please find the request details and line-wise status below."
+      : "The material request below has been marked as Dispatched. Please find the dispatch references, docket details, and line-wise material details below.",
     statusLabel,
   });
   const ccRecipients = [...new Set(adminEmails.filter((email) => !toRecipients.includes(email)))];

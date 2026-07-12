@@ -574,6 +574,9 @@ function esc(s){return String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").
 function fmtDate(d){if(!d) return "—"; try{return new Date(d).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})}catch{return d}}
 function today(){return new Date().toISOString().slice(0,10)}
 function isAdmin(){return String(currentUser?.role||"").toLowerCase()==="admin"}
+function getCoordinatorName(row={}){
+  return String(row.coordinatorName || row.createdByName || row.updatedByName || currentUser?.engineerName || currentUser?.username || "Nikhil Trivedi").trim() || "Nikhil Trivedi";
+}
 function closeModal(id){document.getElementById(id).classList.remove("open")}
 function openModal(id){document.getElementById(id).classList.add("open")}
 function showToast(message,type="success"){const w=document.getElementById("toastWrap"); const node=document.createElement("div"); node.className=`toast ${type}`; node.innerHTML=`<i class="fa-solid ${type==="success"?"fa-circle-check":type==="error"?"fa-circle-xmark":"fa-circle-info"}"></i><div>${esc(message)}</div>`; w.appendChild(node); setTimeout(()=>node.remove(),3200)}
@@ -610,7 +613,7 @@ function renderMaterialLineItems(items=[]){
     </div>
   `).join("")}</div>`;
 }
-function normalizeRequestRow(row={}){const lineItems=(Array.isArray(row.lineItems)?row.lineItems:[]).map(normalizeLineItem); const meta=summarizeLineItems(lineItems); const clientRequirement=String(row.clientRequirement||"").trim(); return { ...row, clientRequirement, lineItems, materialSummary:row.materialSummary||meta.summary, quantity:Number(row.quantity||meta.qty||0)||0, materialDispatchStatus:row.materialDispatchStatus||meta.primaryStatus, materialRequirementType:row.materialRequirementType||meta.primaryType, materialReceivedDate:row.materialReceivedDate||meta.deliveryDate, searchBlob:[row.requestMode,clientRequirement,row.engineer,row.engineerCode,row.region,row.roCode,row.roName,row.phase,row.materialSummary,row.materialRequestTo,row.createdByName,row.updatedByName,...lineItems.map(item=>`${item.materialName} ${item.materialType} ${item.docketNumber} ${item.poNumber}`)].join(" ").toLowerCase() }}
+function normalizeRequestRow(row={}){const lineItems=(Array.isArray(row.lineItems)?row.lineItems:[]).map(normalizeLineItem); const meta=summarizeLineItems(lineItems); const clientRequirement=String(row.clientRequirement||"").trim(); return { ...row, clientRequirement, lineItems, materialSummary:row.materialSummary||meta.summary, quantity:Number(row.quantity||meta.qty||0)||0, materialDispatchStatus:row.materialDispatchStatus||meta.primaryStatus, materialRequirementType:row.materialRequirementType||meta.primaryType, materialReceivedDate:row.materialReceivedDate||meta.deliveryDate, searchBlob:[row.requestMode,clientRequirement,row.coordinatorName,row.engineer,row.engineerCode,row.region,row.roCode,row.roName,row.phase,row.materialSummary,row.materialRequestTo,row.createdByName,row.updatedByName,...lineItems.map(item=>`${item.materialName} ${item.materialType} ${item.docketNumber} ${item.poNumber}`)].join(" ").toLowerCase() }}
 function seedMasterList(){return fetchJson(`${API}/materialRequestMasterItems/seed-defaults`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({items:DEFAULT_MASTER})})}
 function loadMasterDatalist(){document.getElementById("masterNameList").innerHTML = masterRows.map(item=>`<option value="${esc(item.materialName)}">${esc(item.materialType)}</option>`).join("")}
 function loadClientRequirementOptions(){document.getElementById("fClientRequirement").innerHTML='<option value="">Select Client</option>'+CLIENT_REQUIREMENTS.map(name=>`<option value="${esc(name)}">${esc(name)}</option>`).join("")}
@@ -821,7 +824,7 @@ function renderTable(){
   document.getElementById("countChip").textContent = `${total} ${activeTab==="requests" ? "line item" : "record"}${total===1?"":"s"}`;
   if(activeTab === "requests"){
     head.innerHTML = `<tr>
-      <th>#</th><th>Requirement For</th><th>Code</th><th>Region</th><th>RO Code</th><th>RO Name</th><th>Phase</th><th>Material Request Date</th><th>Material Name</th><th>Material Type</th><th>Request Type</th><th>Qty</th><th>Material Status</th><th>Delivery Status</th><th>PO Number</th><th>PO Date</th><th>Docket Number</th><th>Request To</th><th>Dispatch Follow-up Date</th><th>Updated By</th><th>Actions</th>
+      <th>#</th><th>Requirement For</th><th>Code</th><th>Region</th><th>RO Code</th><th>RO Name</th><th>Phase</th><th>Material Request Date</th><th>Material Name</th><th>Material Type</th><th>Request Type</th><th>Qty</th><th>Material Status</th><th>Delivery Status</th><th>PO Number</th><th>PO Date</th><th>Docket Number</th><th>Request To</th><th>Dispatch Follow-up Date</th><th>Coordinator Name</th><th>Actions</th>
     </tr>`;
   } else {
     head.innerHTML = `<tr>
@@ -857,7 +860,7 @@ function renderTable(){
         <td>${esc(item.docketNumber||"—")}</td>
         <td>${esc(row.materialRequestTo||"—")}</td>
         <td>${fmtDate(row.materialRequestDate)}</td>
-        <td>${esc(row.updatedByName||row.createdByName||"—")}</td>
+        <td>${esc(getCoordinatorName(row))}</td>
         <td><div class="action-group">
           <button class="act-btn view" title="View" onclick="openDetail(${rowIndex})"><i class="fa-solid fa-eye"></i></button>
           ${isAdmin()?`<button class="act-btn edit" title="Edit" onclick="openRequestModal(${rowIndex})"><i class="fa-solid fa-pen"></i></button><button class="act-btn del" title="Delete" onclick="prepareDelete('request','${row._id}')"><i class="fa-solid fa-trash"></i></button>`:""}
@@ -1073,6 +1076,7 @@ async function saveRequest(){
     materialRequestDate:document.getElementById("fRequestDate").value.trim(),
     destinationAddress:document.getElementById("fDestinationAddress").value.trim(),
     materialArrangeFrom:document.getElementById("fArrangeFrom").value.trim(),
+    coordinatorName:getCoordinatorName(),
     materialSummary:meta.summary,
     materialDispatchStatus:meta.primaryStatus,
     materialRequirementType:meta.primaryType,
@@ -1146,7 +1150,7 @@ function openDetail(index){
       <div class="detail-field"><div class="detail-label">Dispatch Follow-up Date</div><div class="detail-value">${fmtDate(row.materialRequestDate)}</div></div>
       <div class="detail-field"><div class="detail-label">Destination Address</div><div class="detail-value">${esc(row.destinationAddress||"—")}</div></div>
       <div class="detail-field"><div class="detail-label">Status</div><div class="detail-value"><span class="sf-badge ${statusClass(row.materialDispatchStatus)}">${esc(row.materialDispatchStatus||"Pending")}</span></div></div>
-      <div class="detail-field"><div class="detail-label">Updated By</div><div class="detail-value">${esc(row.updatedByName||row.createdByName||"—")}</div></div>
+      <div class="detail-field"><div class="detail-label">Coordinator Name</div><div class="detail-value">${esc(getCoordinatorName(row))}</div></div>
     </div>
     <div class="section-title" style="margin-top:16px;">Line Items</div>
     <div class="line-wrap">
@@ -1202,15 +1206,29 @@ async function confirmDelete(){
 
 function exportExcel(){
   const rows = filteredRows.flatMap(row => (row.lineItems||[]).map(item => ({
-    RequestMode:row.requestMode, ClientRequirement:row.clientRequirement, Engineer:row.engineer, EngineerCode:row.engineerCode, Contact:row.engineerContactNumber, Email:row.engineerEmailId,
-    Region:row.region, Customer:row.customer, ROCode:row.roCode, ROName:row.roName, Phase:row.phase, VisitDate:row.date,
-    RequestTo:row.materialRequestTo, HQOEmail:row.materialRequestFromEmail, RequestDate:row.materialRequestDate, ArrangeFrom:row.materialArrangeFrom,
-    DestinationAddress:row.destinationAddress,
-    MaterialName:item.materialName, MaterialType:item.materialType, RequestType:item.requestType, Quantity:item.quantity,
-    MaterialStatus:item.materialStatus, ChallanNumber:item.challanNumber, ChallanDate:item.challanCreationDate,
-    Courier:item.dispatchCourier, DocketNumber:item.docketNumber, DispatchDate:item.dispatchDate,
-    DeliveryStatus:item.deliveryStatus, DeliveryDate:item.deliveryDate, PONumber:item.poNumber, PODate:item.poDate,
-    Notes:item.notes || row.remarks || "", UpdatedBy:row.updatedByName || row.createdByName || ""
+    "Coordinator Name": getCoordinatorName(row),
+    "Engineer Name": row.engineer || "",
+    "Engineer Code": row.engineerCode || "",
+    "PO Number": item.poNumber || "",
+    "PO Date": item.poDate || "",
+    "Customer": row.customer || "",
+    "RO Code": row.roCode || "",
+    "RO Name": row.roName || "",
+    "Phase": row.phase || "",
+    "Request Date": row.materialRequestDate || "",
+    "Arrange From": row.materialArrangeFrom || "",
+    "Material Name": item.materialName || "",
+    "Material Type": item.materialType || "",
+    "Request Type": item.requestType || "",
+    "Qty": item.quantity || "",
+    "Material Status": item.materialStatus || "",
+    "Challan No": item.challanNumber || "",
+    "Challan Date": item.challanCreationDate || "",
+    "Courier Name": item.dispatchCourier || "",
+    "Docket Number": item.docketNumber || "",
+    "Dispatch Date": item.dispatchDate || "",
+    "Dispatch Status": item.deliveryStatus || "",
+    "Delivery Date": item.deliveryDate || ""
   })));
   const ws = XLSX.utils.json_to_sheet(rows);
   const wb = XLSX.utils.book_new();

@@ -35,6 +35,7 @@ const MaterialRequestBuilderSchema = new mongoose.Schema(
     roName: { type: String, default: "" },
     phase: { type: String, default: "" },
     date: { type: String, default: "" },
+    coordinatorName: { type: String, default: "Nikhil Trivedi" },
     materialUsedIn: { type: String, default: "" },
     materialRequestTo: { type: String, default: "" },
     materialRequestFromEmail: { type: String, default: "" },
