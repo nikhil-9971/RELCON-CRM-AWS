@@ -27,7 +27,10 @@ function normalizeDeliveryStatus(value = "") {
 }
 
 function isTransitRequest(record = {}) {
-  return normalizeStatusLabel(record.materialDispatchStatus) === "In Transit";
+  // A transit notification can be triggered by an individual material line,
+  // even when the request-level status has not been changed yet. Generate the
+  // delivery link for either case so the email always has its action button.
+  return hasWorkflowStatus(record, "In Transit");
 }
 
 function isDeliveryUpdateTokenValid(record = {}) {
@@ -69,10 +72,14 @@ function buildPublicDeliverySnapshot(record = {}) {
 
 async function ensureTransitDeliveryLink(record, req) {
   if (!record || !isTransitRequest(record)) return record;
-  const token = record.deliveryUpdateToken || crypto.randomBytes(24).toString("hex");
-  const tokenExpiresAt = record.deliveryUpdateTokenExpiresAt || new Date(Date.now() + 15 * 24 * 60 * 60 * 1000);
+  const hasUsableToken = Boolean(record.deliveryUpdateToken)
+    && record.deliveryUpdateTokenExpiresAt >= new Date();
+  const token = hasUsableToken ? record.deliveryUpdateToken : crypto.randomBytes(24).toString("hex");
+  const tokenExpiresAt = hasUsableToken
+    ? record.deliveryUpdateTokenExpiresAt
+    : new Date(Date.now() + 15 * 24 * 60 * 60 * 1000);
   const deliveryUpdateUrl = buildDeliveryUpdateUrl(req, token);
-  const needsPersist = !record.deliveryUpdateToken || !record.deliveryUpdateTokenExpiresAt;
+  const needsPersist = !hasUsableToken;
   if (needsPersist && record._id) {
     await MaterialRequestBuilder.findByIdAndUpdate(record._id, {
       deliveryUpdateToken: token,
