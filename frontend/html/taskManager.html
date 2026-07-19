@@ -821,6 +821,42 @@
   </div>
 </div>
 
+<!-- ADMIN EMAIL COMPOSER -->
+<div class="sf-overlay" id="taskMailComposer">
+  <div class="sf-modal sf-modal-lg">
+    <div class="sf-modal-header">
+      <div class="sf-modal-title"><i class="fa-solid fa-paper-plane" style="color:var(--sf-blue);"></i> Send Pending Task Email</div>
+      <button class="sf-modal-close" onclick="closeTaskMailComposer()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="sf-modal-body">
+      <input type="hidden" id="composeTaskId"/>
+      <div class="sf-modal-grid">
+        <div class="sf-modal-field full">
+          <label class="sf-modal-label">To <span class="sf-modal-req">*</span></label>
+          <input type="text" id="composeTo" class="sf-modal-input" placeholder="client@example.com, second@example.com"/>
+        </div>
+        <div class="sf-modal-field full">
+          <label class="sf-modal-label">CC</label>
+          <input type="text" id="composeCc" class="sf-modal-input" placeholder="Optional: a@example.com, b@example.com"/>
+        </div>
+        <div class="sf-modal-field full">
+          <label class="sf-modal-label">Subject <span class="sf-modal-req">*</span></label>
+          <input type="text" id="composeSubject" class="sf-modal-input"/>
+        </div>
+        <div class="sf-modal-field full">
+          <label class="sf-modal-label">Email Template <span class="sf-modal-req">*</span></label>
+          <textarea id="composeBody" class="sf-modal-textarea" style="min-height:260px;" placeholder="Write or edit the email before sending…"></textarea>
+          <div style="font-size:11px;color:var(--txt3);margin-top:6px;">This sends exactly the edited text and saves it on the task for future follow-ups.</div>
+        </div>
+      </div>
+    </div>
+    <div class="sf-modal-footer">
+      <button class="sf-btn sf-btn-neutral" onclick="closeTaskMailComposer()"><i class="fa-solid fa-xmark"></i> Cancel</button>
+      <button class="sf-btn sf-btn-success" onclick="sendComposedTaskMail()"><i class="fa-solid fa-paper-plane"></i> Send from CRM</button>
+    </div>
+  </div>
+</div>
+
 <!-- DETAIL VIEW MODAL -->
 <div class="sf-overlay" id="detailModal">
   <div class="sf-modal sf-modal-lg">
@@ -881,6 +917,7 @@ function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function today(){return new Date().toISOString().slice(0,10);}
 function fmtDate(d){if(!d)return '—';try{return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return d;}}
 function getUser(){try{return JSON.parse(localStorage.getItem('user'))||{};}catch(e){return{};}}
+function isAdmin(){return String(getUser().role||'').trim().toLowerCase()==='admin';}
 function taskPriority(task){return task.priority||task.computedPriority||'Medium';}
 function taskCustomer(task){return task.customer||task.computedCustomer||'HPCL';}
 function taskIssueType(task){return task.issueType||task.computedIssueType||task.issue||'Site Observation';}
@@ -1174,6 +1211,7 @@ function renderTable(){
       <td>
         <div class="sf-ab">
           <button class="sf-action-btn sf-ab-view" onclick="viewDetail(${idx})" title="View Details"><i class="fa-solid fa-eye"></i></button>
+          ${isAdmin()&&isPendingRow?`<button class="sf-action-btn sf-ab-mail" onclick="openTaskMailComposer('${task._id}')" title="Edit & Send Email"><i class="fa-solid fa-pen-to-square"></i></button>`:''}
           <button class="sf-action-btn sf-ab-mail" onclick="sendTaskMail('${task._id}')" title="Send Mail"><i class="fa-solid fa-envelope"></i></button>
           <button class="sf-action-btn sf-ab-copy" onclick="copyEmail('${task._id}')" title="Copy Email Draft"><i class="fa-solid fa-copy"></i></button>
           ${task.status!=='Resolved'&&task.status!=='Done'?`<button class="sf-action-btn sf-ab-escalate" onclick="escalateTask('${task._id}')" title="Escalate"><i class="fa-solid fa-bell"></i></button>`:''}
@@ -1270,6 +1308,41 @@ async function copyEmail(id){
   const task=allTasks.find(t=>t._id===id);
   if(task){ await navigator.clipboard.writeText(buildEmailDraft(task)); showToast('Draft Copied','info','Email draft copied to clipboard.'); }
   else showToast('No Draft Available','warn','This task has no email content.');
+}
+
+function getComposerDraft(task){
+  if(task.customEmailTemplate) return task.customEmailTemplate;
+  return buildEmailDraft(task).replace(/^Subject:.*\n\n/i,'');
+}
+function openTaskMailComposer(id){
+  if(!isAdmin()){showToast('Admin access required','warn');return;}
+  const task=allTasks.find(t=>t._id===id);
+  if(!task) return;
+  document.getElementById('composeTaskId').value=id;
+  document.getElementById('composeTo').value=task.customerEmail||'';
+  document.getElementById('composeCc').value=task.ccEmails||'';
+  document.getElementById('composeSubject').value=task.customEmailSubject||task.subject||task.currentSubject||'Task Update';
+  document.getElementById('composeBody').value=getComposerDraft(task);
+  document.getElementById('taskMailComposer').classList.add('open');
+}
+function closeTaskMailComposer(){document.getElementById('taskMailComposer').classList.remove('open');}
+async function sendComposedTaskMail(){
+  const id=document.getElementById('composeTaskId').value;
+  const to=document.getElementById('composeTo').value.trim();
+  const cc=document.getElementById('composeCc').value.trim();
+  const subject=document.getElementById('composeSubject').value.trim();
+  const emailContent=document.getElementById('composeBody').value.trim();
+  if(!to||!subject||!emailContent){showToast('Required fields missing','warn','To, subject, and email template are required.');return;}
+  showLoader('Sending edited task mail…');
+  try{
+    const res=await fetch(`${baseUrl}/sendCustomTaskMail/${id}`,{
+      method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
+      body:JSON.stringify({to,cc,subject,emailContent})
+    });
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.error||`HTTP ${res.status}`);
+    closeTaskMailComposer();hideLoader();showToast('Email sent','success',data.result?.subject||'Task email sent directly from CRM.');fetchTasks();
+  }catch(err){hideLoader();showToast('Email send failed','error',err.message);}
 }
 
 async function sendTaskMail(id){

@@ -7,6 +7,7 @@ const {
   sendTaskNotificationEmail,
   sendTaskClosureEmail,
   sendTaskEscalationEmail,
+  sendCustomTaskEmail,
   buildTaskSubject,
   getTaskPriority,
   getTaskDefaultAssignee,
@@ -184,6 +185,49 @@ router.post("/sendTaskMail/:id", authMiddleware, async (req, res) => {
   } catch (err) {
     console.error("sendTaskMail error:", err);
     res.status(500).json({ error: err.message || "Failed to send task mail" });
+  }
+});
+
+// Admin-only composer: saves the edited draft on the task and sends it directly from CRM.
+router.post("/sendCustomTaskMail/:id", authMiddleware, async (req, res) => {
+  try {
+    if (!isAdminUser(req.user)) return res.status(403).json({ error: "Only administrators can send edited task emails." });
+    const task = await Task.findById(req.params.id);
+    if (!task) return res.status(404).json({ error: "Task not found" });
+    if (task.status !== "Pending") return res.status(400).json({ error: "Only pending tasks can be mailed from the task composer." });
+
+    const subject = String(req.body.subject || "").trim();
+    const emailContent = String(req.body.emailContent || "").trim();
+    const customerEmail = String(req.body.to || task.customerEmail || "").trim();
+    const ccEmails = String(req.body.cc || "").trim();
+    if (!subject || !emailContent || !customerEmail) {
+      return res.status(400).json({ error: "Recipient, subject, and email message are required." });
+    }
+
+    task.subject = subject;
+    task.customEmailSubject = subject;
+    task.customEmailTemplate = emailContent;
+    task.customerEmail = customerEmail;
+    task.ccEmails = ccEmails;
+    const result = await sendCustomTaskEmail({
+      task,
+      to: customerEmail,
+      cc: ccEmails,
+      subject,
+      body: emailContent,
+      note: `Custom email sent by ${req.user?.username || "admin"}`,
+    });
+
+    task.status = "Mailed";
+    task.mailDate = new Date().toISOString().slice(0, 10);
+    task.lastMailSubject = result.subject;
+    task.replyStatus = "Awaiting Reply";
+    await appendFollowUpIfNeeded(task, { status: task.status, followUp: true });
+    await task.save();
+    res.json({ message: "Custom task mail sent", result, task: mergeTaskMeta(task) });
+  } catch (err) {
+    console.error("sendCustomTaskMail error:", err);
+    res.status(500).json({ error: err.message || "Failed to send custom task mail" });
   }
 });
 

@@ -752,6 +752,60 @@ async function sendTaskEscalationEmail(options = {}) {
   return sendTaskWorkflowEmail({ ...options, mode: "escalation" });
 }
 
+function parseTaskEmailList(value = "") {
+  const emails = [...new Set(
+    String(value || "")
+      .split(/[,;\s]+/)
+      .map(normalizeEmail)
+      .filter(Boolean),
+  )];
+  const invalid = emails.filter((email) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
+  if (invalid.length) throw new Error(`Invalid email address: ${invalid.join(", ")}`);
+  return emails;
+}
+
+/** Sends an administrator-authored task email without applying the workflow template. */
+async function sendCustomTaskEmail({ task, to, cc, subject, body, note = "" } = {}) {
+  if (!task) throw new Error("Task is required.");
+  const recipients = parseTaskEmailList(to || task.customerEmail);
+  if (!recipients.length) throw new Error("Recipient email missing.");
+  const ccList = parseTaskEmailList(cc || "").filter((email) => !recipients.includes(email));
+  const mailSubject = String(subject || "").trim();
+  const mailBody = String(body || "").trim();
+  if (!mailSubject) throw new Error("Email subject is required.");
+  if (!mailBody) throw new Error("Email message is required.");
+
+  const info = await transporter.sendMail({
+    from: getDefaultOutgoingFromHeader(),
+    to: recipients.join(", "),
+    cc: ccList.length ? ccList.join(", ") : undefined,
+    subject: mailSubject,
+    text: mailBody,
+    html: `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.65;color:#1f2937;white-space:pre-wrap;">${htmlEscape(mailBody)}</div>`,
+  });
+
+  await EmailLog.create({
+    type: "Task custom mail",
+    subject: mailSubject,
+    to: recipients.join(", "),
+    status: "success",
+    meta: { taskId: String(task._id || ""), roCode: task.roCode || "", roName: task.roName || "", cc: ccList.join(", ") },
+  });
+
+  await logTaskEmail(task, {
+    action: "custom",
+    subject: mailSubject,
+    to: recipients.join(", "),
+    cc: ccList.join(", "),
+    status: "success",
+    messageId: info?.messageId || "",
+    note,
+    sentAt: new Date(),
+  });
+
+  return { ok: true, subject: mailSubject, to: recipients.join(", "), cc: ccList.join(", "), messageId: info?.messageId || "" };
+}
+
 async function processPendingTaskEscalations() {
   const todayISO = getCurrentISTDateParts().dateISO;
   const openTasks = await Task.find({
@@ -7459,6 +7513,7 @@ module.exports = {
   sendTaskNotificationEmail,
   sendTaskClosureEmail,
   sendTaskEscalationEmail,
+  sendCustomTaskEmail,
   sendStatusRequirementAlertToAdmins,
   sendStatusMaterialUsageAlertToAdmins,
   sendPendingStatusConfirmationToAdmins,

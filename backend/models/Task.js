@@ -27,6 +27,8 @@ const taskSchema = new mongoose.Schema({
   priority: { type: String, default: "Medium" },
   subject: { type: String, default: "" },
   emailContent: String,
+  customEmailSubject: { type: String, default: "" },
+  customEmailTemplate: { type: String, default: "" },
   customerEmail: { type: String, default: "" },
   ccEmails: { type: String, default: "" },
   status: { type: String, default: "Pending" }, // Pending, Mailed, Resolved
