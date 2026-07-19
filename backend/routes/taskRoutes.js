@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const Task = require("../models/Task");
+const TaskMailRecipientRule = require("../models/TaskMailRecipientRule");
 const authMiddleware = require("../middleware/authMiddleware");
 const { isAdminUser, scopeByEngineer, canAccessEngineerRecord } = require("../utils/accessScope");
 const {
@@ -16,6 +17,20 @@ const {
   getTaskAgingDays,
   processPendingTaskEscalations,
 } = require("../services/mailer");
+
+function regionKey(value = "") {
+  return String(value).trim().toUpperCase().replace(/\s+/g, " ");
+}
+
+async function applyConfiguredTaskRecipients(task = {}) {
+  const key = regionKey(task.region);
+  if (!key) return task;
+  const rule = await TaskMailRecipientRule.findOne({ $or: [{ regionKey: key }, { regionKeys: key }] }).lean();
+  if (!rule) return task;
+  if (!String(task.customerEmail || "").trim()) task.customerEmail = rule.toEmails || "";
+  if (!String(task.ccEmails || "").trim()) task.ccEmails = rule.ccEmails || "";
+  return task;
+}
 
 function normalizeTaskPayload(body = {}, currentTask = null) {
   const payload = {
@@ -105,6 +120,7 @@ router.post("/addTask", authMiddleware, async (req, res) => {
     }
 
     const task = new Task(payload);
+    await applyConfiguredTaskRecipients(task);
     await appendFollowUpIfNeeded(task, { status: payload.status, followUp: req.body.followUp });
     await task.save();
     res.status(201).json({ message: "Task added", task: mergeTaskMeta(task) });
@@ -122,6 +138,7 @@ router.put("/updateTask/:id", authMiddleware, async (req, res) => {
 
     const payload = normalizeTaskPayload(req.body, task);
     Object.assign(task, payload);
+    await applyConfiguredTaskRecipients(task);
 
     if (payload.status === "Resolved" || payload.status === "Done") {
       task.replyStatus = req.body.replyStatus || task.replyStatus || "Resolved";
@@ -149,6 +166,7 @@ router.get("/getTask/:id", authMiddleware, async (req, res) => {
   try {
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ error: "Task not found" });
+    await applyConfiguredTaskRecipients(task);
     if (!canAccessEngineerRecord(req.user, task.engineer) && !canAccessEngineerRecord(req.user, task.assignedTo)) {
       return res.status(403).json({ error: "Access denied" });
     }
@@ -162,9 +180,11 @@ router.post("/sendTaskMail/:id", authMiddleware, async (req, res) => {
   try {
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ error: "Task not found" });
+    await applyConfiguredTaskRecipients(task);
 
     const payload = normalizeTaskPayload(req.body, task);
     Object.assign(task, payload);
+    await applyConfiguredTaskRecipients(task);
     await task.save();
 
     const result = await sendTaskNotificationEmail({
@@ -194,6 +214,7 @@ router.post("/sendCustomTaskMail/:id", authMiddleware, async (req, res) => {
     if (!isAdminUser(req.user)) return res.status(403).json({ error: "Only administrators can send edited task emails." });
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ error: "Task not found" });
+    await applyConfiguredTaskRecipients(task);
     if (task.status !== "Pending") return res.status(400).json({ error: "Only pending tasks can be mailed from the task composer." });
 
     const subject = String(req.body.subject || "").trim();
@@ -235,6 +256,7 @@ router.post("/sendTaskClosureMail/:id", authMiddleware, async (req, res) => {
   try {
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ error: "Task not found" });
+    await applyConfiguredTaskRecipients(task);
 
     const payload = normalizeTaskPayload(req.body, task);
     Object.assign(task, payload);
@@ -269,6 +291,7 @@ router.post("/escalateTask/:id", authMiddleware, async (req, res) => {
   try {
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ error: "Task not found" });
+    await applyConfiguredTaskRecipients(task);
 
     const result = await sendTaskEscalationEmail({
       task,

@@ -511,6 +511,9 @@
       <div class="sf-page-meta">Automated HPCL Site Monitoring — assign, track and resolve field tasks</div>
     </div>
     <div class="sf-page-actions">
+      <button class="sf-btn sf-btn-neutral" id="manageRegionMailRecipientsBtn" style="display:none;" onclick="openRegionMailRecipientsModal()">
+        <i class="fa-solid fa-envelope-circle-check"></i> Region Mail Recipients
+      </button>
       <button class="sf-btn sf-btn-neutral" onclick="fetchTasks()">
         <i class="fa-solid fa-rotate-right"></i> Sync Data
       </button>
@@ -821,6 +824,41 @@
   </div>
 </div>
 
+<!-- ADMIN: REGION-WISE CLIENT MAIL RECIPIENTS -->
+<div class="sf-overlay" id="regionMailRecipientsModal">
+  <div class="sf-modal sf-modal-lg">
+    <div class="sf-modal-header">
+      <div class="sf-modal-title"><i class="fa-solid fa-envelope-circle-check" style="color:var(--sf-purple);"></i> Region-wise Client Mail Recipients</div>
+      <button class="sf-modal-close" onclick="closeRegionMailRecipientsModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="sf-modal-body">
+      <p style="font-size:12px;color:var(--txt3);margin-bottom:14px;">When a task region matches a saved rule, its client To and CC fields fill automatically. Active admin users and the assigned engineer are also CC'd automatically when the email is sent.</p>
+      <div class="sf-modal-grid" style="margin-bottom:18px;">
+        <div class="sf-modal-field">
+          <label class="sf-modal-label">Region / aliases <span class="sf-modal-req">*</span></label>
+          <input id="regionMailRuleRegion" class="sf-modal-input" placeholder="e.g. LUCKNOW RET RO | LUCKNOW RETAIL RO"/>
+        </div>
+        <div class="sf-modal-field">
+          <label class="sf-modal-label">Client To <span class="sf-modal-req">*</span></label>
+          <input id="regionMailRuleTo" class="sf-modal-input" placeholder="client@example.com"/>
+        </div>
+        <div class="sf-modal-field full">
+          <label class="sf-modal-label">Client CC</label>
+          <input id="regionMailRuleCc" class="sf-modal-input" placeholder="a@example.com, b@example.com"/>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin:-6px 0 16px;">
+        <button class="sf-btn sf-btn-success" onclick="saveRegionMailRecipientRule()"><i class="fa-solid fa-floppy-disk"></i> Save Region Rule</button>
+      </div>
+      <div class="sf-table-card">
+        <div class="sf-table-header"><div class="sf-table-title">Saved rules</div></div>
+        <div class="sf-table-wrap" style="max-height:260px;"><table style="min-width:700px;"><thead><tr><th>Region</th><th>To</th><th>CC</th><th>Action</th></tr></thead><tbody id="regionMailRulesBody"></tbody></table></div>
+      </div>
+    </div>
+    <div class="sf-modal-footer"><button class="sf-btn sf-btn-neutral" onclick="closeRegionMailRecipientsModal()"><i class="fa-solid fa-xmark"></i> Close</button></div>
+  </div>
+</div>
+
 <!-- ADMIN EMAIL COMPOSER -->
 <div class="sf-overlay" id="taskMailComposer">
   <div class="sf-modal sf-modal-lg">
@@ -906,6 +944,7 @@ let sortKey = "", sortDir = 1;
 let selectedIds = new Set();
 let deleteTargetId = null;
 let editMode = false;
+let regionMailRecipientRules = [];
 
 const ENGINEERS = ["Abhishek Pathak","Amit Kumar","Banti Kumar","Gautam Kumar","Gautam Kumar (Purnia)","Kaushal Pandey","Prabhat Mishra","Raushan Kumar","Rajanikant Mishra","Rajanish Mishra","Shaurav Kumar","Vinit Kumar","Vicky Vikrant","Rajan Pandey","Shubhendu Giri","Prerak Singh","Kirtivardhan","Kuldeep Kumar","RAVI PRATAP"];
 
@@ -918,6 +957,66 @@ function today(){return new Date().toISOString().slice(0,10);}
 function fmtDate(d){if(!d)return '—';try{return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return d;}}
 function getUser(){try{return JSON.parse(localStorage.getItem('user'))||{};}catch(e){return{};}}
 function isAdmin(){return String(getUser().role||'').trim().toLowerCase()==='admin';}
+document.getElementById('manageRegionMailRecipientsBtn').style.display=isAdmin()?'inline-flex':'none';
+document.getElementById('mRegion').addEventListener('change',applyRegionMailRecipients);
+document.getElementById('mRegion').addEventListener('blur',applyRegionMailRecipients);
+function normalizeRegionKey(value=''){return String(value||'').trim().toUpperCase().replace(/\s+/g,' ');}
+function regionMailRuleFor(region=''){const key=normalizeRegionKey(region);return regionMailRecipientRules.find(rule=>(rule.regionKeys||[rule.regionKey]).includes(key))||null;}
+async function loadTaskMailRecipientRules(){
+  try{
+    const res=await fetch(`${baseUrl}/taskMailRecipientRules`,{headers:{Authorization:`Bearer ${token}`}});
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    regionMailRecipientRules=await res.json();
+    if(!Array.isArray(regionMailRecipientRules)) regionMailRecipientRules=[];
+  }catch(err){console.warn('Could not load region mail recipient rules:',err.message);regionMailRecipientRules=[];}
+}
+function applyRegionMailRecipients(){
+  const rule=regionMailRuleFor(document.getElementById('mRegion').value);
+  if(!rule) return;
+  document.getElementById('mCustomerEmail').value=rule.toEmails||'';
+  document.getElementById('mCcEmails').value=rule.ccEmails||'';
+  showToast('Client recipients filled','info',`Applied saved recipients for ${rule.region}.`);
+}
+function renderRegionMailRecipientRules(){
+  const body=document.getElementById('regionMailRulesBody');
+  if(!body) return;
+  body.innerHTML=regionMailRecipientRules.length?regionMailRecipientRules.map((rule,index)=>`<tr><td>${esc(rule.region)}</td><td>${esc(rule.toEmails)}</td><td>${esc(rule.ccEmails||'—')}</td><td><button class="sf-action-btn sf-ab-view" onclick="editRegionMailRecipientRule(${index})"><i class="fa-solid fa-pen"></i> Edit</button> <button class="sf-action-btn sf-ab-delete" onclick="deleteRegionMailRecipientRule(${index})"><i class="fa-solid fa-trash"></i></button></td></tr>`).join(''):'<tr><td colspan="4" style="text-align:center;color:var(--txt3);padding:18px;">No region mail rules saved yet.</td></tr>';
+}
+function openRegionMailRecipientsModal(){
+  if(!isAdmin()) return;
+  document.getElementById('regionMailRuleRegion').value='';
+  document.getElementById('regionMailRuleTo').value='';
+  document.getElementById('regionMailRuleCc').value='';
+  renderRegionMailRecipientRules();
+  document.getElementById('regionMailRecipientsModal').classList.add('open');
+}
+function closeRegionMailRecipientsModal(){document.getElementById('regionMailRecipientsModal').classList.remove('open');}
+function editRegionMailRecipientRule(index){
+  const rule=regionMailRecipientRules[index]; if(!rule) return;
+  document.getElementById('regionMailRuleRegion').value=rule.region||'';
+  document.getElementById('regionMailRuleTo').value=rule.toEmails||'';
+  document.getElementById('regionMailRuleCc').value=rule.ccEmails||'';
+}
+async function saveRegionMailRecipientRule(){
+  const region=document.getElementById('regionMailRuleRegion').value.trim();
+  const toEmails=document.getElementById('regionMailRuleTo').value.trim();
+  const ccEmails=document.getElementById('regionMailRuleCc').value.trim();
+  if(!region||!toEmails){showToast('Region and To required','warn');return;}
+  try{
+    const res=await fetch(`${baseUrl}/taskMailRecipientRules`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({region,toEmails,ccEmails})});
+    const data=await res.json(); if(!res.ok) throw new Error(data.error||`HTTP ${res.status}`);
+    await loadTaskMailRecipientRules(); renderRegionMailRecipientRules(); editRegionMailRecipientRule(regionMailRecipientRules.findIndex(rule=>rule._id===data._id));
+    showToast('Region rule saved','success');
+  }catch(err){showToast('Could not save rule','error',err.message);}
+}
+async function deleteRegionMailRecipientRule(index){
+  const rule=regionMailRecipientRules[index]; if(!rule||!confirm(`Delete mail recipients for ${rule.region}?`)) return;
+  try{
+    const res=await fetch(`${baseUrl}/taskMailRecipientRules/${rule._id}`,{method:'DELETE',headers:{Authorization:`Bearer ${token}`}});
+    const data=await res.json(); if(!res.ok) throw new Error(data.error||`HTTP ${res.status}`);
+    await loadTaskMailRecipientRules();renderRegionMailRecipientRules();showToast('Region rule deleted','success');
+  }catch(err){showToast('Could not delete rule','error',err.message);}
+}
 function taskPriority(task){return task.priority||task.computedPriority||'Medium';}
 function taskCustomer(task){return task.customer||task.computedCustomer||'HPCL';}
 function taskIssueType(task){return task.issueType||task.computedIssueType||task.issue||'Site Observation';}
@@ -1622,7 +1721,7 @@ function exportFiltered(){
   showToast('CSV exported','success'); toggleExportMenu();
 }
 
-window.onload=fetchTasks;
+window.onload=async()=>{await loadTaskMailRecipientRules();fetchTasks();};
 </script>
 <script src="errorLogger.js"></script>
 <script src="saveButtonAnimation.js"></script>

@@ -268,6 +268,14 @@ function getEngineerEmailsFromUsers(users = [], engineerName = "") {
   return [...new Set(sourceUsers.map((user) => normalizeEmail(user.email)).filter(Boolean))];
 }
 
+function getTaskManagerCcEmails(users = [], engineerName = "") {
+  const adminEmails = users
+    .filter((user) => String(user.role || "").trim().toLowerCase() === "admin")
+    .map((user) => normalizeEmail(user.email))
+    .filter(Boolean);
+  return [...new Set([...adminEmails, ...getEngineerEmailsFromUsers(users, engineerName)])];
+}
+
 function normalizeStatusLabel(value = "") {
   return String(value || "")
     .trim()
@@ -700,13 +708,13 @@ async function sendTaskWorkflowEmail({
   const recipient = normalizeEmail(to || task.customerEmail);
   if (!recipient) throw new Error("Recipient email missing.");
   const users = await User.find(ACTIVE_USER_QUERY, "email role engineerName username").lean();
-  const engineerEmails = getEngineerEmailsFromUsers(users, task.engineer);
+  const taskManagerCcEmails = getTaskManagerCcEmails(users, task.engineer);
   const ccList = [...new Set([
     ...String(cc || task.ccEmails || "")
       .split(/[,\s;]+/)
       .map(normalizeEmail)
       .filter(Boolean),
-    ...engineerEmails,
+    ...taskManagerCcEmails,
   ].filter((email) => email && email !== recipient))].join(", ");
   const subject = buildTaskSubject(task, mode);
   const html = buildTaskHtmlEmail(task, mode);
@@ -834,7 +842,11 @@ async function sendCustomTaskEmail({ task, to, cc, subject, body, note = "" } = 
   if (!task) throw new Error("Task is required.");
   const recipients = parseTaskEmailList(to || task.customerEmail);
   if (!recipients.length) throw new Error("Recipient email missing.");
-  const ccList = parseTaskEmailList(cc || "").filter((email) => !recipients.includes(email));
+  const users = await User.find(ACTIVE_USER_QUERY, "email role engineerName username").lean();
+  const ccList = [...new Set([
+    ...parseTaskEmailList(cc || ""),
+    ...getTaskManagerCcEmails(users, task.engineer),
+  ])].filter((email) => !recipients.includes(email));
   const mailSubject = String(subject || "").trim();
   const mailBody = removeEmailSignature(body);
   if (!mailSubject) throw new Error("Email subject is required.");

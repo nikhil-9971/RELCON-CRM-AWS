@@ -16,6 +16,7 @@ const statusRoutes             = require("./routes/statusmodel");
 const atgstatusRoutes          = require("./routes/atgStatusRoutes");
 const auditRoutes              = require("./routes/audit");
 const taskRoutes               = require("./routes/taskRoutes");
+const taskMailRecipientRules   = require("./routes/taskMailRecipientRules");
 const jioBPStatusRoutes        = require("./routes/jioBPStatusRoutes");
 const bpclStatusRoutes         = require("./routes/bpclStatusRoutes");
 const materialRoutes           = require("./routes/materialRequirement");
@@ -99,6 +100,7 @@ app.use("/api/audit", auditRoutes);
 app.use("/api/audit", errorLogRoutes);    // Frontend error logs
 app.use("/api/audit", serverLogsRouter);  // ✅ Server/container logs
 app.use("/api", taskRoutes);
+app.use("/api", taskMailRecipientRules);
 app.use("/api/jioBP", jioBPStatusRoutes);
 app.use("/api/bpclStatus", bpclStatusRoutes);
 app.use("/api/materialRequirement", materialRoutes);
