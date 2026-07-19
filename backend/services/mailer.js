@@ -566,7 +566,7 @@ function generateTaskPlainEmail(task = {}, mode = "action") {
     "",
     "Regards,",
     DEFAULT_OUTGOING_MAIL_DISPLAY_NAME,
-    "RELCON Systems",
+    "RELCON SYSTEMS",
   ].join("\n");
 }
 
@@ -608,7 +608,7 @@ function buildTaskHtmlEmail(task = {}, mode = "action") {
   <div style="margin:0;padding:26px 12px;background:#eef3f8;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
     <div style="max-width:820px;margin:0 auto;background:#ffffff;border:1px solid #dbe4ee;border-radius:18px;overflow:hidden;box-shadow:0 18px 42px rgba(15,23,42,0.10);">
       <div style="padding:26px 30px;background:linear-gradient(135deg,#0b1f3a 0%,#075985 55%,#0f766e 100%);color:#ffffff;">
-        <div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;opacity:.82;">RELCON Systems | Field Operations</div>
+        <div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;opacity:.82;">RELCON SYSTEMS | Field Operations</div>
         <div style="margin-top:12px;font-size:26px;font-weight:800;line-height:1.15;">${htmlEscape(heroTitle)}</div>
         <div style="margin-top:10px;font-size:14px;line-height:1.65;opacity:.95;max-width:680px;">${htmlEscape(heroIntro)}</div>
         <div style="margin-top:18px;display:flex;gap:8px;flex-wrap:wrap;">
@@ -649,7 +649,7 @@ function buildTaskHtmlEmail(task = {}, mode = "action") {
         <div style="margin-top:26px;font-size:13px;color:#64748b;line-height:1.7;">
           Regards,<br/>
           <strong style="color:#0f172a;">${htmlEscape(DEFAULT_OUTGOING_MAIL_DISPLAY_NAME)}</strong><br/>
-          RELCON Systems<br/>
+          RELCON SYSTEMS<br/>
           <span style="font-size:11px;color:#94a3b8;">This is an operational communication generated from RELCON CRM.</span>
         </div>
       </div>
@@ -764,6 +764,40 @@ function parseTaskEmailList(value = "") {
   return emails;
 }
 
+function removeEmailSignature(value = "") {
+  const lines = String(value || "").replace(/\r/g, "").split("\n");
+  const signatureIndex = lines.findIndex((line) => /^\s*(regards|thanks\s*(?:&|and)?\s*regards|thank you)\s*[,]?\s*$/i.test(line));
+  return (signatureIndex >= 0 ? lines.slice(0, signatureIndex) : lines).join("\n").trim();
+}
+
+function buildCustomTaskHtmlEmail(task = {}, body = "") {
+  const content = htmlEscape(removeEmailSignature(body)).replace(/\n/g, "<br/>");
+  const site = [task.roName, task.roCode ? `(${task.roCode})` : ""].filter(Boolean).join(" ") || "Task Update";
+  const reference = [task.region, formatDateOnlyIST(task.date)].filter(Boolean).join(" | ");
+  return `
+  <div style="margin:0;padding:28px 12px;background:#eef3f8;font-family:Arial,Helvetica,sans-serif;color:#172033;">
+    <div style="max-width:720px;margin:0 auto;background:#ffffff;border:1px solid #dbe4ee;border-radius:16px;overflow:hidden;box-shadow:0 10px 28px rgba(15,23,42,.10);">
+      <div style="padding:24px 28px;background:linear-gradient(135deg,#0b1f3a,#075985);color:#ffffff;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;opacity:.82;">RELCON SYSTEMS</div>
+        <div style="margin-top:8px;font-size:22px;font-weight:800;line-height:1.3;">Task Communication</div>
+      </div>
+      <div style="padding:28px;">
+        <div style="margin:0 0 22px;padding:14px 16px;border:1px solid #dbeafe;border-radius:10px;background:#f8fbff;">
+          <div style="font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#2563eb;">Site Reference</div>
+          <div style="margin-top:5px;font-size:15px;font-weight:800;color:#0f172a;">${htmlEscape(site)}</div>
+          ${reference ? `<div style="margin-top:4px;font-size:12px;color:#64748b;">${htmlEscape(reference)}</div>` : ""}
+        </div>
+        <div style="font-size:14px;line-height:1.75;color:#334155;white-space:normal;">${content}</div>
+        <div style="margin-top:28px;padding-top:18px;border-top:1px solid #e2e8f0;font-size:13px;line-height:1.7;color:#64748b;">
+          Regards,<br/>
+          <strong style="color:#0f172a;">${htmlEscape(DEFAULT_OUTGOING_MAIL_DISPLAY_NAME)}</strong><br/>
+          <strong style="color:#0f172a;letter-spacing:.04em;">RELCON SYSTEMS</strong>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
 /** Sends an administrator-authored task email without applying the workflow template. */
 async function sendCustomTaskEmail({ task, to, cc, subject, body, note = "" } = {}) {
   if (!task) throw new Error("Task is required.");
@@ -771,7 +805,7 @@ async function sendCustomTaskEmail({ task, to, cc, subject, body, note = "" } = 
   if (!recipients.length) throw new Error("Recipient email missing.");
   const ccList = parseTaskEmailList(cc || "").filter((email) => !recipients.includes(email));
   const mailSubject = String(subject || "").trim();
-  const mailBody = String(body || "").trim();
+  const mailBody = removeEmailSignature(body);
   if (!mailSubject) throw new Error("Email subject is required.");
   if (!mailBody) throw new Error("Email message is required.");
 
@@ -780,8 +814,8 @@ async function sendCustomTaskEmail({ task, to, cc, subject, body, note = "" } = 
     to: recipients.join(", "),
     cc: ccList.length ? ccList.join(", ") : undefined,
     subject: mailSubject,
-    text: mailBody,
-    html: `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.65;color:#1f2937;white-space:pre-wrap;">${htmlEscape(mailBody)}</div>`,
+    text: `${mailBody}\n\nRegards,\n${DEFAULT_OUTGOING_MAIL_DISPLAY_NAME}\nRELCON SYSTEMS`,
+    html: buildCustomTaskHtmlEmail(task, mailBody),
   });
 
   await EmailLog.create({
@@ -927,7 +961,7 @@ function buildPendingIncidentReminderHtml({ engineerName = "", incidents = [], d
         <div style="margin-top:22px;font-size:13px;color:#64748b;line-height:1.7;">
           Regards,<br/>
           <strong style="color:#0f172a;">${htmlEscape(DEFAULT_OUTGOING_MAIL_DISPLAY_NAME)}</strong><br/>
-          RELCON Systems
+          RELCON SYSTEMS
         </div>
       </div>
     </div>
@@ -973,7 +1007,7 @@ function buildPendingIncidentReminderText({ engineerName = "", incidents = [], d
     "",
     `Regards,`,
     DEFAULT_OUTGOING_MAIL_DISPLAY_NAME,
-    "RELCON Systems",
+    "RELCON SYSTEMS",
   ].join("\n");
 }
 
