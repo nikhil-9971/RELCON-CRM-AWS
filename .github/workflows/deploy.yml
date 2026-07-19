@@ -129,7 +129,6 @@ jobs:
              TASK_SMTP_PORT=${{ secrets.TASK_SMTP_PORT }}
              TASK_SMTP_USER=${{ secrets.TASK_SMTP_USER }}
              TASK_SMTP_PASS=${{ secrets.TASK_SMTP_PASS }}
-             TASK_MAIL_FROM=${{ secrets.TASK_MAIL_FROM }}
              MAIL_FROM=${{ secrets.MAIL_FROM }}
              MAIL_TO=${{ secrets.MAIL_TO }}
              BASE_URL=https://nikhildevops.co.in/api

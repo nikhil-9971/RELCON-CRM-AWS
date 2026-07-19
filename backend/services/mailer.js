@@ -44,7 +44,6 @@ const {
   TASK_SMTP_PORT,
   TASK_SMTP_USER,
   TASK_SMTP_PASS,
-  TASK_MAIL_FROM,
   MAIL_FROM,
   MAIL_TO,
   BASE_URL,
@@ -63,7 +62,9 @@ if (
 axios.defaults.timeout = 30000;
 
 const DEFAULT_OUTGOING_MAIL_DISPLAY_NAME = "Nikhil Trivedi";
-const TASK_MANAGER_MAIL_FROM_ADDRESS = TASK_MAIL_FROM || TASK_SMTP_USER || "nikhiltrivedirelcon@gmail.com";
+// Task-manager messages identify the dedicated task SMTP account as sender, so
+// the visible From address and authenticated SMTP user stay aligned.
+const TASK_MANAGER_MAIL_FROM_ADDRESS = TASK_SMTP_USER || "nikhiltrivedirelcon@gmail.com";
 const ACTIVE_USER_QUERY = { isActive: { $ne: false } };
 
 function createSmtpTransport({ host, port, user, pass }) {
