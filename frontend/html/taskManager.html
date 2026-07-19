@@ -1448,9 +1448,10 @@ function openTaskMailComposer(id){
   if(!isAdmin()){showToast('Admin access required','warn');return;}
   const task=allTasks.find(t=>t._id===id);
   if(!task) return;
+  const regionRule=regionMailRuleFor(task.region);
   document.getElementById('composeTaskId').value=id;
-  document.getElementById('composeTo').value=task.customerEmail||'';
-  document.getElementById('composeCc').value=task.ccEmails||'';
+  document.getElementById('composeTo').value=regionRule?.toEmails||task.customerEmail||'';
+  document.getElementById('composeCc').value=regionRule?.ccEmails||task.ccEmails||'';
   document.getElementById('composeSubject').value=task.customEmailSubject||task.subject||task.currentSubject||'Task Update';
   document.getElementById('composeBody').value=getComposerDraft(task);
   document.getElementById('taskMailComposer').classList.add('open');
