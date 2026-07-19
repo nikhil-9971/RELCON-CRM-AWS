@@ -3,6 +3,7 @@ const router = express.Router();
 const authMiddleware = require("../middleware/authMiddleware");
 const { isAdminUser } = require("../utils/accessScope");
 const TaskMailRecipientRule = require("../models/TaskMailRecipientRule");
+const TaskMailRecipientSettings = require("../models/TaskMailRecipientSettings");
 
 function regionKey(value = "") {
   return String(value).trim().toUpperCase().replace(/\s+/g, " ");
@@ -30,6 +31,31 @@ router.get("/taskMailRecipientRules", authMiddleware, async (_req, res) => {
     res.json(rules);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch task mail recipient rules." });
+  }
+});
+
+router.get("/taskMailRecipientSettings", authMiddleware, async (_req, res) => {
+  try {
+    const settings = await TaskMailRecipientSettings.findOne({ key: "default" }).lean();
+    res.json(settings || { alwaysCcEmails: "" });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch task mail recipient settings." });
+  }
+});
+
+router.put("/taskMailRecipientSettings", authMiddleware, async (req, res) => {
+  try {
+    if (!isAdminUser(req.user)) return res.status(403).json({ error: "Only administrators can manage task mail recipients." });
+    const alwaysCcEmails = emailList(req.body.alwaysCcEmails);
+    validateEmails(alwaysCcEmails, "Always CC");
+    const settings = await TaskMailRecipientSettings.findOneAndUpdate(
+      { key: "default" },
+      { key: "default", alwaysCcEmails, updatedBy: req.user?.username || "admin" },
+      { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true },
+    );
+    res.json(settings);
+  } catch (error) {
+    res.status(400).json({ error: error.message || "Failed to save task mail recipient settings." });
   }
 });
 

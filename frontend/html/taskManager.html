@@ -833,6 +833,10 @@
     </div>
     <div class="sf-modal-body">
       <p style="font-size:12px;color:var(--txt3);margin-bottom:14px;">When a task region matches a saved rule, its client To and CC fields fill automatically. Active admin users and the assigned engineer are also CC'd automatically when the email is sent.</p>
+      <div class="sf-modal-field full" style="margin-bottom:18px;">
+        <label class="sf-modal-label">Always CC (all task mails)</label>
+        <div style="display:flex;gap:8px;"><input id="taskMailAlwaysCc" class="sf-modal-input" placeholder="jay.rpatel@relconsystems.com"/><button class="sf-btn sf-btn-neutral" onclick="saveTaskMailAlwaysCc()"><i class="fa-solid fa-floppy-disk"></i> Save</button></div>
+      </div>
       <div class="sf-modal-grid" style="margin-bottom:18px;">
         <div class="sf-modal-field">
           <label class="sf-modal-label">Region / aliases <span class="sf-modal-req">*</span></label>
@@ -945,6 +949,7 @@ let selectedIds = new Set();
 let deleteTargetId = null;
 let editMode = false;
 let regionMailRecipientRules = [];
+let taskMailRecipientSettings = {alwaysCcEmails:''};
 
 const ENGINEERS = ["Abhishek Pathak","Amit Kumar","Banti Kumar","Gautam Kumar","Gautam Kumar (Purnia)","Kaushal Pandey","Prabhat Mishra","Raushan Kumar","Rajanikant Mishra","Rajanish Mishra","Shaurav Kumar","Vinit Kumar","Vicky Vikrant","Rajan Pandey","Shubhendu Giri","Prerak Singh","Kirtivardhan","Kuldeep Kumar","RAVI PRATAP"];
 
@@ -961,6 +966,7 @@ document.getElementById('manageRegionMailRecipientsBtn').style.display=isAdmin()
 document.getElementById('mRegion').addEventListener('change',applyRegionMailRecipients);
 document.getElementById('mRegion').addEventListener('blur',applyRegionMailRecipients);
 function normalizeRegionKey(value=''){return String(value||'').trim().toUpperCase().replace(/\s+/g,' ');}
+function mergeEmailLists(...values){return [...new Set(values.flatMap(value=>String(value||'').split(/[;,\s]+/).map(email=>email.trim().toLowerCase()).filter(Boolean)))].join(', ');}
 function regionMailRuleFor(region=''){const key=normalizeRegionKey(region);return regionMailRecipientRules.find(rule=>(rule.regionKeys||[rule.regionKey]).includes(key))||null;}
 async function loadTaskMailRecipientRules(){
   try{
@@ -969,6 +975,13 @@ async function loadTaskMailRecipientRules(){
     regionMailRecipientRules=await res.json();
     if(!Array.isArray(regionMailRecipientRules)) regionMailRecipientRules=[];
   }catch(err){console.warn('Could not load region mail recipient rules:',err.message);regionMailRecipientRules=[];}
+}
+async function loadTaskMailRecipientSettings(){
+  try{
+    const res=await fetch(`${baseUrl}/taskMailRecipientSettings`,{headers:{Authorization:`Bearer ${token}`}});
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    taskMailRecipientSettings=await res.json()||{alwaysCcEmails:''};
+  }catch(err){console.warn('Could not load task mail recipient settings:',err.message);taskMailRecipientSettings={alwaysCcEmails:''};}
 }
 function applyRegionMailRecipients(){
   const rule=regionMailRuleFor(document.getElementById('mRegion').value);
@@ -987,8 +1000,17 @@ function openRegionMailRecipientsModal(){
   document.getElementById('regionMailRuleRegion').value='';
   document.getElementById('regionMailRuleTo').value='';
   document.getElementById('regionMailRuleCc').value='';
+  document.getElementById('taskMailAlwaysCc').value=taskMailRecipientSettings.alwaysCcEmails||'';
   renderRegionMailRecipientRules();
   document.getElementById('regionMailRecipientsModal').classList.add('open');
+}
+async function saveTaskMailAlwaysCc(){
+  const alwaysCcEmails=document.getElementById('taskMailAlwaysCc').value.trim();
+  try{
+    const res=await fetch(`${baseUrl}/taskMailRecipientSettings`,{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({alwaysCcEmails})});
+    const data=await res.json();if(!res.ok) throw new Error(data.error||`HTTP ${res.status}`);
+    taskMailRecipientSettings=data;showToast('Always CC saved','success');
+  }catch(err){showToast('Could not save Always CC','error',err.message);}
 }
 function closeRegionMailRecipientsModal(){document.getElementById('regionMailRecipientsModal').classList.remove('open');}
 function editRegionMailRecipientRule(index){
@@ -1451,7 +1473,7 @@ function openTaskMailComposer(id){
   const regionRule=regionMailRuleFor(task.region);
   document.getElementById('composeTaskId').value=id;
   document.getElementById('composeTo').value=regionRule?.toEmails||task.customerEmail||'';
-  document.getElementById('composeCc').value=regionRule?.ccEmails||task.ccEmails||'';
+  document.getElementById('composeCc').value=mergeEmailLists(regionRule?.ccEmails||task.ccEmails,taskMailRecipientSettings.alwaysCcEmails);
   document.getElementById('composeSubject').value=task.customEmailSubject||task.subject||task.currentSubject||'Task Update';
   document.getElementById('composeBody').value=getComposerDraft(task);
   document.getElementById('taskMailComposer').classList.add('open');
@@ -1722,7 +1744,7 @@ function exportFiltered(){
   showToast('CSV exported','success'); toggleExportMenu();
 }
 
-window.onload=async()=>{await loadTaskMailRecipientRules();fetchTasks();};
+window.onload=async()=>{await Promise.all([loadTaskMailRecipientRules(),loadTaskMailRecipientSettings()]);fetchTasks();};
 </script>
 <script src="errorLogger.js"></script>
 <script src="saveButtonAnimation.js"></script>

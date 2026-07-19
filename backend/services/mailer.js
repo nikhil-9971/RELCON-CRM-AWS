@@ -28,6 +28,7 @@ const Attendance = require("../models/Attendance");
 const DailyPlan = require("../models/DailyPlan");
 const Status = require("../models/Status");
 const Task = require("../models/Task");
+const TaskMailRecipientSettings = require("../models/TaskMailRecipientSettings");
 const NoteTask = require("../models/NoteTask");
 const Incident = require("../models/Incident");
 const CRMNotification = require("../models/CRMNotification");
@@ -268,12 +269,17 @@ function getEngineerEmailsFromUsers(users = [], engineerName = "") {
   return [...new Set(sourceUsers.map((user) => normalizeEmail(user.email)).filter(Boolean))];
 }
 
-function getTaskManagerCcEmails(users = [], engineerName = "") {
+async function getTaskManagerCcEmails(users = [], engineerName = "") {
   const adminEmails = users
     .filter((user) => String(user.role || "").trim().toLowerCase() === "admin")
     .map((user) => normalizeEmail(user.email))
     .filter(Boolean);
-  return [...new Set([...adminEmails, ...getEngineerEmailsFromUsers(users, engineerName)])];
+  const settings = await TaskMailRecipientSettings.findOne({ key: "default" }, "alwaysCcEmails").lean();
+  const alwaysCcEmails = String(settings?.alwaysCcEmails || "")
+    .split(/[;,\s]+/)
+    .map(normalizeEmail)
+    .filter(Boolean);
+  return [...new Set([...alwaysCcEmails, ...adminEmails, ...getEngineerEmailsFromUsers(users, engineerName)])];
 }
 
 function normalizeStatusLabel(value = "") {
@@ -708,7 +714,7 @@ async function sendTaskWorkflowEmail({
   const recipient = normalizeEmail(to || task.customerEmail);
   if (!recipient) throw new Error("Recipient email missing.");
   const users = await User.find(ACTIVE_USER_QUERY, "email role engineerName username").lean();
-  const taskManagerCcEmails = getTaskManagerCcEmails(users, task.engineer);
+  const taskManagerCcEmails = await getTaskManagerCcEmails(users, task.engineer);
   const ccList = [...new Set([
     ...String(cc || task.ccEmails || "")
       .split(/[,\s;]+/)
@@ -845,7 +851,7 @@ async function sendCustomTaskEmail({ task, to, cc, subject, body, note = "" } = 
   const users = await User.find(ACTIVE_USER_QUERY, "email role engineerName username").lean();
   const ccList = [...new Set([
     ...parseTaskEmailList(cc || ""),
-    ...getTaskManagerCcEmails(users, task.engineer),
+    ...(await getTaskManagerCcEmails(users, task.engineer)),
   ])].filter((email) => !recipients.includes(email));
   const mailSubject = String(subject || "").trim();
   const mailBody = removeEmailSignature(body);
