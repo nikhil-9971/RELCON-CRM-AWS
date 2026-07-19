@@ -571,30 +571,16 @@ function generateTaskPlainEmail(task = {}, mode = "action") {
 }
 
 function buildTaskHtmlEmail(task = {}, mode = "action") {
-  const subject = buildTaskSubject(task, mode);
-  const priority = task.priority || getTaskPriority(task);
-  const issueType = detectTaskIssueType(task);
   const customer = getTaskCustomer(task);
   const siteName = task.roName || "Site";
   const siteCode = task.roCode || "";
   const siteLine = `${siteName}${siteCode ? ` (${siteCode})` : ""}${task.region ? `, ${task.region}` : ""}`;
-  const priorityColors = {
-    Critical: ["#fff1f2", "#be123c"],
-    High: ["#fff7ed", "#c2410c"],
-    Medium: ["#eff6ff", "#1d4ed8"],
-    Low: ["#ecfdf5", "#047857"],
-  };
-  const [badgeBg, badgeColor] = priorityColors[priority] || priorityColors.Medium;
   const observations = buildTaskObservationList(task)
-    .map((item) => `<li style="margin:0 0 10px;padding-left:2px;">${htmlEscape(item)}</li>`)
+    .map((item) => `<li style="margin:0 0 8px;padding-left:2px;color:#111827;font-weight:700;">${htmlEscape(item)}</li>`)
     .join("");
   const cleanContent = cleanTaskEmailContent(task.emailContent);
-  const bodyText = htmlEscape(cleanContent || "").replace(/\n/g, "<br/>");
-  const heroTitle = mode === "closure"
-    ? "Closure Update"
-    : mode === "escalation"
-      ? "Priority Follow-up"
-      : "Site Observation Support Required";
+  const salutation = customer === "HPCL" ? "Dear Sir/Madam," : "Dear Team,";
+  const bodyText = htmlEscape(cleanContent || "Observation details are available with the field team.").replace(/\n/g, "<br/>");
   const heroIntro = mode === "closure"
     ? `The reported observation at ${siteLine} has been attended and is being shared for your closure acknowledgement.`
     : mode === "escalation"
@@ -605,54 +591,22 @@ function buildTaskHtmlEmail(task = {}, mode = "action") {
     : "Kindly arrange the necessary corrective action and share closure confirmation by return email.";
 
   return `
-  <div style="margin:0;padding:26px 12px;background:#eef3f8;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
-    <div style="max-width:820px;margin:0 auto;background:#ffffff;border:1px solid #dbe4ee;border-radius:18px;overflow:hidden;box-shadow:0 18px 42px rgba(15,23,42,0.10);">
-      <div style="padding:26px 30px;background:linear-gradient(135deg,#0b1f3a 0%,#075985 55%,#0f766e 100%);color:#ffffff;">
-        <div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;opacity:.82;">RELCON SYSTEMS | Field Operations</div>
-        <div style="margin-top:12px;font-size:26px;font-weight:800;line-height:1.15;">${htmlEscape(heroTitle)}</div>
-        <div style="margin-top:10px;font-size:14px;line-height:1.65;opacity:.95;max-width:680px;">${htmlEscape(heroIntro)}</div>
-        <div style="margin-top:18px;display:flex;gap:8px;flex-wrap:wrap;">
-          <span style="display:inline-flex;align-items:center;padding:7px 12px;border-radius:999px;background:${badgeBg};color:${badgeColor};font-size:12px;font-weight:800;">${htmlEscape(priority)} Priority</span>
-          <span style="display:inline-flex;align-items:center;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:700;">${htmlEscape(issueType)}</span>
-          <span style="display:inline-flex;align-items:center;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:700;">${htmlEscape(customer)}</span>
-        </div>
-      </div>
+  <div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.7;color:#334155;">
+    <p style="margin:0 0 14px;color:#111827;">${htmlEscape(salutation)}</p>
+    <p style="margin:0 0 16px;">${htmlEscape(heroIntro)}</p>
 
-      <div style="padding:28px 30px 30px;">
-        <p style="margin:0 0 14px;font-size:14px;color:#1f2937;">Dear Sir/Madam,</p>
-        <p style="margin:0 0 20px;font-size:14px;color:#334155;line-height:1.75;">${htmlEscape(heroIntro)}</p>
+    <div style="margin:0 0 16px;">
+      <div style="margin:0 0 6px;color:#111827;font-weight:700;">Observation:</div>
+      ${observations ? `<ol style="margin:0;padding-left:20px;line-height:1.75;">${observations}</ol>` : `<div style="color:#111827;font-weight:700;">${bodyText}</div>`}
+      ${mode === "closure" && task.closureSummary ? `<div style="margin-top:14px;color:#111827;"><strong>Closure Summary:</strong><br/>${htmlEscape(task.closureSummary).replace(/\n/g, "<br/>")}</div>` : ""}
+    </div>
 
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:0 0 22px;">
-          <div style="padding:14px 16px;border:1px solid #dbeafe;background:#f8fbff;border-radius:14px;">
-            <div style="font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#2563eb;">Site</div>
-            <div style="margin-top:6px;font-size:14px;font-weight:800;color:#0f172a;line-height:1.35;">${htmlEscape(siteName)}</div>
-            ${siteCode ? `<div style="margin-top:3px;font-size:12px;color:#64748b;">${htmlEscape(siteCode)}</div>` : ""}
-          </div>
-          <div style="padding:14px 16px;border:1px solid #ccfbf1;background:#f0fdfa;border-radius:14px;">
-            <div style="font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#0f766e;">Visit Reference</div>
-            <div style="margin-top:6px;font-size:14px;font-weight:800;color:#0f172a;">${htmlEscape(formatDateOnlyIST(task.date))}</div>
-            <div style="margin-top:3px;font-size:12px;color:#64748b;">${htmlEscape(task.engineer || "Field Team")}</div>
-          </div>
-        </div>
+    <p style="margin:0 0 22px;">${htmlEscape(actionText)}</p>
 
-        <div style="padding:20px 22px;border-radius:16px;background:#f8fafc;border:1px solid #e2e8f0;">
-          <div style="font-size:12px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#475569;margin-bottom:12px;">Observation</div>
-          ${observations ? `<ol style="margin:0;padding-left:20px;font-size:14px;color:#0f172a;line-height:1.75;">${observations}</ol>` : `<div style="font-size:14px;color:#334155;line-height:1.75;">${bodyText || "Observation details are available with the field team."}</div>`}
-          ${mode === "closure" && task.closureSummary ? `<div style="margin-top:16px;padding:15px;border-radius:12px;background:#ecfdf5;border:1px solid #bbf7d0;font-size:14px;color:#14532d;line-height:1.75;"><strong>Closure Summary:</strong><br/>${htmlEscape(task.closureSummary).replace(/\n/g, "<br/>")}</div>` : ""}
-        </div>
-
-        <div style="margin-top:22px;padding:18px 20px;border-radius:16px;background:#fff7ed;border:1px solid #fed7aa;">
-          <div style="font-size:12px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#9a3412;margin-bottom:8px;">Requested Support</div>
-          <div style="font-size:14px;color:#7c2d12;line-height:1.75;">${htmlEscape(actionText)}</div>
-        </div>
-
-        <div style="margin-top:26px;font-size:13px;color:#64748b;line-height:1.7;">
-          Regards,<br/>
-          <strong style="color:#0f172a;">${htmlEscape(DEFAULT_OUTGOING_MAIL_DISPLAY_NAME)}</strong><br/>
-          RELCON SYSTEMS<br/>
-          <span style="font-size:11px;color:#94a3b8;">This is an operational communication generated from RELCON CRM.</span>
-        </div>
-      </div>
+    <div style="margin-top:20px;color:#334155;line-height:1.7;">
+      Regards,<br/>
+      ${htmlEscape(DEFAULT_OUTGOING_MAIL_DISPLAY_NAME)}<br/>
+      RELCON SYSTEMS
     </div>
   </div>`;
 }
@@ -770,30 +724,34 @@ function removeEmailSignature(value = "") {
   return (signatureIndex >= 0 ? lines.slice(0, signatureIndex) : lines).join("\n").trim();
 }
 
+function formatTextEmailBodyHtml(value = "") {
+  const lines = String(value || "").replace(/\r/g, "").split("\n");
+  let observationMode = false;
+  return lines.map((line) => {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      observationMode = false;
+      return `<div style="height:12px;line-height:12px;">&nbsp;</div>`;
+    }
+    if (/^observation\s*:?\s*$/i.test(trimmed) || /^observation summary\s*:?\s*$/i.test(trimmed)) {
+      observationMode = true;
+      return `<div style="color:#111827;font-weight:700;">${htmlEscape(trimmed.replace(/\s*$/, ""))}</div>`;
+    }
+    const isObservationLine = observationMode || /^\d+\.\s+/.test(trimmed) || /^[-*]\s+/.test(trimmed);
+    const style = isObservationLine ? "color:#111827;font-weight:700;" : "color:#334155;font-weight:400;";
+    return `<div style="${style}">${htmlEscape(line)}</div>`;
+  }).join("");
+}
+
 function buildCustomTaskHtmlEmail(task = {}, body = "") {
-  const content = htmlEscape(removeEmailSignature(body)).replace(/\n/g, "<br/>");
-  const site = [task.roName, task.roCode ? `(${task.roCode})` : ""].filter(Boolean).join(" ") || "Task Update";
-  const reference = [task.region, formatDateOnlyIST(task.date)].filter(Boolean).join(" | ");
+  const content = formatTextEmailBodyHtml(removeEmailSignature(body));
   return `
-  <div style="margin:0;padding:28px 12px;background:#eef3f8;font-family:Arial,Helvetica,sans-serif;color:#172033;">
-    <div style="max-width:720px;margin:0 auto;background:#ffffff;border:1px solid #dbe4ee;border-radius:16px;overflow:hidden;box-shadow:0 10px 28px rgba(15,23,42,.10);">
-      <div style="padding:24px 28px;background:linear-gradient(135deg,#0b1f3a,#075985);color:#ffffff;">
-        <div style="font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;opacity:.82;">RELCON SYSTEMS</div>
-        <div style="margin-top:8px;font-size:22px;font-weight:800;line-height:1.3;">Task Communication</div>
-      </div>
-      <div style="padding:28px;">
-        <div style="margin:0 0 22px;padding:14px 16px;border:1px solid #dbeafe;border-radius:10px;background:#f8fbff;">
-          <div style="font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#2563eb;">Site Reference</div>
-          <div style="margin-top:5px;font-size:15px;font-weight:800;color:#0f172a;">${htmlEscape(site)}</div>
-          ${reference ? `<div style="margin-top:4px;font-size:12px;color:#64748b;">${htmlEscape(reference)}</div>` : ""}
-        </div>
-        <div style="font-size:14px;line-height:1.75;color:#334155;white-space:normal;">${content}</div>
-        <div style="margin-top:28px;padding-top:18px;border-top:1px solid #e2e8f0;font-size:13px;line-height:1.7;color:#64748b;">
-          Regards,<br/>
-          <strong style="color:#0f172a;">${htmlEscape(DEFAULT_OUTGOING_MAIL_DISPLAY_NAME)}</strong><br/>
-          <strong style="color:#0f172a;letter-spacing:.04em;">RELCON SYSTEMS</strong>
-        </div>
-      </div>
+  <div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.7;color:#334155;">
+    <div>${content}</div>
+    <div style="margin-top:20px;color:#334155;line-height:1.7;">
+      Regards,<br/>
+      ${htmlEscape(DEFAULT_OUTGOING_MAIL_DISPLAY_NAME)}<br/>
+      RELCON SYSTEMS
     </div>
   </div>`;
 }
