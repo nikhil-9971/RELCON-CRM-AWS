@@ -557,9 +557,10 @@ function generateTaskPlainEmail(task = {}, mode = "action") {
     "",
     intro,
     "",
-    "Observation:",
+    "During the visit, the following observations were recorded:",
     body,
     closureText,
+    "Recommended action from HPCL side:",
     mode === "closure"
       ? "Kindly acknowledge the closure update for our records."
       : "We request you to kindly arrange the required corrective action and share confirmation once completed.",
@@ -596,12 +597,13 @@ function buildTaskHtmlEmail(task = {}, mode = "action") {
     <p style="margin:0 0 16px;">${htmlEscape(heroIntro)}</p>
 
     <div style="margin:0 0 16px;">
-      <div style="margin:0 0 6px;color:#111827;font-weight:700;">Observation:</div>
+      <div style="margin:0 0 6px;color:#334155;font-weight:400;">During the visit, the following observations were recorded:</div>
       ${observations ? `<ol style="margin:0;padding-left:20px;line-height:1.75;">${observations}</ol>` : `<div style="color:#111827;font-weight:700;">${bodyText}</div>`}
       ${mode === "closure" && task.closureSummary ? `<div style="margin-top:14px;color:#111827;"><strong>Closure Summary:</strong><br/>${htmlEscape(task.closureSummary).replace(/\n/g, "<br/>")}</div>` : ""}
     </div>
 
-    <p style="margin:0 0 22px;">${htmlEscape(actionText)}</p>
+    <p style="margin:0 0 6px;">Recommended action from HPCL side:</p>
+    <p style="margin:0 0 22px;color:#1d4ed8;">${htmlEscape(actionText)}</p>
 
     <div style="margin-top:20px;color:#334155;line-height:1.7;">
       Regards,<br/>
@@ -726,19 +728,31 @@ function removeEmailSignature(value = "") {
 
 function formatTextEmailBodyHtml(value = "") {
   const lines = String(value || "").replace(/\r/g, "").split("\n");
-  let observationMode = false;
+  let section = "";
   return lines.map((line) => {
     const trimmed = line.trim();
     if (!trimmed) {
-      observationMode = false;
+      section = "";
       return `<div style="height:12px;line-height:12px;">&nbsp;</div>`;
     }
-    if (/^observation\s*:?\s*$/i.test(trimmed) || /^observation summary\s*:?\s*$/i.test(trimmed)) {
-      observationMode = true;
-      return `<div style="color:#111827;font-weight:700;">${htmlEscape(trimmed.replace(/\s*$/, ""))}</div>`;
+    if (/^during the visit,\s*the following observations were recorded\s*:?\s*$/i.test(trimmed)) {
+      section = "observation";
+      return `<div style="color:#334155;font-weight:400;">${htmlEscape(trimmed)}</div>`;
     }
-    const isObservationLine = observationMode || /^\d+\.\s+/.test(trimmed) || /^[-*]\s+/.test(trimmed);
-    const style = isObservationLine ? "color:#111827;font-weight:700;" : "color:#334155;font-weight:400;";
+    if (/^recommended action from hpcl side\s*:?\s*$/i.test(trimmed)) {
+      section = "recommendation";
+      return `<div style="color:#334155;font-weight:400;">${htmlEscape(trimmed)}</div>`;
+    }
+    if (/^observation\s*:?\s*$/i.test(trimmed) || /^observation summary\s*:?\s*$/i.test(trimmed)) {
+      section = "observation";
+      return `<div style="color:#334155;font-weight:400;">${htmlEscape(trimmed)}</div>`;
+    }
+    const isObservationLine = section === "observation" || /^\d+\.\s+/.test(trimmed) || /^[-*]\s+/.test(trimmed);
+    const style = section === "recommendation"
+      ? "color:#1d4ed8;font-weight:400;"
+      : isObservationLine
+        ? "color:#111827;font-weight:700;"
+        : "color:#334155;font-weight:400;";
     return `<div style="${style}">${htmlEscape(line)}</div>`;
   }).join("");
 }

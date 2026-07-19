@@ -961,18 +961,20 @@ function buildEmailDraft(task,mode='action'){
     '',
     intro,
     '',
-    'Observation:',
+    'During the visit, the following observations were recorded:',
     cleanTaskEmailContent(task.emailContent) || task.issue || 'No additional remarks shared.',
   ];
   if(mode==='closure' && task.closureSummary) lines.push('', 'Closure Summary:', task.closureSummary);
   lines.push(
     '',
+    'Recommended action from HPCL side:',
     mode==='closure'
       ? 'Kindly acknowledge the closure update for our records.'
       : 'Kindly arrange the necessary corrective action and share closure confirmation by return email.',
     '',
     'Regards,',
-    'RELCON Systems'
+    'Nikhil Trivedi',
+    'RELCON SYSTEMS'
   );
   return lines.join('\n');
 }
