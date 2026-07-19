@@ -7609,6 +7609,7 @@ module.exports = {
   detectTaskIssueType,
   getTaskCustomer,
   getTaskAgingDays,
+  getTaskManagerCcEmails,
   normalizeStatusLabel,
   isRequirementGivenToHQOStatus,
 };

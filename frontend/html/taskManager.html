@@ -1466,7 +1466,7 @@ function getComposerDraft(task){
   if(task.customEmailTemplate) return task.customEmailTemplate;
   return buildEmailDraft(task).replace(/^Subject:.*\n\n/i,'');
 }
-function openTaskMailComposer(id){
+async function openTaskMailComposer(id){
   if(!isAdmin()){showToast('Admin access required','warn');return;}
   const task=allTasks.find(t=>t._id===id);
   if(!task) return;
@@ -1477,6 +1477,12 @@ function openTaskMailComposer(id){
   document.getElementById('composeSubject').value=task.customEmailSubject||task.subject||task.currentSubject||'Task Update';
   document.getElementById('composeBody').value=getComposerDraft(task);
   document.getElementById('taskMailComposer').classList.add('open');
+  try{
+    const res=await fetch(`${baseUrl}/taskMailRecipientPreview/${id}`,{headers:{Authorization:`Bearer ${token}`}});
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.error||`HTTP ${res.status}`);
+    document.getElementById('composeCc').value=mergeEmailLists(document.getElementById('composeCc').value,data.ccEmails);
+  }catch(err){console.warn('Could not load internal CC recipients:',err.message);}
 }
 function closeTaskMailComposer(){document.getElementById('taskMailComposer').classList.remove('open');}
 async function sendComposedTaskMail(){

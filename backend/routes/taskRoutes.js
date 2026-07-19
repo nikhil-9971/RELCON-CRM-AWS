@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const Task = require("../models/Task");
 const TaskMailRecipientRule = require("../models/TaskMailRecipientRule");
+const User = require("../models/User");
 const authMiddleware = require("../middleware/authMiddleware");
 const { isAdminUser, scopeByEngineer, canAccessEngineerRecord } = require("../utils/accessScope");
 const {
@@ -15,6 +16,7 @@ const {
   detectTaskIssueType,
   getTaskCustomer,
   getTaskAgingDays,
+  getTaskManagerCcEmails,
   processPendingTaskEscalations,
 } = require("../services/mailer");
 
@@ -173,6 +175,20 @@ router.get("/getTask/:id", authMiddleware, async (req, res) => {
     res.json(mergeTaskMeta(task));
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch task" });
+  }
+});
+
+// Admin composer preview: exposes the same internal CC recipients that are
+// added by the server when a task email is sent.
+router.get("/taskMailRecipientPreview/:id", authMiddleware, async (req, res) => {
+  try {
+    if (!isAdminUser(req.user)) return res.status(403).json({ error: "Only administrators can view task mail recipients." });
+    const task = await Task.findById(req.params.id).lean();
+    if (!task) return res.status(404).json({ error: "Task not found" });
+    const users = await User.find({ isActive: { $ne: false } }, "email role engineerName username").lean();
+    res.json({ ccEmails: await getTaskManagerCcEmails(users, task.engineer) });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load task mail recipients." });
   }
 });
 
