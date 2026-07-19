@@ -40,6 +40,11 @@ const {
   SMTP_PORT,
   SMTP_USER,
   SMTP_PASS,
+  TASK_SMTP_HOST,
+  TASK_SMTP_PORT,
+  TASK_SMTP_USER,
+  TASK_SMTP_PASS,
+  TASK_MAIL_FROM,
   MAIL_FROM,
   MAIL_TO,
   BASE_URL,
@@ -58,6 +63,7 @@ if (
 axios.defaults.timeout = 30000;
 
 const DEFAULT_OUTGOING_MAIL_DISPLAY_NAME = "Nikhil Trivedi";
+const TASK_MANAGER_MAIL_FROM_ADDRESS = TASK_MAIL_FROM || TASK_SMTP_USER || "nikhiltrivedirelcon@gmail.com";
 const ACTIVE_USER_QUERY = { isActive: { $ne: false } };
 
 function createSmtpTransport({ host, port, user, pass }) {
@@ -79,6 +85,16 @@ const transporter = createSmtpTransport({
   user: SMTP_USER,
   pass: SMTP_PASS,
 });
+
+const hasTaskManagerSmtpConfig = TASK_SMTP_HOST && TASK_SMTP_PORT && TASK_SMTP_USER && TASK_SMTP_PASS;
+const taskManagerTransporter = hasTaskManagerSmtpConfig
+  ? createSmtpTransport({
+      host: TASK_SMTP_HOST,
+      port: TASK_SMTP_PORT,
+      user: TASK_SMTP_USER,
+      pass: TASK_SMTP_PASS,
+    })
+  : transporter;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -296,15 +312,22 @@ function sanitizeRecipientField(value, inactiveEmails) {
   return cleaned.length ? cleaned.join(", ") : undefined;
 }
 
-const sendMailRaw = transporter.sendMail.bind(transporter);
-transporter.sendMail = async function sendMailWithoutInactiveUsers(options = {}, ...rest) {
-  const inactiveEmails = await getInactiveUserEmailSet();
-  const sanitized = { ...options };
-  sanitized.to = sanitizeRecipientField(sanitized.to, inactiveEmails);
-  sanitized.cc = sanitizeRecipientField(sanitized.cc, inactiveEmails);
-  sanitized.bcc = sanitizeRecipientField(sanitized.bcc, inactiveEmails);
-  return sendMailRaw(sanitized, ...rest);
-};
+function wrapTransportSendMailWithoutInactiveUsers(mailTransport) {
+  const sendMailRaw = mailTransport.sendMail.bind(mailTransport);
+  mailTransport.sendMail = async function sendMailWithoutInactiveUsers(options = {}, ...rest) {
+    const inactiveEmails = await getInactiveUserEmailSet();
+    const sanitized = { ...options };
+    sanitized.to = sanitizeRecipientField(sanitized.to, inactiveEmails);
+    sanitized.cc = sanitizeRecipientField(sanitized.cc, inactiveEmails);
+    sanitized.bcc = sanitizeRecipientField(sanitized.bcc, inactiveEmails);
+    return sendMailRaw(sanitized, ...rest);
+  };
+}
+
+wrapTransportSendMailWithoutInactiveUsers(transporter);
+if (taskManagerTransporter !== transporter) {
+  wrapTransportSendMailWithoutInactiveUsers(taskManagerTransporter);
+}
 
 function buildFromHeader(displayName, fallbackAddress) {
   const fromAddress = extractEmailAddress(fallbackAddress) || extractEmailAddress(MAIL_FROM) || normalizeEmail(SMTP_USER) || "no-reply@relconsystems.com";
@@ -313,6 +336,10 @@ function buildFromHeader(displayName, fallbackAddress) {
 
 function getDefaultOutgoingFromHeader() {
   return buildFromHeader(DEFAULT_OUTGOING_MAIL_DISPLAY_NAME);
+}
+
+function getTaskManagerFromHeader() {
+  return buildFromHeader(DEFAULT_OUTGOING_MAIL_DISPLAY_NAME, TASK_MANAGER_MAIL_FROM_ADDRESS);
 }
 
 function formatDateTimeIST(value = new Date()) {
@@ -683,8 +710,8 @@ async function sendTaskWorkflowEmail({
   const subject = buildTaskSubject(task, mode);
   const html = buildTaskHtmlEmail(task, mode);
   const text = generateTaskPlainEmail(task, mode);
-  const info = await transporter.sendMail({
-    from: getDefaultOutgoingFromHeader(),
+  const info = await taskManagerTransporter.sendMail({
+    from: getTaskManagerFromHeader(),
     to: recipient,
     cc: ccList || undefined,
     subject,
@@ -812,8 +839,8 @@ async function sendCustomTaskEmail({ task, to, cc, subject, body, note = "" } = 
   if (!mailSubject) throw new Error("Email subject is required.");
   if (!mailBody) throw new Error("Email message is required.");
 
-  const info = await transporter.sendMail({
-    from: getDefaultOutgoingFromHeader(),
+  const info = await taskManagerTransporter.sendMail({
+    from: getTaskManagerFromHeader(),
     to: recipients.join(", "),
     cc: ccList.length ? ccList.join(", ") : undefined,
     subject: mailSubject,
