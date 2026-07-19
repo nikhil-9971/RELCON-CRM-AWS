@@ -518,6 +518,8 @@ function cleanTaskEmailContent(value = "") {
     .filter(Boolean);
 
   const cleaned = [];
+  let recordedHeadingSeen = false;
+  let recommendedHeadingSeen = false;
   for (const line of lines) {
     const normalized = line.toLowerCase().replace(/\s+/g, " ");
     if (/^subject\s*:/i.test(line)) continue;
@@ -531,15 +533,56 @@ function cleanTaskEmailContent(value = "") {
     if (normalized.includes("we request you to kindly arrange")) continue;
     if (/^observation summary\s*:?\s*$/i.test(line)) continue;
     if (/^observation\s*:?\s*$/i.test(line)) continue;
+    if (/^during the visit,\s*the following observations were recorded\s*:?\s*$/i.test(line)) {
+      if (recordedHeadingSeen) continue;
+      recordedHeadingSeen = true;
+    }
+    if (/^recommended action from hpcl side\s*:?\s*$/i.test(line)) {
+      if (recommendedHeadingSeen) continue;
+      recommendedHeadingSeen = true;
+    }
     cleaned.push(line);
   }
   return cleaned.join("\n").trim();
 }
 
+function hasRecordedObservationHeading(value = "") {
+  return /^during the visit,\s*the following observations were recorded\s*:?\s*$/im.test(String(value || ""));
+}
+
+function hasRecommendedActionHeading(value = "") {
+  return /^recommended action from hpcl side\s*:?\s*$/im.test(String(value || ""));
+}
+
+function addSpaceAfterRecordedObservationHeading(value = "") {
+  return String(value || "").replace(
+    /(^during the visit,\s*the following observations were recorded\s*:?\s*$)\n(?!\n)/gim,
+    "$1\n\n",
+  );
+}
+
+function buildTaskMailBodyText(task = {}, actionText = "") {
+  const cleanContent = cleanTaskEmailContent(task.emailContent);
+  const observations = buildTaskObservationList(task);
+  const rawBody = cleanContent || observations.map((item, idx) => `${idx + 1}. ${item}`).join("\n") || "No additional remarks shared.";
+  const body = addSpaceAfterRecordedObservationHeading(rawBody);
+  const lines = ["Observation:", ""];
+
+  if (hasRecordedObservationHeading(body)) {
+    lines.push(body);
+  } else {
+    lines.push("During the visit, the following observations were recorded:", "", body);
+  }
+
+  if (!hasRecommendedActionHeading(body)) {
+    lines.push("", "Recommended action from HPCL side:", actionText);
+  }
+
+  return lines.join("\n").trim();
+}
+
 function generateTaskPlainEmail(task = {}, mode = "action") {
   const customer = getTaskCustomer(task);
-  const observations = buildTaskObservationList(task);
-  const cleanContent = cleanTaskEmailContent(task.emailContent);
   const salutation = customer === "HPCL" ? "Dear Sir/Madam," : "Dear Team,";
   const siteLine = `${task.roName || "the site"}${task.roCode ? ` (${task.roCode})` : ""}${task.region ? `, ${task.region}` : ""}`;
   const intro = mode === "closure"
@@ -547,23 +590,20 @@ function generateTaskPlainEmail(task = {}, mode = "action") {
     : mode === "escalation"
       ? `This is a priority follow-up for the observation at ${siteLine}, which is still awaiting closure support.`
       : `During our site review at ${siteLine}, the following observation was noted and requires your support for timely closure.`;
-  const body = cleanContent || observations.map((item, idx) => `${idx + 1}. ${item}`).join("\n") || "No additional remarks shared.";
   const closureText = mode === "closure" && task.closureSummary
     ? `\nClosure Summary:\n${task.closureSummary}\n`
     : "";
+  const actionText = mode === "closure"
+    ? "Kindly acknowledge the closure update for our records."
+    : "We request you to kindly arrange the required corrective action and share confirmation once completed.";
 
   return [
     salutation,
     "",
     intro,
     "",
-    "During the visit, the following observations were recorded:",
-    body,
+    buildTaskMailBodyText(task, actionText),
     closureText,
-    "Recommended action from HPCL side:",
-    mode === "closure"
-      ? "Kindly acknowledge the closure update for our records."
-      : "We request you to kindly arrange the required corrective action and share confirmation once completed.",
     "",
     "Regards,",
     DEFAULT_OUTGOING_MAIL_DISPLAY_NAME,
@@ -576,12 +616,7 @@ function buildTaskHtmlEmail(task = {}, mode = "action") {
   const siteName = task.roName || "Site";
   const siteCode = task.roCode || "";
   const siteLine = `${siteName}${siteCode ? ` (${siteCode})` : ""}${task.region ? `, ${task.region}` : ""}`;
-  const observations = buildTaskObservationList(task)
-    .map((item) => `<li style="margin:0 0 8px;padding-left:2px;color:#111827;font-weight:700;">${htmlEscape(item)}</li>`)
-    .join("");
-  const cleanContent = cleanTaskEmailContent(task.emailContent);
   const salutation = customer === "HPCL" ? "Dear Sir/Madam," : "Dear Team,";
-  const bodyText = htmlEscape(cleanContent || "Observation details are available with the field team.").replace(/\n/g, "<br/>");
   const heroIntro = mode === "closure"
     ? `The reported observation at ${siteLine} has been attended and is being shared for your closure acknowledgement.`
     : mode === "escalation"
@@ -590,20 +625,15 @@ function buildTaskHtmlEmail(task = {}, mode = "action") {
   const actionText = mode === "closure"
     ? "Please acknowledge this closure update for our records."
     : "Kindly arrange the necessary corrective action and share closure confirmation by return email.";
+  const mailBodyHtml = formatTextEmailBodyHtml(buildTaskMailBodyText(task, actionText));
 
   return `
   <div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.7;color:#334155;">
     <p style="margin:0 0 14px;color:#111827;">${htmlEscape(salutation)}</p>
     <p style="margin:0 0 16px;">${htmlEscape(heroIntro)}</p>
 
-    <div style="margin:0 0 16px;">
-      <div style="margin:0 0 6px;color:#334155;font-weight:400;">During the visit, the following observations were recorded:</div>
-      ${observations ? `<ol style="margin:0;padding-left:20px;line-height:1.75;">${observations}</ol>` : `<div style="color:#111827;font-weight:700;">${bodyText}</div>`}
-      ${mode === "closure" && task.closureSummary ? `<div style="margin-top:14px;color:#111827;"><strong>Closure Summary:</strong><br/>${htmlEscape(task.closureSummary).replace(/\n/g, "<br/>")}</div>` : ""}
-    </div>
-
-    <p style="margin:0 0 6px;">Recommended action from HPCL side:</p>
-    <p style="margin:0 0 22px;color:#1d4ed8;">${htmlEscape(actionText)}</p>
+    <div style="margin:0 0 16px;">${mailBodyHtml}</div>
+    ${mode === "closure" && task.closureSummary ? `<div style="margin:0 0 16px;color:#111827;"><strong>Closure Summary:</strong><br/>${htmlEscape(task.closureSummary).replace(/\n/g, "<br/>")}</div>` : ""}
 
     <div style="margin-top:20px;color:#334155;line-height:1.7;">
       Regards,<br/>
@@ -732,9 +762,10 @@ function formatTextEmailBodyHtml(value = "") {
   return lines.map((line) => {
     const trimmed = line.trim();
     if (!trimmed) {
-      section = "";
+      if (section === "recommendation") section = "";
       return `<div style="height:12px;line-height:12px;">&nbsp;</div>`;
     }
+    if (/^regards[,\s]*$/i.test(trimmed)) section = "";
     if (/^during the visit,\s*the following observations were recorded\s*:?\s*$/i.test(trimmed)) {
       section = "observation";
       return `<div style="color:#334155;font-weight:400;">${htmlEscape(trimmed)}</div>`;
