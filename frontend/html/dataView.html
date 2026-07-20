@@ -1199,8 +1199,18 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
         <div class="dv-form-grid">
           <div class="dv-field"><label class="dv-label">Earthing Status <span class="req">*</span></label>
             <select id="earthingStatus" class="dv-modal-select"><option value="">Select</option><option>OK</option><option>NOT OK</option></select></div>
+          <div id="earthingMeasurementFields" class="dv-field dv-form-full hidden">
+            <label class="dv-label">Earthing Voltage Measurements <span class="req">*</span></label>
+            <div class="dv-form-grid dv-form-grid-3">
+              <div class="dv-field"><label class="dv-label" for="earthingPN">PN</label><input id="earthingPN" class="dv-modal-input earthing-voltage-input" type="number" min="0" step="any" inputmode="decimal" placeholder="Enter PN value"/></div>
+              <div class="dv-field"><label class="dv-label" for="earthingPE">PE</label><input id="earthingPE" class="dv-modal-input earthing-voltage-input" type="number" min="0" step="any" inputmode="decimal" placeholder="Enter PE value"/></div>
+              <div class="dv-field"><label class="dv-label" for="earthingNE">NE</label><input id="earthingNE" class="dv-modal-input earthing-voltage-input" type="number" min="0" step="any" inputmode="decimal" placeholder="Enter NE value"/></div>
+            </div>
+          </div>
+          <div id="earthingNotOkReasonField" class="dv-field dv-form-full hidden"><label class="dv-label">Earthing Action Required <span class="req">*</span></label>
+            <select id="earthingNotOkReason" class="dv-modal-select"><option value="">Select</option><option>NEED SEPARATE EARTHING TO AUTOMATION SYSTEMS</option><option>NEED TO RESTORE AUTOMATION EARTHING.</option></select></div>
           <div class="dv-field dv-form-full"><label class="dv-label">Voltage Measurement Reading <span class="req">*</span></label>
-            <textarea id="voltageReading" class="dv-modal-textarea" placeholder="PN=234V, PE=233V, NE=1V…"></textarea></div>
+            <textarea id="voltageReading" class="dv-modal-textarea" placeholder="Select earthing status and enter PN, PE, NE values" readonly></textarea></div>
         </div>
 
         <div class="dv-section-hd">DU Status</div>
@@ -1967,11 +1977,39 @@ function populateWirelessSlaveFields(value = '') {
   document.getElementById('wirelessSlaveCount').value = details.length || '';
   renderWirelessSlaveFields(details);
 }
+function updateEarthingVoltageReading() {
+  const status = document.getElementById('earthingStatus')?.value || '';
+  const measurements = document.getElementById('earthingMeasurementFields');
+  const reasonField = document.getElementById('earthingNotOkReasonField');
+  const pn = document.getElementById('earthingPN')?.value.trim() || '';
+  const pe = document.getElementById('earthingPE')?.value.trim() || '';
+  const ne = document.getElementById('earthingNE')?.value.trim() || '';
+  const reason = document.getElementById('earthingNotOkReason')?.value || '';
+  const voltageReading = document.getElementById('voltageReading');
+
+  measurements?.classList.toggle('hidden', !status);
+  reasonField?.classList.toggle('hidden', status !== 'NOT OK');
+  if (!status) {
+    voltageReading.value = '';
+    return;
+  }
+
+  const values = `PN- ${pn}, PE- ${pe}, NE- ${ne}`;
+  voltageReading.value = status === 'OK'
+    ? `EARTHING IS OK, ${values}`
+    : `EARTHING NOT OK, ${values}${reason ? ` (${reason})` : ''}`;
+}
 async function openStatusModal(planId) {
   document.getElementById('statusPlanId').value = planId;
   document.getElementById('statusModal').classList.remove('hidden');
   document.getElementById('statusForm').reset();
   populateWirelessSlaveFields('');
+  updateEarthingVoltageReading();
+  document.getElementById('earthingStatus').onchange = updateEarthingVoltageReading;
+  document.getElementById('earthingNotOkReason').onchange = updateEarthingVoltageReading;
+  document.querySelectorAll('.earthing-voltage-input').forEach(input => {
+    input.oninput = updateEarthingVoltageReading;
+  });
   const currentPlan = fullData.find(p => p._id === planId);
   const roCode = currentPlan?.roCode;
   let latestVerifiedHpcl = null;
@@ -2037,6 +2075,24 @@ function closeStatusModal() { document.getElementById('statusModal').classList.a
 async function saveStatus() {
   const saveBtn = document.getElementById('saveStatusBtn');
   const required = ['probeMake','probeSize','lowProductLock','highWaterSet','duSerialNumber','dgStatus','connectivityType','sim1Provider','sim1Number','sim2Provider','sim2Number','iemiNumber','bosVersion','fccVersion','wirelessSlave','sftpConfig','adminPassword','workCompletion','spareUsed','activeSpare','faultySpare','spareRequirment','spareRequirmentname','earthingStatus','voltageReading','duOffline','duDependency','duRemark','tankOffline','tankDependency','tankRemark','bosIP','fccIP','locationField'];
+  const earthingStatus = document.getElementById('earthingStatus').value;
+  const earthingMeasurements = ['earthingPN', 'earthingPE', 'earthingNE'];
+  if (earthingStatus) {
+    for (const id of earthingMeasurements) {
+      const input = document.getElementById(id);
+      if (!input.value.trim() || !input.validity.valid) {
+        showToast(`Please enter a valid numeric ${id.replace('earthing', '')} value`, 'error');
+        input.focus();
+        return;
+      }
+    }
+    if (earthingStatus === 'NOT OK' && !document.getElementById('earthingNotOkReason').value) {
+      showToast('Please select Earthing Action Required', 'error');
+      document.getElementById('earthingNotOkReason').focus();
+      return;
+    }
+    updateEarthingVoltageReading();
+  }
   const loc = document.getElementById('locationField').value;
   if (!loc || loc.includes('Fetching') || loc.includes('Unable') || loc.includes('not supported')) { showToast('Location not available. Please allow location access.', 'error'); return; }
   const slaveCount = Number.parseInt(document.getElementById('wirelessSlaveCount')?.value || '0', 10) || 0;
