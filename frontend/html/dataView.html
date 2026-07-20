@@ -2517,10 +2517,10 @@ async function buildStatusPdf(planId) {
 
   if (type==='BPCL') {
     y = addPdfSection(doc, 'BPCL Device Summary', [
-      ['Class 1 Device Count', st.class1DeviceCount],
-      ['Class 1 Devices', asPdfList(st.class1Devices)],
-      ['Class 1 Without SIM Count', st.class1WithoutSimCount],
-      ['Class 1 Without SIM Devices', asPdfList(st.class1WithoutSimDevices)],
+      ['Class-1 WITH GSM Device Count', st.class1DeviceCount],
+      ['Class-1 (WITH GSM) Device Details', asPdfList(st.class1Devices)],
+      ['Class-1 WITHOUT GSM Device Count', st.class1WithoutSimCount],
+      ['Class-1 (WITHOUT GSM) Device Details', asPdfList(st.class1WithoutSimDevices)],
       ['Class 2 Device Count', st.class2DeviceCount],
       ['Class 2 Devices', asPdfList(st.class2Devices)],
       ['Relcon ATG Provided', st.relconAtgProvided],
