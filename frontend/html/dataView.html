@@ -1389,11 +1389,11 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
       <div class="dv-brand-bar"><img src="./assets/BPCL.png" alt="BPCL" onerror="this.style.display='none'"/></div>
       <input type="hidden" id="bpclPlanId"/>
       <form id="bpclForm" class="dv-form-grid">
-        <div class="dv-field"><label class="dv-label">Class-1 WITH SIM Device Count</label>
+        <div class="dv-field"><label class="dv-label">Class-1 WITH GSM Device Count</label>
           <input type="number" id="class1Count" min="0" class="dv-modal-input" onchange="renderClass1Devices()"/></div>
-        <div class="dv-field dv-form-full"><label class="dv-label">Class-1 (With SIM) Device Details</label>
+        <div class="dv-field dv-form-full"><label class="dv-label">Class-1 (WITH GSM) Device Details</label>
           <div id="class1DevicesContainer" class="space-y-1"></div></div>
-        <div class="dv-field"><label class="dv-label">Class-1 WITHOUT GSM</label>
+        <div class="dv-field"><label class="dv-label">Class-1 WITHOUT GSM Device Count</label>
           <input type="number" id="class1Countwithoutsim" min="0" class="dv-modal-input" onchange="renderClass1WithoutSimDevices()"/></div>
         <div class="dv-field dv-form-full"><label class="dv-label">Class-1 (Without GSM) Device Details</label>
           <div id="class1DevicesContainerwithoutsim"></div></div>
@@ -2189,8 +2189,8 @@ async function saveJioBPStatus() {
 }
 
 /* ── BPCL ── */
-function renderClass1Devices() { const c=Number(document.getElementById('class1Count').value), con=document.getElementById('class1DevicesContainer'); con.innerHTML=''; for(let i=0;i<c;i++) { const inp=document.createElement('input'); inp.type='text'; inp.className='class1Device dv-modal-input'; inp.style.marginBottom='6px'; inp.placeholder=`Class-1 With SIM Device ${i+1}`; con.appendChild(inp); } }
-function renderClass1WithoutSimDevices() { const c=Number(document.getElementById('class1Countwithoutsim').value), con=document.getElementById('class1DevicesContainerwithoutsim'); con.innerHTML=''; for(let i=0;i<c;i++) { const inp=document.createElement('input'); inp.type='text'; inp.className='class1WithoutSimDevice dv-modal-input'; inp.style.marginBottom='6px'; inp.placeholder=`Class-1 Without SIM Device ${i+1}`; con.appendChild(inp); } }
+function renderClass1Devices() { const c=Number(document.getElementById('class1Count').value), con=document.getElementById('class1DevicesContainer'); con.innerHTML=''; for(let i=0;i<c;i++) { const inp=document.createElement('input'); inp.type='text'; inp.className='class1Device dv-modal-input'; inp.style.marginBottom='6px'; inp.placeholder=`Class-1 With GSM Device ${i+1}`; con.appendChild(inp); } }
+function renderClass1WithoutSimDevices() { const c=Number(document.getElementById('class1Countwithoutsim').value), con=document.getElementById('class1DevicesContainerwithoutsim'); con.innerHTML=''; for(let i=0;i<c;i++) { const inp=document.createElement('input'); inp.type='text'; inp.className='class1WithoutSimDevice dv-modal-input'; inp.style.marginBottom='6px'; inp.placeholder=`Class-1 Without GSM Device ${i+1}`; con.appendChild(inp); } }
 function renderClass2Devices() { const c=Number(document.getElementById('class2Count').value), con=document.getElementById('class2DevicesContainer'); con.innerHTML=''; for(let i=0;i<c;i++) { const inp=document.createElement('input'); inp.type='text'; inp.className='class2Device dv-modal-input'; inp.style.marginBottom='6px'; inp.placeholder=`Class-2 Device ${i+1}`; con.appendChild(inp); } }
 function handleRelconATGChange() { const v=document.getElementById('relconAtgProvided').value; const cd=document.getElementById('relconAtgCountDiv'), rc=document.getElementById('relconAtgContainer'); if(v==='YES') { cd.classList.remove('hidden'); rc.classList.remove('hidden'); } else { cd.classList.add('hidden'); rc.classList.add('hidden'); document.getElementById('relconAtgCount').value=''; rc.innerHTML=''; } }
 function renderRelconATGFields() { const c=parseInt(document.getElementById('relconAtgCount').value||0), con=document.getElementById('relconAtgContainer'); con.innerHTML='<label class="dv-label">RELCON ATG Details</label>'; for(let i=1;i<=c;i++) { const inp=document.createElement('input'); inp.type='text'; inp.placeholder=`ATG ${i} - SBEM-EBMS-24523`; inp.className='dv-modal-input'; inp.style.marginBottom='6px'; inp.id=`relconAtg_${i}`; con.appendChild(inp); } }
