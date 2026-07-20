@@ -550,6 +550,11 @@ body {
 .ch-divider { width: 1px; height: 18px; background: var(--border); flex-shrink: 0; }
 .ch-desc { font-size: 12.5px; color: var(--txt4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ch-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.ch-date-time {
+  font-size: 11px; font-weight: 600; color: var(--txt3);
+  white-space: nowrap; padding: 6px 10px;
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+}
 
 .ch-btn {
   display: flex; align-items: center; gap: 6px;
@@ -1455,6 +1460,7 @@ body {
       <span class="ch-desc" id="chDesc">General team discussions and updates</span>
     </div>
     <div class="ch-actions">
+      <span id="headerDateTime" class="ch-date-time" aria-label="Current date and time"></span>
       <button class="ch-btn" onclick="toggleMembers()" id="membersBtn">
         <i class="fa-solid fa-users"></i>
         <span id="onlineCount">0 online</span>
@@ -1828,6 +1834,21 @@ let incomingRingTimer = null;
 let outgoingRingTimer = null;
 let callStatsTimer = null;
 let raisedHands = new Set();
+
+function updateHeaderDateTime() {
+  const element = document.getElementById('headerDateTime');
+  if (!element) return;
+  const now = new Date();
+  const date = now.toLocaleDateString('en-IN', {
+    weekday: 'short', day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata'
+  });
+  const time = now.toLocaleTimeString('en-IN', {
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true, timeZone: 'Asia/Kolkata'
+  });
+  element.textContent = `${date} • ${time}`;
+}
+updateHeaderDateTime();
+setInterval(updateHeaderDateTime, 1000);
 const CHAT_READ_SYNC_KEY = 'relcon_chat_read_at';
 
 const CHANNEL_META = {
