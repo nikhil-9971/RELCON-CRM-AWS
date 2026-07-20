@@ -1246,8 +1246,19 @@ function toggleNav(btn, subId){
   btn.classList.toggle("open", open);
 }
 
-/* Set date chip */
-document.getElementById('topbarDate').textContent = new Date().toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+/* Live IST date and time beside the Online count. */
+function updateTopbarDateTime(){
+  const now = new Date();
+  const date = now.toLocaleDateString('en-IN', {
+    weekday:'short', day:'2-digit', month:'short', year:'numeric', timeZone:'Asia/Kolkata'
+  });
+  const time = now.toLocaleTimeString('en-IN', {
+    hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:true, timeZone:'Asia/Kolkata'
+  });
+  document.getElementById('topbarDate').textContent = `${date} • ${time}`;
+}
+updateTopbarDateTime();
+setInterval(updateTopbarDateTime, 1000);
 
 /* ── Online Users Dropdown ── */
 function toggleOnlineDropdown(){
