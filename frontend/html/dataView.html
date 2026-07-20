@@ -665,6 +665,7 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
   z-index: 900;
 }
 .dv-loading.hidden { display: none; }
+.dv-field.hidden { display: none !important; }
 .dv-spinner {
   width: 40px; height: 40px;
   border: 3px solid var(--border);
@@ -1985,10 +1986,15 @@ function updateEarthingVoltageReading() {
   const pe = document.getElementById('earthingPE')?.value.trim() || '';
   const ne = document.getElementById('earthingNE')?.value.trim() || '';
   const reason = document.getElementById('earthingNotOkReason')?.value || '';
+  const reasonInput = document.getElementById('earthingNotOkReason');
   const voltageReading = document.getElementById('voltageReading');
 
   measurements?.classList.toggle('hidden', !status);
   reasonField?.classList.toggle('hidden', status !== 'NOT OK');
+  if (reasonInput) {
+    reasonInput.disabled = status !== 'NOT OK';
+    if (status !== 'NOT OK') reasonInput.value = '';
+  }
   if (!status) {
     voltageReading.value = '';
     return;
