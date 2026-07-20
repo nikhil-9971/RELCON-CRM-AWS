@@ -1455,9 +1455,19 @@ let isRefreshingData = false;
 let lastDataSignature = "";
 let isTableCleared = false;
 
-// Init date chip
-document.getElementById('dateChip').textContent =
-  new Date().toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+// Live IST date and clock in the top strip.
+function updateDateChip() {
+  const now = new Date();
+  const date = now.toLocaleDateString('en-IN', {
+    weekday: 'short', day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata'
+  });
+  const time = now.toLocaleTimeString('en-IN', {
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true, timeZone: 'Asia/Kolkata'
+  });
+  document.getElementById('dateChip').textContent = `${date} • ${time}`;
+}
+updateDateChip();
+setInterval(updateDateChip, 1000);
 
 /* ── UTILITIES ── */
 function debounce(fn, delay = 300) {
