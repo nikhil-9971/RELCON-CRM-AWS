@@ -1994,7 +1994,7 @@ function updateEarthingVoltageReading() {
     return;
   }
 
-  const values = `PN- ${pn}, PE- ${pe}, NE- ${ne}`;
+  const values = `PN- ${pn}V, PE- ${pe}V, NE- ${ne}V`;
   voltageReading.value = status === 'OK'
     ? `EARTHING IS OK, ${values}`
     : `EARTHING NOT OK, ${values}${reason ? ` (${reason})` : ''}`;
