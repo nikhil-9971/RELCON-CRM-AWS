@@ -484,6 +484,10 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
           <input id="mMaterialName" class="sf-input" placeholder="e.g. SI-DMP-2250"/>
         </div>
         <div class="form-field">
+          <label>Material Code</label>
+          <input id="mMaterialCode" class="sf-input" placeholder="e.g. PRB001"/>
+        </div>
+        <div class="form-field">
           <label>Material Type</label>
           <input id="mMaterialType" class="sf-input" placeholder="e.g. PROBE"/>
         </div>
@@ -584,7 +588,7 @@ function fetchJson(url, options={}){return fetch(url,{...options,headers:{...(op
 function materialTypeFor(name){return masterRows.find(item=>String(item.materialName||"").trim().toLowerCase()===String(name||"").trim().toLowerCase())?.materialType || DEFAULT_MASTER.find(item=>String(item.name||"").trim().toLowerCase()===String(name||"").trim().toLowerCase())?.type || ""}
 function statusClass(value){const v=String(value||"").toLowerCase(); if(v.includes("deliver")) return "badge-done"; if(v.includes("dispatch")||v.includes("process")||v.includes("transit")) return "badge-process"; return "badge-pending"}
 function regionForClientRequirement(value=""){const v=String(value||"").toLowerCase(); if(v.includes("begusarai")) return "Begusarai"; if(v.includes("lucknow")) return "Lucknow"; if(v.includes("barauni")) return "Barauni Territory"; if(v.includes("muzafferpur")) return "Muzafferpur Territory"; if(v.includes("patna")) return v.includes("territory") ? "Patna Territory" : "Patna"; return ""}
-function normalizeMasterItem(item={}){return { _id:item._id||"", materialName:String(item.materialName||item.name||"").trim(), materialType:String(item.materialType||item.type||"").trim(), updatedBy:item.updatedBy||"", createdAt:item.createdAt||"" }}
+function normalizeMasterItem(item={}){return { _id:item._id||"", materialName:String(item.materialName||item.name||"").trim(), materialCode:String(item.materialCode||item.code||"").trim(), materialType:String(item.materialType||item.type||"").trim(), updatedBy:item.updatedBy||"", createdAt:item.createdAt||"" }}
 function normalizeLineItem(item={}){return { materialName:String(item.materialName||"").trim(), materialType:String(item.materialType||materialTypeFor(item.materialName)||"").trim(), requestType:String(item.requestType||"Spare").trim(), quantity:Math.max(1,Number(item.quantity||1)||1), materialStatus:String(item.materialStatus||"Pending").trim(), challanNumber:String(item.challanNumber||"").trim(), challanCreationDate:String(item.challanCreationDate||"").trim(), dispatchCourier:String(item.dispatchCourier||"").trim(), docketNumber:String(item.docketNumber||"").trim(), dispatchDate:String(item.dispatchDate||"").trim(), deliveryStatus:String(item.deliveryStatus||"").trim(), deliveryDate:String(item.deliveryDate||"").trim(), poNumber:String(item.poNumber||"").trim(), poDate:String(item.poDate||"").trim(), notes:String(item.notes||"").trim() }}
 function summarizeLineItems(items=[]){const valid=items.filter(item=>item.materialName); return { count:valid.length, qty:valid.reduce((sum,item)=>sum+(Number(item.quantity)||0),0), summary:valid.slice(0,2).map(item=>`${item.materialName}${item.quantity>1?` x${item.quantity}`:""}`).join(", ") + (valid.length>2?` +${valid.length-2} more`:""), primaryStatus:valid.some(item=>String(item.deliveryStatus||"").toLowerCase().includes("deliver"))?"Delivered":(valid[0]?.materialStatus||"Pending"), primaryType:valid[0]?.requestType||"", deliveryDate:valid.map(item=>item.deliveryDate).filter(Boolean).sort().slice(-1)[0]||"" }}
 function summarizeLineField(items=[], key="", formatter=null){
@@ -828,11 +832,11 @@ function renderTable(){
     </tr>`;
   } else {
     head.innerHTML = `<tr>
-      <th>#</th><th>Material Name</th><th>Material Type</th><th>Master Tag</th><th>Updated By</th><th>Created At</th><th>Actions</th>
+      <th>#</th><th>Material Name</th><th>Material Code</th><th>Material Type</th><th>Master Tag</th><th>Updated By</th><th>Created At</th><th>Actions</th>
     </tr>`;
   }
   if(!total){
-    body.innerHTML = `<tr><td colspan="${activeTab==="requests"?21:7}" class="empty-state">No ${activeTab==="requests"?"material line items":"material master items"} found.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="${activeTab==="requests"?21:8}" class="empty-state">No ${activeTab==="requests"?"material line items":"material master items"} found.</td></tr>`;
     document.getElementById("paginationWrap").style.display = "none";
     return;
   }
@@ -873,6 +877,7 @@ function renderTable(){
       <tr>
         <td>${start + index + 1}</td>
         <td style="font-weight:700;color:var(--txt);">${esc(row.materialName||"—")}</td>
+        <td>${esc(row.materialCode||"—")}</td>
         <td>${esc(row.materialType||"—")}</td>
         <td><span class="sf-badge badge-master"><i class="fa-solid fa-boxes-stacked" style="font-size:8px;"></i> Request Master</span></td>
         <td>${esc(row.updatedBy||"—")}</td>
@@ -1104,12 +1109,14 @@ function openMasterModal(index=null){
   if(index===null){
     document.getElementById("masterEditId").value = "";
     document.getElementById("mMaterialName").value = "";
+    document.getElementById("mMaterialCode").value = "";
     document.getElementById("mMaterialType").value = "";
   } else {
     const row = filteredRows[index];
     if(!row) return;
     document.getElementById("masterEditId").value = row._id || "";
     document.getElementById("mMaterialName").value = row.materialName || "";
+    document.getElementById("mMaterialCode").value = row.materialCode || "";
     document.getElementById("mMaterialType").value = row.materialType || "";
   }
   openModal("masterModal");
@@ -1119,9 +1126,10 @@ async function saveMasterItem(){
   if(!isAdmin()) return showToast("Only admin can save material master","error");
   const payload = {
     materialName:document.getElementById("mMaterialName").value.trim(),
+    materialCode:document.getElementById("mMaterialCode").value.trim(),
     materialType:document.getElementById("mMaterialType").value.trim(),
   };
-  if(!payload.materialName || !payload.materialType) return showToast("Material name and type are required","error");
+  if(!payload.materialName || !payload.materialCode || !payload.materialType) return showToast("Material name, code and type are required","error");
   try{
     const id = document.getElementById("masterEditId").value;
     await fetchJson(`${API}/materialRequestMasterItems${id?`/${id}`:""}`,{method:id?"PUT":"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});

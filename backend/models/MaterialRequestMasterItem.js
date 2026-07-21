@@ -7,6 +7,11 @@ const MaterialRequestMasterItemSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    materialCode: {
+      type: String,
+      trim: true,
+      default: "",
+    },
     materialType: {
       type: String,
       required: true,
@@ -31,6 +36,7 @@ const MaterialRequestMasterItemSchema = new mongoose.Schema(
 );
 
 MaterialRequestMasterItemSchema.index({ materialName: 1 });
+MaterialRequestMasterItemSchema.index({ materialCode: 1 });
 MaterialRequestMasterItemSchema.index({ materialType: 1 });
 
 module.exports = mongoose.model(

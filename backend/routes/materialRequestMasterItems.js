@@ -29,12 +29,14 @@ router.post("/", verifyToken, async (req, res) => {
       return res.status(403).json({ error: "Only admin can add material master items" });
     }
     const materialName = String(req.body?.materialName || "").trim();
+    const materialCode = String(req.body?.materialCode || "").trim().toUpperCase();
     const materialType = String(req.body?.materialType || "").trim();
     if (!materialName || !materialType) {
       return res.status(400).json({ error: "Material name and type are required" });
     }
     const created = await MaterialRequestMasterItem.create({
       materialName,
+      materialCode,
       materialType,
       createdBy: actor(req),
       updatedBy: actor(req),
@@ -52,6 +54,7 @@ router.put("/:id", verifyToken, async (req, res) => {
     }
     const updates = {};
     if (req.body?.materialName !== undefined) updates.materialName = String(req.body.materialName).trim();
+    if (req.body?.materialCode !== undefined) updates.materialCode = String(req.body.materialCode).trim().toUpperCase();
     if (req.body?.materialType !== undefined) updates.materialType = String(req.body.materialType).trim();
     updates.updatedBy = actor(req);
     const updated = await MaterialRequestMasterItem.findByIdAndUpdate(req.params.id, updates, {
@@ -98,6 +101,7 @@ router.post("/seed-defaults", verifyToken, async (req, res) => {
     const docs = items
       .map((item) => ({
         materialName: String(item?.name || item?.materialName || "").trim(),
+        materialCode: String(item?.code || item?.materialCode || "").trim().toUpperCase(),
         materialType: String(item?.type || item?.materialType || "").trim(),
         createdBy: actor(req),
         updatedBy: actor(req),
