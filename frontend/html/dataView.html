@@ -1370,11 +1370,16 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
         <div class="dv-field dv-form-full"><label class="dv-label">Solution</label><textarea id="solution" class="dv-modal-textarea" placeholder="Issue resolved or not, material changed"></textarea></div>
         <div class="dv-field"><label class="dv-label">Active Material Used</label>
           <select id="activeMaterialUsed" class="dv-modal-select"><option value="">Select</option><option>Yes</option><option>No</option></select></div>
+        <div id="jioDynamicMaterialFields" class="dv-field dv-form-full hidden"><div class="dv-form-grid">
+          <div class="dv-field"><label class="dv-label">No. of Material Used</label><input id="jioUsedCount" class="dv-modal-input" type="number" min="1" step="1" inputmode="numeric"/></div>
+          <div class="dv-field"><label class="dv-label">No. of Faulty Material Recover</label><input id="jioFaultyCount" class="dv-modal-input" type="number" min="1" step="1" inputmode="numeric"/></div>
+        </div><div id="jioUsedRows"></div><div id="jioFaultyRows"></div></div>
         <div class="dv-field"><label class="dv-label">Used Material Name & Code</label><input type="text" id="usedMaterialDetails" class="dv-modal-input" placeholder="1-CARD READER (H0Q72506220)"/></div>
         <div class="dv-field dv-form-full"><label class="dv-label">Faulty Material Name & Code</label><input type="text" id="faultyMaterialDetails" class="dv-modal-input" placeholder="1-CARD READER (J2Q72506220)"/></div>
         <div class="dv-field"><label class="dv-label">Observation (Hours)</label><input type="text" id="observationHours" class="dv-modal-input"/></div>
         <div class="dv-field"><label class="dv-label">Spare Requirement</label>
           <select id="spareRequired" class="dv-modal-select"><option value="">Select</option><option>Yes</option><option>No</option></select></div>
+        <div id="jioRequirementPicker" class="dv-field dv-form-full hidden"><label class="dv-label">Required Materials</label><input id="jioRequiredPicker" class="dv-modal-input" list="materialNameOptions" autocomplete="off" placeholder="Search a material and press Enter to add"/><div id="jioRequiredChips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div></div>
         <div class="dv-field dv-form-full"><label class="dv-label">Material Requirement Name</label><input type="text" id="materialRequirement" class="dv-modal-input" placeholder="Share material name required"/></div>
         <div class="dv-field dv-form-full"><label class="dv-label">Support Taken From</label><input type="text" id="relconsupport" class="dv-modal-input" placeholder="YES/SHIV"/></div>
         <div class="dv-field dv-form-full"><label class="dv-label">Inform to RBML Person</label><input type="text" id="rbmlperson" class="dv-modal-input" placeholder="YES/Vishnu"/></div>
@@ -1426,12 +1431,17 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
           <input type="text" id="bpclAirtelSim" class="dv-modal-input" placeholder="Airtel SIM Number"/></div>
         <div class="dv-field"><label class="dv-label">Any Material Used?</label>
           <select id="bpclSpareUsed" class="dv-modal-select" onchange="applyBPCLMaterialAutoFieldLogic()"><option value="">Select</option><option>Yes</option><option>No</option></select></div>
+        <div id="bpclDynamicMaterialFields" class="dv-field dv-form-full hidden"><div class="dv-form-grid">
+          <div class="dv-field"><label class="dv-label">No. of Material Used</label><input id="bpclUsedCount" class="dv-modal-input" type="number" min="1" step="1" inputmode="numeric"/></div>
+          <div class="dv-field"><label class="dv-label">No. of Faulty Material Recover</label><input id="bpclFaultyCount" class="dv-modal-input" type="number" min="1" step="1" inputmode="numeric"/></div>
+        </div><div id="bpclUsedRows"></div><div id="bpclFaultyRows"></div></div>
         <div class="dv-field dv-form-full"><label class="dv-label">Used Material Name & Code</label>
           <input type="text" id="bpclActiveSpare" class="dv-modal-input" placeholder="1-DEVICE NAME (CODE)"/></div>
         <div class="dv-field dv-form-full"><label class="dv-label">Faulty Material Name & Code</label>
           <input type="text" id="bpclFaultySpare" class="dv-modal-input" placeholder="1-DEVICE NAME (CODE)"/></div>
         <div class="dv-field"><label class="dv-label">Any Material Requirement?</label>
           <select id="bpclSpareRequirment" class="dv-modal-select" onchange="applyBPCLMaterialAutoFieldLogic()"><option value="">Select</option><option>Yes</option><option>No</option></select></div>
+        <div id="bpclRequirementPicker" class="dv-field dv-form-full hidden"><label class="dv-label">Required Materials</label><input id="bpclRequiredPicker" class="dv-modal-input" list="materialNameOptions" autocomplete="off" placeholder="Search a material and press Enter to add"/><div id="bpclRequiredChips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div></div>
         <div class="dv-field dv-form-full"><label class="dv-label">Material Requirement Name</label>
           <input type="text" id="bpclSpareRequirmentname" class="dv-modal-input" placeholder="Share material name required"/></div>
       </form>
@@ -2110,6 +2120,26 @@ function addRequiredSpareMaterial(value) {
   if (!requiredSpareMaterials.some(item => String(item._id || item.materialName).toLowerCase() === String(material._id || material.materialName).toLowerCase())) requiredSpareMaterials.push(material);
   document.getElementById('requiredSparePicker').value = ''; renderRequiredSpareChips();
 }
+const dynamicSpareForms = {
+  jio: { toggleId:'activeMaterialUsed', requirementToggleId:'spareRequired', dynamicId:'jioDynamicMaterialFields', usedCountId:'jioUsedCount', faultyCountId:'jioFaultyCount', usedRowsId:'jioUsedRows', faultyRowsId:'jioFaultyRows', usedOutputId:'usedMaterialDetails', faultyOutputId:'faultyMaterialDetails', pickerId:'jioRequiredPicker', chipsId:'jioRequiredChips', pickerWrapId:'jioRequirementPicker', requirementOutputId:'materialRequirement', usedNoText:'NO MATERIAL USED', faultyNoText:'NO MATERIAL FAULTY CREATED', requirementNoText:'NO MATERIAL REQUIRED', requiredMaterials:[] },
+  bpcl: { toggleId:'bpclSpareUsed', requirementToggleId:'bpclSpareRequirment', dynamicId:'bpclDynamicMaterialFields', usedCountId:'bpclUsedCount', faultyCountId:'bpclFaultyCount', usedRowsId:'bpclUsedRows', faultyRowsId:'bpclFaultyRows', usedOutputId:'bpclActiveSpare', faultyOutputId:'bpclFaultySpare', pickerId:'bpclRequiredPicker', chipsId:'bpclRequiredChips', pickerWrapId:'bpclRequirementPicker', requirementOutputId:'bpclSpareRequirmentname', requiredMaterials:[] },
+};
+function createDynamicSpareRow(form, kind, index, values={}) {
+  const row=document.createElement('div'); row.className=`${form.toggleId}-${kind}-row`; row.style.cssText='display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 38px;gap:8px;align-items:end;margin:8px 0;padding:8px;border:1px solid #dbe5ef;border-radius:7px;background:#f8fafc;';
+  const nameField=document.createElement('div'), nameLabel=document.createElement('label'), name=document.createElement('input'); nameLabel.className='dv-label'; nameLabel.textContent=`${kind==='used'?'Material':'Faulty Material'} Name ${index}`; name.className='dv-modal-input dynamic-material-name'; name.setAttribute('list','materialNameOptions'); name.autocomplete='off'; name.value=values.name||''; nameField.append(nameLabel,name);
+  const codeField=document.createElement('div'), codeLabel=document.createElement('label'), code=document.createElement('input'); codeLabel.className='dv-label'; codeLabel.textContent=`${kind==='used'?'Material':'Faulty Material'} Code ${index}`; code.className='dv-modal-input dynamic-material-code'; code.setAttribute('list','materialCodeOptions'); code.autocomplete='off'; code.value=values.code||''; codeField.append(codeLabel,code);
+  const sync=source=>{const item=source==='name'?statusMaterialByName(name.value):statusMaterialByCode(code.value); if(item){name.value=item.materialName||'';code.value=item.materialCode||'';} updateDynamicSpareSummary(form,kind);};
+  name.onchange=()=>sync('name'); name.oninput=()=>{if(statusMaterialByName(name.value))sync('name');}; code.onchange=()=>sync('code'); code.oninput=()=>{if(statusMaterialByCode(code.value))sync('code');};
+  const remove=document.createElement('button'); remove.type='button'; remove.className='dv-close-btn'; remove.innerHTML='<i class="fa-solid fa-trash"></i>'; remove.onclick=()=>{const count=document.getElementById(kind==='used'?form.usedCountId:form.faultyCountId); count.value=Math.max(0,Number(count.value||0)-1)||''; renderDynamicSpareRows(form,kind);}; row.append(nameField,codeField,remove); return row;
+}
+function updateDynamicSpareSummary(form, kind) { const container=document.getElementById(kind==='used'?form.usedRowsId:form.faultyRowsId); document.getElementById(kind==='used'?form.usedOutputId:form.faultyOutputId).value=[...container.querySelectorAll(`.${form.toggleId}-${kind}-row`)].map(row=>{const name=row.querySelector('.dynamic-material-name').value.trim(),code=row.querySelector('.dynamic-material-code').value.trim();return name&&code?`${name} (${code})`:'';}).filter(Boolean).join(', '); }
+function renderDynamicSpareRows(form, kind, supplied=[]) { const count=document.getElementById(kind==='used'?form.usedCountId:form.faultyCountId), container=document.getElementById(kind==='used'?form.usedRowsId:form.faultyRowsId); const values=supplied.length?supplied:[...container.querySelectorAll(`.${form.toggleId}-${kind}-row`)].map(row=>({name:row.querySelector('.dynamic-material-name').value,code:row.querySelector('.dynamic-material-code').value})); const total=Math.max(0,Number.parseInt(count.value,10)||0); count.value=total||''; container.replaceChildren(); for(let i=1;i<=total;i++)container.appendChild(createDynamicSpareRow(form,kind,i,values[i-1]||{})); updateDynamicSpareSummary(form,kind); }
+function renderDynamicRequirement(form) { const chips=document.getElementById(form.chipsId); chips.replaceChildren(); form.requiredMaterials.forEach((item,index)=>{const chip=document.createElement('button');chip.type='button';chip.className='sf-badge sf-badge-blue';chip.textContent=`${item.materialName} ×`;chip.onclick=()=>{form.requiredMaterials.splice(index,1);renderDynamicRequirement(form);};chips.appendChild(chip);}); document.getElementById(form.requirementOutputId).value=form.requiredMaterials.map(item=>item.materialName).join(', '); }
+function addDynamicRequirement(form, value) { const item=statusMaterialByName(value)||statusMaterialByCode(value); if(!item)return; if(!form.requiredMaterials.some(existing=>String(existing._id||existing.materialName).toLowerCase()===String(item._id||item.materialName).toLowerCase()))form.requiredMaterials.push(item); document.getElementById(form.pickerId).value='';renderDynamicRequirement(form); }
+function applyDynamicSpareFormLogic(form) { const use=document.getElementById(form.toggleId).value==='Yes', need=document.getElementById(form.requirementToggleId).value==='Yes', used=document.getElementById(form.usedOutputId), faulty=document.getElementById(form.faultyOutputId), required=document.getElementById(form.requirementOutputId); document.getElementById(form.dynamicId).classList.toggle('hidden',!use); document.getElementById(form.pickerWrapId).classList.toggle('hidden',!need); if(!use&&document.getElementById(form.toggleId).value==='No'){used.value=form.usedNoText||'NO ACTIVE MATERIAL USED';faulty.value=form.faultyNoText||'NO FAULTY MATERIAL CREATED';} used.readOnly=use||!use&&document.getElementById(form.toggleId).value==='No'; faulty.readOnly=used.readOnly; if(!need&&document.getElementById(form.requirementToggleId).value==='No')required.value=form.requirementNoText||'NO SPARE REQUIRE'; required.readOnly=need||!need&&document.getElementById(form.requirementToggleId).value==='No'; if(need)renderDynamicRequirement(form); }
+function setupDynamicSpareForm(form) { form.requiredMaterials=[]; ['used','faulty'].forEach(kind=>{document.getElementById(kind==='used'?form.usedCountId:form.faultyCountId).value='';document.getElementById(kind==='used'?form.usedRowsId:form.faultyRowsId).replaceChildren();}); renderDynamicRequirement(form); document.getElementById(form.usedCountId).oninput=()=>renderDynamicSpareRows(form,'used'); document.getElementById(form.faultyCountId).oninput=()=>renderDynamicSpareRows(form,'faulty'); const picker=document.getElementById(form.pickerId);picker.onchange=e=>addDynamicRequirement(form,e.target.value);picker.oninput=e=>{if(statusMaterialByName(e.target.value)||statusMaterialByCode(e.target.value))addDynamicRequirement(form,e.target.value);};picker.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();addDynamicRequirement(form,e.target.value);}}; document.getElementById(form.toggleId).onchange=()=>applyDynamicSpareFormLogic(form);document.getElementById(form.requirementToggleId).onchange=()=>applyDynamicSpareFormLogic(form);applyDynamicSpareFormLogic(form); }
+function hydrateDynamicSpareForm(form) { if(document.getElementById(form.toggleId).value==='Yes') ['used','faulty'].forEach(kind=>{const output=document.getElementById(kind==='used'?form.usedOutputId:form.faultyOutputId).value;const values=String(output).split(',').map(value=>{const match=value.trim().match(/^(.*?)\s*\((.*?)\)$/);return match?{name:match[1].trim(),code:match[2].trim()}:null;}).filter(Boolean);document.getElementById(kind==='used'?form.usedCountId:form.faultyCountId).value=values.length||'';renderDynamicSpareRows(form,kind,values);}); if(document.getElementById(form.requirementToggleId).value==='Yes'){form.requiredMaterials=String(document.getElementById(form.requirementOutputId).value).split(',').map(name=>statusMaterialByName(name.trim())).filter(Boolean);renderDynamicRequirement(form);}applyDynamicSpareFormLogic(form); }
+function validateDynamicSpareForm(form) { if(document.getElementById(form.toggleId).value==='Yes')for(const config of [{kind:'used',countId:form.usedCountId,label:'material used'},{kind:'faulty',countId:form.faultyCountId,label:'faulty material recovery'}]){const input=document.getElementById(config.countId),count=Number(input.value),rows=[...document.querySelectorAll(`.${form.toggleId}-${config.kind}-row`)];if(!Number.isInteger(count)||count<1||!input.validity.valid){showToast(`Please enter a positive whole number for ${config.label}`,'error');input.focus();return false;}if(rows.length!==count){showToast(`Please complete all ${config.label} rows`,'error');return false;}for(const row of rows){const name=row.querySelector('.dynamic-material-name'),code=row.querySelector('.dynamic-material-code'),item=statusMaterialByName(name.value);if(!item||String(item.materialCode||'').trim().toLowerCase()!==code.value.trim().toLowerCase()){showToast('Please select a valid material name and code for every row','error');name.focus();return false;}}updateDynamicSpareSummary(form,config.kind);}if(document.getElementById(form.requirementToggleId).value==='Yes'&&!form.requiredMaterials.length){showToast('Please select at least one required material','error');document.getElementById(form.pickerId).focus();return false;}return true; }
 async function openStatusModal(planId) {
   document.getElementById('statusPlanId').value = planId;
   document.getElementById('statusModal').classList.remove('hidden');
@@ -2299,15 +2329,12 @@ async function saveCompletionStatus() {
 
 /* ── JIO BP ── */
 function applyJioBPLogic() {
-  const active=document.getElementById('activeMaterialUsed').value, spare=document.getElementById('spareRequired').value;
-  const used=document.getElementById('usedMaterialDetails'), faulty=document.getElementById('faultyMaterialDetails'), matReq=document.getElementById('materialRequirement');
-  if (active==='No') { used.value='NO MATERIAL USED'; faulty.value='NO MATERIAL FAULTY CREATED'; used.readOnly=true; faulty.readOnly=true; }
-  else { used.readOnly=false; faulty.readOnly=false; }
-  if (spare==='No') { matReq.value='NO MATERIAL REQUIRED'; matReq.readOnly=true; } else { matReq.readOnly=false; }
+  applyDynamicSpareFormLogic(dynamicSpareForms.jio);
 }
-function openJioBPModal(planId) { document.getElementById('jioBPPlanId').value=planId; document.getElementById('jioBPModal').classList.remove('hidden'); document.getElementById('jioBPForm').reset(); document.getElementById('activeMaterialUsed').addEventListener('change',applyJioBPLogic); document.getElementById('spareRequired').addEventListener('change',applyJioBPLogic); }
+async function openJioBPModal(planId) { document.getElementById('jioBPPlanId').value=planId; document.getElementById('jioBPModal').classList.remove('hidden'); document.getElementById('jioBPForm').reset(); try{await loadStatusMaterialMaster();}catch(err){showToast(err.message,'error');} setupDynamicSpareForm(dynamicSpareForms.jio); }
 function closeJioBPModal() { document.getElementById('jioBPModal').classList.add('hidden'); }
 async function saveJioBPStatus() {
+  if(!validateDynamicSpareForm(dynamicSpareForms.jio)) return;
   const required=['hpsdId','diagnosis','solution','activeMaterialUsed','spareRequired','relconsupport','rbmlperson','jioStatus'];
   for (const id of required) { const el=document.getElementById(id); if(!el.value.trim()) { showToast(`Please fill in: ${id}`, 'error'); el.focus(); return; } }
   const data = { planId:document.getElementById('jioBPPlanId').value, hpsdId:document.getElementById('hpsdId').value.toUpperCase(), diagnosis:document.getElementById('diagnosis').value.toUpperCase(), solution:document.getElementById('solution').value.toUpperCase(), activeMaterialUsed:document.getElementById('activeMaterialUsed').value, usedMaterialDetails:document.getElementById('usedMaterialDetails').value.toUpperCase(), faultyMaterialDetails:document.getElementById('faultyMaterialDetails').value.toUpperCase(), spareRequired:document.getElementById('spareRequired').value, observationHours:document.getElementById('observationHours').value.toUpperCase(), materialRequirement:document.getElementById('materialRequirement').value.toUpperCase(), relconsupport:document.getElementById('relconsupport').value.toUpperCase(), rbmlperson:document.getElementById('rbmlperson').value.toUpperCase(), status:document.getElementById('jioStatus').value };
@@ -2323,36 +2350,15 @@ function renderClass2Devices() { const c=Number(document.getElementById('class2C
 function handleRelconATGChange() { const v=document.getElementById('relconAtgProvided').value; const cd=document.getElementById('relconAtgCountDiv'), rc=document.getElementById('relconAtgContainer'); if(v==='YES') { cd.classList.remove('hidden'); rc.classList.remove('hidden'); } else { cd.classList.add('hidden'); rc.classList.add('hidden'); document.getElementById('relconAtgCount').value=''; rc.innerHTML=''; } }
 function renderRelconATGFields() { const c=parseInt(document.getElementById('relconAtgCount').value||0), con=document.getElementById('relconAtgContainer'); con.innerHTML='<label class="dv-label">RELCON ATG Details</label>'; for(let i=1;i<=c;i++) { const inp=document.createElement('input'); inp.type='text'; inp.placeholder=`ATG ${i} - SBEM-EBMS-24523`; inp.className='dv-modal-input'; inp.style.marginBottom='6px'; inp.id=`relconAtg_${i}`; con.appendChild(inp); } }
 function applyBPCLMaterialAutoFieldLogic() {
-  const spareUsed=document.getElementById('bpclSpareUsed').value;
-  const spareReq=document.getElementById('bpclSpareRequirment').value;
-  const active=document.getElementById('bpclActiveSpare');
-  const faulty=document.getElementById('bpclFaultySpare');
-  const reqName=document.getElementById('bpclSpareRequirmentname');
-  if(spareUsed==='No') {
-    active.value='NO ACTIVE MATERIAL USED';
-    faulty.value='NO FAULTY MATERIAL CREATED';
-    active.readOnly=true;
-    faulty.readOnly=true;
-  } else {
-    active.readOnly=false;
-    faulty.readOnly=false;
-    if(spareUsed==='Yes' && active.value==='NO ACTIVE MATERIAL USED') active.value='';
-    if(spareUsed==='Yes' && faulty.value==='NO FAULTY MATERIAL CREATED') faulty.value='';
-  }
-  if(spareReq==='No') {
-    reqName.value='NO SPARE REQUIRE';
-    reqName.readOnly=true;
-  } else {
-    reqName.readOnly=false;
-    if(spareReq==='Yes' && reqName.value==='NO SPARE REQUIRE') reqName.value='';
-  }
+  applyDynamicSpareFormLogic(dynamicSpareForms.bpcl);
 }
 function closeBPCLModal() { document.getElementById('bpclModal').classList.add('hidden'); }
 
 async function openBPCLModal(planId) {
   document.getElementById('bpclPlanId').value=planId;
   document.getElementById('bpclForm').reset();
-  applyBPCLMaterialAutoFieldLogic();
+  try { await loadStatusMaterialMaster(); } catch (err) { showToast(err.message, 'error'); }
+  setupDynamicSpareForm(dynamicSpareForms.bpcl);
   ['class1DevicesContainer','class1DevicesContainerwithoutsim','class2DevicesContainer'].forEach(id => document.getElementById(id).innerHTML='');
   ['relconAtgCountDiv','relconAtgContainer'].forEach(id => document.getElementById(id).classList.add('hidden'));
   document.getElementById('relconAtgContainer').innerHTML='';
@@ -2380,9 +2386,10 @@ function populateBPCLFields(data) {
   document.getElementById('bpclFaultySpare').value=data.faultySpare||'';
   document.getElementById('bpclSpareRequirment').value=data.spareRequirment||'';
   document.getElementById('bpclSpareRequirmentname').value=data.spareRequirmentname||'';
-  applyBPCLMaterialAutoFieldLogic();
+  hydrateDynamicSpareForm(dynamicSpareForms.bpcl);
 }
 async function saveBPCLStatus() {
+  if(!validateDynamicSpareForm(dynamicSpareForms.bpcl)) return;
   const relconAtgProvided=document.getElementById('relconAtgProvided')?.value||'NO';
   const relconAtgCount=relconAtgProvided==='YES'?Number(document.getElementById('relconAtgCount')?.value||0):0;
   let relconAtgDetails=[];
