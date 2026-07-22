@@ -2041,13 +2041,20 @@ function updateEarthingVoltageReading() {
 }
 let statusMaterialMaster = [];
 let requiredSpareMaterials = [];
+function normalizeMaterialLookup(value = '') {
+  return String(value)
+    .replace(/\u00a0/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+}
 function statusMaterialByName(name = '') {
-  const value = String(name).trim().toLowerCase();
-  return statusMaterialMaster.find(item => String(item.materialName || '').trim().toLowerCase() === value);
+  const value = normalizeMaterialLookup(name);
+  return statusMaterialMaster.find(item => normalizeMaterialLookup(item.materialName) === value);
 }
 function statusMaterialByCode(code = '') {
-  const value = String(code).trim().toLowerCase();
-  return statusMaterialMaster.find(item => String(item.materialCode || '').trim().toLowerCase() === value);
+  const value = normalizeMaterialLookup(code);
+  return statusMaterialMaster.find(item => normalizeMaterialLookup(item.materialCode) === value);
 }
 function loadStatusMaterialOptions() {
   const names = document.getElementById('materialNameOptions');
@@ -2116,9 +2123,10 @@ function renderRequiredSpareChips() {
 }
 function addRequiredSpareMaterial(value) {
   const material = statusMaterialByName(value) || statusMaterialByCode(value);
-  if (!material) return;
+  if (!material) return false;
   if (!requiredSpareMaterials.some(item => String(item._id || item.materialName).toLowerCase() === String(material._id || material.materialName).toLowerCase())) requiredSpareMaterials.push(material);
   document.getElementById('requiredSparePicker').value = ''; renderRequiredSpareChips();
+  return true;
 }
 const dynamicSpareForms = {
   jio: { toggleId:'activeMaterialUsed', requirementToggleId:'spareRequired', dynamicId:'jioDynamicMaterialFields', usedCountId:'jioUsedCount', faultyCountId:'jioFaultyCount', usedRowsId:'jioUsedRows', faultyRowsId:'jioFaultyRows', usedOutputId:'usedMaterialDetails', faultyOutputId:'faultyMaterialDetails', pickerId:'jioRequiredPicker', chipsId:'jioRequiredChips', pickerWrapId:'jioRequirementPicker', requirementOutputId:'materialRequirement', usedNoText:'NO MATERIAL USED', faultyNoText:'NO MATERIAL FAULTY CREATED', requirementNoText:'NO MATERIAL REQUIRED', requiredMaterials:[] },
@@ -2135,11 +2143,11 @@ function createDynamicSpareRow(form, kind, index, values={}) {
 function updateDynamicSpareSummary(form, kind) { const container=document.getElementById(kind==='used'?form.usedRowsId:form.faultyRowsId); document.getElementById(kind==='used'?form.usedOutputId:form.faultyOutputId).value=[...container.querySelectorAll(`.${form.toggleId}-${kind}-row`)].map(row=>{const name=row.querySelector('.dynamic-material-name').value.trim(),code=row.querySelector('.dynamic-material-code').value.trim();return name&&code?`${name} (${code})`:'';}).filter(Boolean).join(', '); }
 function renderDynamicSpareRows(form, kind, supplied=[]) { const count=document.getElementById(kind==='used'?form.usedCountId:form.faultyCountId), container=document.getElementById(kind==='used'?form.usedRowsId:form.faultyRowsId); const values=supplied.length?supplied:[...container.querySelectorAll(`.${form.toggleId}-${kind}-row`)].map(row=>({name:row.querySelector('.dynamic-material-name').value,code:row.querySelector('.dynamic-material-code').value})); const total=Math.max(0,Number.parseInt(count.value,10)||0); count.value=total||''; container.replaceChildren(); for(let i=1;i<=total;i++)container.appendChild(createDynamicSpareRow(form,kind,i,values[i-1]||{})); updateDynamicSpareSummary(form,kind); }
 function renderDynamicRequirement(form) { const chips=document.getElementById(form.chipsId); chips.replaceChildren(); form.requiredMaterials.forEach((item,index)=>{const chip=document.createElement('button');chip.type='button';chip.className='sf-badge sf-badge-blue';chip.textContent=`${item.materialName} ×`;chip.onclick=()=>{form.requiredMaterials.splice(index,1);renderDynamicRequirement(form);};chips.appendChild(chip);}); document.getElementById(form.requirementOutputId).value=form.requiredMaterials.map(item=>item.materialName).join(', '); }
-function addDynamicRequirement(form, value) { const item=statusMaterialByName(value)||statusMaterialByCode(value); if(!item)return; if(!form.requiredMaterials.some(existing=>String(existing._id||existing.materialName).toLowerCase()===String(item._id||item.materialName).toLowerCase()))form.requiredMaterials.push(item); document.getElementById(form.pickerId).value='';renderDynamicRequirement(form); }
+function addDynamicRequirement(form, value) { const item=statusMaterialByName(value)||statusMaterialByCode(value); if(!item)return false; if(!form.requiredMaterials.some(existing=>String(existing._id||existing.materialName).toLowerCase()===String(item._id||item.materialName).toLowerCase()))form.requiredMaterials.push(item); document.getElementById(form.pickerId).value='';renderDynamicRequirement(form); return true; }
 function applyDynamicSpareFormLogic(form) { const use=document.getElementById(form.toggleId).value==='Yes', need=document.getElementById(form.requirementToggleId).value==='Yes', used=document.getElementById(form.usedOutputId), faulty=document.getElementById(form.faultyOutputId), required=document.getElementById(form.requirementOutputId); document.getElementById(form.dynamicId).classList.toggle('hidden',!use); document.getElementById(form.pickerWrapId).classList.toggle('hidden',!need); if(!use&&document.getElementById(form.toggleId).value==='No'){used.value=form.usedNoText||'NO ACTIVE MATERIAL USED';faulty.value=form.faultyNoText||'NO FAULTY MATERIAL CREATED';} used.readOnly=use||!use&&document.getElementById(form.toggleId).value==='No'; faulty.readOnly=used.readOnly; if(!need&&document.getElementById(form.requirementToggleId).value==='No')required.value=form.requirementNoText||'NO SPARE REQUIRE'; required.readOnly=need||!need&&document.getElementById(form.requirementToggleId).value==='No'; if(need)renderDynamicRequirement(form); }
 function setupDynamicSpareForm(form) { form.requiredMaterials=[]; ['used','faulty'].forEach(kind=>{document.getElementById(kind==='used'?form.usedCountId:form.faultyCountId).value='';document.getElementById(kind==='used'?form.usedRowsId:form.faultyRowsId).replaceChildren();}); renderDynamicRequirement(form); document.getElementById(form.usedCountId).oninput=()=>renderDynamicSpareRows(form,'used'); document.getElementById(form.faultyCountId).oninput=()=>renderDynamicSpareRows(form,'faulty'); const picker=document.getElementById(form.pickerId);picker.onchange=e=>addDynamicRequirement(form,e.target.value);picker.oninput=e=>{if(statusMaterialByName(e.target.value)||statusMaterialByCode(e.target.value))addDynamicRequirement(form,e.target.value);};picker.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();addDynamicRequirement(form,e.target.value);}}; document.getElementById(form.toggleId).onchange=()=>applyDynamicSpareFormLogic(form);document.getElementById(form.requirementToggleId).onchange=()=>applyDynamicSpareFormLogic(form);applyDynamicSpareFormLogic(form); }
 function hydrateDynamicSpareForm(form) { if(document.getElementById(form.toggleId).value==='Yes') ['used','faulty'].forEach(kind=>{const output=document.getElementById(kind==='used'?form.usedOutputId:form.faultyOutputId).value;const values=String(output).split(',').map(value=>{const match=value.trim().match(/^(.*?)\s*\((.*?)\)$/);return match?{name:match[1].trim(),code:match[2].trim()}:null;}).filter(Boolean);document.getElementById(kind==='used'?form.usedCountId:form.faultyCountId).value=values.length||'';renderDynamicSpareRows(form,kind,values);}); if(document.getElementById(form.requirementToggleId).value==='Yes'){form.requiredMaterials=String(document.getElementById(form.requirementOutputId).value).split(',').map(name=>statusMaterialByName(name.trim())).filter(Boolean);renderDynamicRequirement(form);}applyDynamicSpareFormLogic(form); }
-function validateDynamicSpareForm(form) { if(document.getElementById(form.toggleId).value==='Yes')for(const config of [{kind:'used',countId:form.usedCountId,label:'material used'},{kind:'faulty',countId:form.faultyCountId,label:'faulty material recovery'}]){const input=document.getElementById(config.countId),count=Number(input.value),rows=[...document.querySelectorAll(`.${form.toggleId}-${config.kind}-row`)];if(!Number.isInteger(count)||count<1||!input.validity.valid){showToast(`Please enter a positive whole number for ${config.label}`,'error');input.focus();return false;}if(rows.length!==count){showToast(`Please complete all ${config.label} rows`,'error');return false;}for(const row of rows){const name=row.querySelector('.dynamic-material-name'),code=row.querySelector('.dynamic-material-code'),item=statusMaterialByName(name.value);if(!item||String(item.materialCode||'').trim().toLowerCase()!==code.value.trim().toLowerCase()){showToast('Please select a valid material name and code for every row','error');name.focus();return false;}}updateDynamicSpareSummary(form,config.kind);}if(document.getElementById(form.requirementToggleId).value==='Yes'&&!form.requiredMaterials.length){showToast('Please select at least one required material','error');document.getElementById(form.pickerId).focus();return false;}return true; }
+function validateDynamicSpareForm(form) { if(document.getElementById(form.toggleId).value==='Yes')for(const config of [{kind:'used',countId:form.usedCountId,label:'material used'},{kind:'faulty',countId:form.faultyCountId,label:'faulty material recovery'}]){const input=document.getElementById(config.countId),count=Number(input.value),rows=[...document.querySelectorAll(`.${form.toggleId}-${config.kind}-row`)];if(!Number.isInteger(count)||count<1||!input.validity.valid){showToast(`Please enter a positive whole number for ${config.label}`,'error');input.focus();return false;}if(rows.length!==count){showToast(`Please complete all ${config.label} rows`,'error');return false;}for(const row of rows){const name=row.querySelector('.dynamic-material-name'),code=row.querySelector('.dynamic-material-code'),item=statusMaterialByName(name.value)||statusMaterialByCode(code.value);if(item){name.value=item.materialName||name.value;code.value=item.materialCode||code.value;}if(!name.value.trim()||!code.value.trim()){showToast(`Please enter both material name and code for every ${config.label} row`,'error');(!name.value.trim()?name:code).focus();return false;}}updateDynamicSpareSummary(form,config.kind);}if(document.getElementById(form.requirementToggleId).value==='Yes'&&!form.requiredMaterials.length){const picker=document.getElementById(form.pickerId);if(picker.value.trim())addDynamicRequirement(form,picker.value);if(!form.requiredMaterials.length){showToast('Please select at least one required material','error');picker.focus();return false;}}return true; }
 async function openStatusModal(planId) {
   document.getElementById('statusPlanId').value = planId;
   document.getElementById('statusModal').classList.remove('hidden');
@@ -2240,15 +2248,21 @@ async function saveStatus() {
       if (rows.length !== count) { showToast(`Please complete all ${config.label} rows`, 'error'); return; }
       for (let index = 0; index < rows.length; index++) {
         const name = rows[index].querySelector('.status-material-name'); const code = rows[index].querySelector('.status-material-code');
-        const material = statusMaterialByName(name.value);
-        if (!material || String(material.materialCode || '').trim().toLowerCase() !== code.value.trim().toLowerCase()) {
-          showToast(`Please select a valid material name and code for ${config.label} row ${index + 1}`, 'error'); name.focus(); return;
+        const material = statusMaterialByName(name.value) || statusMaterialByCode(code.value);
+        if (material) { name.value = material.materialName || name.value; code.value = material.materialCode || code.value; }
+        if (!name.value.trim() || !code.value.trim()) {
+          showToast(`Please enter both material name and code for ${config.label} row ${index + 1}`, 'error');
+          (!name.value.trim() ? name : code).focus(); return;
         }
       }
       updateStatusMaterialSummary(config.kind);
     }
   }
-  if (document.getElementById('spareRequirment').value === 'Yes' && !requiredSpareMaterials.length) { showToast('Please select at least one required material', 'error'); document.getElementById('requiredSparePicker').focus(); return; }
+  if (document.getElementById('spareRequirment').value === 'Yes' && !requiredSpareMaterials.length) {
+    const picker = document.getElementById('requiredSparePicker');
+    if (picker.value.trim()) addRequiredSpareMaterial(picker.value);
+    if (!requiredSpareMaterials.length) { showToast('Please select at least one required material', 'error'); picker.focus(); return; }
+  }
   const earthingStatus = document.getElementById('earthingStatus').value;
   const earthingMeasurements = ['earthingPN', 'earthingPE', 'earthingNE'];
   if (earthingStatus) {
@@ -2285,7 +2299,9 @@ async function saveStatus() {
   try {
     const res = await fetch(`${baseUrl}/saveStatus`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(statusData), credentials:'include' });
     if (res.ok) { showToast('Status saved successfully.'); closeStatusModal(); await fetchAndStoreData(); applyFilter(document.getElementById('applyBtn')); }
-    else showToast('Error saving status.', 'error');
+    else { const result = await res.json().catch(() => ({})); showToast(result.message || 'Error saving status.', 'error'); }
+  } catch (err) {
+    showToast(err.message || 'Unable to save status. Please try again.', 'error');
   } finally {
     saveBtn.disabled = false;
     window.RelconSaveAnimation?.finish?.(saveBtn);
@@ -2338,9 +2354,9 @@ async function saveJioBPStatus() {
   const required=['hpsdId','diagnosis','solution','activeMaterialUsed','spareRequired','relconsupport','rbmlperson','jioStatus'];
   for (const id of required) { const el=document.getElementById(id); if(!el.value.trim()) { showToast(`Please fill in: ${id}`, 'error'); el.focus(); return; } }
   const data = { planId:document.getElementById('jioBPPlanId').value, hpsdId:document.getElementById('hpsdId').value.toUpperCase(), diagnosis:document.getElementById('diagnosis').value.toUpperCase(), solution:document.getElementById('solution').value.toUpperCase(), activeMaterialUsed:document.getElementById('activeMaterialUsed').value, usedMaterialDetails:document.getElementById('usedMaterialDetails').value.toUpperCase(), faultyMaterialDetails:document.getElementById('faultyMaterialDetails').value.toUpperCase(), spareRequired:document.getElementById('spareRequired').value, observationHours:document.getElementById('observationHours').value.toUpperCase(), materialRequirement:document.getElementById('materialRequirement').value.toUpperCase(), relconsupport:document.getElementById('relconsupport').value.toUpperCase(), rbmlperson:document.getElementById('rbmlperson').value.toUpperCase(), status:document.getElementById('jioStatus').value };
-  const res=await fetch(`${baseUrl}/jioBP/saveJioBPStatus`, { method:'POST', headers:{'Content-Type':'application/json',Authorization:`Bearer ${localStorage.getItem('token')}`}, credentials:'include', body:JSON.stringify(data) });
+  try { const res=await fetch(`${baseUrl}/jioBP/saveJioBPStatus`, { method:'POST', headers:{'Content-Type':'application/json',Authorization:`Bearer ${localStorage.getItem('token')}`}, credentials:'include', body:JSON.stringify(data) });
   if (res.ok) { showToast('Jio BP status saved.'); closeJioBPModal(); await fetchAndStoreData(); applyFilter(document.getElementById('applyBtn')); }
-  else showToast('Error saving Jio BP status.', 'error');
+  else { const result=await res.json().catch(()=>({})); showToast(result.message||'Error saving Jio BP status.','error'); } } catch(err) { showToast(err.message||'Unable to save Jio BP status. Please try again.','error'); }
 }
 
 /* ── BPCL ── */
@@ -2395,9 +2411,9 @@ async function saveBPCLStatus() {
   let relconAtgDetails=[];
   if (relconAtgProvided==='YES' && relconAtgCount>0) { for(let i=1;i<=relconAtgCount;i++) { const v=document.getElementById(`relconAtg_${i}`)?.value; if(v) relconAtgDetails.push(v); } }
   const payload = { planId:document.getElementById('bpclPlanId').value, class1DeviceCount:Number(document.getElementById('class1Count').value), class1Devices:[...document.querySelectorAll('.class1Device')].map(i=>i.value), class1WithoutSimCount:Number(document.getElementById('class1Countwithoutsim').value), class1WithoutSimDevices:[...document.querySelectorAll('.class1WithoutSimDevice')].map(i=>i.value), class2DeviceCount:Number(document.getElementById('class2Count').value), class2Devices:[...document.querySelectorAll('.class2Device')].map(i=>i.value), relconAtgProvided, relconAtgCount, relconAtgDetails, jioSimNumber:document.getElementById('bpclJioSim').value, airtelSimNumber:document.getElementById('bpclAirtelSim').value, spareUsed:document.getElementById('bpclSpareUsed').value, activeSpare:document.getElementById('bpclActiveSpare').value.toUpperCase(), faultySpare:document.getElementById('bpclFaultySpare').value.toUpperCase(), spareRequirment:document.getElementById('bpclSpareRequirment').value, spareRequirmentname:document.getElementById('bpclSpareRequirmentname').value.toUpperCase() };
-  const res=await fetch(`${baseUrl}/bpclStatus/saveBPCLStatus`, { method:'POST', headers:{'Content-Type':'application/json',Authorization:`Bearer ${localStorage.getItem('token')}`}, body:JSON.stringify(payload), credentials:'include' });
+  try { const res=await fetch(`${baseUrl}/bpclStatus/saveBPCLStatus`, { method:'POST', headers:{'Content-Type':'application/json',Authorization:`Bearer ${localStorage.getItem('token')}`}, body:JSON.stringify(payload), credentials:'include' });
   if (res.ok) { showToast('BPCL Status saved.'); closeBPCLModal(); await fetchAndStoreData(); applyFilter(document.getElementById('applyBtn')); }
-  else showToast('Failed to save BPCL Status.', 'error');
+  else { const result=await res.json().catch(()=>({})); showToast(result.message||'Failed to save BPCL Status.','error'); } } catch(err) { showToast(err.message||'Unable to save BPCL status. Please try again.','error'); }
 }
 
 /* ── EXPORT ── */
