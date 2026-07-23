@@ -1231,21 +1231,23 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
         <div class="dv-section-hd">DU Status</div>
         <div class="dv-form-grid">
           <div class="dv-field"><label class="dv-label">No. of DU Offline <span class="req">*</span></label>
-            <select id="duOffline" class="dv-modal-select"><option value="">Select</option><option>ALL OK</option><option>1</option><option>2</option><option>3</option><option>4</option><option>ALL DU ISSUE</option></select></div>
+            <select id="duOffline" class="dv-modal-select"><option value="">Select</option><option>ALL OK</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>ALL DU ISSUE</option></select></div>
           <div class="dv-field"><label class="dv-label">DU Offline Dependency <span class="req">*</span></label>
             <select id="duDependency" class="dv-modal-select"><option value="">Select</option><option>HPCL</option><option>RELCON</option><option>BOTH</option><option>NO</option></select></div>
+          <div id="duOfflineDetailRows" class="dv-field dv-form-full hidden"></div>
           <div class="dv-field dv-form-full"><label class="dv-label">Reason for DU Offline <span class="req">*</span></label>
-            <textarea id="duRemark" class="dv-modal-textarea" placeholder="DU-01 POS Card Issue…"></textarea></div>
+            <textarea id="duRemark" class="dv-modal-textarea" placeholder="Auto-populated from DU offline details" readonly></textarea></div>
         </div>
 
         <div class="dv-section-hd">Tank Status</div>
         <div class="dv-form-grid">
           <div class="dv-field"><label class="dv-label">No. of Tank Offline <span class="req">*</span></label>
-            <select id="tankOffline" class="dv-modal-select"><option value="">Select</option><option>ALL OK</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>ALL Tank Offline</option></select></div>
+            <select id="tankOffline" class="dv-modal-select"><option value="">Select</option><option>ALL OK</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>ALL Tank Offline</option></select></div>
           <div class="dv-field"><label class="dv-label">Tank Offline Dependency <span class="req">*</span></label>
             <select id="tankDependency" class="dv-modal-select"><option value="">Select</option><option>HPCL</option><option>RELCON</option><option>BOTH</option><option>NO</option></select></div>
+          <div id="tankOfflineDetailRows" class="dv-field dv-form-full hidden"></div>
           <div class="dv-field dv-form-full"><label class="dv-label">Reason for Tank Offline <span class="req">*</span></label>
-            <textarea id="tankRemark" class="dv-modal-textarea" placeholder="TANK-1: TANK CABLE FAULTY…"></textarea></div>
+            <textarea id="tankRemark" class="dv-modal-textarea" placeholder="Auto-populated from tank offline details" readonly></textarea></div>
         </div>
 
         <div class="dv-section-hd">Network IPs & Location</div>
@@ -2148,6 +2150,69 @@ function applyDynamicSpareFormLogic(form) { const use=document.getElementById(fo
 function setupDynamicSpareForm(form) { form.requiredMaterials=[]; ['used','faulty'].forEach(kind=>{document.getElementById(kind==='used'?form.usedCountId:form.faultyCountId).value='';document.getElementById(kind==='used'?form.usedRowsId:form.faultyRowsId).replaceChildren();}); renderDynamicRequirement(form); document.getElementById(form.usedCountId).oninput=()=>renderDynamicSpareRows(form,'used'); document.getElementById(form.faultyCountId).oninput=()=>renderDynamicSpareRows(form,'faulty'); const picker=document.getElementById(form.pickerId);picker.onchange=e=>addDynamicRequirement(form,e.target.value);picker.oninput=e=>{if(statusMaterialByName(e.target.value)||statusMaterialByCode(e.target.value))addDynamicRequirement(form,e.target.value);};picker.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();addDynamicRequirement(form,e.target.value);}}; document.getElementById(form.toggleId).onchange=()=>applyDynamicSpareFormLogic(form);document.getElementById(form.requirementToggleId).onchange=()=>applyDynamicSpareFormLogic(form);applyDynamicSpareFormLogic(form); }
 function hydrateDynamicSpareForm(form) { if(document.getElementById(form.toggleId).value==='Yes') ['used','faulty'].forEach(kind=>{const output=document.getElementById(kind==='used'?form.usedOutputId:form.faultyOutputId).value;const values=String(output).split(',').map(value=>{const match=value.trim().match(/^(.*?)\s*\((.*?)\)$/);return match?{name:match[1].trim(),code:match[2].trim()}:null;}).filter(Boolean);document.getElementById(kind==='used'?form.usedCountId:form.faultyCountId).value=values.length||'';renderDynamicSpareRows(form,kind,values);}); if(document.getElementById(form.requirementToggleId).value==='Yes'){form.requiredMaterials=String(document.getElementById(form.requirementOutputId).value).split(',').map(name=>statusMaterialByName(name.trim())).filter(Boolean);renderDynamicRequirement(form);}applyDynamicSpareFormLogic(form); }
 function validateDynamicSpareForm(form) { if(document.getElementById(form.toggleId).value==='Yes')for(const config of [{kind:'used',countId:form.usedCountId,label:'material used'},{kind:'faulty',countId:form.faultyCountId,label:'faulty material recovery'}]){const input=document.getElementById(config.countId),count=Number(input.value),rows=[...document.querySelectorAll(`.${form.toggleId}-${config.kind}-row`)];if(!Number.isInteger(count)||count<1||!input.validity.valid){showToast(`Please enter a positive whole number for ${config.label}`,'error');input.focus();return false;}if(rows.length!==count){showToast(`Please complete all ${config.label} rows`,'error');return false;}for(const row of rows){const name=row.querySelector('.dynamic-material-name'),code=row.querySelector('.dynamic-material-code'),item=statusMaterialByName(name.value)||statusMaterialByCode(code.value);if(item){name.value=item.materialName||name.value;code.value=item.materialCode||code.value;}if(!name.value.trim()||!code.value.trim()){showToast(`Please enter both material name and code for every ${config.label} row`,'error');(!name.value.trim()?name:code).focus();return false;}}updateDynamicSpareSummary(form,config.kind);}if(document.getElementById(form.requirementToggleId).value==='Yes'&&!form.requiredMaterials.length){const picker=document.getElementById(form.pickerId);if(picker.value.trim())addDynamicRequirement(form,picker.value);if(!form.requiredMaterials.length){showToast('Please select at least one required material','error');picker.focus();return false;}}return true; }
+const offlineFieldConfig = {
+  du: { countId: 'duOffline', containerId: 'duOfflineDetailRows', summaryId: 'duRemark', prefix: 'DU', allValue: 'ALL DU ISSUE' },
+  tank: { countId: 'tankOffline', containerId: 'tankOfflineDetailRows', summaryId: 'tankRemark', prefix: 'T', allValue: 'ALL Tank Offline' },
+};
+function offlineCount(config) {
+  const selected = document.getElementById(config.countId).value;
+  return selected === config.allValue ? 10 : (Number.parseInt(selected, 10) || 0);
+}
+function offlineRows(config) { return [...document.getElementById(config.containerId).querySelectorAll('.offline-detail-row')]; }
+function updateOfflineSummary(config) {
+  const summary = document.getElementById(config.summaryId);
+  summary.value = offlineRows(config).map(row => {
+    const unit = row.querySelector('.offline-unit').value.trim();
+    const product = row.querySelector('.offline-product')?.value.trim();
+    const remark = row.querySelector('.offline-remark').value.trim();
+    return unit && remark ? `${unit}-${product ? `${product}-` : ''}${remark}` : '';
+  }).filter(Boolean).join(', ');
+}
+function createOfflineDetailRow(type, index, values = {}) {
+  const config = offlineFieldConfig[type];
+  const row = document.createElement('div'); row.className = 'offline-detail-row';
+  row.style.cssText = `display:grid;grid-template-columns:${type === 'tank' ? 'minmax(120px,.7fr) minmax(150px,.8fr) minmax(0,1.8fr)' : 'minmax(120px,.8fr) minmax(0,2fr)'};gap:8px;align-items:end;margin:8px 0;padding:8px;border:1px solid #dbe5ef;border-radius:7px;background:#f8fafc;`;
+  const makeField = (labelText, control) => { const field = document.createElement('div'); const label = document.createElement('label'); label.className = 'dv-label'; label.textContent = labelText; field.append(label, control); return field; };
+  const unit = document.createElement('select'); unit.className = 'dv-modal-select offline-unit';
+  unit.append(new Option('Select', ''));
+  for (let number = 1; number <= 10; number++) unit.append(new Option(`${config.prefix}${number}`, `${config.prefix}${number}`));
+  unit.value = values.unit || '';
+  row.appendChild(makeField(`${type === 'du' ? 'DU Number' : 'Tank No.'} ${index}`, unit));
+  if (type === 'tank') {
+    const product = document.createElement('select'); product.className = 'dv-modal-select offline-product';
+    product.append(new Option('Select Product', ''));
+    ['MS', 'HSD', 'POWER', 'TURBOJET', 'CNG'].forEach(value => product.append(new Option(value, value)));
+    product.value = values.product || '';
+    product.addEventListener('change', () => updateOfflineSummary(config));
+    row.appendChild(makeField(`Product Name ${index}`, product));
+  }
+  const remark = document.createElement('textarea'); remark.className = 'dv-modal-textarea offline-remark'; remark.rows = 2; remark.placeholder = type === 'du' ? 'Enter DU offline remark' : 'Enter tank offline remark'; remark.value = values.remark || '';
+  remark.addEventListener('input', () => { remark.value = remark.value.toUpperCase(); updateOfflineSummary(config); });
+  unit.addEventListener('change', () => updateOfflineSummary(config));
+  row.appendChild(makeField(`${type === 'du' ? 'DU' : 'Tank'} Offline Remark ${index}`, remark));
+  return row;
+}
+function renderOfflineDetailRows(type) {
+  const config = offlineFieldConfig[type], container = document.getElementById(config.containerId);
+  const values = offlineRows(config).map(row => ({ unit: row.querySelector('.offline-unit').value, product: row.querySelector('.offline-product')?.value || '', remark: row.querySelector('.offline-remark').value }));
+  const count = offlineCount(config); container.replaceChildren();
+  container.classList.toggle('hidden', !count);
+  for (let index = 1; index <= count; index++) container.appendChild(createOfflineDetailRow(type, index, values[index - 1] || {}));
+  updateOfflineSummary(config);
+}
+function validateOfflineDetails(type) {
+  const config = offlineFieldConfig[type], selected = document.getElementById(config.countId).value;
+  if (!selected || selected === 'ALL OK') return true;
+  const rows = offlineRows(config), count = offlineCount(config);
+  if (rows.length !== count) { renderOfflineDetailRows(type); showToast(`Please complete all ${type === 'du' ? 'DU' : 'tank'} offline details`, 'error'); return false; }
+  for (let index = 0; index < rows.length; index++) {
+    const row = rows[index], unit = row.querySelector('.offline-unit'), product = row.querySelector('.offline-product'), remark = row.querySelector('.offline-remark');
+    if (!unit.value || (product && !product.value) || !remark.value.trim()) {
+      showToast(`Please complete ${type === 'du' ? 'DU' : 'tank'} offline detail ${index + 1}`, 'error'); (!unit.value ? unit : (product && !product.value ? product : remark)).focus(); return false;
+    }
+  }
+  updateOfflineSummary(config); return true;
+}
 async function openStatusModal(planId) {
   document.getElementById('statusPlanId').value = planId;
   document.getElementById('statusModal').classList.remove('hidden');
@@ -2194,10 +2259,10 @@ async function openStatusModal(planId) {
   function applyAutoFieldLogic() {
     const duOff = document.getElementById('duOffline').value, tankOff = document.getElementById('tankOffline').value;
     const spareUsed = document.getElementById('spareUsed').value, spareReq = document.getElementById('spareRequirment').value;
-    if (duOff==='ALL OK') { document.getElementById('duDependency').value='NO'; document.getElementById('duRemark').value='ALL DU IN ONLINE MODE'; document.getElementById('duDependency').disabled=true; document.getElementById('duRemark').readOnly=true; }
-    else { document.getElementById('duDependency').disabled=false; document.getElementById('duRemark').readOnly=false; }
-    if (tankOff==='ALL OK') { document.getElementById('tankDependency').value='NO'; document.getElementById('tankRemark').value='ALL TANK IN ONLINE MODE'; document.getElementById('tankDependency').disabled=true; document.getElementById('tankRemark').readOnly=true; }
-    else { document.getElementById('tankDependency').disabled=false; document.getElementById('tankRemark').readOnly=false; }
+    if (duOff==='ALL OK') { document.getElementById('duDependency').value='NO'; document.getElementById('duRemark').value='ALL DU IN ONLINE MODE'; document.getElementById('duDependency').disabled=true; document.getElementById('duOfflineDetailRows').replaceChildren(); document.getElementById('duOfflineDetailRows').classList.add('hidden'); }
+    else { document.getElementById('duDependency').disabled=false; renderOfflineDetailRows('du'); }
+    if (tankOff==='ALL OK') { document.getElementById('tankDependency').value='NO'; document.getElementById('tankRemark').value='ALL TANK IN ONLINE MODE'; document.getElementById('tankDependency').disabled=true; document.getElementById('tankOfflineDetailRows').replaceChildren(); document.getElementById('tankOfflineDetailRows').classList.add('hidden'); }
+    else { document.getElementById('tankDependency').disabled=false; renderOfflineDetailRows('tank'); }
     const usingSpare = spareUsed === 'Yes';
     document.getElementById('spareUsedDynamicFields').classList.toggle('hidden', !usingSpare);
     if (!usingSpare && spareUsed === 'No') { document.getElementById('activeSpare').value='NO ACTIVE MATERIAL USED'; document.getElementById('faultySpare').value='NO FAULTY MATERIAL CREATED'; document.getElementById('activeSpare').readOnly=true; document.getElementById('faultySpare').readOnly=true; }
@@ -2290,6 +2355,7 @@ async function saveStatus() {
     if (!el || !el.value.trim()) { showToast(`Please fill Wireless Slave ${i} Version`, 'error'); el?.focus(); return; }
   }
   updateWirelessSlaveSummary();
+  if (!validateOfflineDetails('du') || !validateOfflineDetails('tank')) return;
   for (const id of required) { const el=document.getElementById(id); if(!el||!el.value.trim()) { showToast(`Please fill in: ${id.replace(/([A-Z])/g,' $1')}`, 'error'); el?.focus(); return; } }
   const statusData = {};
   required.forEach(id => { statusData[id] = document.getElementById(id).value; });
