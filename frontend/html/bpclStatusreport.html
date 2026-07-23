@@ -299,6 +299,8 @@
       { key:"class2Devices", label:"Class2 Devices" }, { key:"relconAtgProvided", label:"RELCON ATG Provided" },
       { key:"relconAtgCount", label:"RELCON ATG Count" }, { key:"relconAtgDetails", label:"RELCON ATG Details" },
       { key:"jioSimNumber", label:"Jio SIM Number" }, { key:"airtelSimNumber", label:"Airtel SIM Number" },
+      { key:"mpdOffline", label:"MPD Offline" }, { key:"mpdRemark", label:"Reason for MPD Offline" },
+      { key:"tankOffline", label:"Tank Offline" }, { key:"tankRemark", label:"Reason for Tank Offline" },
       { key:"spareUsed", label:"Material Used" }, { key:"activeSpare", label:"Used Material" },
       { key:"faultySpare", label:"Faulty Material" }, { key:"spareRequirment", label:"Material Req." },
       { key:"spareRequirmentname", label:"Material Req. Name" },
@@ -445,7 +447,7 @@
       form.innerHTML=`<input type="hidden" name="_id" value="${esc(record.bpclStatusId)}"/>`;
       const merged={...record};
       const skip=["__v","createdAt","updatedAt","_id","bpclStatusId","verifiedBy","verifiedAt","verificationEditLog","planId"];
-      const order=["engineer","region","roCode","roName","date","class1DeviceCount","class1Devices","class1WithoutSimCount","class1WithoutSimDevices","class2DeviceCount","class2Devices","relconAtgProvided","relconAtgCount","relconAtgDetails","jioSimNumber","airtelSimNumber","spareUsed","activeSpare","faultySpare","spareRequirment","spareRequirmentname","isVerified","createdBy"];
+      const order=["engineer","region","roCode","roName","date","class1DeviceCount","class1Devices","class1WithoutSimCount","class1WithoutSimDevices","class2DeviceCount","class2Devices","relconAtgProvided","relconAtgCount","relconAtgDetails","jioSimNumber","airtelSimNumber","mpdOffline","mpdRemark","tankOffline","tankRemark","spareUsed","activeSpare","faultySpare","spareRequirment","spareRequirmentname","isVerified","createdBy"];
       const keys=[...order.filter(k=>k in merged),...Object.keys(merged).filter(k=>!order.includes(k))];
       keys.forEach(key=>{
         if(skip.includes(key) || (key==="planId" && typeof merged[key]==="object")) return;

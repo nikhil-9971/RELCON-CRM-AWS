@@ -99,6 +99,30 @@ const BPCLStatusSchema = new mongoose.Schema(
       trim: true,
     },
 
+    /* 🔹 MPD / TANK OFFLINE DETAILS */
+    mpdOffline: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    mpdRemark: {
+      type: String,
+      default: "",
+      uppercase: true,
+      trim: true,
+    },
+    tankOffline: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    tankRemark: {
+      type: String,
+      default: "",
+      uppercase: true,
+      trim: true,
+    },
+
     /* 🔹 MATERIAL / SPARE DETAILS */
     spareUsed: {
       type: String,

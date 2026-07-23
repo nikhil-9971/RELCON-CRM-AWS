@@ -1431,6 +1431,18 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
           <input type="text" id="bpclJioSim" class="dv-modal-input" placeholder="JIO SIM Number"/></div>
         <div class="dv-field"><label class="dv-label">Airtel SIM Number</label>
           <input type="text" id="bpclAirtelSim" class="dv-modal-input" placeholder="Airtel SIM Number"/></div>
+        <div class="dv-section-hd dv-form-full">MPD Status</div>
+        <div class="dv-field"><label class="dv-label">No. of MPD Offline</label>
+          <select id="bpclMpdOffline" class="dv-modal-select"><option value="">Select</option><option>ALL OK</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>ALL MPD ISSUE</option></select></div>
+        <div id="bpclMpdOfflineDetailRows" class="dv-field dv-form-full hidden"></div>
+        <div class="dv-field dv-form-full"><label class="dv-label">Reason for MPD Offline</label>
+          <textarea id="bpclMpdRemark" class="dv-modal-textarea" placeholder="Auto-populated from MPD offline details" readonly></textarea></div>
+        <div class="dv-section-hd dv-form-full">Tank Status</div>
+        <div class="dv-field"><label class="dv-label">No. of Tank Offline</label>
+          <select id="bpclTankOffline" class="dv-modal-select"><option value="">Select</option><option>ALL OK</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>ALL Tank Offline</option></select></div>
+        <div id="bpclTankOfflineDetailRows" class="dv-field dv-form-full hidden"></div>
+        <div class="dv-field dv-form-full"><label class="dv-label">Reason for Tank Offline</label>
+          <textarea id="bpclTankRemark" class="dv-modal-textarea" placeholder="Auto-populated from tank offline details" readonly></textarea></div>
         <div class="dv-field"><label class="dv-label">Any Material Used?</label>
           <select id="bpclSpareUsed" class="dv-modal-select" onchange="applyBPCLMaterialAutoFieldLogic()"><option value="">Select</option><option>Yes</option><option>No</option></select></div>
         <div id="bpclDynamicMaterialFields" class="dv-field dv-form-full hidden"><div class="dv-form-grid">
@@ -2151,8 +2163,10 @@ function setupDynamicSpareForm(form) { form.requiredMaterials=[]; ['used','fault
 function hydrateDynamicSpareForm(form) { if(document.getElementById(form.toggleId).value==='Yes') ['used','faulty'].forEach(kind=>{const output=document.getElementById(kind==='used'?form.usedOutputId:form.faultyOutputId).value;const values=String(output).split(',').map(value=>{const match=value.trim().match(/^(.*?)\s*\((.*?)\)$/);return match?{name:match[1].trim(),code:match[2].trim()}:null;}).filter(Boolean);document.getElementById(kind==='used'?form.usedCountId:form.faultyCountId).value=values.length||'';renderDynamicSpareRows(form,kind,values);}); if(document.getElementById(form.requirementToggleId).value==='Yes'){form.requiredMaterials=String(document.getElementById(form.requirementOutputId).value).split(',').map(name=>statusMaterialByName(name.trim())).filter(Boolean);renderDynamicRequirement(form);}applyDynamicSpareFormLogic(form); }
 function validateDynamicSpareForm(form) { if(document.getElementById(form.toggleId).value==='Yes')for(const config of [{kind:'used',countId:form.usedCountId,label:'material used'},{kind:'faulty',countId:form.faultyCountId,label:'faulty material recovery'}]){const input=document.getElementById(config.countId),count=Number(input.value),rows=[...document.querySelectorAll(`.${form.toggleId}-${config.kind}-row`)];if(!Number.isInteger(count)||count<1||!input.validity.valid){showToast(`Please enter a positive whole number for ${config.label}`,'error');input.focus();return false;}if(rows.length!==count){showToast(`Please complete all ${config.label} rows`,'error');return false;}for(const row of rows){const name=row.querySelector('.dynamic-material-name'),code=row.querySelector('.dynamic-material-code'),item=statusMaterialByName(name.value)||statusMaterialByCode(code.value);if(item){name.value=item.materialName||name.value;code.value=item.materialCode||code.value;}if(!name.value.trim()||!code.value.trim()){showToast(`Please enter both material name and code for every ${config.label} row`,'error');(!name.value.trim()?name:code).focus();return false;}}updateDynamicSpareSummary(form,config.kind);}if(document.getElementById(form.requirementToggleId).value==='Yes'&&!form.requiredMaterials.length){const picker=document.getElementById(form.pickerId);if(picker.value.trim())addDynamicRequirement(form,picker.value);if(!form.requiredMaterials.length){showToast('Please select at least one required material','error');picker.focus();return false;}}return true; }
 const offlineFieldConfig = {
-  du: { countId: 'duOffline', containerId: 'duOfflineDetailRows', summaryId: 'duRemark', prefix: 'DU', allValue: 'ALL DU ISSUE' },
-  tank: { countId: 'tankOffline', containerId: 'tankOfflineDetailRows', summaryId: 'tankRemark', prefix: 'T', allValue: 'ALL Tank Offline' },
+  du: { countId: 'duOffline', containerId: 'duOfflineDetailRows', summaryId: 'duRemark', prefix: 'DU', allValue: 'ALL DU ISSUE', unitLabel: 'DU' },
+  tank: { countId: 'tankOffline', containerId: 'tankOfflineDetailRows', summaryId: 'tankRemark', prefix: 'T', allValue: 'ALL Tank Offline', unitLabel: 'Tank', products: ['MS', 'HSD', 'POWER', 'TURBOJET', 'CNG'] },
+  bpclMpd: { countId: 'bpclMpdOffline', containerId: 'bpclMpdOfflineDetailRows', summaryId: 'bpclMpdRemark', prefix: 'MPD', allValue: 'ALL MPD ISSUE', unitLabel: 'MPD' },
+  bpclTank: { countId: 'bpclTankOffline', containerId: 'bpclTankOfflineDetailRows', summaryId: 'bpclTankRemark', prefix: 'T', allValue: 'ALL Tank Offline', unitLabel: 'Tank', products: ['EBMS', 'HSD', 'SPEED', 'TURBOJET', 'CNG'] },
 };
 function offlineCount(config) {
   const selected = document.getElementById(config.countId).value;
@@ -2171,25 +2185,25 @@ function updateOfflineSummary(config) {
 function createOfflineDetailRow(type, index, values = {}) {
   const config = offlineFieldConfig[type];
   const row = document.createElement('div'); row.className = 'offline-detail-row';
-  row.style.cssText = `display:grid;grid-template-columns:${type === 'tank' ? 'minmax(120px,.7fr) minmax(150px,.8fr) minmax(0,1.8fr)' : 'minmax(120px,.8fr) minmax(0,2fr)'};gap:8px;align-items:end;margin:8px 0;padding:8px;border:1px solid #dbe5ef;border-radius:7px;background:#f8fafc;`;
+  row.style.cssText = `display:grid;grid-template-columns:${config.products ? 'minmax(120px,.7fr) minmax(150px,.8fr) minmax(0,1.8fr)' : 'minmax(120px,.8fr) minmax(0,2fr)'};gap:8px;align-items:end;margin:8px 0;padding:8px;border:1px solid #dbe5ef;border-radius:7px;background:#f8fafc;`;
   const makeField = (labelText, control) => { const field = document.createElement('div'); const label = document.createElement('label'); label.className = 'dv-label'; label.textContent = labelText; field.append(label, control); return field; };
   const unit = document.createElement('select'); unit.className = 'dv-modal-select offline-unit';
   unit.append(new Option('Select', ''));
   for (let number = 1; number <= 10; number++) unit.append(new Option(`${config.prefix}${number}`, `${config.prefix}${number}`));
   unit.value = values.unit || '';
-  row.appendChild(makeField(`${type === 'du' ? 'DU Number' : 'Tank No.'} ${index}`, unit));
-  if (type === 'tank') {
+  row.appendChild(makeField(`${config.unitLabel} ${config.unitLabel === 'Tank' ? 'No.' : 'Number'} ${index}`, unit));
+  if (config.products) {
     const product = document.createElement('select'); product.className = 'dv-modal-select offline-product';
     product.append(new Option('Select Product', ''));
-    ['MS', 'HSD', 'POWER', 'TURBOJET', 'CNG'].forEach(value => product.append(new Option(value, value)));
+    config.products.forEach(value => product.append(new Option(value, value)));
     product.value = values.product || '';
     product.addEventListener('change', () => updateOfflineSummary(config));
     row.appendChild(makeField(`Product Name ${index}`, product));
   }
-  const remark = document.createElement('textarea'); remark.className = 'dv-modal-textarea offline-remark'; remark.rows = 2; remark.placeholder = type === 'du' ? 'Enter DU offline remark' : 'Enter tank offline remark'; remark.value = values.remark || '';
+  const remark = document.createElement('textarea'); remark.className = 'dv-modal-textarea offline-remark'; remark.rows = 2; remark.placeholder = `Enter ${config.unitLabel} offline remark`; remark.value = values.remark || '';
   remark.addEventListener('input', () => { remark.value = remark.value.toUpperCase(); updateOfflineSummary(config); });
   unit.addEventListener('change', () => updateOfflineSummary(config));
-  row.appendChild(makeField(`${type === 'du' ? 'DU' : 'Tank'} Offline Remark ${index}`, remark));
+  row.appendChild(makeField(`${config.unitLabel} Offline Remark ${index}`, remark));
   return row;
 }
 function renderOfflineDetailRows(type) {
@@ -2204,14 +2218,27 @@ function validateOfflineDetails(type) {
   const config = offlineFieldConfig[type], selected = document.getElementById(config.countId).value;
   if (!selected || selected === 'ALL OK') return true;
   const rows = offlineRows(config), count = offlineCount(config);
-  if (rows.length !== count) { renderOfflineDetailRows(type); showToast(`Please complete all ${type === 'du' ? 'DU' : 'tank'} offline details`, 'error'); return false; }
+  if (rows.length !== count) { renderOfflineDetailRows(type); showToast(`Please complete all ${config.unitLabel} offline details`, 'error'); return false; }
   for (let index = 0; index < rows.length; index++) {
     const row = rows[index], unit = row.querySelector('.offline-unit'), product = row.querySelector('.offline-product'), remark = row.querySelector('.offline-remark');
     if (!unit.value || (product && !product.value) || !remark.value.trim()) {
-      showToast(`Please complete ${type === 'du' ? 'DU' : 'tank'} offline detail ${index + 1}`, 'error'); (!unit.value ? unit : (product && !product.value ? product : remark)).focus(); return false;
+      showToast(`Please complete ${config.unitLabel} offline detail ${index + 1}`, 'error'); (!unit.value ? unit : (product && !product.value ? product : remark)).focus(); return false;
     }
   }
   updateOfflineSummary(config); return true;
+}
+function hydrateOfflineDetails(type, summary = '') {
+  const config = offlineFieldConfig[type];
+  if (!offlineCount(config)) return;
+  renderOfflineDetailRows(type);
+  String(summary).split(',').map(value => value.trim()).filter(Boolean).forEach((value, index) => {
+    const row = offlineRows(config)[index]; if (!row) return;
+    const parts = value.split('-').map(part => part.trim()), unit = row.querySelector('.offline-unit'), product = row.querySelector('.offline-product'), remark = row.querySelector('.offline-remark');
+    unit.value = parts.shift() || '';
+    if (product) product.value = parts.shift() || '';
+    remark.value = parts.join('-');
+  });
+  updateOfflineSummary(config);
 }
 async function openStatusModal(planId) {
   document.getElementById('statusPlanId').value = planId;
@@ -2434,6 +2461,11 @@ function renderRelconATGFields() { const c=parseInt(document.getElementById('rel
 function applyBPCLMaterialAutoFieldLogic() {
   applyDynamicSpareFormLogic(dynamicSpareForms.bpcl);
 }
+function applyBPCLOfflineLogic(type) {
+  const config = offlineFieldConfig[type], selected = document.getElementById(config.countId).value, summary = document.getElementById(config.summaryId), container = document.getElementById(config.containerId);
+  if (selected === 'ALL OK') { summary.value = `ALL ${config.unitLabel.toUpperCase()} IN ONLINE MODE`; container.replaceChildren(); container.classList.add('hidden'); }
+  else renderOfflineDetailRows(type);
+}
 function closeBPCLModal() { document.getElementById('bpclModal').classList.add('hidden'); }
 
 async function openBPCLModal(planId) {
@@ -2441,6 +2473,8 @@ async function openBPCLModal(planId) {
   document.getElementById('bpclForm').reset();
   try { await loadStatusMaterialMaster(); } catch (err) { showToast(err.message, 'error'); }
   setupDynamicSpareForm(dynamicSpareForms.bpcl);
+  ['bpclMpdOfflineDetailRows','bpclTankOfflineDetailRows'].forEach(id => document.getElementById(id).replaceChildren());
+  ['bpclMpdOffline','bpclTankOffline'].forEach((id, index) => document.getElementById(id).onchange = () => applyBPCLOfflineLogic(index === 0 ? 'bpclMpd' : 'bpclTank'));
   ['class1DevicesContainer','class1DevicesContainerwithoutsim','class2DevicesContainer'].forEach(id => document.getElementById(id).innerHTML='');
   ['relconAtgCountDiv','relconAtgContainer'].forEach(id => document.getElementById(id).classList.add('hidden'));
   document.getElementById('relconAtgContainer').innerHTML='';
@@ -2468,15 +2502,22 @@ function populateBPCLFields(data) {
   document.getElementById('bpclFaultySpare').value=data.faultySpare||'';
   document.getElementById('bpclSpareRequirment').value=data.spareRequirment||'';
   document.getElementById('bpclSpareRequirmentname').value=data.spareRequirmentname||'';
+  document.getElementById('bpclMpdOffline').value=data.mpdOffline||'';
+  document.getElementById('bpclMpdRemark').value=data.mpdRemark||'';
+  document.getElementById('bpclTankOffline').value=data.tankOffline||'';
+  document.getElementById('bpclTankRemark').value=data.tankRemark||'';
+  hydrateOfflineDetails('bpclMpd', data.mpdRemark);
+  hydrateOfflineDetails('bpclTank', data.tankRemark);
   hydrateDynamicSpareForm(dynamicSpareForms.bpcl);
 }
 async function saveBPCLStatus() {
   if(!validateDynamicSpareForm(dynamicSpareForms.bpcl)) return;
+  if(!validateOfflineDetails('bpclMpd') || !validateOfflineDetails('bpclTank')) return;
   const relconAtgProvided=document.getElementById('relconAtgProvided')?.value||'NO';
   const relconAtgCount=relconAtgProvided==='YES'?Number(document.getElementById('relconAtgCount')?.value||0):0;
   let relconAtgDetails=[];
   if (relconAtgProvided==='YES' && relconAtgCount>0) { for(let i=1;i<=relconAtgCount;i++) { const v=document.getElementById(`relconAtg_${i}`)?.value; if(v) relconAtgDetails.push(v); } }
-  const payload = { planId:document.getElementById('bpclPlanId').value, class1DeviceCount:Number(document.getElementById('class1Count').value), class1Devices:[...document.querySelectorAll('.class1Device')].map(i=>i.value), class1WithoutSimCount:Number(document.getElementById('class1Countwithoutsim').value), class1WithoutSimDevices:[...document.querySelectorAll('.class1WithoutSimDevice')].map(i=>i.value), class2DeviceCount:Number(document.getElementById('class2Count').value), class2Devices:[...document.querySelectorAll('.class2Device')].map(i=>i.value), relconAtgProvided, relconAtgCount, relconAtgDetails, jioSimNumber:document.getElementById('bpclJioSim').value, airtelSimNumber:document.getElementById('bpclAirtelSim').value, spareUsed:document.getElementById('bpclSpareUsed').value, activeSpare:document.getElementById('bpclActiveSpare').value.toUpperCase(), faultySpare:document.getElementById('bpclFaultySpare').value.toUpperCase(), spareRequirment:document.getElementById('bpclSpareRequirment').value, spareRequirmentname:document.getElementById('bpclSpareRequirmentname').value.toUpperCase() };
+  const payload = { planId:document.getElementById('bpclPlanId').value, class1DeviceCount:Number(document.getElementById('class1Count').value), class1Devices:[...document.querySelectorAll('.class1Device')].map(i=>i.value), class1WithoutSimCount:Number(document.getElementById('class1Countwithoutsim').value), class1WithoutSimDevices:[...document.querySelectorAll('.class1WithoutSimDevice')].map(i=>i.value), class2DeviceCount:Number(document.getElementById('class2Count').value), class2Devices:[...document.querySelectorAll('.class2Device')].map(i=>i.value), relconAtgProvided, relconAtgCount, relconAtgDetails, jioSimNumber:document.getElementById('bpclJioSim').value, airtelSimNumber:document.getElementById('bpclAirtelSim').value, mpdOffline:document.getElementById('bpclMpdOffline').value, mpdRemark:document.getElementById('bpclMpdRemark').value, tankOffline:document.getElementById('bpclTankOffline').value, tankRemark:document.getElementById('bpclTankRemark').value, spareUsed:document.getElementById('bpclSpareUsed').value, activeSpare:document.getElementById('bpclActiveSpare').value.toUpperCase(), faultySpare:document.getElementById('bpclFaultySpare').value.toUpperCase(), spareRequirment:document.getElementById('bpclSpareRequirment').value, spareRequirmentname:document.getElementById('bpclSpareRequirmentname').value.toUpperCase() };
   try { const res=await fetch(`${baseUrl}/bpclStatus/saveBPCLStatus`, { method:'POST', headers:{'Content-Type':'application/json',Authorization:`Bearer ${localStorage.getItem('token')}`}, body:JSON.stringify(payload), credentials:'include' });
   if (res.ok) { showToast('BPCL Status saved.'); closeBPCLModal(); await fetchAndStoreData(); applyFilter(document.getElementById('applyBtn')); }
   else { const result=await res.json().catch(()=>({})); showToast(result.message||'Failed to save BPCL Status.','error'); } } catch(err) { showToast(err.message||'Unable to save BPCL status. Please try again.','error'); }
