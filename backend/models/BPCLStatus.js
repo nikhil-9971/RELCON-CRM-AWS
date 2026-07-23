@@ -105,6 +105,12 @@ const BPCLStatusSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
+    mpdDependency: {
+      type: String,
+      enum: ["", "BPCL", "RELCON", "BOTH"],
+      default: "",
+      trim: true,
+    },
     mpdRemark: {
       type: String,
       default: "",
@@ -113,6 +119,12 @@ const BPCLStatusSchema = new mongoose.Schema(
     },
     tankOffline: {
       type: String,
+      default: "",
+      trim: true,
+    },
+    tankDependency: {
+      type: String,
+      enum: ["", "BPCL", "RELCON", "BOTH"],
       default: "",
       trim: true,
     },

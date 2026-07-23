@@ -1434,12 +1434,16 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
         <div class="dv-section-hd dv-form-full">MPD Status</div>
         <div class="dv-field"><label class="dv-label">No. of MPD Offline</label>
           <select id="bpclMpdOffline" class="dv-modal-select"><option value="">Select</option><option>ALL OK</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>ALL MPD ISSUE</option></select></div>
+        <div class="dv-field"><label class="dv-label">MPD Offline Dependency</label>
+          <select id="bpclMpdDependency" class="dv-modal-select"><option value="">Select</option><option>BPCL</option><option>RELCON</option><option>BOTH</option></select></div>
         <div id="bpclMpdOfflineDetailRows" class="dv-field dv-form-full hidden"></div>
         <div class="dv-field dv-form-full"><label class="dv-label">Reason for MPD Offline</label>
           <textarea id="bpclMpdRemark" class="dv-modal-textarea" placeholder="Auto-populated from MPD offline details" readonly></textarea></div>
         <div class="dv-section-hd dv-form-full">Tank Status</div>
         <div class="dv-field"><label class="dv-label">No. of Tank Offline</label>
           <select id="bpclTankOffline" class="dv-modal-select"><option value="">Select</option><option>ALL OK</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>ALL Tank Offline</option></select></div>
+        <div class="dv-field"><label class="dv-label">Tank Offline Dependency</label>
+          <select id="bpclTankDependency" class="dv-modal-select"><option value="">Select</option><option>BPCL</option><option>RELCON</option><option>BOTH</option></select></div>
         <div id="bpclTankOfflineDetailRows" class="dv-field dv-form-full hidden"></div>
         <div class="dv-field dv-form-full"><label class="dv-label">Reason for Tank Offline</label>
           <textarea id="bpclTankRemark" class="dv-modal-textarea" placeholder="Auto-populated from tank offline details" readonly></textarea></div>
@@ -2503,8 +2507,10 @@ function populateBPCLFields(data) {
   document.getElementById('bpclSpareRequirment').value=data.spareRequirment||'';
   document.getElementById('bpclSpareRequirmentname').value=data.spareRequirmentname||'';
   document.getElementById('bpclMpdOffline').value=data.mpdOffline||'';
+  document.getElementById('bpclMpdDependency').value=data.mpdDependency||'';
   document.getElementById('bpclMpdRemark').value=data.mpdRemark||'';
   document.getElementById('bpclTankOffline').value=data.tankOffline||'';
+  document.getElementById('bpclTankDependency').value=data.tankDependency||'';
   document.getElementById('bpclTankRemark').value=data.tankRemark||'';
   hydrateOfflineDetails('bpclMpd', data.mpdRemark);
   hydrateOfflineDetails('bpclTank', data.tankRemark);
@@ -2517,7 +2523,7 @@ async function saveBPCLStatus() {
   const relconAtgCount=relconAtgProvided==='YES'?Number(document.getElementById('relconAtgCount')?.value||0):0;
   let relconAtgDetails=[];
   if (relconAtgProvided==='YES' && relconAtgCount>0) { for(let i=1;i<=relconAtgCount;i++) { const v=document.getElementById(`relconAtg_${i}`)?.value; if(v) relconAtgDetails.push(v); } }
-  const payload = { planId:document.getElementById('bpclPlanId').value, class1DeviceCount:Number(document.getElementById('class1Count').value), class1Devices:[...document.querySelectorAll('.class1Device')].map(i=>i.value), class1WithoutSimCount:Number(document.getElementById('class1Countwithoutsim').value), class1WithoutSimDevices:[...document.querySelectorAll('.class1WithoutSimDevice')].map(i=>i.value), class2DeviceCount:Number(document.getElementById('class2Count').value), class2Devices:[...document.querySelectorAll('.class2Device')].map(i=>i.value), relconAtgProvided, relconAtgCount, relconAtgDetails, jioSimNumber:document.getElementById('bpclJioSim').value, airtelSimNumber:document.getElementById('bpclAirtelSim').value, mpdOffline:document.getElementById('bpclMpdOffline').value, mpdRemark:document.getElementById('bpclMpdRemark').value, tankOffline:document.getElementById('bpclTankOffline').value, tankRemark:document.getElementById('bpclTankRemark').value, spareUsed:document.getElementById('bpclSpareUsed').value, activeSpare:document.getElementById('bpclActiveSpare').value.toUpperCase(), faultySpare:document.getElementById('bpclFaultySpare').value.toUpperCase(), spareRequirment:document.getElementById('bpclSpareRequirment').value, spareRequirmentname:document.getElementById('bpclSpareRequirmentname').value.toUpperCase() };
+  const payload = { planId:document.getElementById('bpclPlanId').value, class1DeviceCount:Number(document.getElementById('class1Count').value), class1Devices:[...document.querySelectorAll('.class1Device')].map(i=>i.value), class1WithoutSimCount:Number(document.getElementById('class1Countwithoutsim').value), class1WithoutSimDevices:[...document.querySelectorAll('.class1WithoutSimDevice')].map(i=>i.value), class2DeviceCount:Number(document.getElementById('class2Count').value), class2Devices:[...document.querySelectorAll('.class2Device')].map(i=>i.value), relconAtgProvided, relconAtgCount, relconAtgDetails, jioSimNumber:document.getElementById('bpclJioSim').value, airtelSimNumber:document.getElementById('bpclAirtelSim').value, mpdOffline:document.getElementById('bpclMpdOffline').value, mpdDependency:document.getElementById('bpclMpdDependency').value, mpdRemark:document.getElementById('bpclMpdRemark').value, tankOffline:document.getElementById('bpclTankOffline').value, tankDependency:document.getElementById('bpclTankDependency').value, tankRemark:document.getElementById('bpclTankRemark').value, spareUsed:document.getElementById('bpclSpareUsed').value, activeSpare:document.getElementById('bpclActiveSpare').value.toUpperCase(), faultySpare:document.getElementById('bpclFaultySpare').value.toUpperCase(), spareRequirment:document.getElementById('bpclSpareRequirment').value, spareRequirmentname:document.getElementById('bpclSpareRequirmentname').value.toUpperCase() };
   try { const res=await fetch(`${baseUrl}/bpclStatus/saveBPCLStatus`, { method:'POST', headers:{'Content-Type':'application/json',Authorization:`Bearer ${localStorage.getItem('token')}`}, body:JSON.stringify(payload), credentials:'include' });
   if (res.ok) { showToast('BPCL Status saved.'); closeBPCLModal(); await fetchAndStoreData(); applyFilter(document.getElementById('applyBtn')); }
   else { const result=await res.json().catch(()=>({})); showToast(result.message||'Failed to save BPCL Status.','error'); } } catch(err) { showToast(err.message||'Unable to save BPCL status. Please try again.','error'); }
