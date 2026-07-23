@@ -3172,11 +3172,14 @@ async function assignHpclVerificationRows(rows = [], assignees = []) {
   if (!buckets.length) return buckets;
 
   const byUsername = new Map(buckets.map((bucket) => [bucket.username, bucket]));
+  const nikhilBucket = byUsername.get("nikhil.trivedi");
+  const anuragBucket = byUsername.get("anurag.mishra");
   const updates = [];
 
   rows.forEach((row) => {
-    const assignedUsername = String(row.verificationAssignedToUsername || "").trim().toLowerCase();
-    const bucket = byUsername.get(assignedUsername);
+    // HPCL dependency/action records are reviewed by Nikhil; spare-only and
+    // remaining verification records are reviewed by Anurag.
+    const bucket = row.isActionRequired ? (nikhilBucket || anuragBucket) : (anuragBucket || nikhilBucket);
     if (!bucket) return;
     bucket.rows.push({
       ...row,
@@ -3184,42 +3187,22 @@ async function assignHpclVerificationRows(rows = [], assignees = []) {
       verificationAssignedToUsername: bucket.username,
       verificationAssignedToName: bucket.label,
     });
-  });
-
-  rows
-    .filter((row) => !byUsername.has(String(row.verificationAssignedToUsername || "").trim().toLowerCase()))
-    .forEach((row) => {
-      const bucket = buckets.reduce((least, current) =>
-        current.rows.length < least.rows.length ? current : least
-      , buckets[0]);
-      bucket.rows.push({
-        ...row,
-        assignedTo: bucket.label,
-        verificationAssignedToUsername: bucket.username,
-        verificationAssignedToName: bucket.label,
-      });
-      if (row.statusRecordId) {
-        updates.push({
-          updateOne: {
-            filter: {
-              _id: row.statusRecordId,
-              $or: [
-                { verificationAssignedToUsername: { $exists: false } },
-                { verificationAssignedToUsername: "" },
-                { verificationAssignedToUsername: null },
-              ],
-            },
-            update: {
-              $set: {
-                verificationAssignedToUsername: bucket.username,
-                verificationAssignedToName: bucket.label,
-                verificationAssignedAt: new Date(),
-              },
+    const assignedUsername = String(row.verificationAssignedToUsername || "").trim().toLowerCase();
+    if (row.statusRecordId && assignedUsername !== bucket.username) {
+      updates.push({
+        updateOne: {
+          filter: { _id: row.statusRecordId },
+          update: {
+            $set: {
+              verificationAssignedToUsername: bucket.username,
+              verificationAssignedToName: bucket.label,
+              verificationAssignedAt: new Date(),
             },
           },
-        });
-      }
-    });
+        },
+      });
+    }
+  });
 
   if (updates.length) await Status.bulkWrite(updates, { ordered: false });
   return buckets;
@@ -4094,6 +4077,7 @@ async function sendHpclActionRequiredUnverifiedEmail() {
           faultySpare: record.faultySpare || "—",
           spareRequirement: record.spareRequirment || record.spareRequirement || "—",
           spareRequirementName: record.spareRequirmentname || record.spareRequirementName || "—",
+          isActionRequired: isHpclActionRequiredStatusRecord(record),
           verificationAssignedToUsername: String(record.verificationAssignedToUsername || "").trim().toLowerCase(),
           verificationAssignedToName: record.verificationAssignedToName || "",
         };
