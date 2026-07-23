@@ -5988,6 +5988,7 @@ async function sendLateDataViewEntryAlert({
       ["RO Code", plan.roCode || "—"],
       ["RO Name", plan.roName || "—"],
       ["Phase", plan.phase || "—"],
+      ["Purpose of Visit", plan.purpose || "—"],
       ["Visit Date", formatDateOnlyIST(plan.date)],
       ["Entry Time", `${entryTime} IST`],
     ];
@@ -6042,6 +6043,7 @@ async function sendLateDataViewEntryAlert({
         engineer: engineerName,
         roCode: plan.roCode || "",
         roName: plan.roName || "",
+        purpose: plan.purpose || "",
         visitDate: plan.date || "",
         submittedBy: submittedBy || "",
         entryTime,
