@@ -2798,6 +2798,15 @@ async function buildStatusPdf(planId) {
       ['Any Material Requirement', st.spareRequirment],
       ['Material Requirement Name', st.spareRequirmentname],
     ], y, pw, [14,116,144]);
+
+    y = addPdfSection(doc, 'MPD & Tank Offline Status', [
+      ['MPD Offline', st.mpdOffline],
+      ['MPD Dependency', st.mpdDependency],
+      ['Reason for MPD Offline', st.mpdRemark],
+      ['Tank Offline', st.tankOffline],
+      ['Tank Dependency', st.tankDependency],
+      ['Reason for Tank Offline', st.tankRemark],
+    ], y, pw, [220,38,38]);
   }
 
   const now=new Date(), name=loggedInUser?.engineerName||'Unknown';
