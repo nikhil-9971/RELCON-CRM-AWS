@@ -594,9 +594,10 @@
     let filteredData = [];
     let currentPage = 1;
     const rowsPerPage = 50;
-    const roMasterCacheKey = "romasterListCache:v2";
+    const roMasterCacheKey = "romasterListCache:v3";
     const roMasterCacheTTL = 5 * 60 * 1000;
     let latestStatusMap = {};
+    let engineerContactMap = {};
 
     // Date badge
     document.getElementById('dateBadge').textContent =
@@ -609,6 +610,7 @@
       { key: "region",           label: "Region" },
       { key: "phase",            label: "Phase" },
       { key: "engineer",         label: "Engineer" },
+      { key: "engineerContactNumber", label: "Contact Number" },
       { key: "amcQtr",           label: "AMC Qtr" },
       { key: "siteStatus",       label: "Site Status" },
       { key: "lastVisitDate",    label: "Last Visit Date" },
@@ -649,6 +651,21 @@
       return dateObj.toLocaleDateString("en-GB", { day:"2-digit", month:"short", year:"numeric" });
     }
 
+    function normalizeEngineerKey(value) {
+      return String(value || "").trim().toLowerCase();
+    }
+
+    function resolveEngineerContact(engineer, fallback = "") {
+      return engineerContactMap[normalizeEngineerKey(engineer)] || String(fallback || "").trim();
+    }
+
+    function enrichRowsWithEngineerContacts(rows = []) {
+      return rows.map(row => ({
+        ...row,
+        engineerContactNumber: resolveEngineerContact(row.engineer, row.engineerContactNumber),
+      }));
+    }
+
     /* ── API Calls ── */
     async function fetchWithTimeout(url, options={}, timeoutMs=30000){
       const controller=new AbortController();
@@ -684,6 +701,25 @@
         } catch (e) { console.warn('fetchROMasterList path failed:', path, e.message); }
       }
       return null;
+    }
+
+    async function fetchEngineerContacts() {
+      try {
+        const res = await fetchWithTimeout(baseUrl + "/romaster/engineer-contacts", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return {};
+        const data = await res.json();
+        const contacts = Array.isArray(data.contacts) ? data.contacts : [];
+        return contacts.reduce((map, item) => {
+          const key = normalizeEngineerKey(item.engineer);
+          if (key) map[key] = item.contactNumber || "";
+          return map;
+        }, {});
+      } catch(e) {
+        console.warn("Engineer contact load failed:", e.message);
+        return {};
+      }
     }
 
     function readCachedROMasterList() {
@@ -761,9 +797,10 @@
           renderTable(filteredData, { silent: true });
         }
 
-        const [user, data] = await Promise.all([
+        const [user, data, contacts] = await Promise.all([
           getCurrentUser(),
           fetchROMasterList(),
+          fetchEngineerContacts(),
         ]);
 
         if (!user) {
@@ -778,7 +815,8 @@
             `<tr><td colspan="${columns.length}" style="text-align:center;padding:24px;color:var(--txt3);">Failed to fetch RO Master data.</td></tr>`;
           return;
         }
-        allData = data;
+        engineerContactMap = contacts || {};
+        allData = enrichRowsWithEngineerContacts(data);
         writeCachedROMasterList(allData);
         populateFilters(allData);
 
@@ -991,19 +1029,42 @@
       editingId = rec._id || id;
       const form = document.getElementById("editForm");
       form.innerHTML = "";
-      const keys = ["zone","roCode","roName","region","phase","engineer","amcQtr","siteStatus","connectivityType","bosIP","fccIP","siteActivestatus","lastAMCqtr"];
+      const keys = ["zone","roCode","roName","region","phase","engineer","engineerContactNumber","amcQtr","siteStatus","connectivityType","bosIP","fccIP","siteActivestatus","lastAMCqtr"];
+      const labels = {
+        roCode: "RO Code",
+        roName: "RO Name",
+        amcQtr: "AMC Qtr",
+        siteStatus: "Site Status",
+        connectivityType: "Connectivity Type",
+        bosIP: "BOS IP",
+        fccIP: "FCC IP",
+        siteActivestatus: "Site Active Status",
+        lastAMCqtr: "Last AMC Qtr",
+        engineerContactNumber: "Contact Number",
+      };
       keys.forEach(k => {
-        const val = rec[k] || "";
-        const isReadonly = k === "roCode";
+        const val = k === "engineerContactNumber"
+          ? resolveEngineerContact(rec.engineer, rec.engineerContactNumber)
+          : (rec[k] || "");
+        const isReadonly = k === "roCode" || k === "engineerContactNumber";
+        const extraAttrs = k === "engineer" ? 'oninput="syncEditEngineerContact()"' : "";
         form.innerHTML += `
           <div class="sf-modal-field">
-            <label class="sf-modal-label">${k}</label>
+            <label class="sf-modal-label">${labels[k] || k}</label>
             <input type="text" name="${k}" value="${escapeHtml(val)}"
               ${isReadonly ? "readonly" : ""}
+              ${extraAttrs}
               class="sf-modal-input${isReadonly ? ' readonly' : ''}" />
           </div>`;
       });
       document.getElementById("editModal").classList.remove("hidden");
+    }
+
+    function syncEditEngineerContact() {
+      const engineerInput = document.querySelector('#editForm input[name="engineer"]');
+      const contactInput = document.querySelector('#editForm input[name="engineerContactNumber"]');
+      if (!engineerInput || !contactInput) return;
+      contactInput.value = resolveEngineerContact(engineerInput.value);
     }
 
     function closeEditModal() {
@@ -1076,8 +1137,21 @@
     /* ── Export CSV ── */
     function exportROMasterCSV() {
       if (!filteredData || filteredData.length === 0) { showToast("No data to export", "error"); return; }
-      const keys = ["roCode","roName","zone","region","phase","engineer","amcQtr","siteStatus","lastVisitDate","connectivityType","bosIP","fccIP","siteActivestatus","lastAMCqtr"];
-      const header = keys.join(",");
+      const keys = ["roCode","roName","zone","region","phase","engineer","engineerContactNumber","amcQtr","siteStatus","lastVisitDate","connectivityType","bosIP","fccIP","siteActivestatus","lastAMCqtr"];
+      const exportLabels = {
+        roCode: "RO Code",
+        roName: "RO Name",
+        engineerContactNumber: "Contact Number",
+        amcQtr: "AMC Qtr",
+        siteStatus: "Site Status",
+        lastVisitDate: "Last Visit Date",
+        connectivityType: "Connectivity Type",
+        bosIP: "BOS IP",
+        fccIP: "FCC IP",
+        siteActivestatus: "Site Active Status",
+        lastAMCqtr: "Last AMC Qtr",
+      };
+      const header = keys.map(k => exportLabels[k] || k).join(",");
       const rows = filteredData.map(r => {
         const rc = (r.roCode || "").toString().trim().toUpperCase();
         const latest = latestStatusMap[rc] || {};

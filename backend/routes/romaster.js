@@ -5,6 +5,7 @@ const path = require("path");
 const XLSX = require("xlsx");
 const ROMaster = require("../models/ROMaster");
 const DailyPlan = require("../models/DailyPlan");
+const User = require("../models/User");
 const { verifyToken, requireRole } = require("./auth");
 const {
   clearCacheByPrefix,
@@ -40,6 +41,47 @@ function pick(row = {}, keys = []) {
   return "";
 }
 
+function normalizeEngineerKey(value = "") {
+  return String(value || "").trim().toLowerCase();
+}
+
+async function getEngineerContactMap() {
+  const users = await User.find(
+    { role: { $in: ["engineer", "Engineer", "user", "User"] } },
+    "engineerName username contactNumber"
+  ).lean();
+
+  const map = new Map();
+  users.forEach((user) => {
+    const contactNumber = String(user.contactNumber || "").trim();
+    if (!contactNumber) return;
+    [user.engineerName, user.username].forEach((name) => {
+      const key = normalizeEngineerKey(name);
+      if (key && !map.has(key)) map.set(key, contactNumber);
+    });
+  });
+  return map;
+}
+
+function resolveEngineerContactNumber(record = {}, contactMap = new Map()) {
+  const mapped = contactMap.get(normalizeEngineerKey(record.engineer));
+  return mapped || String(record.engineerContactNumber || record.contactNumber || "").trim();
+}
+
+function attachEngineerContactNumber(record = {}, contactMap = new Map()) {
+  const doc = typeof record.toObject === "function" ? record.toObject() : { ...record };
+  doc.engineerContactNumber = resolveEngineerContactNumber(doc, contactMap);
+  return doc;
+}
+
+async function attachEngineerContactNumbers(records) {
+  const contactMap = await getEngineerContactMap();
+  if (Array.isArray(records)) {
+    return records.map((record) => attachEngineerContactNumber(record, contactMap));
+  }
+  return attachEngineerContactNumber(records, contactMap);
+}
+
 function parseROMasterRows(buffer) {
   const workbook = XLSX.read(buffer, { type: "buffer" });
   const sheetName = workbook.SheetNames[0];
@@ -56,6 +98,15 @@ function normalizeROMasterImportRow(row = {}) {
     region: pick(row, ["region", "Region", "REGION"]),
     phase: pick(row, ["phase", "Phase", "PHASE"]),
     engineer: pick(row, ["engineer", "Engineer", "ENGINEER", "Engineer Name"]),
+    engineerContactNumber: pick(row, [
+      "engineerContactNumber",
+      "Engineer Contact Number",
+      "Contact Number",
+      "CONTACT NUMBER",
+      "Contact No",
+      "Mobile Number",
+      "Engineer Mobile",
+    ]),
     amcQtr: pick(row, ["amcQtr", "AMC Qtr", "AMC Quarter", "AMC_QTR", "amcQuarter"]),
     siteStatus: pick(row, ["siteStatus", "Site Status", "SITE_STATUS", "Status"]),
     connectivityType: pick(row, ["connectivityType", "Connectivity Type", "Connectivity", "SIM CARD Type"]),
@@ -74,7 +125,8 @@ router.get("/getROInfo/:roCode", async (req, res) => {
     );
     const data = result.value;
     if (!data) return res.status(404).json({ error: "RO Code not found" });
-    sendCachedJson(res, result);
+    const enriched = await attachEngineerContactNumbers(data);
+    sendCachedJson(res, { ...result, value: enriched });
   } catch (err) {
     res.status(500).send("Server error");
   }
@@ -91,6 +143,7 @@ router.post("/add", async (req, res) => {
       engineer,
       amcQtr,
       siteStatus,
+      engineerContactNumber,
     } = req.body;
 
     if (
@@ -113,6 +166,7 @@ router.post("/add", async (req, res) => {
       return res.status(400).json({ message: "RO Code already exists" });
     }
 
+    const contactMap = await getEngineerContactMap();
     const newEntry = new ROMaster({
       zone,
       roCode: roCode.toUpperCase(),
@@ -120,6 +174,9 @@ router.post("/add", async (req, res) => {
       region,
       phase,
       engineer,
+      engineerContactNumber:
+        contactMap.get(normalizeEngineerKey(engineer)) ||
+        String(engineerContactNumber || "").trim(),
       amcQtr,
       siteStatus,
     });
@@ -148,7 +205,8 @@ router.get("/list", async (req, res) => {
     const result = await getOrSetCache("romaster:list", RO_CACHE_TTL_MS, () =>
       ROMaster.find({}).sort({ roCode: 1 }).lean()
     );
-    sendCachedJson(res, result);
+    const enriched = await attachEngineerContactNumbers(result.value);
+    sendCachedJson(res, { ...result, value: enriched });
   } catch (err) {
     console.error("Error fetching ROMaster list:", err);
     res.status(500).json({ error: "Server error" });
@@ -161,10 +219,32 @@ router.get("/all", async (req, res) => {
     const result = await getOrSetCache("romaster:all", RO_CACHE_TTL_MS, () =>
       ROMaster.find({}).sort({ roCode: 1 }).lean()
     );
-    sendCachedJson(res, result);
+    const enriched = await attachEngineerContactNumbers(result.value);
+    sendCachedJson(res, { ...result, value: enriched });
   } catch (err) {
     console.error("Error fetching ROMaster all:", err);
     res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.get("/engineer-contacts", verifyToken, async (req, res) => {
+  try {
+    const users = await User.find(
+      { role: { $in: ["engineer", "Engineer", "user", "User"] } },
+      "engineerName username contactNumber"
+    ).sort({ engineerName: 1, username: 1 }).lean();
+
+    const contacts = users
+      .map((user) => ({
+        engineer: String(user.engineerName || user.username || "").trim(),
+        contactNumber: String(user.contactNumber || "").trim(),
+      }))
+      .filter((item) => item.engineer);
+
+    res.json({ success: true, contacts });
+  } catch (err) {
+    console.error("Error fetching engineer contacts:", err);
+    res.status(500).json({ success: false, error: "Failed to fetch engineer contacts" });
   }
 });
 
@@ -174,7 +254,7 @@ router.get("/get/:id", async (req, res) => {
     const id = req.params.id;
     const data = await ROMaster.findById(id);
     if (!data) return res.status(404).json({ error: "Record not found" });
-    res.json(data);
+    res.json(await attachEngineerContactNumbers(data));
   } catch (err) {
     console.error("Error fetching ROMaster by id:", err);
     res.status(500).json({ error: "Server error" });
@@ -195,6 +275,7 @@ router.put("/update/:id", async (req, res) => {
       "region",
       "phase",
       "engineer",
+      "engineerContactNumber",
       "amcQtr",
       "siteStatus",
       "connectivityType",
@@ -213,14 +294,22 @@ router.put("/update/:id", async (req, res) => {
       }
     });
 
+    const current = await ROMaster.findById(id).lean();
+    if (!current) return res.status(404).json({ error: "Record not found" });
+    const contactMap = await getEngineerContactMap();
+    const engineerForContact =
+      updateFields.engineer !== undefined ? updateFields.engineer : current.engineer;
+    updateFields.engineerContactNumber =
+      contactMap.get(normalizeEngineerKey(engineerForContact)) ||
+      String(updateFields.engineerContactNumber || current.engineerContactNumber || "").trim();
+
     const updated = await ROMaster.findByIdAndUpdate(
       id,
       { $set: updateFields },
       { new: true }
     );
-    if (!updated) return res.status(404).json({ error: "Record not found" });
     clearROCache();
-    res.json({ message: "Updated successfully", data: updated });
+    res.json({ message: "Updated successfully", data: await attachEngineerContactNumbers(updated) });
   } catch (err) {
     console.error("Error updating ROMaster:", err);
     res.status(500).json({ error: "Server error" });
@@ -271,6 +360,7 @@ router.post("/import", verifyToken, requireRole(["Admin"]), upload.single("file"
     const validRows = [];
     const errorRows = [];
     const seenCodes = new Set();
+    const contactMap = await getEngineerContactMap();
 
     rawRows.forEach((rawRow, index) => {
       const row = normalizeROMasterImportRow(rawRow);
@@ -283,6 +373,7 @@ router.post("/import", verifyToken, requireRole(["Admin"]), upload.single("file"
         return;
       }
       seenCodes.add(row.roCode);
+      row.engineerContactNumber = resolveEngineerContactNumber(row, contactMap);
       validRows.push(row);
     });
 
