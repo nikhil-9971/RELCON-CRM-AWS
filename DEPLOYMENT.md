@@ -193,6 +193,51 @@ sudo systemctl reload nginx
 
 ---
 
+## EC2 Daily Health Report Email
+
+The health report runs on the **EC2 host** (not in a Docker container), so it can report host CPU, RAM, disk, kernel, systemd, Docker, and network health.
+
+```bash
+# Run on EC2 from the repository directory
+chmod +x scripts/ec2-server-report.sh scripts/install-ec2-server-report.sh
+sudo scripts/install-ec2-server-report.sh
+
+# Configure the SMTP relay securely (replace values with the SMTP account)
+sudo nano /etc/msmtprc
+```
+
+`/etc/msmtprc` example:
+
+```conf
+defaults
+auth on
+tls on
+tls_starttls on
+logfile /var/log/msmtp.log
+
+account default
+host smtp.gmail.com
+port 587
+from your-smtp-email@example.com
+user your-smtp-email@example.com
+password YOUR_SMTP_APP_PASSWORD
+```
+
+```bash
+sudo chmod 600 /etc/msmtprc
+sudo nano /etc/relcon-server-report.env  # Set REPORT_TO / REPORT_FROM
+sudo /usr/local/sbin/relcon-server-report # Send one test email
+
+# Daily report at 08:00 IST (server timezone must be Asia/Kolkata)
+sudo crontab -e
+# Add:
+0 8 * * * /usr/local/sbin/relcon-server-report >> /var/log/relcon-server-report.log 2>&1
+```
+
+The report includes uptime, CPU/RAM/swap/disk, top processes, load average, Docker containers, failed services, recent kernel/OOM/disk errors, network summary, public IP, instance name, and timestamp.
+
+---
+
 ## Project Structure
 
 ```
