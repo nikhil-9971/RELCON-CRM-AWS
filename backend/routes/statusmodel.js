@@ -349,13 +349,20 @@ router.post("/saveStatus", async (req, res) => {
 router.get("/getMergedStatusRecords", verifyToken, async (req, res) => {
   try {
     const statusRecords = await Status.find().populate("planId");
-    const merged = await Promise.all(
-      statusRecords
-      .filter((record) => isAdminUser(req.user) || canAccessEngineerRecord(req.user, record.planId?.engineer))
-      .map(async (record) => {
+    const visibleRecords = statusRecords
+      .filter((record) => isAdminUser(req.user) || canAccessEngineerRecord(req.user, record.planId?.engineer));
+
+    // Fetch task links once. The old Task.exists() inside the map made one
+    // database query per status record and caused this report to time out.
+    const taskLinks = visibleRecords.length
+      ? await Task.find({ statusId: { $in: visibleRecords.map((record) => record._id) } }).select("statusId").lean()
+      : [];
+    const statusIdsWithTasks = new Set(taskLinks.map((task) => String(task.statusId)));
+
+    const merged = visibleRecords
+      .map((record) => {
         const plan = record.planId || {};
         const status = record || {};
-        const taskExists = await Task.exists({ statusId: status._id });
         return {
           _id: status._id?.toString() || "",
           planId: status.planId?._id?.toString() || "",
@@ -404,15 +411,14 @@ router.get("/getMergedStatusRecords", verifyToken, async (req, res) => {
           fccIP: status.fccIP || "",
           locationField: status.locationField || "",
           isVerified: status.isVerified || false,
-          taskGenerated: !!taskExists,
+          taskGenerated: statusIdsWithTasks.has(String(status._id)),
           verificationAssignedToUsername: status.verificationAssignedToUsername || "",
           verificationAssignedToName: status.verificationAssignedToName || "",
           verificationAssignedAt: status.verificationAssignedAt || null,
           oms03: status.oms03 || "No",
           ...editRequestView(status),
         };
-      })
-    );
+      });
     res.json(merged);
   } catch (err) {
     console.error("getMergedStatusRecords error:", err);

@@ -62,4 +62,7 @@ const taskSchema = new mongoose.Schema({
   },
 });
 
+// Used when status reports determine which rows have a generated task.
+taskSchema.index({ statusId: 1 });
+
 module.exports = mongoose.model("Task", taskSchema);

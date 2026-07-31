@@ -610,13 +610,24 @@
 
     async function fetchStatusRecords() {
       showLoader();
-      const res = await fetch(`${baseUrl}/getMergedStatusRecords`, { headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
-      allStatusData = data;
-      const user = JSON.parse(localStorage.getItem("user")) || {};
-      filteredData = applyTargetRecordFilter(visibleRowsForUser(data, user));
-      renderTable(filteredData);
-      hideLoader();
+      try {
+        const res = await fetch(`${baseUrl}/getMergedStatusRecords`, { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) {
+          const message = (await res.text()).replace(/<[^>]*>/g, " ").trim();
+          throw new Error(message || `Unable to load HPCL Status Records (${res.status}).`);
+        }
+        const data = await res.json();
+        allStatusData = Array.isArray(data) ? data : [];
+        const user = JSON.parse(localStorage.getItem("user")) || {};
+        filteredData = applyTargetRecordFilter(visibleRowsForUser(allStatusData, user));
+        renderTable(filteredData);
+      } catch (err) {
+        console.error("HPCL Status Records load failed:", err);
+        document.getElementById("tableBody").innerHTML = '<tr><td colspan="44" style="text-align:center;padding:28px;color:var(--sf-red);">' + (err.message || "Unable to load records.") + '</td></tr>';
+        showToast(err.message || "Unable to load HPCL Status Records.", "error");
+      } finally {
+        hideLoader();
+      }
     }
 
     function applySearch() {
