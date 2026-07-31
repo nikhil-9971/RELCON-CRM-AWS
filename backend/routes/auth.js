@@ -205,9 +205,10 @@ function parseProfilePhoto(value) {
 // 🔍 Logged-in user info
 router.get("/user", verifyToken, async (req, res) => {
   try {
+    const includeProfilePhoto = String(req.query.includeProfilePhoto || "") === "1";
     const user = await User.findOne(
       { username: req.user?.username },
-      "username role engineerName email contactNumber empId profilePhoto"
+      `username role engineerName email contactNumber empId${includeProfilePhoto ? " profilePhoto" : ""}`
     ).lean();
     if (!user) return res.json(req.user);
     res.json({
@@ -217,7 +218,9 @@ router.get("/user", verifyToken, async (req, res) => {
       email: user.email || "",
       contactNumber: user.contactNumber || "",
       empId: user.empId || "",
-      profilePhoto: user.profilePhoto || "",
+      // Profile photos can be 600+ KB after Base64 encoding. Most API callers
+      // only need identity data, so return it only when explicitly requested.
+      profilePhoto: includeProfilePhoto ? (user.profilePhoto || "") : "",
     });
   } catch (err) {
     res.json(req.user);

@@ -1471,7 +1471,7 @@ async function fetchUser(){
   if(!token) return logout();
   if(isTokenExpired(token)){localStorage.removeItem("token");return logout();}
   try{
-    const res=await fetch(`${baseUrl}/user`,{headers:{Authorization:`Bearer ${token}`}});
+    const res=await fetch(`${baseUrl}/user?includeProfilePhoto=1`,{headers:{Authorization:`Bearer ${token}`}});
     // Sirf 401/403 par logout karo — network error ya 5xx par nahi
     if(res.status===401||res.status===403){
       alert("Your session has expired. Please login again.");

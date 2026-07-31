@@ -392,7 +392,7 @@ tbody td{padding:8px 12px!important;font-size:11px!important;color:var(--txt2)!i
         </div>
         <div class="form-field">
           <label>RO Code</label>
-          <input id="fRoCode" class="sf-input" placeholder="Enter RO Code" oninput="handleRoCodeChange(this.value)"/>
+          <input id="fRoCode" class="sf-input" placeholder="Enter RO Code" oninput="queueRoInfoLookup(this.value)"/>
         </div>
         <div class="form-field">
           <label>RO Name</label>
@@ -552,6 +552,8 @@ let rowsPerPage = 20;
 let requestLineItems = [];
 let deleteTarget = { type:"", id:"" };
 let requestContextCache = { roCode:"", roName:"", phase:"", materialUsedIn:"" };
+const roInfoCache = new Map();
+let roInfoLookupTimer = null;
 
 const REQUEST_MODE_SITE = "RO Site Request";
 const REQUEST_MODE_INVENTORY = "Engineer Inventory";
@@ -703,27 +705,39 @@ function applyRequestMode(mode,{restoreCached=true}={}){
   updateRequestModeNote(normalizedMode);
 }
 function handleRequestModeChange(mode){applyRequestMode(mode)}
-function handleRoCodeChange(roCode){
+function queueRoInfoLookup(roCode){
+  clearTimeout(roInfoLookupTimer);
+  roInfoLookupTimer = setTimeout(() => handleRoCodeChange(roCode), 350);
+}
+async function handleRoCodeChange(roCode){
   if(isEngineerInventoryMode()) return;
-  const plan=latestPlanByRoCode(roCode);
-  if(!plan) return;
-  if(!document.getElementById("fRoName").value.trim()) document.getElementById("fRoName").value=plan.roName||"";
-  document.getElementById("fPhase").value=plan.phase||"";
-  if(!document.getElementById("fMaterialUsedIn").value.trim()) document.getElementById("fMaterialUsedIn").value=`${plan.roCode||""} - ${plan.roName||""} / ${plan.phase||""}`.trim()
+  const normalizedCode = String(roCode||"").trim().toUpperCase();
+  if(!normalizedCode) return;
+  try {
+    let ro = roInfoCache.get(normalizedCode);
+    if(!ro){
+      ro = await fetchJson(`${API}/romaster/getROInfo/${encodeURIComponent(normalizedCode)}`);
+      roInfoCache.set(normalizedCode, ro);
+    }
+    if(!document.getElementById("fRoName").value.trim()) document.getElementById("fRoName").value=ro.roName||"";
+    document.getElementById("fPhase").value=ro.phase||"";
+    if(!document.getElementById("fMaterialUsedIn").value.trim()) document.getElementById("fMaterialUsedIn").value=`${ro.roCode||normalizedCode} - ${ro.roName||""} / ${ro.phase||""}`.trim();
+  }catch(err){
+    console.warn("RO info lookup failed:", err.message);
+  }
 }
 
 async function loadData(){
   try{
     const me = await fetchJson(`${API}/user`);
     currentUser = me || {};
-    const [users, plans, requests, masters] = await Promise.all([
+    const [users, requests, masters] = await Promise.all([
       fetchJson(`${API}/getUsers`).catch(()=>[]),
-      fetchJson(`${API}/getDailyPlans`),
       fetchJson(`${API}/materialRequestBuilder`),
       fetchJson(`${API}/materialRequestMasterItems`)
     ]);
     engineerUsers = Array.isArray(users) ? users : [];
-    dailyPlanData = Array.isArray(plans) ? plans : [];
+    dailyPlanData = [];
     requestRows = (Array.isArray(requests) ? requests : []).map(normalizeRequestRow);
     masterRows = (Array.isArray(masters) ? masters : []).map(normalizeMasterItem);
     if(isAdmin() && !masterRows.length && DEFAULT_MASTER.length){
