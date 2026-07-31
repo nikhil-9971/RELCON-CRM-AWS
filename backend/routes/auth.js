@@ -51,39 +51,8 @@ router.post("/login", async (req, res) => {
 
   console.log("🔍 Login IP:", ipAddress);
 
-  // ✅ Fetch location
-  let location = "Unknown";
-
-  try {
-    const response = await fetch(
-      `https://ipinfo.io/${ipAddress}?token=be1a52b6573c44`
-    );
-    const data = await response.json();
-
-    console.log("📡 IPInfo response:", data); // Debug
-
-    // ✅ check for city, region, country
-    if (data && data.city && data.region && data.country) {
-      location = `${data.city}, ${data.region}, ${data.country}, ${data.org}`;
-    }
-  } catch (err) {
-    console.error("IP location fetch error:", err.message);
-  }
-
-  // ✅ Save login log
-  try {
-    await LoginLog.create({
-      engineerName: user.engineerName || user.name || "Unknown",
-      username: user.username,
-      role: normalizedRole,
-      ip: ipAddress,
-      location,
-    });
-  } catch (logErr) {
-    console.error("📛 LoginLog error:", logErr.message);
-  }
-
-  //res.json({ token });
+  // Return the login result immediately. IP geolocation is an external network
+  // call and must not make users wait for a successful sign-in.
   res.json({
     token,
     user: {
@@ -91,6 +60,38 @@ router.post("/login", async (req, res) => {
       role: normalizedRole,
       engineerName: user.engineerName,
     },
+  });
+
+  // Audit logging runs after the response. A slow/unavailable IPInfo service
+  // therefore cannot delay login or cause a gateway timeout.
+  setImmediate(async () => {
+    let location = "Unknown";
+    let timeout;
+    try {
+      const controller = new AbortController();
+      timeout = setTimeout(() => controller.abort(), 2500);
+      const response = await fetch(`https://ipinfo.io/${ipAddress}?token=be1a52b6573c44`, { signal: controller.signal });
+      const data = await response.json();
+      if (data?.city && data?.region && data?.country) {
+        location = `${data.city}, ${data.region}, ${data.country}, ${data.org || ""}`.trim();
+      }
+    } catch (err) {
+      console.warn("IP location lookup skipped:", err.message);
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    try {
+      await LoginLog.create({
+        engineerName: user.engineerName || user.name || "Unknown",
+        username: user.username,
+        role: normalizedRole,
+        ip: ipAddress,
+        location,
+      });
+    } catch (logErr) {
+      console.error("LoginLog error:", logErr.message);
+    }
   });
 });
 

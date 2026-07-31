@@ -17,6 +17,8 @@ const ROMasterSchema = new mongoose.Schema({
   lastAMCqtr: String,
 });
 
+ROMasterSchema.index({ roCode: 1 });
+
 module.exports =
   mongoose.models.ROMaster ||
   mongoose.model("ROMaster", ROMasterSchema, "romasters");

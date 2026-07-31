@@ -202,11 +202,10 @@ router.post("/add", async (req, res) => {
 /* List all RO Master records */
 router.get("/list", async (req, res) => {
   try {
-    const result = await getOrSetCache("romaster:list", RO_CACHE_TTL_MS, () =>
-      ROMaster.find({}).sort({ roCode: 1 }).lean()
+    const result = await getOrSetCache("romaster:list", RO_CACHE_TTL_MS, async () =>
+      attachEngineerContactNumbers(await ROMaster.find({}).sort({ roCode: 1 }).lean())
     );
-    const enriched = await attachEngineerContactNumbers(result.value);
-    sendCachedJson(res, { ...result, value: enriched });
+    sendCachedJson(res, result);
   } catch (err) {
     console.error("Error fetching ROMaster list:", err);
     res.status(500).json({ error: "Server error" });
@@ -216,11 +215,11 @@ router.get("/list", async (req, res) => {
 /* Alias for list (some frontends try /all) */
 router.get("/all", async (req, res) => {
   try {
-    const result = await getOrSetCache("romaster:all", RO_CACHE_TTL_MS, () =>
-      ROMaster.find({}).sort({ roCode: 1 }).lean()
+    // /all is an alias. Reuse /list's cache rather than querying Mongo again.
+    const result = await getOrSetCache("romaster:list", RO_CACHE_TTL_MS, async () =>
+      attachEngineerContactNumbers(await ROMaster.find({}).sort({ roCode: 1 }).lean())
     );
-    const enriched = await attachEngineerContactNumbers(result.value);
-    sendCachedJson(res, { ...result, value: enriched });
+    sendCachedJson(res, result);
   } catch (err) {
     console.error("Error fetching ROMaster all:", err);
     res.status(500).json({ error: "Server error" });
