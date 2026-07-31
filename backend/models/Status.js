@@ -98,6 +98,8 @@ const StatusSchema = new mongoose.Schema({
   },
 });
 
+StatusSchema.index({ planId: 1 });
+
 module.exports =
   mongoose.model.StatusSchema ||
   mongoose.model("Status", StatusSchema, "status");

@@ -299,39 +299,45 @@ router.get("/checkDuplicate", async (req, res) => {
 // ✅ Get All Plans with statusSaved flag
 router.get("/getDailyPlans", verifyToken, async (req, res) => {
   const { role, engineerName } = req.user;
+  const fromDate = normalizeDate(req.query.fromDate);
+  const toDate = normalizeDate(req.query.toDate);
 
   try {
-    const result = await getOrSetCache(makeCacheKey("daily-plans:list", { role, engineerName }), DAILY_PLAN_CACHE_TTL_MS, async () => {
-      const plans =
-        role === "admin"
-          ? await DailyPlan.find({}).lean()
-          : await DailyPlan.find({ engineer: engineerName }).lean();
+    if ((fromDate && !toDate) || (!fromDate && toDate) || (fromDate && toDate && fromDate > toDate)) {
+      return res.status(400).json({ error: "Provide a valid fromDate and toDate range." });
+    }
 
-      const statusList = await Status.find({}).lean();
-      const statusMap = new Map(
-        statusList.map((s) => [s.planId.toString(), true])
-      );
+    const result = await getOrSetCache(makeCacheKey("daily-plans:list", { role, engineerName, fromDate, toDate }), DAILY_PLAN_CACHE_TTL_MS, async () => {
+      const planQuery = role === "admin" ? {} : { engineer: engineerName };
+      if (fromDate && toDate) planQuery.date = { $gte: fromDate, $lte: toDate };
 
-      const jioStatusList = await JioBPStatus.find({}).lean();
-      const jioStatusMap = new Map(
-        jioStatusList.map((s) => [s.planId.toString(), true])
-      );
+      // Data View only needs status flags for the plans it is displaying.
+      // Loading all documents from all three status collections caused 504s.
+      const plans = await DailyPlan.find(planQuery).sort({ date: -1, createdAt: -1 }).lean();
+      const planIds = plans.map((plan) => plan._id);
+      if (!planIds.length) return [];
 
-      const bpclStatusList = await BPCLStatus.find({}).lean();
-      const bpclStatusMap = new Map(
-        bpclStatusList.map((s) => [s.planId.toString(), true])
-      );
+      const [statusList, jioStatusList, bpclStatusList] = await Promise.all([
+        Status.find({ planId: { $in: planIds } }).select("planId").lean(),
+        JioBPStatus.find({ planId: { $in: planIds } }).select("planId").lean(),
+        BPCLStatus.find({ planId: { $in: planIds } }).select("planId").lean(),
+      ]);
+
+      const statusMap = new Set(statusList.map((status) => String(status.planId)));
+      const jioStatusMap = new Set(jioStatusList.map((status) => String(status.planId)));
+      const bpclStatusMap = new Set(bpclStatusList.map((status) => String(status.planId)));
 
       return plans.map((plan) => ({
         ...plan,
-        statusSaved: statusMap.has(plan._id.toString()),
-        jioBPStatusSaved: jioStatusMap.has(plan._id.toString()),
-        bpclStatusSaved: bpclStatusMap.has(plan._id.toString()),
+        statusSaved: statusMap.has(String(plan._id)),
+        jioBPStatusSaved: jioStatusMap.has(String(plan._id)),
+        bpclStatusSaved: bpclStatusMap.has(String(plan._id)),
       }));
     });
     sendCachedJson(res, result);
   } catch (err) {
-    res.status(500).send("Server error");
+    console.error("Error in /getDailyPlans:", err);
+    res.status(500).json({ error: "Unable to load daily plans." });
   }
 });
 

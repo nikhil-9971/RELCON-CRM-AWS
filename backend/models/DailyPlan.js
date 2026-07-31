@@ -34,5 +34,9 @@ const PlanSchema = new mongoose.Schema({
   warning48SentAt: { type: Date, default: null },
 }, { timestamps: true });
 
+// Used by the Data View's date range and engineer queries.
+PlanSchema.index({ date: -1, createdAt: -1 });
+PlanSchema.index({ engineer: 1, date: -1, createdAt: -1 });
+
 module.exports =
   mongoose.models.DailyPlan || mongoose.model("DailyPlan", PlanSchema);

@@ -1491,7 +1491,7 @@ let fullData = [], filteredData = [], loggedInUser = null;
 let currentPage = 1;
 const rowsPerPage = 50;
 let currentSort = { key: null, direction: null };
-const AUTO_REFRESH_INTERVAL_MS = 10000;
+const AUTO_REFRESH_INTERVAL_MS = 60000;
 let autoRefreshTimer = null;
 let isRefreshingData = false;
 let lastDataSignature = "";
@@ -1569,7 +1569,15 @@ function getPlanDataSignature(data = []) {
 async function fetchAndStoreData(options = {}) {
   const { markAttendance = true } = options;
   const token = localStorage.getItem('token');
-  const res = await fetch(`${baseUrl}/getDailyPlans`, { headers: { Authorization: `Bearer ${token}` } });
+  const fromDate = document.getElementById('fromDate')?.value || '';
+  const toDate = document.getElementById('toDate')?.value || '';
+  const params = new URLSearchParams();
+  if (fromDate && toDate) { params.set('fromDate', fromDate); params.set('toDate', toDate); }
+  const res = await fetch(`${baseUrl}/getDailyPlans${params.size ? `?${params}` : ''}`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) {
+    const message = (await res.text()).replace(/<[^>]*>/g, ' ').trim();
+    throw new Error(message || `Unable to load plans (${res.status}).`);
+  }
   const data = await res.json();
   fullData = data;
   lastDataSignature = getPlanDataSignature(data);
@@ -1676,17 +1684,22 @@ function renderCurrentView({ preservePage = false } = {}) {
   populateTable(result);
 }
 
-function applyFilter(btnEl = null) {
+async function applyFilter(btnEl = null) {
   const fromDate = document.getElementById('fromDate').value;
   const toDate   = document.getElementById('toDate').value;
   if (fromDate && toDate && new Date(fromDate) > new Date(toDate)) { showToast('From Date cannot be after To Date.', 'error'); return; }
   if (btnEl) { btnEl.disabled = true; document.getElementById('applyTxt').textContent = 'Loading…'; }
   showLoader();
-  setTimeout(() => {
+  try {
+    await fetchAndStoreData({ markAttendance: false });
     renderCurrentView();
+  } catch (err) {
+    console.error('Data View filter load failed:', err);
+    showToast(err.message || 'Data could not be loaded. Please try again.', 'error');
+  } finally {
     if (btnEl) { btnEl.disabled = false; document.getElementById('applyTxt').textContent = 'Apply'; }
     hideLoader();
-  }, 400);
+  }
 }
 
 function applySearch() {
@@ -1699,7 +1712,11 @@ async function refreshDataViewInBackground() {
   isRefreshingData = true;
   try {
     const token = localStorage.getItem('token');
-    const res = await fetch(`${baseUrl}/getDailyPlans`, {
+    const fromDate = document.getElementById('fromDate')?.value || '';
+    const toDate = document.getElementById('toDate')?.value || '';
+    const params = new URLSearchParams();
+    if (fromDate && toDate) { params.set('fromDate', fromDate); params.set('toDate', toDate); }
+    const res = await fetch(`${baseUrl}/getDailyPlans${params.size ? `?${params}` : ''}`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
     });
@@ -2848,7 +2865,7 @@ window.onload = async () => {
     await fetchUserSession();
     await fetchAndStoreData();
     checkFilterValidity();
-    document.getElementById('applyBtn').click();
+    renderCurrentView();
     startDataViewAutoRefresh();
   } catch(err) { console.error(err); showToast('Failed to load data.', 'error'); }
 };
