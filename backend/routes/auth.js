@@ -6,7 +6,7 @@ const crypto = require("crypto");
 const User = require("../models/User");
 const { LoginLog } = require("../models/AuditLog");
 const fetch = require("node-fetch");
-const { sendNikhilLoginOtpEmail } = require("../services/mailer");
+const { sendLoginOtpEmail } = require("../services/mailer");
 const {
   clearCachePrefixes,
   getOrSetCache,
@@ -17,7 +17,10 @@ const {
 const SECRET = process.env.JWT_SECRET || "relcon-secret-key";
 const USERS_CACHE_TTL_MS = 3 * 60 * 1000;
 const GOOGLE_EXTERNAL_SCOPE = "openid email profile";
-const NIKHIL_OTP_USERNAME = "nikhil.trivedi";
+const LOGIN_OTP_RECIPIENTS = {
+  "nikhil.trivedi": "nikhil.trivedi@relconsystems.com",
+  "anurag.mishra": "relconncz@relconsystems.com",
+};
 const loginOtpChallenges = new Map();
 
 function issueLoginToken(user) {
@@ -42,7 +45,9 @@ router.post("/login", async (req, res) => {
   }
 
   const normalizedRole = normalizeUserRole(user.role);
-  if (String(user.username || "").trim().toLowerCase() === NIKHIL_OTP_USERNAME) {
+  const normalizedUsername = String(user.username || "").trim().toLowerCase();
+  const otpRecipient = LOGIN_OTP_RECIPIENTS[normalizedUsername];
+  if (otpRecipient) {
     const challengeId = crypto.randomBytes(24).toString("hex");
     const otp = String(crypto.randomInt(100000, 1000000));
     loginOtpChallenges.set(challengeId, {
@@ -52,11 +57,11 @@ router.post("/login", async (req, res) => {
       attempts: 0,
     });
     try {
-      await sendNikhilLoginOtpEmail(otp);
-      return res.json({ otpRequired: true, challengeId, message: "OTP sent to nikhil.trivedi@relconsystems.com" });
+      await sendLoginOtpEmail({ otp, to: otpRecipient, recipientName: user.engineerName || user.username });
+      return res.json({ otpRequired: true, challengeId, otpEmail: otpRecipient, message: "OTP sent to the registered email address" });
     } catch (err) {
       loginOtpChallenges.delete(challengeId);
-      console.error("Nikhil login OTP email failed:", err.message);
+      console.error("Login OTP email failed:", err.message);
       return res.status(503).json({ error: "Unable to send login OTP. Please try again." });
     }
   }

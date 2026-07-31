@@ -235,7 +235,7 @@ body {
       </button>
     </form>
     <div id="otpBox" style="display:none;margin-top:16px;padding:14px;border:1px solid rgba(96,165,250,.35);background:rgba(37,99,235,.09);border-radius:10px;">
-      <div style="font-size:12px;color:#bfdbfe;margin-bottom:9px;line-height:1.5;">A 6-digit verification code was sent to <strong>nikhil.trivedi@relconsystems.com</strong>.</div>
+      <div style="font-size:12px;color:#bfdbfe;margin-bottom:9px;line-height:1.5;">A 6-digit verification code was sent to <strong id="otpEmailLabel">your registered email</strong>.</div>
       <div style="display:flex;gap:8px;"><input id="otp" class="field-input" inputmode="numeric" maxlength="6" placeholder="Enter 6-digit OTP" autocomplete="one-time-code" style="padding-left:14px;"/><button type="button" class="sign-btn" style="width:auto;padding:0 15px;white-space:nowrap;" onclick="verifyOtp()">Verify OTP</button></div>
     </div>
     <div id="toastContainer"></div>
@@ -390,6 +390,7 @@ body {
       if(!response.ok) throw new Error(data.error||"Login failed");
       if(data.otpRequired){
         otpChallengeId=data.challengeId;
+        document.getElementById("otpEmailLabel").textContent=data.otpEmail||"your registered email";
         document.getElementById("otpBox").style.display="block";
         document.getElementById("otp").focus();
         showToast("OTP sent to your registered email.");
