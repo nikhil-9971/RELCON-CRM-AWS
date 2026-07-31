@@ -5,6 +5,7 @@ const path = require("path");
 const XLSX = require("xlsx");
 const ROMaster = require("../models/ROMaster");
 const DailyPlan = require("../models/DailyPlan");
+const Status = require("../models/Status");
 const User = require("../models/User");
 const { verifyToken, requireRole } = require("./auth");
 const {
@@ -15,6 +16,7 @@ const {
 } = require("../utils/cache");
 
 const RO_CACHE_TTL_MS = 5 * 60 * 1000;
+const RO_LATEST_DETAILS_CACHE_TTL_MS = 60 * 1000;
 
 function clearROCache() {
   clearCacheByPrefix("romaster:");
@@ -223,6 +225,62 @@ router.get("/all", async (req, res) => {
   } catch (err) {
     console.error("Error fetching ROMaster all:", err);
     res.status(500).json({ error: "Server error" });
+  }
+});
+
+// Lightweight data source for the RO Master table's live connectivity columns.
+// The previous UI called getMergedStatusRecords, which populates every status
+// record and checks tasks one-by-one; that regularly timed out on larger data.
+router.get("/latest-site-details", verifyToken, async (req, res) => {
+  try {
+    const isAdmin = String(req.user?.role || "").toLowerCase() === "admin";
+    const engineerName = String(req.user?.engineerName || "").trim();
+    const result = await getOrSetCache(
+      makeCacheKey("romaster:latest-site-details", { isAdmin, engineerName }),
+      RO_LATEST_DETAILS_CACHE_TTL_MS,
+      async () => {
+        const pipeline = [
+          {
+            $lookup: {
+              from: DailyPlan.collection.name,
+              localField: "planId",
+              foreignField: "_id",
+              as: "plan",
+            },
+          },
+          { $unwind: "$plan" },
+          ...(isAdmin ? [] : [{ $match: { "plan.engineer": engineerName } }]),
+          {
+            $project: {
+              _id: 0,
+              roCode: "$plan.roCode",
+              date: "$plan.date",
+              createdAt: 1,
+              connectivityType: 1,
+              bosIP: 1,
+              fccIP: 1,
+            },
+          },
+          { $sort: { date: -1, createdAt: -1 } },
+          {
+            $group: {
+              _id: { $toUpper: "$roCode" },
+              roCode: { $first: "$roCode" },
+              date: { $first: "$date" },
+              connectivityType: { $first: "$connectivityType" },
+              bosIP: { $first: "$bosIP" },
+              fccIP: { $first: "$fccIP" },
+            },
+          },
+          { $project: { _id: 0, roCode: 1, date: 1, connectivityType: 1, bosIP: 1, fccIP: 1 } },
+        ];
+        return Status.aggregate(pipeline);
+      }
+    );
+    sendCachedJson(res, result);
+  } catch (err) {
+    console.error("Error fetching latest RO site details:", err);
+    res.status(500).json({ error: "Unable to fetch latest RO site details." });
   }
 });
 

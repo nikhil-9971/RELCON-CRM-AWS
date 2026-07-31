@@ -742,44 +742,16 @@
     async function fetchLatestStatusMap() {
       const map = {};
 
-      // Run both API calls in parallel
-      const [statusRes, plansRes] = await Promise.allSettled([
-        fetchWithTimeout(baseUrl + "/getMergedStatusRecords", { headers: { Authorization: `Bearer ${token}` } }),
-        fetchWithTimeout(baseUrl + "/getDailyPlans",          { headers: { Authorization: `Bearer ${token}` } })
-      ]);
-
-      if (statusRes.status === "fulfilled" && statusRes.value.ok) {
-        try {
-          const statuses = await statusRes.value.json();
-          statuses.forEach(s => {
-            const rc = (s.roCode || "").toString().trim().toUpperCase();
-            const d  = s.date ? new Date(s.date) : new Date(0);
-            const ts = isNaN(d.getTime()) ? 0 : d.getTime();
-            const existing = map[rc];
-            if (!existing || (existing._ts || 0) < ts) map[rc] = Object.assign({}, s, { _ts: ts });
-          });
-        } catch(e) { console.warn('fetchLatestStatusMap (status) parse failed:', e.message); }
-      } else {
-        console.warn('fetchLatestStatusMap (status) failed');
-      }
-
-      if (plansRes.status === "fulfilled" && plansRes.value.ok) {
-        try {
-          const plans = await plansRes.value.json();
-          const list  = Array.isArray(plans) ? plans : (Array.isArray(plans.data) ? plans.data : []);
-          list.forEach(p => {
-            const rc = (p.roCode || "").toString().trim().toUpperCase();
-            if (!rc) return;
-            const d  = p.date ? new Date(p.date) : new Date(0);
-            const ts = isNaN(d.getTime()) ? 0 : d.getTime();
-            if (ts === 0) return;
-            const existing = map[rc];
-            if (!existing || (existing._ts || 0) < ts) map[rc] = { date: p.date, _ts: ts, _source: "dailyplan" };
-          });
-        } catch(e) { console.warn('fetchLatestStatusMap (plans) parse failed:', e.message); }
-      } else {
-        console.warn('fetchLatestStatusMap (plans) failed');
-      }
+      const response = await fetchWithTimeout(baseUrl + "/romaster/latest-site-details", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error(`Latest site details failed: ${response.status}`);
+      const details = await response.json();
+      (Array.isArray(details) ? details : []).forEach((detail) => {
+        const roCode = String(detail.roCode || "").trim().toUpperCase();
+        if (!roCode) return;
+        map[roCode] = detail;
+      });
 
       return map;
     }
