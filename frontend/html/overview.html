@@ -831,7 +831,9 @@ async function loadOverview() {
     document.getElementById("kpiUnverifiedBreakdown").textContent = `HPCL: ${unverifiedHpcl.length} • RBML: ${unverifiedJio.length} • BPCL: ${unverifiedBpcl.length}`;
     document.getElementById("kpiOpenIncidents").textContent = openIncidents.length;
 
-    await loadAMCVisitStatus();
+    // AMC table is independent of the dashboard KPIs. Load it in the
+    // background so a slow AMC aggregation cannot hold up the overview.
+    loadAMCVisitStatus(currentUser).catch((error) => console.error("AMC background load failed:", error));
 
     const key = (rc, d) => `${String(rc || "").trim().toUpperCase()}-${String(d || "").slice(0, 10)}`;
     const todayDateObj = new Date();
@@ -1485,7 +1487,7 @@ function exportEngineerMonthlyCSV() {
   } catch (e) { console.error("export csv error", e); }
 }
 
-async function loadAMCVisitStatus() {
+async function loadAMCVisitStatus(currentUser = null) {
   try {
     const startDate = document.getElementById("amcStartDate").value;
     const endDate = document.getElementById("amcEndDate").value;
@@ -1495,8 +1497,10 @@ async function loadAMCVisitStatus() {
     const response = await fetch(`${baseUrl}/romaster/amcCountStatus?startDate=${startDate}&endDate=${endDate}`, { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, credentials: "include" });
     if (!response.ok) { console.error("Error fetching AMC status:", response.status); return; }
     const result = await response.json();
-    const userRes = await fetch(`${baseUrl}/user`, { headers: { Authorization: `Bearer ${token}` } });
-    const currentUser = await userRes.json();
+    if (!currentUser) {
+      const userRes = await fetch(`${baseUrl}/user`, { headers: { Authorization: `Bearer ${token}` } });
+      currentUser = await userRes.json();
+    }
     window.__amcDetailedData = result.detailedData || [];
     renderAMCVisitStatus(result.data, currentUser);
   } catch (error) { console.error("Error loading AMC visit status:", error); }

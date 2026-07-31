@@ -240,41 +240,37 @@ router.get("/latest-site-details", verifyToken, async (req, res) => {
       RO_LATEST_DETAILS_CACHE_TTL_MS,
       async () => {
         const pipeline = [
+          { $match: { roCode: { $nin: ["", null] } } },
+          ...(isAdmin ? [] : [{ $match: { engineer: engineerName } }]),
+          // DailyPlan is the same source used by Data View. Grouping here
+          // preserves the latest visit date for HPCL, RBML and BPCL sites.
+          { $sort: { date: -1, createdAt: -1 } },
+          { $group: { _id: { $toUpper: "$roCode" }, plan: { $first: "$$ROOT" } } },
           {
             $lookup: {
-              from: DailyPlan.collection.name,
-              localField: "planId",
-              foreignField: "_id",
-              as: "plan",
+              from: Status.collection.name,
+              let: { planId: "$plan._id" },
+              pipeline: [
+                { $match: { $expr: { $eq: ["$planId", "$$planId"] } } },
+                { $project: { _id: 0, connectivityType: 1, bosIP: 1, fccIP: 1 } },
+                { $limit: 1 },
+              ],
+              as: "status",
             },
           },
-          { $unwind: "$plan" },
-          ...(isAdmin ? [] : [{ $match: { "plan.engineer": engineerName } }]),
+          { $unwind: { path: "$status", preserveNullAndEmptyArrays: true } },
           {
             $project: {
               _id: 0,
               roCode: "$plan.roCode",
               date: "$plan.date",
-              createdAt: 1,
-              connectivityType: 1,
-              bosIP: 1,
-              fccIP: 1,
+              connectivityType: "$status.connectivityType",
+              bosIP: "$status.bosIP",
+              fccIP: "$status.fccIP",
             },
           },
-          { $sort: { date: -1, createdAt: -1 } },
-          {
-            $group: {
-              _id: { $toUpper: "$roCode" },
-              roCode: { $first: "$roCode" },
-              date: { $first: "$date" },
-              connectivityType: { $first: "$connectivityType" },
-              bosIP: { $first: "$bosIP" },
-              fccIP: { $first: "$fccIP" },
-            },
-          },
-          { $project: { _id: 0, roCode: 1, date: 1, connectivityType: 1, bosIP: 1, fccIP: 1 } },
         ];
-        return Status.aggregate(pipeline);
+        return DailyPlan.aggregate(pipeline);
       }
     );
     sendCachedJson(res, result);
