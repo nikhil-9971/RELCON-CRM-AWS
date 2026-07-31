@@ -59,7 +59,9 @@ services:
       - "8080:80"
     environment:
       - TZ=Asia/Kolkata
-      - BACKEND_URL=https://${EC2_HOST}/api
+      # Use nginx's same-origin API proxy. An absolute EC2 URL can send browser
+      # requests to a host that does not serve the current frontend/API routes.
+      - BACKEND_URL=/api
     networks:
       - relcon_net
 
