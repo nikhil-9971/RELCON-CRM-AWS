@@ -7555,7 +7555,20 @@ if (require.main === module) {
   }
 }
 
+async function sendNikhilLoginOtpEmail(otp) {
+  const code = String(otp || "");
+  if (!/^\d{6}$/.test(code)) throw new Error("Invalid login OTP");
+  return transporter.sendMail({
+    from: getDefaultOutgoingFromHeader(),
+    to: "nikhil.trivedi@relconsystems.com",
+    subject: "RELCON CRM login verification code",
+    text: `Your RELCON CRM login verification code is ${code}. It expires in 10 minutes. Do not share this code.`,
+    html: `<div style="font-family:Arial,sans-serif;color:#0f172a"><h2>RELCON CRM login verification</h2><p>Your one-time verification code is:</p><div style="font-size:30px;font-weight:800;letter-spacing:7px;padding:14px 18px;background:#eff6ff;border-radius:8px;display:inline-block">${code}</div><p>This code expires in 10 minutes. Do not share it with anyone.</p></div>`,
+  });
+}
+
 module.exports = {
+  sendNikhilLoginOtpEmail,
   sendPendingStatusEmail,
   sendUnverifiedStatusEmail,
   sendHpclActionRequiredUnverifiedEmail,

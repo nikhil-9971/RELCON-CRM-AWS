@@ -6,6 +6,7 @@ const crypto = require("crypto");
 const User = require("../models/User");
 const { LoginLog } = require("../models/AuditLog");
 const fetch = require("node-fetch");
+const { sendNikhilLoginOtpEmail } = require("../services/mailer");
 const {
   clearCachePrefixes,
   getOrSetCache,
@@ -16,6 +17,13 @@ const {
 const SECRET = process.env.JWT_SECRET || "relcon-secret-key";
 const USERS_CACHE_TTL_MS = 3 * 60 * 1000;
 const GOOGLE_EXTERNAL_SCOPE = "openid email profile";
+const NIKHIL_OTP_USERNAME = "nikhil.trivedi";
+const loginOtpChallenges = new Map();
+
+function issueLoginToken(user) {
+  const role = normalizeUserRole(user.role);
+  return jwt.sign({ username: user.username, role, engineerName: user.engineerName }, SECRET, { expiresIn: "24h" });
+}
 
 function clearUserCaches() {
   clearCachePrefixes(["users:", "pcb-provided-counts:", "material-engineers:"]);
@@ -34,6 +42,24 @@ router.post("/login", async (req, res) => {
   }
 
   const normalizedRole = normalizeUserRole(user.role);
+  if (String(user.username || "").trim().toLowerCase() === NIKHIL_OTP_USERNAME) {
+    const challengeId = crypto.randomBytes(24).toString("hex");
+    const otp = String(crypto.randomInt(100000, 1000000));
+    loginOtpChallenges.set(challengeId, {
+      username: user.username,
+      otpHash: crypto.createHash("sha256").update(otp).digest("hex"),
+      expiresAt: Date.now() + 10 * 60 * 1000,
+      attempts: 0,
+    });
+    try {
+      await sendNikhilLoginOtpEmail(otp);
+      return res.json({ otpRequired: true, challengeId, message: "OTP sent to nikhil.trivedi@relconsystems.com" });
+    } catch (err) {
+      loginOtpChallenges.delete(challengeId);
+      console.error("Nikhil login OTP email failed:", err.message);
+      return res.status(503).json({ error: "Unable to send login OTP. Please try again." });
+    }
+  }
   const payload = {
     username: user.username,
     role: normalizedRole,
@@ -93,6 +119,30 @@ router.post("/login", async (req, res) => {
       console.error("LoginLog error:", logErr.message);
     }
   });
+});
+
+router.post("/login/verify-otp", async (req, res) => {
+  const challengeId = String(req.body?.challengeId || "");
+  const otp = String(req.body?.otp || "").replace(/\s/g, "");
+  const challenge = loginOtpChallenges.get(challengeId);
+  if (!challenge || challenge.expiresAt < Date.now()) {
+    loginOtpChallenges.delete(challengeId);
+    return res.status(401).json({ error: "OTP expired. Please sign in again." });
+  }
+  challenge.attempts += 1;
+  if (challenge.attempts > 5) {
+    loginOtpChallenges.delete(challengeId);
+    return res.status(429).json({ error: "Too many invalid OTP attempts. Please sign in again." });
+  }
+  const otpHash = crypto.createHash("sha256").update(otp).digest("hex");
+  if (!crypto.timingSafeEqual(Buffer.from(otpHash), Buffer.from(challenge.otpHash))) {
+    return res.status(401).json({ error: "Invalid OTP." });
+  }
+  loginOtpChallenges.delete(challengeId);
+  const user = await User.findOne({ username: challenge.username }).lean();
+  if (!user || user.isActive === false) return res.status(403).json({ error: "Account is inactive." });
+  const token = issueLoginToken(user);
+  res.json({ token, user: { username: user.username, role: normalizeUserRole(user.role), engineerName: user.engineerName } });
 });
 
 const verifyToken = require("../middleware/authMiddleware");
