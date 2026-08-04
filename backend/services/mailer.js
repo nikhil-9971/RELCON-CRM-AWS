@@ -7561,9 +7561,9 @@ async function sendLoginOtpEmail({ otp, to, recipientName = "User" } = {}) {
   const recipient = String(to || "").trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) throw new Error("Invalid OTP recipient email");
   return transporter.sendMail({
-    from: getDefaultOutgoingFromHeader(),
+    from: buildFromHeader("no-reply", "nikhilrelconbackup@gmail.com"),
     to: recipient,
-    subject: "RELCON CRM login verification code",
+    subject: "OTP - RELCON CRM Login",
     text: `Your RELCON CRM login verification code is ${code}. It expires in 10 minutes. Do not share this code.`,
     html: `<div style="font-family:Arial,sans-serif;color:#0f172a"><h2>RELCON CRM login verification</h2><p>Hello ${String(recipientName).replace(/[<>&"']/g, "")}, your one-time verification code is:</p><div style="font-size:30px;font-weight:800;letter-spacing:7px;padding:14px 18px;background:#eff6ff;border-radius:8px;display:inline-block">${code}</div><p>This code expires in 10 minutes. Do not share it with anyone.</p></div>`,
   });
