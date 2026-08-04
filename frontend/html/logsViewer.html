@@ -429,11 +429,14 @@ tbody td:first-child{font-weight:600;color:var(--txt)!important;}
               <th onclick="llSort('logoutTime')">Logout Time <span id="ll-sort-logoutTime"></span></th>
               <th>Session Duration</th>
               <th onclick="llSort('ipAddress')">IP Address <span id="ll-sort-ipAddress"></span></th>
-              <th>Device / Browser</th>
+              <th onclick="llSort('location')">IP Location <span id="ll-sort-location"></span></th>
+              <th onclick="llSort('latitude')">Latitude <span id="ll-sort-latitude"></span></th>
+              <th onclick="llSort('longitude')">Longitude <span id="ll-sort-longitude"></span></th>
+              <th>User Agent / Device</th>
             </tr>
           </thead>
           <tbody id="ll-tbody">
-            <tr><td colspan="8"><div class="sf-loader"><div class="sf-spinner"></div> Loading login logs…</div></td></tr>
+            <tr><td colspan="11"><div class="sf-loader"><div class="sf-spinner"></div> Loading login logs…</div></td></tr>
           </tbody>
         </table>
       </div>
@@ -927,9 +930,10 @@ async function reloadAll(){
       fetch(`${BASE}/audit/auditTrails`, {headers:hdrs}),
       fetch(`${BASE}/audit/emailLogs`,   {headers:hdrs}),
     ]);
-    loginData = Array.isArray(await llRes.json()) ? (await llRes.clone().json()) : [];
-    auditData = Array.isArray(await atRes.json()) ? (await atRes.clone().json()) : [];
-    emailData = Array.isArray(await elRes.json()) ? (await elRes.clone().json()) : [];
+    const [loginJson, auditJson, emailJson] = await Promise.all([llRes.json(), atRes.json(), elRes.json()]);
+    loginData = Array.isArray(loginJson) ? loginJson : [];
+    auditData = Array.isArray(auditJson) ? auditJson : [];
+    emailData = Array.isArray(emailJson) ? emailJson : [];
   }catch(e){
     // retry individually
     try{ loginData = await fetch(`${BASE}/audit/loginLogs`,{headers:hdrs}).then(r=>r.json()).catch(()=>[]); }catch{}
@@ -978,10 +982,11 @@ function getLoginFiltered(){
     if(role && (r.role||'').toLowerCase()!==role) return false;
     if(from){ const d=String(r.loginTime||'').slice(0,10); if(d&&d<from)return false; }
     if(to){   const d=String(r.loginTime||'').slice(0,10); if(d&&d>to)return false; }
-    if(q){ const hay=`${r.engineerName||''} ${r.username||''} ${r.role||''} ${r.ipAddress||''}`.toLowerCase(); if(!hay.includes(q))return false; }
+    if(q){ const hay=`${r.engineerName||''} ${r.username||''} ${r.role||''} ${r.ipAddress||r.ip||''} ${r.location||''} ${r.latitude??''} ${r.longitude??''} ${r.userAgent||''}`.toLowerCase(); if(!hay.includes(q))return false; }
     return true;
   }).sort((a,b)=>{
-    const av=String(a[llSortKey]||''), bv=String(b[llSortKey]||'');
+    const av=String(llSortKey==='ipAddress'?(a.ipAddress||a.ip||''):(a[llSortKey]||''));
+    const bv=String(llSortKey==='ipAddress'?(b.ipAddress||b.ip||''):(b[llSortKey]||''));
     return av.localeCompare(bv)*llSortDir;
   });
 }
@@ -1008,12 +1013,14 @@ function renderLoginTable(){
   document.getElementById('ll-pag-info').textContent=`Showing ${total===0?0:(llPage-1)*rpp+1}–${Math.min(total,llPage*rpp)} of ${total}`;
 
   const tbody=document.getElementById('ll-tbody');
-  if(!page.length){ tbody.innerHTML=`<tr><td colspan="8" style="text-align:center;padding:28px;color:var(--txt3);">No records found.</td></tr>`; renderPaginator('ll',total,pages,rpp); return; }
+  if(!page.length){ tbody.innerHTML=`<tr><td colspan="11" style="text-align:center;padding:28px;color:var(--txt3);">No records found.</td></tr>`; renderPaginator('ll',total,pages,rpp); return; }
 
   tbody.innerHTML=page.map(r=>{
     const roleClass = (r.role||'').toLowerCase()==='admin'?'badge-purple':'badge-blue';
     const dur = sessionDur(r.loginTime, r.logoutTime);
-    const agent = r.userAgent ? (r.userAgent.includes('Mobile')?'📱 Mobile':'💻 Desktop') : '—';
+    const agent = r.userAgent ? `${r.userAgent.includes('Mobile')?'📱 Mobile':'💻 Desktop'} — ${r.userAgent}` : '—';
+    const latitude = Number.isFinite(Number(r.latitude)) ? Number(r.latitude).toFixed(6) : '—';
+    const longitude = Number.isFinite(Number(r.longitude)) ? Number(r.longitude).toFixed(6) : '—';
     return `<tr>
       <td style="font-weight:700;">${esc(r.engineerName||r.username||'—')}</td>
       <td style="color:var(--txt3);">${esc(r.username||'—')}</td>
@@ -1021,8 +1028,11 @@ function renderLoginTable(){
       <td style="color:var(--sf-blue);">${fmtDT(r.loginTime)}</td>
       <td style="color:var(--txt3);">${r.logoutTime?fmtDT(r.logoutTime):'<span class="sf-badge badge-green">Active</span>'}</td>
       <td style="font-family:monospace;font-size:10px;">${dur}</td>
-      <td style="color:var(--txt3);font-family:monospace;font-size:10px;">${esc(r.ipAddress||'—')}</td>
-      <td style="color:var(--txt3);">${agent}</td>
+      <td style="color:var(--txt3);font-family:monospace;font-size:10px;">${esc(r.ipAddress||r.ip||'—')}</td>
+      <td style="color:var(--txt3);max-width:180px;">${esc(r.location||'—')}</td>
+      <td style="font-family:monospace;font-size:10px;">${latitude}</td>
+      <td style="font-family:monospace;font-size:10px;">${longitude}</td>
+      <td style="color:var(--txt3);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(r.userAgent||'')}">${esc(agent)}</td>
     </tr>`;
   }).join('');
 
@@ -1320,16 +1330,17 @@ function exportLoginExcel(){
   const rows=getLoginFiltered().map(r=>({
     'Engineer Name':r.engineerName||'','Username':r.username||'','Role':r.role||'',
     'Login Time':fmtDT(r.loginTime),'Logout Time':r.logoutTime?fmtDT(r.logoutTime):'Active',
-    'Session Duration':sessionDur(r.loginTime,r.logoutTime),'IP Address':r.ipAddress||'',
-    'User Agent':r.userAgent||'',
+    'Session Duration':sessionDur(r.loginTime,r.logoutTime),'IP Address':r.ipAddress||r.ip||'',
+    'IP Location':r.location||'','Latitude':r.latitude??'','Longitude':r.longitude??'',
+    'Location Accuracy (m)':r.locationAccuracy??'','User Agent':r.userAgent||'',
   }));
   toExcel(rows,'Login Logs',`login_logs_${today()}.xlsx`);
 }
 
 function exportLoginCSV(){
   const rows=getLoginFiltered();
-  const h=['engineerName','username','role','loginTime','logoutTime','ipAddress'];
-  const csv=[h.join(','),...rows.map(r=>h.map(k=>JSON.stringify(r[k]??'')).join(','))].join('\n');
+  const h=['engineerName','username','role','loginTime','logoutTime','ipAddress','location','latitude','longitude','locationAccuracy','userAgent'];
+  const csv=[h.join(','),...rows.map(r=>h.map(k=>JSON.stringify(k==='ipAddress'?(r.ipAddress||r.ip||''):(r[k]??''))).join(','))].join('\n');
   const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);a.download=`login_logs_page_${today()}.csv`;a.click();
 }
 

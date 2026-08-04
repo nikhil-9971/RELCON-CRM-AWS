@@ -23,6 +23,49 @@ const LOGIN_OTP_RECIPIENTS = {
 };
 const loginOtpChallenges = new Map();
 
+function getLoginLocation(body = {}) {
+  const latitude = Number(body.latitude);
+  const longitude = Number(body.longitude);
+  const locationAccuracy = Number(body.locationAccuracy);
+  return {
+    latitude: Number.isFinite(latitude) && latitude >= -90 && latitude <= 90 ? latitude : undefined,
+    longitude: Number.isFinite(longitude) && longitude >= -180 && longitude <= 180 ? longitude : undefined,
+    locationAccuracy: Number.isFinite(locationAccuracy) && locationAccuracy >= 0 ? locationAccuracy : undefined,
+  };
+}
+
+async function recordLogin({ user, role, req, locationData }) {
+  const ipAddress =
+    req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
+    req.connection?.remoteAddress ||
+    req.socket?.remoteAddress ||
+    "UNKNOWN";
+  let location = "Unknown";
+  let timeout;
+  try {
+    const controller = new AbortController();
+    timeout = setTimeout(() => controller.abort(), 2500);
+    const response = await fetch(`https://ipinfo.io/${ipAddress}?token=be1a52b6573c44`, { signal: controller.signal });
+    const data = await response.json();
+    if (data?.city && data?.region && data?.country) {
+      location = `${data.city}, ${data.region}, ${data.country}, ${data.org || ""}`.trim();
+    }
+  } catch (err) {
+    console.warn("IP location lookup skipped:", err.message);
+  } finally {
+    clearTimeout(timeout);
+  }
+  await LoginLog.create({
+    engineerName: user.engineerName || user.name || "Unknown",
+    username: user.username,
+    role,
+    ip: ipAddress,
+    location,
+    userAgent: String(req.get("user-agent") || "").slice(0, 500),
+    ...locationData,
+  });
+}
+
 function issueLoginToken(user) {
   const role = normalizeUserRole(user.role);
   return jwt.sign({ username: user.username, role, engineerName: user.engineerName }, SECRET, { expiresIn: "24h" });
@@ -52,6 +95,7 @@ router.post("/login", async (req, res) => {
     const otp = String(crypto.randomInt(100000, 1000000));
     loginOtpChallenges.set(challengeId, {
       username: user.username,
+      locationData: getLoginLocation(req.body),
       otpHash: crypto.createHash("sha256").update(otp).digest("hex"),
       expiresAt: Date.now() + 10 * 60 * 1000,
       attempts: 0,
@@ -73,15 +117,6 @@ router.post("/login", async (req, res) => {
 
   const token = jwt.sign(payload, SECRET, { expiresIn: "24h" });
 
-  // ✅ Get real IP
-  const ipAddress =
-    req.headers["x-forwarded-for"]?.split(",")[0] ||
-    req.connection?.remoteAddress ||
-    req.socket?.remoteAddress ||
-    "UNKNOWN";
-
-  console.log("🔍 Login IP:", ipAddress);
-
   // Return the login result immediately. IP geolocation is an external network
   // call and must not make users wait for a successful sign-in.
   res.json({
@@ -96,30 +131,8 @@ router.post("/login", async (req, res) => {
   // Audit logging runs after the response. A slow/unavailable IPInfo service
   // therefore cannot delay login or cause a gateway timeout.
   setImmediate(async () => {
-    let location = "Unknown";
-    let timeout;
     try {
-      const controller = new AbortController();
-      timeout = setTimeout(() => controller.abort(), 2500);
-      const response = await fetch(`https://ipinfo.io/${ipAddress}?token=be1a52b6573c44`, { signal: controller.signal });
-      const data = await response.json();
-      if (data?.city && data?.region && data?.country) {
-        location = `${data.city}, ${data.region}, ${data.country}, ${data.org || ""}`.trim();
-      }
-    } catch (err) {
-      console.warn("IP location lookup skipped:", err.message);
-    } finally {
-      clearTimeout(timeout);
-    }
-
-    try {
-      await LoginLog.create({
-        engineerName: user.engineerName || user.name || "Unknown",
-        username: user.username,
-        role: normalizedRole,
-        ip: ipAddress,
-        location,
-      });
+      await recordLogin({ user, role: normalizedRole, req, locationData: getLoginLocation(req.body) });
     } catch (logErr) {
       console.error("LoginLog error:", logErr.message);
     }
@@ -148,6 +161,13 @@ router.post("/login/verify-otp", async (req, res) => {
   if (!user || user.isActive === false) return res.status(403).json({ error: "Account is inactive." });
   const token = issueLoginToken(user);
   res.json({ token, user: { username: user.username, role: normalizeUserRole(user.role), engineerName: user.engineerName } });
+  setImmediate(async () => {
+    try {
+      await recordLogin({ user, role: normalizeUserRole(user.role), req, locationData: challenge.locationData || {} });
+    } catch (logErr) {
+      console.error("LoginLog error:", logErr.message);
+    }
+  });
 });
 
 const verifyToken = require("../middleware/authMiddleware");

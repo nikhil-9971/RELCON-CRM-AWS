@@ -315,6 +315,20 @@ body {
   let lockoutTimer = null;
   let otpChallengeId = "";
 
+  function getLoginLocation(){
+    return new Promise(resolve=>{
+      if(!navigator.geolocation || !window.isSecureContext) return resolve({});
+      let settled=false;
+      const done=value=>{if(!settled){settled=true;resolve(value);}};
+      const timer=setTimeout(()=>done({}),5000);
+      navigator.geolocation.getCurrentPosition(
+        p=>{clearTimeout(timer);done({latitude:p.coords.latitude,longitude:p.coords.longitude,locationAccuracy:p.coords.accuracy});},
+        ()=>{clearTimeout(timer);done({});},
+        {enableHighAccuracy:true,timeout:4500,maximumAge:60000}
+      );
+    });
+  }
+
   function completeLogin(data){
     localStorage.setItem("token",data.token);
     const user=decodeJWT(data.token);
@@ -385,7 +399,8 @@ body {
 
     const username=document.getElementById("username").value,password=document.getElementById("password").value;
     try{
-      const response=await fetch(`${baseUrl}/login`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username,password})});
+      const location=await getLoginLocation();
+      const response=await fetch(`${baseUrl}/login`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username,password,...location})});
       const data=await response.json();
       if(!response.ok) throw new Error(data.error||"Login failed");
       if(data.otpRequired){

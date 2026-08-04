@@ -5,8 +5,13 @@ const loginLogSchema = new mongoose.Schema({
   username: String,
   role: String,
   loginTime: { type: Date, default: Date.now },
+  logoutTime: Date,
   ip: String,
-  location: String, // ✅ Add this
+  location: String,
+  userAgent: String,
+  latitude: Number,
+  longitude: Number,
+  locationAccuracy: Number,
 });
 
 const auditTrailSchema = new mongoose.Schema({
