@@ -40,6 +40,7 @@ const { httpLogger }           = require('./utils/logger');       // ✅ NEW
 const { setupWebsocket, broadcastToAll } = require("./chat_ws");
 const { startCronJobs }        = require("./routes/corn");
 const attendance = require("./routes/attendanceRoutes");
+const databaseExplorerRoutes = require("./routes/databaseExplorer");
 
 // ✅ STEP 1: app create (IMPORTANT)
 const app = express();
@@ -120,6 +121,7 @@ app.use("/api", engineerActivityRoutes);
 app.use("/api/materialManagement", materialManagement);
 app.use("/api/invoiceManagement", invoiceManagement);
 app.use("/api/attendance", attendance);
+app.use("/api/db-explorer", databaseExplorerRoutes);
 
 
 

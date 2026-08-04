@@ -134,6 +134,7 @@
     .sf-btn-danger   { background: var(--sf-red); color: #fff; }
     .sf-btn-danger:hover   { background: #920210; }
     .sf-btn-sm { height: 26px; padding: 0 10px; font-size: 11px; }
+    .sf-json-editor { width:100%; min-height:380px; resize:vertical; padding:12px; border:1px solid var(--border); border-radius:var(--r); font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--txt); background:#0f172a; color:#e2e8f0; }
 
     /* Icon action buttons in table */
     .sf-action-btn { font-size: 11px; font-weight: 500; height: 24px; padding: 0 8px; border-radius: var(--r-sm); cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 4px; transition: all 0.12s; font-family: 'Inter', sans-serif; }
@@ -612,7 +613,7 @@ const S = {
        : (window.BACKEND_URL || '/api'),
   token: '', connected: false, active: null,
   data: [], filtered: [], page: 1, perPage: 25,
-  sk: null, sd: 1, counts: {}, editRec: null
+  sk: null, sd: 1, counts: {}, editRec: null, genericFilter: {}
 };
 
 function tok() { return localStorage.getItem('token') || ''; }
@@ -640,6 +641,18 @@ async function doConnect() {
   document.getElementById('sbFoot').style.display = 'block';
   try { document.getElementById('sfHost').textContent = new URL(S.url).hostname; } catch(e) {}
   document.getElementById('cc').textContent = COLLS.length;
+  try {
+    const dbRes = await callApi('/db-explorer/collections');
+    if (dbRes.ok) {
+      const { collections = [] } = await dbRes.json();
+      collections.forEach(({ name, count, readOnly }) => {
+        const id = `raw-${name}`;
+        if (!COLLS.some(c => c.id === id)) COLLS.push({ id, icon: 'fa-database', label: name, generic: true, collectionName: name, readOnly });
+        S.counts[id] = count;
+      });
+      document.getElementById('cc').textContent = COLLS.length;
+    }
+  } catch(e) { console.warn('Advanced DB Explorer unavailable:', e); }
   renderSB();
   toast('Connected! Loading collections…', 's');
   loadColl(COLLS[0]);
@@ -694,20 +707,24 @@ async function loadColl(coll) {
     <div class="sf-lr"><div class="sf-spinner"></div> Loading ${esc(coll.label)}…</div>`;
 
   try {
-    const res = await callApi(coll.get);
+    const genericPath = coll.generic
+      ? `/db-explorer/collections/${encodeURIComponent(coll.collectionName)}/documents?limit=250&filter=${encodeURIComponent(JSON.stringify(S.genericFilter || {}))}`
+      : coll.get;
+    const res = await callApi(genericPath);
     if (res.status === 401 || res.status === 403) throw new Error('Unauthorized — Please login again and reload.');
     if (res.status === 404) throw new Error(`Endpoint "${coll.get}" not found on backend.`);
     if (!res.ok) throw new Error(`Server error ${res.status}: ${res.statusText}`);
 
     const json = await res.json();
-    if (Array.isArray(json)) S.data = json;
+    if (coll.generic && Array.isArray(json.documents)) S.data = json.documents;
+    else if (Array.isArray(json)) S.data = json;
     else if (json.data && Array.isArray(json.data)) S.data = json.data;
     else if (json.records && Array.isArray(json.records)) S.data = json.records;
     else if (json.result && Array.isArray(json.result)) S.data = json.result;
     else S.data = [json];
 
     S.filtered = [...S.data];
-    S.counts[coll.id] = S.data.length;
+    S.counts[coll.id] = coll.generic ? (json.total ?? S.data.length) : S.data.length;
     const tot = Object.values(S.counts).reduce((a, b) => a + (b || 0), 0);
     document.getElementById('sfDocs').textContent = tot;
     renderSB();
@@ -764,6 +781,11 @@ function renderTbl() {
       <button class="sf-btn sf-btn-neutral" onclick="loadColl(S.active)" title="Refresh">
         <i class="fa-solid fa-rotate-right"></i>
       </button>
+      ${c.generic ? `
+        <button class="sf-btn sf-btn-neutral" onclick="setRawFilter()"><i class="fa-solid fa-filter"></i> Query</button>
+        ${!c.readOnly ? `<button class="sf-btn sf-btn-success" onclick="newRawDocument()"><i class="fa-solid fa-plus"></i> New Document</button>
+        <button class="sf-btn sf-btn-danger" onclick="bulkRawAction()"><i class="fa-solid fa-layer-group"></i> Bulk</button>` : `<span class="sf-record-count">Read only</span>`}
+      ` : ''}
       ${c.id === 'romaster' ? `
         <input id="roImportFile" type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="importROMasterFile(event)"/>
         <button class="sf-btn sf-btn-success" onclick="document.getElementById('roImportFile').click()">
@@ -806,8 +828,8 @@ function rowH(row, cols) {
     <td style="white-space:nowrap;">
       <div style="display:flex;gap:4px;align-items:center;">
         <button class="sf-action-btn sf-ab-view" onclick="viewR('${enc}')"><i class="fa-solid fa-eye"></i></button>
-        ${S.active.put ? `<button class="sf-action-btn sf-ab-edit" onclick="editR('${enc}')"><i class="fa-solid fa-pen"></i></button>` : ''}
-        ${S.active.del && id ? `<button class="sf-action-btn sf-ab-delete" onclick="delR('${id}')"><i class="fa-solid fa-trash"></i></button>` : ''}
+        ${(S.active.put || (S.active.generic && !S.active.readOnly)) ? `<button class="sf-action-btn sf-ab-edit" onclick="editR('${enc}')"><i class="fa-solid fa-pen"></i></button>` : ''}
+        ${(S.active.del || (S.active.generic && !S.active.readOnly)) && id ? `<button class="sf-action-btn sf-ab-delete" onclick="delR('${id}')"><i class="fa-solid fa-trash"></i></button>` : ''}
       </div>
     </td>
   </tr>`;
@@ -875,7 +897,7 @@ function viewR(enc) {
   document.getElementById('mt').innerHTML = `<i class="fa-solid fa-file-lines" style="color:var(--sf-blue);"></i> Document`;
   document.getElementById('mb').innerHTML = `<pre class="sf-json-viewer">${hl(JSON.stringify(r, null, 2))}</pre>`;
   document.getElementById('mf').innerHTML = `
-    ${S.active.put ? `<button class="sf-btn sf-btn-neutral" onclick="closeM();editR('${enc}')"><i class="fa-solid fa-pen"></i> Edit</button>` : ''}
+    ${(S.active.put || (S.active.generic && !S.active.readOnly)) ? `<button class="sf-btn sf-btn-neutral" onclick="closeM();editR('${enc}')"><i class="fa-solid fa-pen"></i> Edit</button>` : ''}
     <button class="sf-btn sf-btn-neutral" onclick="closeM()"><i class="fa-solid fa-xmark"></i> Close</button>`;
   openM();
 }
@@ -883,6 +905,11 @@ function viewR(enc) {
 function editR(enc) {
   const r = dec(enc); S.editRec = r;
   document.getElementById('mt').innerHTML = `<i class="fa-solid fa-pen-to-square" style="color:var(--sf-blue);"></i> Edit Record`;
+  if (S.active.generic) {
+    document.getElementById('mb').innerHTML = `<label class="sf-modal-label">Full JSON document</label><textarea id="rawDocument" class="sf-json-editor">${esc(JSON.stringify(r, null, 2))}</textarea>`;
+    document.getElementById('mf').innerHTML = `<button class="sf-btn sf-btn-neutral" onclick="closeM()">Cancel</button><button class="sf-btn sf-btn-success" onclick="saveRawDocument()"><i class="fa-solid fa-floppy-disk"></i> Replace Document</button>`;
+    openM(); return;
+  }
   const ro = ['_id', '__v', 'createdAt', 'updatedAt'];
   document.getElementById('mb').innerHTML = `<div class="sf-modal-grid">` +
     Object.entries(r).map(([k, v]) => {
@@ -925,7 +952,8 @@ async function saveE() {
 async function delR(id) {
   if (!confirm('Delete this record? This action cannot be undone.')) return;
   try {
-    const r = await callApi(`${S.active.del}/${id}`, { method: 'DELETE' });
+    const path = S.active.generic ? `/db-explorer/collections/${encodeURIComponent(S.active.collectionName)}/documents/${id}` : `${S.active.del}/${id}`;
+    const r = await callApi(path, { method: 'DELETE' });
     if (r.ok) { toast('Record deleted successfully', 's'); loadColl(S.active); }
     else throw new Error(await r.text());
   } catch(e) { toast(e.message, 'e'); }
@@ -1001,6 +1029,67 @@ function downloadROMasterDemo() {
   a.remove();
   URL.revokeObjectURL(a.href);
   toast("RO Master demo CSV downloaded", "s");
+}
+
+function parseRawJson(value, label = 'JSON') {
+  try { return JSON.parse(value); }
+  catch (e) { throw new Error(`${label} is not valid JSON: ${e.message}`); }
+}
+
+function setRawFilter() {
+  const current = JSON.stringify(S.genericFilter || {}, null, 2);
+  const raw = prompt('Mongo filter JSON. Example: {"region":"North"}. Leave blank for all documents.', current);
+  if (raw === null) return;
+  try {
+    S.genericFilter = raw.trim() ? parseRawJson(raw, 'Filter') : {};
+    loadColl(S.active);
+  } catch (e) { toast(e.message, 'e'); }
+}
+
+function newRawDocument() {
+  S.editRec = null;
+  document.getElementById('mt').innerHTML = `<i class="fa-solid fa-plus" style="color:var(--sf-green);"></i> New ${esc(S.active.label)} Document`;
+  document.getElementById('mb').innerHTML = `<label class="sf-modal-label">JSON document</label><textarea id="rawDocument" class="sf-json-editor">{
+
+}</textarea>`;
+  document.getElementById('mf').innerHTML = `<button class="sf-btn sf-btn-neutral" onclick="closeM()">Cancel</button><button class="sf-btn sf-btn-success" onclick="saveRawDocument()"><i class="fa-solid fa-floppy-disk"></i> Create Document</button>`;
+  openM();
+}
+
+async function saveRawDocument() {
+  try {
+    const document = parseRawJson(document.getElementById('rawDocument').value, 'Document');
+    if (!document || Array.isArray(document) || typeof document !== 'object') throw new Error('Document must be a JSON object');
+    const base = `/db-explorer/collections/${encodeURIComponent(S.active.collectionName)}/documents`;
+    const path = S.editRec?._id ? `${base}/${S.editRec._id}` : base;
+    const res = await callApi(path, { method: S.editRec?._id ? 'PUT' : 'POST', body: JSON.stringify({ document }) });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.error || 'Save failed');
+    toast(S.editRec?._id ? 'Document replaced successfully' : 'Document created successfully', 's');
+    closeM(); loadColl(S.active);
+  } catch (e) { toast(e.message, 'e'); }
+}
+
+async function bulkRawAction() {
+  const mode = prompt('Enter UPDATE to update matching documents, or DELETE to delete matching documents.');
+  if (!mode) return;
+  const collection = S.active.collectionName;
+  try {
+    if (mode.trim().toUpperCase() === 'UPDATE') {
+      const rawSet = prompt('JSON fields to set for every document matching the current query. Example: {"region":"North"}');
+      if (rawSet === null) return;
+      const set = parseRawJson(rawSet, 'Update');
+      const res = await callApi(`/db-explorer/collections/${encodeURIComponent(collection)}/bulk-update`, { method:'POST', body:JSON.stringify({ filter:S.genericFilter || {}, set }) });
+      const json = await res.json().catch(() => ({})); if (!res.ok) throw new Error(json.error || 'Bulk update failed');
+      toast(`${json.modifiedCount || 0} documents updated`, 's'); loadColl(S.active);
+    } else if (mode.trim().toUpperCase() === 'DELETE') {
+      const confirmation = prompt(`This deletes every document matching the current query. Type DELETE ${collection} to confirm.`);
+      if (confirmation !== `DELETE ${collection}`) return toast('Bulk delete cancelled', 'i');
+      const res = await callApi(`/db-explorer/collections/${encodeURIComponent(collection)}/bulk-delete`, { method:'POST', body:JSON.stringify({ filter:S.genericFilter || {}, confirmation }) });
+      const json = await res.json().catch(() => ({})); if (!res.ok) throw new Error(json.error || 'Bulk delete failed');
+      toast(`${json.deletedCount || 0} documents deleted`, 's'); loadColl(S.active);
+    } else toast('Enter UPDATE or DELETE', 'e');
+  } catch (e) { toast(e.message, 'e'); }
 }
 
 function dec(enc) { return JSON.parse(decodeURIComponent(escape(atob(enc)))); }
