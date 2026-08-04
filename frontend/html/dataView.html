@@ -1410,58 +1410,59 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
       <div class="dv-brand-bar"><img src="./assets/BPCL.png" alt="BPCL" onerror="this.style.display='none'"/></div>
       <input type="hidden" id="bpclPlanId"/>
       <form id="bpclForm" class="dv-form-grid">
-        <div class="dv-field"><label class="dv-label">Class-1 WITH GSM Device Count</label>
-          <input type="number" id="class1Count" min="0" class="dv-modal-input" onchange="renderClass1Devices()"/></div>
+        <div class="dv-field dv-form-full"><div style="padding:9px 11px;border:1px solid #fde68a;background:#fffbeb;border-radius:7px;color:#92400e;font-size:12px;"><i class="fa-solid fa-circle-info"></i> All BPCL status fields are mandatory. Use <strong>0</strong> or <strong>N/A</strong> where applicable.</div></div>
+        <div class="dv-field"><label class="dv-label">Class-1 WITH GSM Device Count *</label>
+          <input type="number" id="class1Count" min="0" required class="dv-modal-input" onchange="renderClass1Devices()"/></div>
         <div class="dv-field dv-form-full"><label class="dv-label">Class-1 (WITH GSM) Device Details</label>
           <div id="class1DevicesContainer" class="space-y-1"></div></div>
-        <div class="dv-field"><label class="dv-label">Class-1 WITHOUT GSM Device Count</label>
-          <input type="number" id="class1Countwithoutsim" min="0" class="dv-modal-input" onchange="renderClass1WithoutSimDevices()"/></div>
+        <div class="dv-field"><label class="dv-label">Class-1 WITHOUT GSM Device Count *</label>
+          <input type="number" id="class1Countwithoutsim" min="0" required class="dv-modal-input" onchange="renderClass1WithoutSimDevices()"/></div>
         <div class="dv-field dv-form-full"><label class="dv-label">Class-1 (Without GSM) Device Details</label>
           <div id="class1DevicesContainerwithoutsim"></div></div>
-        <div class="dv-field"><label class="dv-label">Class-2 Device Installed Count</label>
-          <input type="number" id="class2Count" min="0" class="dv-modal-input" onchange="renderClass2Devices()"/></div>
+        <div class="dv-field"><label class="dv-label">Class-2 Device Installed Count *</label>
+          <input type="number" id="class2Count" min="0" required class="dv-modal-input" onchange="renderClass2Devices()"/></div>
         <div class="dv-field dv-form-full"><label class="dv-label">Class-2 Device Details</label>
           <div id="class2DevicesContainer"></div></div>
-        <div class="dv-field"><label class="dv-label">RELCON ATG Provided?</label>
-          <select id="relconAtgProvided" class="dv-modal-select" onchange="handleRelconATGChange()"><option value="">Select</option><option value="YES">Yes</option><option value="NO">No</option></select></div>
+        <div class="dv-field"><label class="dv-label">RELCON ATG Provided? *</label>
+          <select id="relconAtgProvided" required class="dv-modal-select" onchange="handleRelconATGChange()"><option value="">Select</option><option value="YES">Yes</option><option value="NO">No</option></select></div>
         <div class="dv-field hidden" id="relconAtgCountDiv"><label class="dv-label">No. of ATG Provided by RELCON</label>
           <input type="number" min="0" id="relconAtgCount" class="dv-modal-input" onchange="renderRelconATGFields()"/></div>
         <div class="dv-field dv-form-full hidden" id="relconAtgContainer"><label class="dv-label">RELCON ATG Details</label></div>
-        <div class="dv-field"><label class="dv-label">JIO SIM Number</label>
-          <input type="text" id="bpclJioSim" class="dv-modal-input" placeholder="JIO SIM Number"/></div>
-        <div class="dv-field"><label class="dv-label">Airtel SIM Number</label>
-          <input type="text" id="bpclAirtelSim" class="dv-modal-input" placeholder="Airtel SIM Number"/></div>
+        <div class="dv-field"><label class="dv-label">JIO SIM Number *</label>
+          <input type="text" id="bpclJioSim" required class="dv-modal-input" placeholder="JIO SIM Number or N/A"/></div>
+        <div class="dv-field"><label class="dv-label">Airtel SIM Number *</label>
+          <input type="text" id="bpclAirtelSim" required class="dv-modal-input" placeholder="Airtel SIM Number or N/A"/></div>
         <div class="dv-section-hd dv-form-full">MPD Status</div>
-        <div class="dv-field"><label class="dv-label">No. of MPD Offline</label>
-          <select id="bpclMpdOffline" class="dv-modal-select"><option value="">Select</option><option>ALL OK</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>ALL MPD ISSUE</option></select></div>
-        <div class="dv-field"><label class="dv-label">MPD Offline Dependency</label>
-          <select id="bpclMpdDependency" class="dv-modal-select"><option value="">Select</option><option>BPCL</option><option>RELCON</option><option>BOTH</option></select></div>
+        <div class="dv-field"><label class="dv-label">No. of MPD Offline *</label>
+          <select id="bpclMpdOffline" required class="dv-modal-select"><option value="">Select</option><option>ALL OK</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>ALL MPD ISSUE</option></select></div>
+        <div class="dv-field"><label class="dv-label">MPD Offline Dependency *</label>
+          <select id="bpclMpdDependency" required class="dv-modal-select"><option value="">Select</option><option>N/A</option><option>BPCL</option><option>RELCON</option><option>BOTH</option></select></div>
         <div id="bpclMpdOfflineDetailRows" class="dv-field dv-form-full hidden"></div>
-        <div class="dv-field dv-form-full"><label class="dv-label">Reason for MPD Offline</label>
+        <div class="dv-field dv-form-full"><label class="dv-label">Reason for MPD Offline *</label>
           <textarea id="bpclMpdRemark" class="dv-modal-textarea" placeholder="Auto-populated from MPD offline details" readonly></textarea></div>
         <div class="dv-section-hd dv-form-full">Tank Status</div>
-        <div class="dv-field"><label class="dv-label">No. of Tank Offline</label>
-          <select id="bpclTankOffline" class="dv-modal-select"><option value="">Select</option><option>ALL OK</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>ALL Tank Offline</option></select></div>
-        <div class="dv-field"><label class="dv-label">Tank Offline Dependency</label>
-          <select id="bpclTankDependency" class="dv-modal-select"><option value="">Select</option><option>BPCL</option><option>RELCON</option><option>BOTH</option></select></div>
+        <div class="dv-field"><label class="dv-label">No. of Tank Offline *</label>
+          <select id="bpclTankOffline" required class="dv-modal-select"><option value="">Select</option><option>ALL OK</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>ALL Tank Offline</option></select></div>
+        <div class="dv-field"><label class="dv-label">Tank Offline Dependency *</label>
+          <select id="bpclTankDependency" required class="dv-modal-select"><option value="">Select</option><option>N/A</option><option>BPCL</option><option>RELCON</option><option>BOTH</option></select></div>
         <div id="bpclTankOfflineDetailRows" class="dv-field dv-form-full hidden"></div>
-        <div class="dv-field dv-form-full"><label class="dv-label">Reason for Tank Offline</label>
+        <div class="dv-field dv-form-full"><label class="dv-label">Reason for Tank Offline *</label>
           <textarea id="bpclTankRemark" class="dv-modal-textarea" placeholder="Auto-populated from tank offline details" readonly></textarea></div>
-        <div class="dv-field"><label class="dv-label">Any Material Used?</label>
-          <select id="bpclSpareUsed" class="dv-modal-select" onchange="applyBPCLMaterialAutoFieldLogic()"><option value="">Select</option><option>Yes</option><option>No</option></select></div>
+        <div class="dv-field"><label class="dv-label">Any Material Used? *</label>
+          <select id="bpclSpareUsed" required class="dv-modal-select" onchange="applyBPCLMaterialAutoFieldLogic()"><option value="">Select</option><option>Yes</option><option>No</option></select></div>
         <div id="bpclDynamicMaterialFields" class="dv-field dv-form-full hidden"><div class="dv-form-grid">
           <div class="dv-field"><label class="dv-label">No. of Material Used</label><input id="bpclUsedCount" class="dv-modal-input" type="number" min="1" step="1" inputmode="numeric"/></div>
           <div class="dv-field"><label class="dv-label">No. of Faulty Material Recover</label><input id="bpclFaultyCount" class="dv-modal-input" type="number" min="1" step="1" inputmode="numeric"/></div>
         </div><div id="bpclUsedRows"></div><div id="bpclFaultyRows"></div></div>
-        <div class="dv-field dv-form-full"><label class="dv-label">Used Material Name & Code</label>
-          <input type="text" id="bpclActiveSpare" class="dv-modal-input" placeholder="1-DEVICE NAME (CODE)"/></div>
-        <div class="dv-field dv-form-full"><label class="dv-label">Faulty Material Name & Code</label>
-          <input type="text" id="bpclFaultySpare" class="dv-modal-input" placeholder="1-DEVICE NAME (CODE)"/></div>
-        <div class="dv-field"><label class="dv-label">Any Material Requirement?</label>
-          <select id="bpclSpareRequirment" class="dv-modal-select" onchange="applyBPCLMaterialAutoFieldLogic()"><option value="">Select</option><option>Yes</option><option>No</option></select></div>
+        <div class="dv-field dv-form-full"><label class="dv-label">Used Material Name & Code *</label>
+          <input type="text" id="bpclActiveSpare" required class="dv-modal-input" placeholder="1-DEVICE NAME (CODE) or N/A"/></div>
+        <div class="dv-field dv-form-full"><label class="dv-label">Faulty Material Name & Code *</label>
+          <input type="text" id="bpclFaultySpare" required class="dv-modal-input" placeholder="1-DEVICE NAME (CODE) or N/A"/></div>
+        <div class="dv-field"><label class="dv-label">Any Material Requirement? *</label>
+          <select id="bpclSpareRequirment" required class="dv-modal-select" onchange="applyBPCLMaterialAutoFieldLogic()"><option value="">Select</option><option>Yes</option><option>No</option></select></div>
         <div id="bpclRequirementPicker" class="dv-field dv-form-full hidden"><label class="dv-label">Required Materials</label><input id="bpclRequiredPicker" class="dv-modal-input" list="materialNameOptions" autocomplete="off" placeholder="Search a material and press Enter to add"/><div id="bpclRequiredChips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div></div>
-        <div class="dv-field dv-form-full"><label class="dv-label">Material Requirement Name</label>
-          <input type="text" id="bpclSpareRequirmentname" class="dv-modal-input" placeholder="Share material name required"/></div>
+        <div class="dv-field dv-form-full"><label class="dv-label">Material Requirement Name *</label>
+          <input type="text" id="bpclSpareRequirmentname" required class="dv-modal-input" placeholder="Share material name required or N/A"/></div>
       </form>
     </div>
     <div class="dv-modal-footer">
@@ -2186,8 +2187,8 @@ function validateDynamicSpareForm(form) { if(document.getElementById(form.toggle
 const offlineFieldConfig = {
   du: { countId: 'duOffline', containerId: 'duOfflineDetailRows', summaryId: 'duRemark', prefix: 'DU', allValue: 'ALL DU ISSUE', unitLabel: 'DU' },
   tank: { countId: 'tankOffline', containerId: 'tankOfflineDetailRows', summaryId: 'tankRemark', prefix: 'T', allValue: 'ALL Tank Offline', unitLabel: 'Tank', products: ['MS', 'HSD', 'POWER', 'TURBOJET', 'CNG'] },
-  bpclMpd: { countId: 'bpclMpdOffline', containerId: 'bpclMpdOfflineDetailRows', summaryId: 'bpclMpdRemark', prefix: 'MPD', allValue: 'ALL MPD ISSUE', unitLabel: 'MPD' },
-  bpclTank: { countId: 'bpclTankOffline', containerId: 'bpclTankOfflineDetailRows', summaryId: 'bpclTankRemark', prefix: 'T', allValue: 'ALL Tank Offline', unitLabel: 'Tank', products: ['EBMS', 'HSD', 'SPEED', 'TURBOJET', 'CNG'] },
+  bpclMpd: { countId: 'bpclMpdOffline', dependencyId: 'bpclMpdDependency', containerId: 'bpclMpdOfflineDetailRows', summaryId: 'bpclMpdRemark', prefix: 'MPD', allValue: 'ALL MPD ISSUE', unitLabel: 'MPD' },
+  bpclTank: { countId: 'bpclTankOffline', dependencyId: 'bpclTankDependency', containerId: 'bpclTankOfflineDetailRows', summaryId: 'bpclTankRemark', prefix: 'T', allValue: 'ALL Tank Offline', unitLabel: 'Tank', products: ['EBMS', 'HSD', 'SPEED', 'TURBOJET', 'CNG'] },
 };
 function offlineCount(config) {
   const selected = document.getElementById(config.countId).value;
@@ -2474,17 +2475,17 @@ async function saveJioBPStatus() {
 }
 
 /* ── BPCL ── */
-function renderClass1Devices() { const c=Number(document.getElementById('class1Count').value), con=document.getElementById('class1DevicesContainer'); con.innerHTML=''; for(let i=0;i<c;i++) { const inp=document.createElement('input'); inp.type='text'; inp.className='class1Device dv-modal-input'; inp.style.marginBottom='6px'; inp.placeholder=`Class-1 With GSM Device ${i+1}`; con.appendChild(inp); } }
-function renderClass1WithoutSimDevices() { const c=Number(document.getElementById('class1Countwithoutsim').value), con=document.getElementById('class1DevicesContainerwithoutsim'); con.innerHTML=''; for(let i=0;i<c;i++) { const inp=document.createElement('input'); inp.type='text'; inp.className='class1WithoutSimDevice dv-modal-input'; inp.style.marginBottom='6px'; inp.placeholder=`Class-1 Without GSM Device ${i+1}`; con.appendChild(inp); } }
-function renderClass2Devices() { const c=Number(document.getElementById('class2Count').value), con=document.getElementById('class2DevicesContainer'); con.innerHTML=''; for(let i=0;i<c;i++) { const inp=document.createElement('input'); inp.type='text'; inp.className='class2Device dv-modal-input'; inp.style.marginBottom='6px'; inp.placeholder=`Class-2 Device ${i+1}`; con.appendChild(inp); } }
+function renderClass1Devices() { const c=Number(document.getElementById('class1Count').value), con=document.getElementById('class1DevicesContainer'); con.innerHTML=''; for(let i=0;i<c;i++) { const inp=document.createElement('input'); inp.type='text'; inp.required=true; inp.className='class1Device dv-modal-input'; inp.style.marginBottom='6px'; inp.placeholder=`Class-1 With GSM Device ${i+1}`; con.appendChild(inp); } }
+function renderClass1WithoutSimDevices() { const c=Number(document.getElementById('class1Countwithoutsim').value), con=document.getElementById('class1DevicesContainerwithoutsim'); con.innerHTML=''; for(let i=0;i<c;i++) { const inp=document.createElement('input'); inp.type='text'; inp.required=true; inp.className='class1WithoutSimDevice dv-modal-input'; inp.style.marginBottom='6px'; inp.placeholder=`Class-1 Without GSM Device ${i+1}`; con.appendChild(inp); } }
+function renderClass2Devices() { const c=Number(document.getElementById('class2Count').value), con=document.getElementById('class2DevicesContainer'); con.innerHTML=''; for(let i=0;i<c;i++) { const inp=document.createElement('input'); inp.type='text'; inp.required=true; inp.className='class2Device dv-modal-input'; inp.style.marginBottom='6px'; inp.placeholder=`Class-2 Device ${i+1}`; con.appendChild(inp); } }
 function handleRelconATGChange() { const v=document.getElementById('relconAtgProvided').value; const cd=document.getElementById('relconAtgCountDiv'), rc=document.getElementById('relconAtgContainer'); if(v==='YES') { cd.classList.remove('hidden'); rc.classList.remove('hidden'); } else { cd.classList.add('hidden'); rc.classList.add('hidden'); document.getElementById('relconAtgCount').value=''; rc.innerHTML=''; } }
-function renderRelconATGFields() { const c=parseInt(document.getElementById('relconAtgCount').value||0), con=document.getElementById('relconAtgContainer'); con.innerHTML='<label class="dv-label">RELCON ATG Details</label>'; for(let i=1;i<=c;i++) { const inp=document.createElement('input'); inp.type='text'; inp.placeholder=`ATG ${i} - SBEM-EBMS-24523`; inp.className='dv-modal-input'; inp.style.marginBottom='6px'; inp.id=`relconAtg_${i}`; con.appendChild(inp); } }
+function renderRelconATGFields() { const c=parseInt(document.getElementById('relconAtgCount').value||0), con=document.getElementById('relconAtgContainer'); con.innerHTML='<label class="dv-label">RELCON ATG Details *</label>'; for(let i=1;i<=c;i++) { const inp=document.createElement('input'); inp.type='text'; inp.required=true; inp.placeholder=`ATG ${i} - SBEM-EBMS-24523`; inp.className='dv-modal-input'; inp.style.marginBottom='6px'; inp.id=`relconAtg_${i}`; con.appendChild(inp); } }
 function applyBPCLMaterialAutoFieldLogic() {
   applyDynamicSpareFormLogic(dynamicSpareForms.bpcl);
 }
 function applyBPCLOfflineLogic(type) {
   const config = offlineFieldConfig[type], selected = document.getElementById(config.countId).value, summary = document.getElementById(config.summaryId), container = document.getElementById(config.containerId);
-  if (selected === 'ALL OK') { summary.value = `ALL ${config.unitLabel.toUpperCase()} IN ONLINE MODE`; container.replaceChildren(); container.classList.add('hidden'); }
+  if (selected === 'ALL OK') { summary.value = `ALL ${config.unitLabel.toUpperCase()} IN ONLINE MODE`; if(config.dependencyId) document.getElementById(config.dependencyId).value='N/A'; container.replaceChildren(); container.classList.add('hidden'); }
   else renderOfflineDetailRows(type);
 }
 function closeBPCLModal() { document.getElementById('bpclModal').classList.add('hidden'); }
@@ -2533,10 +2534,25 @@ function populateBPCLFields(data) {
   hydrateOfflineDetails('bpclTank', data.tankRemark);
   hydrateDynamicSpareForm(dynamicSpareForms.bpcl);
 }
+function validateBPCLStatusForm() {
+  const form=document.getElementById('bpclForm');
+  if(!form.reportValidity()) return false;
+  const requiredRemarks=[['bpclMpdRemark','Reason for MPD Offline'],['bpclTankRemark','Reason for Tank Offline']];
+  const missing=requiredRemarks.filter(([id])=>!document.getElementById(id).value.trim()).map(([,label])=>label);
+  const atgProvided=document.getElementById('relconAtgProvided').value;
+  if(atgProvided==='YES') {
+    const count=document.getElementById('relconAtgCount').value;
+    if(count==='') missing.push('No. of ATG Provided by RELCON');
+    else if(!Number.isInteger(Number(count)) || Number(count)<0) missing.push('Valid RELCON ATG count');
+  }
+  if(missing.length) { showToast(`Please complete: ${missing.join(', ')}`, 'error'); return false; }
+  return true;
+}
 async function saveBPCLStatus() {
+  if(!validateBPCLStatusForm()) return;
   if(!validateDynamicSpareForm(dynamicSpareForms.bpcl)) return;
   if(!validateOfflineDetails('bpclMpd') || !validateOfflineDetails('bpclTank')) return;
-  const relconAtgProvided=document.getElementById('relconAtgProvided')?.value||'NO';
+  const relconAtgProvided=document.getElementById('relconAtgProvided')?.value;
   const relconAtgCount=relconAtgProvided==='YES'?Number(document.getElementById('relconAtgCount')?.value||0):0;
   let relconAtgDetails=[];
   if (relconAtgProvided==='YES' && relconAtgCount>0) { for(let i=1;i<=relconAtgCount;i++) { const v=document.getElementById(`relconAtg_${i}`)?.value; if(v) relconAtgDetails.push(v); } }

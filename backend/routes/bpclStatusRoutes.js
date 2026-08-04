@@ -16,6 +16,60 @@ function clearStatusDependentCaches() {
   clearCacheByPrefix("daily-plans:");
 }
 
+// BPCL visit status is a complete visit report. Do not allow partially-filled
+// reports to be created through the UI or directly through the API.
+function validateCompleteBpclStatus(payload = {}) {
+  const missing = [];
+  const hasValue = (value) => String(value ?? "").trim() !== "";
+  const requireField = (field, label) => {
+    if (!hasValue(payload[field])) missing.push(label);
+  };
+  const requireDeviceDetails = (countField, devicesField, label) => {
+    const count = Number(payload[countField]);
+    const devices = Array.isArray(payload[devicesField]) ? payload[devicesField] : [];
+    if (!Number.isInteger(count) || count < 0) {
+      missing.push(`${label} count`);
+      return;
+    }
+    if (devices.length !== count || devices.some((device) => !hasValue(device))) {
+      missing.push(`${label} device details`);
+    }
+  };
+
+  requireField("class1DeviceCount", "Class-1 with GSM device count");
+  requireField("class1WithoutSimCount", "Class-1 without GSM device count");
+  requireField("class2DeviceCount", "Class-2 device count");
+  requireDeviceDetails("class1DeviceCount", "class1Devices", "Class-1 with GSM");
+  requireDeviceDetails("class1WithoutSimCount", "class1WithoutSimDevices", "Class-1 without GSM");
+  requireDeviceDetails("class2DeviceCount", "class2Devices", "Class-2");
+
+  if (!["YES", "NO"].includes(String(payload.relconAtgProvided || "").toUpperCase())) {
+    missing.push("RELCON ATG provided");
+  }
+  if (String(payload.relconAtgProvided || "").toUpperCase() === "YES") {
+    requireField("relconAtgCount", "RELCON ATG count");
+    requireDeviceDetails("relconAtgCount", "relconAtgDetails", "RELCON ATG");
+  }
+
+  [
+    ["jioSimNumber", "JIO SIM number"],
+    ["airtelSimNumber", "Airtel SIM number"],
+    ["mpdOffline", "MPD offline status"],
+    ["mpdDependency", "MPD dependency"],
+    ["mpdRemark", "MPD offline reason"],
+    ["tankOffline", "Tank offline status"],
+    ["tankDependency", "Tank dependency"],
+    ["tankRemark", "Tank offline reason"],
+    ["spareUsed", "material used"],
+    ["activeSpare", "used material name and code"],
+    ["faultySpare", "faulty material name and code"],
+    ["spareRequirment", "material requirement"],
+    ["spareRequirmentname", "material requirement name"],
+  ].forEach(([field, label]) => requireField(field, label));
+
+  return missing;
+}
+
 function buildVerificationChanges(oldDoc = {}, newDoc = {}) {
   return Object.keys(newDoc)
     .filter((field) => !["_id", "__v", "planId", "createdAt", "updatedAt", "verificationEditLog"].includes(field))
@@ -38,6 +92,15 @@ router.post("/saveBPCLStatus", authMiddleware, async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Invalid Plan ID",
+      });
+    }
+
+    const missingFields = validateCompleteBpclStatus(req.body);
+    if (missingFields.length) {
+      return res.status(400).json({
+        success: false,
+        message: `Please complete all mandatory BPCL status fields: ${missingFields.join(", ")}`,
+        missingFields,
       });
     }
 

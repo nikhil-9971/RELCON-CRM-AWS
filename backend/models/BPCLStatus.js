@@ -107,7 +107,7 @@ const BPCLStatusSchema = new mongoose.Schema(
     },
     mpdDependency: {
       type: String,
-      enum: ["", "BPCL", "RELCON", "BOTH"],
+      enum: ["", "N/A", "BPCL", "RELCON", "BOTH"],
       default: "",
       trim: true,
     },
@@ -124,7 +124,7 @@ const BPCLStatusSchema = new mongoose.Schema(
     },
     tankDependency: {
       type: String,
-      enum: ["", "BPCL", "RELCON", "BOTH"],
+      enum: ["", "N/A", "BPCL", "RELCON", "BOTH"],
       default: "",
       trim: true,
     },
