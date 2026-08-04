@@ -563,6 +563,26 @@
   .text-\[9px\], .text-\[10px\], .text-\[11px\] { font-size: var(--fs-xs) !important; }
   .text-\[12px\], .text-xs, .text-sm { font-size: var(--fs-sm) !important; }
   .text-\[13px\], .text-\[14px\] { font-size: var(--fs-base) !important; }
+
+  /* BPCL Visit Report — CRM page composition */
+  .visit-hero { display:flex; align-items:center; gap:14px; }
+  .visit-hero-icon { width:44px; height:44px; border-radius:12px; display:grid; place-items:center; color:#fff; background:linear-gradient(135deg,#2563EB,#0F766E); box-shadow:0 8px 16px rgba(37,99,235,.20); font-size:18px; }
+  .visit-kpis { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-bottom:16px; }
+  .visit-kpi { background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:14px 16px; box-shadow:var(--sh-xs); }
+  .visit-kpi-label { display:flex; align-items:center; gap:6px; color:var(--txt3); font-size:var(--fs-xs); font-weight:700; text-transform:uppercase; letter-spacing:.55px; }
+  .visit-kpi-value { margin-top:7px; color:var(--txt); font-size:var(--fs-2xl); line-height:1; font-weight:750; letter-spacing:-.6px; }
+  .visit-kpi-note { margin-top:5px; color:var(--txt4); font-size:var(--fs-xs); }
+  .visit-search { min-width:260px; }
+  .visit-actions { margin-left:auto; display:flex; gap:8px; align-items:center; }
+  .visit-pagination { padding:11px 16px; border-top:1px solid var(--border); background:var(--surface2); display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
+  .visit-page-controls { display:flex; gap:5px; align-items:center; }
+  .visit-page-controls button { min-width:31px; height:30px; justify-content:center; padding:0 8px; background:var(--surface); border:1px solid var(--border); color:var(--txt2); }
+  .visit-page-controls button:hover:not(:disabled) { border-color:var(--brand); color:var(--brand); background:var(--brand-lt); }
+  .visit-page-controls button.active { background:var(--brand); border-color:var(--brand); color:#fff; }
+  .visit-page-controls button:disabled { opacity:.45; cursor:not-allowed!important; }
+  .visit-page-info { color:var(--txt3); font-size:var(--fs-sm); }
+  .visit-status { display:inline-flex; align-items:center; padding:3px 8px; border-radius:999px; font-size:var(--fs-xs); font-weight:650; background:var(--surface2); color:var(--txt3); }
+  @media (max-width: 760px) { .crm-body { padding:14px; } .visit-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; } .visit-actions { margin-left:0; width:100%; } .visit-actions button { flex:1; justify-content:center; } .visit-search { min-width:100%; } }
   </style>
   <script src="config.js"></script>
 </head>
@@ -579,69 +599,53 @@
   </div>
   <div class="crm-body">
 
-    <div class="max-w-6xl mx-auto card">
-      <div class="flex justify-between items-center mb-4">
-        <div>
-          <h1 class="text-lg font-semibold">BPCL Visit Report</h1>
-          <div class="muted">
-            Shows latest BPCL/IOT visits based on daily plans filtered with
-            "BPCL/IOT" phase.
+    <section class="crm-card">
+      <div class="crm-card-body" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+        <div class="visit-hero">
+          <div class="visit-hero-icon"><i class="fa-solid fa-gas-pump"></i></div>
+          <div>
+            <h1 style="margin:0;">BPCL Visit Report</h1>
+            <p style="margin:3px 0 0;">Track BPCL/IOT visits from daily plans, filter records and export results.</p>
           </div>
         </div>
-        <div class="flex items-center gap-2">
-          <input
-            id="searchInput"
-            placeholder="🔎 Search RO / Name / Phase..."
-            class="border px-2 py-1 rounded small"
-            oninput="onSearchInput()"
-          />
+        <div class="visit-actions">
+          <button onclick="exportExcel()" class="bg-green-600" title="Export filtered results to Excel"><i class="fa-solid fa-file-excel"></i> Export</button>
+          <button onclick="refresh()" class="bg-blue-600" title="Reload data"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
         </div>
       </div>
+    </section>
 
-      <!-- Filters row -->
-      <div class="flex items-center controls mb-3">
-        <div>
-          <label class="muted block text-xs">Engineer</label>
-          <select
-            id="engineerFilter"
-            class="border px-2 py-1 rounded select small"
-            onchange="onFilterChange()"
-          >
-            <option value="">All Engineers</option>
-          </select>
+    <section class="visit-kpis" aria-label="BPCL visit summary">
+      <div class="visit-kpi"><div class="visit-kpi-label"><i class="fa-solid fa-clipboard-list"></i> Total visits</div><div class="visit-kpi-value" id="totalVisits">—</div><div class="visit-kpi-note">BPCL/IOT plan records</div></div>
+      <div class="visit-kpi"><div class="visit-kpi-label"><i class="fa-solid fa-filter"></i> Filtered</div><div class="visit-kpi-value" id="filteredVisits">—</div><div class="visit-kpi-note">Records currently shown</div></div>
+      <div class="visit-kpi"><div class="visit-kpi-label"><i class="fa-solid fa-user-gear"></i> Engineers</div><div class="visit-kpi-value" id="engineerCount">—</div><div class="visit-kpi-note">Assigned in this report</div></div>
+      <div class="visit-kpi"><div class="visit-kpi-label"><i class="fa-solid fa-map-location-dot"></i> Regions</div><div class="visit-kpi-value" id="regionCount">—</div><div class="visit-kpi-note">Covered locations</div></div>
+    </section>
+
+    <section class="crm-card">
+      <div class="crm-filters">
+        <div class="crm-filter-group visit-search">
+          <label for="searchInput">Search</label>
+          <input id="searchInput" placeholder="Search RO code, name or phase" oninput="onSearchInput()" />
         </div>
-
-        <div>
-          <label class="muted block text-xs">Region</label>
-          <select
-            id="regionFilter"
-            class="border px-2 py-1 rounded select small"
-            onchange="onFilterChange()"
-          >
-            <option value="">All Regions</option>
-          </select>
+        <div class="crm-filter-group">
+          <label for="engineerFilter">Engineer</label>
+          <select id="engineerFilter" onchange="onFilterChange()"><option value="">All Engineers</option></select>
         </div>
-
-        <div style="margin-left: auto; display: flex; gap: 8px">
-          <button
-            onclick="exportExcel()"
-            class="bg-green-600 text-white px-3 py-1 rounded small"
-            title="Export filtered results to Excel"
-          >
-            📤 Export
-          </button>
-          <button
-            onclick="refresh()"
-            class="bg-blue-600 text-white px-3 py-1 rounded small"
-            title="Reload data"
-          >
-            ↻ Refresh
-          </button>
+        <div class="crm-filter-group">
+          <label for="regionFilter">Region</label>
+          <select id="regionFilter" onchange="onFilterChange()"><option value="">All Regions</option></select>
         </div>
       </div>
+    </section>
 
-      <div class="overflow-auto" style="max-height: 60vh">
-        <table id="bpclTable" class="min-w-full small">
+    <section class="crm-card">
+      <div class="crm-card-header">
+        <div class="crm-card-title"><i class="fa-solid fa-table-list" style="color:var(--brand);"></i> Visit records <span class="badge badge-blue" id="recordCount">0 records</span></div>
+        <span class="crm-topbar-meta" id="lastUpdated">Not loaded</span>
+      </div>
+      <div class="crm-table-wrap" style="max-height:60vh">
+        <table id="bpclTable" class="crm-table">
           <thead>
             <tr>
               <th>S.No</th>
@@ -658,8 +662,11 @@
         </table>
       </div>
 
-      <div id="pagination" class="small"></div>
-    </div>
+      <div class="visit-pagination">
+        <div class="visit-page-info" id="pageInfo">No records to display</div>
+        <div class="visit-page-controls" id="pagination"></div>
+      </div>
+    </section>
 
     <div id="loadingOverlay">
       <div class="flex flex-col items-center">
@@ -687,6 +694,16 @@
       const regionFilterEl = document.getElementById("regionFilter");
       const searchInputEl = document.getElementById("searchInput");
       const paginationEl = document.getElementById("pagination");
+      const pageInfoEl = document.getElementById("pageInfo");
+      const recordCountEl = document.getElementById("recordCount");
+
+      function updateSummary() {
+        document.getElementById("totalVisits").textContent = rows.length;
+        document.getElementById("filteredVisits").textContent = filteredRows.length;
+        document.getElementById("engineerCount").textContent = new Set(rows.map((row) => row.engineer).filter(Boolean)).size;
+        document.getElementById("regionCount").textContent = new Set(rows.map((row) => row.region).filter(Boolean)).size;
+        recordCountEl.textContent = `${filteredRows.length} record${filteredRows.length === 1 ? "" : "s"}`;
+      }
 
       function showLoading() {
         loading.style.display = "flex";
@@ -783,7 +800,7 @@
         tableBody.innerHTML = "";
         if (!filteredRows || filteredRows.length === 0) {
           tableBody.innerHTML =
-            '<tr><td colspan="8" class="muted" style="text-align:center;padding:12px">No data</td></tr>';
+            '<tr><td colspan="8" class="muted" style="text-align:center;padding:32px">No BPCL visit records match the selected filters.</td></tr>';
           renderPagination(0);
           return;
         }
@@ -806,7 +823,7 @@
             <td>${r.roName}</td>
             <td>${r.phase}</td>
             <td>${r.lastVisitDate}</td>
-            <td>${r.completionStatus}</td>
+            <td><span class="visit-status">${r.completionStatus}</span></td>
           </tr>
         `
           )
@@ -817,10 +834,17 @@
 
       function renderPagination(totalRows) {
         paginationEl.innerHTML = "";
+        if (!totalRows) {
+          pageInfoEl.textContent = "No records to display";
+          return;
+        }
         const totalPages = Math.max(1, Math.ceil(totalRows / rowsPerPage));
+        const start = (currentPage - 1) * rowsPerPage + 1;
+        const end = Math.min(totalRows, currentPage * rowsPerPage);
+        pageInfoEl.textContent = `Showing ${start}–${end} of ${totalRows} records`;
 
         const prev = document.createElement("button");
-        prev.textContent = "⬅ Prev";
+        prev.innerHTML = '<i class="fa-solid fa-chevron-left"></i><span>Previous</span>';
         prev.disabled = currentPage === 1;
         prev.onclick = () => {
           if (currentPage > 1) {
@@ -830,7 +854,16 @@
         };
         paginationEl.appendChild(prev);
 
-        for (let i = 1; i <= totalPages; i++) {
+        const visiblePages = Array.from(new Set([1, currentPage - 1, currentPage, currentPage + 1, totalPages]))
+          .filter((page) => page >= 1 && page <= totalPages)
+          .sort((a, b) => a - b);
+        visiblePages.forEach((i, index) => {
+          if (index && i - visiblePages[index - 1] > 1) {
+            const dots = document.createElement("span");
+            dots.textContent = "…";
+            dots.style.color = "var(--txt4)";
+            paginationEl.appendChild(dots);
+          }
           const btn = document.createElement("button");
           btn.textContent = i;
           if (i === currentPage) btn.classList.add("active");
@@ -839,10 +872,10 @@
             renderCurrentPage();
           })(i);
           paginationEl.appendChild(btn);
-        }
+        });
 
         const next = document.createElement("button");
-        next.textContent = "Next ➡";
+        next.innerHTML = '<span>Next</span><i class="fa-solid fa-chevron-right"></i>';
         next.disabled = currentPage === totalPages;
         next.onclick = () => {
           if (currentPage < totalPages) {
@@ -852,15 +885,6 @@
         };
         paginationEl.appendChild(next);
 
-        const summary = document.createElement("div");
-        summary.style.marginLeft = "12px";
-        summary.style.color = "#374151";
-        summary.style.fontSize = "12px";
-        summary.textContent = `Showing ${Math.min(
-          totalRows,
-          (currentPage - 1) * rowsPerPage + 1
-        )} - ${Math.min(totalRows, currentPage * rowsPerPage)} of ${totalRows}`;
-        paginationEl.appendChild(summary);
       }
 
       function formatDate(dateString) {
@@ -909,6 +933,7 @@
         }
 
         filteredRows = out;
+        updateSummary();
         renderCurrentPage();
       }
 
@@ -920,6 +945,7 @@
         rows = buildBpclRows(fullData);
         populateFilters(rows);
         applyFilters();
+        document.getElementById("lastUpdated").textContent = `Updated ${new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}`;
         hideLoading();
       }
 
