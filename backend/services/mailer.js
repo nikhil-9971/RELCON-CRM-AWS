@@ -933,6 +933,7 @@ function buildPendingIncidentRows(incidents = []) {
     siteName: incident.siteName || "—",
     region: incident.region || "—",
     incidentDate: formatDateOnlyIST(incident.incidentDate),
+    assignedEngineer: safe(incident.assignEngineer).trim() || "Unassigned",
     ageing: `${getIncidentAgingDays(incident)} days`,
     complaintRemark: incident.complaintRemark || "—",
   }));
@@ -948,6 +949,7 @@ function buildPendingIncidentTableHtml(rows = []) {
         <td style="padding:9px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#0f172a;min-width:180px;">${htmlEscape(row.siteName)}</td>
         <td style="padding:9px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#0f172a;white-space:nowrap;">${htmlEscape(row.region)}</td>
         <td style="padding:9px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#0f172a;white-space:nowrap;">${htmlEscape(row.incidentDate)}</td>
+        <td style="padding:9px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#0f172a;white-space:nowrap;">${htmlEscape(row.assignedEngineer)}</td>
         <td style="padding:9px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#991b1b;white-space:nowrap;font-weight:800;">${htmlEscape(row.ageing)}</td>
         <td style="padding:9px 10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#334155;min-width:260px;">${htmlEscape(row.complaintRemark)}</td>
       </tr>
@@ -956,10 +958,10 @@ function buildPendingIncidentTableHtml(rows = []) {
 
   return `
     <div style="overflow:auto;border:1px solid #e2e8f0;border-radius:12px;background:#ffffff;">
-      <table style="width:100%;border-collapse:collapse;min-width:960px;">
+      <table style="width:100%;border-collapse:collapse;min-width:1100px;">
         <thead>
           <tr>
-            ${["#", "Incident ID", "RO Code", "Site Name", "Region", "Incident Date", "Ageing", "Dealer Remark"].map((label) => `<th style="padding:10px;border-bottom:1px solid #cbd5e1;background:#1e3a8a;color:#ffffff;font-size:11px;text-transform:uppercase;letter-spacing:.05em;text-align:left;white-space:nowrap;">${label}</th>`).join("")}
+            ${["#", "Incident ID", "RO Code", "Site Name", "Region", "Incident Date", "Assigned To", "Ageing", "Dealer Remark"].map((label) => `<th style="padding:10px;border-bottom:1px solid #cbd5e1;background:#1e3a8a;color:#ffffff;font-size:11px;text-transform:uppercase;letter-spacing:.05em;text-align:left;white-space:nowrap;">${label}</th>`).join("")}
           </tr>
         </thead>
         <tbody>${body}</tbody>
@@ -968,7 +970,7 @@ function buildPendingIncidentTableHtml(rows = []) {
   `;
 }
 
-function buildPendingIncidentReminderHtml({ engineerName = "", incidents = [], dateISO = "" } = {}) {
+function buildPendingIncidentReminderHtml({ recipientNames = [], incidents = [], dateISO = "" } = {}) {
   const rows = buildPendingIncidentRows(incidents);
   const topAgeing = rows.map((row) => row.ageing).join(", ") || "—";
 
@@ -978,7 +980,7 @@ function buildPendingIncidentReminderHtml({ engineerName = "", incidents = [], d
       <div style="padding:24px 28px;background:linear-gradient(135deg,#0f172a 0%,#1d4ed8 55%,#0f766e 100%);color:#ffffff;">
         <div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;opacity:.8;">RELCON CRM | Combined Incident Follow-up</div>
         <div style="margin-top:10px;font-size:24px;font-weight:800;line-height:1.2;">Combined Pending Incident Report</div>
-        <div style="margin-top:8px;font-size:14px;line-height:1.6;opacity:.95;">Good Morning ${htmlEscape(engineerName || "Engineer")}, please review the combined pending incident list below and close the open items at the earliest.</div>
+        <div style="margin-top:8px;font-size:14px;line-height:1.6;opacity:.95;">Please review the combined pending incident list below and close the open items at the earliest.</div>
       </div>
       <div style="padding:24px 28px 28px;">
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:18px;">
@@ -987,8 +989,8 @@ function buildPendingIncidentReminderHtml({ engineerName = "", incidents = [], d
             <div style="margin-top:6px;font-size:13px;color:#0f172a;font-weight:600;">${htmlEscape(formatDateOnlyIST(dateISO))}</div>
           </div>
           <div style="border:1px solid #dbe4ee;border-radius:12px;padding:12px 14px;background:#f8fafc;">
-            <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#64748b;">Assigned Engineer</div>
-            <div style="margin-top:6px;font-size:13px;color:#0f172a;font-weight:600;">${htmlEscape(engineerName || "Unassigned")}</div>
+            <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#64748b;">Assigned Users</div>
+            <div style="margin-top:6px;font-size:13px;color:#0f172a;font-weight:600;">${htmlEscape(recipientNames.join(", ") || "—")}</div>
           </div>
           <div style="border:1px solid #dbe4ee;border-radius:12px;padding:12px 14px;background:#f8fafc;">
             <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#64748b;">Pending Incidents</div>
@@ -1001,7 +1003,7 @@ function buildPendingIncidentReminderHtml({ engineerName = "", incidents = [], d
         </div>
 
         <p style="margin:0 0 14px;font-size:13px;line-height:1.7;color:#334155;">
-          The table below combines all pending incidents assigned to you. Admin team is copied for tracking and follow-up.
+          The table below combines all pending incidents. Each assigned user is included in the To field; Nikhil Trivedi and Anurag Mishra are copied for tracking and follow-up.
         </p>
         ${buildPendingIncidentTableHtml(rows)}
         <div style="margin-top:18px;padding:14px 16px;border-radius:12px;background:#fff7ed;border:1px solid #fed7aa;color:#7c2d12;font-size:13px;line-height:1.7;">
@@ -1017,9 +1019,9 @@ function buildPendingIncidentReminderHtml({ engineerName = "", incidents = [], d
   </div>`;
 }
 
-function buildPendingIncidentReminderText({ engineerName = "", incidents = [], dateISO = "" } = {}) {
+function buildPendingIncidentReminderText({ recipientNames = [], incidents = [], dateISO = "" } = {}) {
   const rows = buildPendingIncidentRows(incidents);
-  const headers = ["#", "Incident ID", "RO Code", "Site Name", "Region", "Incident Date", "Ageing", "Dealer Remark"];
+  const headers = ["#", "Incident ID", "RO Code", "Site Name", "Region", "Incident Date", "Assigned To", "Ageing", "Dealer Remark"];
   const tableRows = rows.length
     ? rows.map((row) => [
         String(row.index),
@@ -1028,25 +1030,26 @@ function buildPendingIncidentReminderText({ engineerName = "", incidents = [], d
         row.siteName,
         row.region,
         row.incidentDate,
+        row.assignedEngineer,
         row.ageing,
         row.complaintRemark,
       ])
-    : [["-", "-", "-", "-", "-", "-", "-", "-"]];
+    : [["-", "-", "-", "-", "-", "-", "-", "-", "-"]];
 
   const widths = headers.map((header, index) => Math.max(header.length, ...tableRows.map((row) => String(row[index] || "").length)));
   const formatRow = (row) => row.map((value, index) => String(value || "").padEnd(widths[index])).join(" | ");
   const separator = widths.map((width) => "-".repeat(width)).join("-+-");
 
   return [
-    `Dear ${engineerName || "Engineer"},`,
+    "Hello Team,",
     "",
     "Combined Pending Incident Report",
     "",
     `Report Date: ${formatDateOnlyIST(dateISO)}`,
-    `Assigned Engineer: ${engineerName || "Unassigned"}`,
+    `Assigned Users: ${recipientNames.join(", ") || "—"}`,
     `Pending Incidents: ${incidents.length}`,
     "",
-    "The combined pending incident list is below. Please review and close the open items at the earliest.",
+    "The combined pending incident list is below. Each assigned user is included in the To field; Nikhil Trivedi and Anurag Mishra are copied for tracking.",
     "",
     formatRow(headers),
     separator,
@@ -1082,80 +1085,74 @@ async function sendPendingIncidentReminderEmails({ dateISO = getCurrentISTDatePa
   }
 
   const users = await User.find(ACTIVE_USER_QUERY, "email role engineerName username name").lean();
-  const adminEmails = await getAdminNotificationEmails();
-  const grouped = new Map();
-
-  for (const incident of incidents) {
-    const engineerName = safe(incident.assignEngineer).trim() || "Unassigned";
-    if (!grouped.has(engineerName)) grouped.set(engineerName, []);
-    grouped.get(engineerName).push(incident);
-  }
+  const assignedEngineerNames = [...new Set(
+    incidents.map((incident) => safe(incident.assignEngineer).trim()).filter(Boolean)
+  )];
+  const toRecipients = [...new Set(
+    assignedEngineerNames.flatMap((engineerName) => getEngineerEmailsFromUsers(users, engineerName))
+  )];
+  const ccRecipients = (await getUserEmailsByUsernames(["nikhil.trivedi", "anurag.mishra"]))
+    .filter((email) => !toRecipients.includes(email));
 
   const summary = {
     ok: true,
     dateISO,
     totalPending: incidents.length,
-    engineers: grouped.size,
+    engineers: assignedEngineerNames.length,
     sent: 0,
     skipped: 0,
     failed: 0,
     details: [],
   };
 
-  for (const [engineerName, engineerIncidents] of grouped.entries()) {
-    const engineerEmails = getEngineerEmailsFromUsers(users, engineerName);
-    const toRecipients = engineerEmails.filter(Boolean);
-    const ccRecipients = adminEmails.filter((email) => !toRecipients.includes(email));
-    const subject = `Combined Pending Incident Report | ${engineerName} | ${engineerIncidents.length} pending | ${formatDateOnlyIST(dateISO)}`;
+  const subject = `Combined Pending Incident Report | ${incidents.length} pending | ${formatDateOnlyIST(dateISO)}`;
+  if (!toRecipients.length) {
+    summary.skipped = 1;
+    summary.details.push({ status: "skipped", reason: "assigned_user_email_missing" });
+    await EmailLog.create({
+      type: "pending-incident-reminder",
+      subject,
+      to: "",
+      status: "failure",
+      error: "No email found for users assigned to pending incidents",
+      meta: { assignedEngineerNames, dateISO, cc: ccRecipients },
+    });
+    return summary;
+  }
 
-    if (!toRecipients.length) {
-      summary.skipped += 1;
-      summary.details.push({ engineerName, count: engineerIncidents.length, status: "skipped", reason: "engineer_email_missing" });
-      await EmailLog.create({
-        type: "pending-incident-reminder",
-        subject,
-        to: "",
-        status: "success",
-        meta: { engineerName, count: engineerIncidents.length, reason: "engineer_email_missing", dateISO, cc: ccRecipients },
-      });
-      continue;
-    }
+  try {
+    const html = buildPendingIncidentReminderHtml({ recipientNames: assignedEngineerNames, incidents, dateISO });
+    const text = buildPendingIncidentReminderText({ recipientNames: assignedEngineerNames, incidents, dateISO });
+    const info = await transporter.sendMail({
+      from: getDefaultOutgoingFromHeader(),
+      to: toRecipients.join(", "),
+      cc: ccRecipients.length ? ccRecipients.join(", ") : undefined,
+      subject,
+      html,
+      text,
+    });
 
-    try {
-      const html = buildPendingIncidentReminderHtml({ engineerName, incidents: engineerIncidents, dateISO });
-      const text = buildPendingIncidentReminderText({ engineerName, incidents: engineerIncidents, dateISO });
-
-      const info = await transporter.sendMail({
-        from: getDefaultOutgoingFromHeader(),
-        to: toRecipients.join(", "),
-        cc: ccRecipients.length ? ccRecipients.join(", ") : undefined,
-        subject,
-        html,
-        text,
-      });
-
-      summary.sent += 1;
-      summary.details.push({ engineerName, count: engineerIncidents.length, status: "sent", to: toRecipients, cc: ccRecipients });
-      await EmailLog.create({
-        type: "pending-incident-reminder",
-        subject,
-        to: toRecipients.join(", "),
-        status: "success",
-        meta: { engineerName, count: engineerIncidents.length, dateISO, cc: ccRecipients, messageId: info?.messageId || "" },
-      });
-    } catch (err) {
-      summary.failed += 1;
-      summary.details.push({ engineerName, count: engineerIncidents.length, status: "failure", error: err.message || String(err) });
-      await EmailLog.create({
-        type: "pending-incident-reminder",
-        subject,
-        to: toRecipients.join(", "),
-        status: "failure",
-        error: err.message || String(err),
-        meta: { engineerName, count: engineerIncidents.length, dateISO, cc: ccRecipients },
-      });
-      console.error("❌ Pending incident reminder email error:", err.message || err);
-    }
+    summary.sent = 1;
+    summary.details.push({ status: "sent", count: incidents.length, to: toRecipients, cc: ccRecipients });
+    await EmailLog.create({
+      type: "pending-incident-reminder",
+      subject,
+      to: toRecipients.join(", "),
+      status: "success",
+      meta: { assignedEngineerNames, count: incidents.length, dateISO, cc: ccRecipients, messageId: info?.messageId || "" },
+    });
+  } catch (err) {
+    summary.failed = 1;
+    summary.details.push({ status: "failure", error: err.message || String(err) });
+    await EmailLog.create({
+      type: "pending-incident-reminder",
+      subject,
+      to: toRecipients.join(", "),
+      status: "failure",
+      error: err.message || String(err),
+      meta: { assignedEngineerNames, count: incidents.length, dateISO, cc: ccRecipients },
+    });
+    console.error("❌ Pending incident reminder email error:", err.message || err);
   }
 
   return summary;
