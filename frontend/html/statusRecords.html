@@ -203,7 +203,8 @@
     .sf-modal { background: var(--surface); border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.25); width: 90%; max-width: 840px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; }
     .sf-modal-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: var(--surface2); flex-shrink: 0; }
     .sf-modal-title { font-size: 15px; font-weight: 700; color: var(--txt); display: flex; align-items: center; gap: 8px; }
-    .sf-modal-body { padding: 20px; overflow-y: auto; flex: 1; }
+    .sf-modal-body { padding: 20px; overflow-y: auto; flex: 1; min-height: 0; }
+    .sf-modal-header-actions { display: none; }
     .sf-modal-footer { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; background: var(--surface2); flex-shrink: 0; }
     .sf-modal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
     .sf-modal-field { display: flex; flex-direction: column; gap: 4px; }
@@ -250,6 +251,9 @@
       }
       .sf-modal-header { padding: 12px 14px; }
       .sf-modal-title { font-size: 13px; }
+      .sf-modal-header-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+      .sf-modal-header-actions .sf-btn { height: 34px; padding: 0 10px; }
+      .sf-modal-header > .sf-btn-icon { display: none; }
       .sf-modal-body {
         padding: 12px 14px;
         overflow-y: auto;
@@ -430,6 +434,10 @@
     <div class="sf-modal">
       <div class="sf-modal-header">
         <div class="sf-modal-title"><i class="fa-solid fa-pen-to-square" style="color:var(--sf-blue);"></i> Edit Status Record</div>
+        <div class="sf-modal-header-actions">
+          <button type="button" onclick="closeModal()" class="sf-btn sf-btn-neutral">Cancel</button>
+          <button type="button" onclick="saveEdit()" class="sf-btn sf-btn-success"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+        </div>
         <button onclick="closeModal()" class="sf-btn sf-btn-neutral sf-btn-icon"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="sf-modal-body">
