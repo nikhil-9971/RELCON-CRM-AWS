@@ -481,6 +481,7 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
   display: flex; align-items: center; justify-content: center;
   font-size: 14px;
 }
+.dv-modal-header-actions { display: none; }
 
 /* Body — ONLY this part scrolls */
 .dv-modal-body {
@@ -810,6 +811,21 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
     height: 34px;
     flex-shrink: 0;
   }
+  /* Keep status actions reachable even when a long form is scrolled. */
+  .dv-modal-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+  .dv-modal-header-actions .dv-btn {
+    height: 34px;
+    padding: 0 9px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .dv-status-modal-header > .dv-close-btn { display: none; }
   .dv-modal-body {
     flex: 1 1 auto !important;
     min-height: 0 !important;
@@ -1117,10 +1133,14 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
 <!-- ══ STATUS MODAL (HPCL) ══ -->
 <div id="statusModal" class="dv-modal-overlay hidden">
   <div class="dv-modal dv-modal-xl">
-    <div class="dv-modal-header">
+    <div class="dv-modal-header dv-status-modal-header">
       <div class="dv-modal-header-title">
         <div class="dv-modal-header-icon" style="background:#e0f2fe;color:#0284c7;"><i class="fa-solid fa-circle-plus"></i></div>
         Add HPCL Visit Status
+      </div>
+      <div class="dv-modal-header-actions">
+        <button type="button" onclick="closeStatusModal()" class="dv-btn dv-btn-neutral">Cancel</button>
+        <button type="button" onclick="saveStatus()" class="dv-btn dv-btn-success"><i class="fa-solid fa-floppy-disk"></i> Save</button>
       </div>
       <button class="dv-close-btn" onclick="closeStatusModal()"><i class="fa-solid fa-xmark"></i></button>
     </div>
@@ -1356,10 +1376,14 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
 <!-- ══ JIO BP MODAL ══ -->
 <div id="jioBPModal" class="dv-modal-overlay hidden">
   <div class="dv-modal dv-modal-lg">
-    <div class="dv-modal-header">
+    <div class="dv-modal-header dv-status-modal-header">
       <div class="dv-modal-header-title">
         <div class="dv-modal-header-icon" style="background:#fef9c3;color:#a16207;"><i class="fa-solid fa-gas-pump"></i></div>
         Add Jio BP Visit Status
+      </div>
+      <div class="dv-modal-header-actions">
+        <button type="button" onclick="closeJioBPModal()" class="dv-btn dv-btn-neutral">Cancel</button>
+        <button type="button" onclick="saveJioBPStatus()" class="dv-btn dv-btn-success"><i class="fa-solid fa-floppy-disk"></i> Save</button>
       </div>
       <button class="dv-close-btn" onclick="closeJioBPModal()"><i class="fa-solid fa-xmark"></i></button>
     </div>
@@ -1399,10 +1423,14 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
 <!-- ══ BPCL MODAL ══ -->
 <div id="bpclModal" class="dv-modal-overlay hidden">
   <div class="dv-modal dv-modal-lg">
-    <div class="dv-modal-header">
+    <div class="dv-modal-header dv-status-modal-header">
       <div class="dv-modal-header-title">
         <div class="dv-modal-header-icon" style="background:#fef3c7;color:#d97706;"><i class="fa-solid fa-oil-well"></i></div>
         Add BPCL Visit Status
+      </div>
+      <div class="dv-modal-header-actions">
+        <button type="button" onclick="closeBPCLModal()" class="dv-btn dv-btn-neutral">Cancel</button>
+        <button type="button" onclick="saveBPCLStatus()" class="dv-btn dv-btn-success"><i class="fa-solid fa-floppy-disk"></i> Save</button>
       </div>
       <button class="dv-close-btn" onclick="closeBPCLModal()"><i class="fa-solid fa-xmark"></i></button>
     </div>
