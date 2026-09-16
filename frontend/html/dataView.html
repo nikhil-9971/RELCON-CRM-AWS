@@ -1052,6 +1052,8 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
               <th>Emp Code</th>
               <th>Incident ID</th>
               <th>Purpose</th>
+              <th>PO Status</th>
+              <th>Purpose of PO</th>
               <th class="sortable" data-key="date" onclick="sortTable(this)">Date <span class="sort-icon">↕</span></th>
               <th>Issue Type</th>
               <th>AMC Qtr</th>
@@ -1107,6 +1109,8 @@ table.dv-table tbody td:first-child { font-weight: 600; color: var(--brand); }
         <div class="dv-field"><label class="dv-label">Employee ID</label><input id="editempId" class="dv-modal-input" placeholder="Employee ID"/></div>
         <div class="dv-field"><label class="dv-label">Incident ID</label><input id="editincidentId" class="dv-modal-input" placeholder="Incident ID"/></div>
         <div class="dv-field"><label class="dv-label">Purpose</label><input id="editPurpose" class="dv-modal-input" placeholder="Purpose"/></div>
+        <div class="dv-field"><label class="dv-label">PO Status</label><select id="editPoStatus" class="dv-modal-select" onchange="syncVisitPoPurpose()"><option value="No">No</option><option value="Yes">Yes</option></select></div>
+        <div class="dv-field"><label class="dv-label">Purpose of PO</label><select id="editPurposeOfPO" class="dv-modal-select"><option value="">Select purpose</option><option value="No PO Required">No PO Required</option><option value="Visit PO">Visit PO</option><option value="Material Replacement PO">Material Replacement PO</option></select></div>
         <div class="dv-field"><label class="dv-label">Date</label><input id="editDate" class="dv-modal-input" placeholder="Date"/></div>
         <div class="dv-field"><label class="dv-label">Issue Type</label><input id="editIssueType" class="dv-modal-input" placeholder="Issue Type"/></div>
         <div class="dv-field"><label class="dv-label">AMC Qtr</label><input id="editAmcQtr" class="dv-modal-input" placeholder="AMC Qtr"/></div>
@@ -1867,6 +1871,8 @@ function populateTable(data) {
       <td>${v(plan.empId)}</td>
       <td>${v(plan.incidentId)}</td>
       <td>${v(plan.purpose)}</td>
+      <td>${plan.poStatus === 'Yes' ? '<span style="display:inline-block;padding:2px 8px;border-radius:12px;background:#eaf5ea;color:#2e844a;font-size:10px;font-weight:700;">Yes</span>' : '<span class="dv-cell-dash">No</span>'}</td>
+      <td>${v(plan.poStatus === 'Yes' ? plan.purposeOfPO : 'No PO Required')}</td>
       <td>${v(plan.date)}</td>
       <td>${v(plan.issueType)}</td>
       <td>${v(plan.amcQtr)}</td>
@@ -1937,14 +1943,26 @@ function sortTable(th) {
 /* ── EDIT MODAL ── */
 function openEditModal(plan) {
   const fields = {editPlanId:'_id',editzone:'zone',editRegion:'region',editEngineer:'engineer',editPhase:'phase',
-    editRoCode:'roCode',editRoName:'roName',editempId:'empId',editincidentId:'incidentId',editPurpose:'purpose',
+    editRoCode:'roCode',editRoName:'roName',editempId:'empId',editincidentId:'incidentId',editPurpose:'purpose',editPoStatus:'poStatus',editPurposeOfPO:'purposeOfPO',
     editDate:'date',editIssueType:'issueType',editAmcQtr:'amcQtr',editArrivalTime:'arrivalTime',
     editLeaveTime:'leaveTime',editSupportTakenFrom:'supportTakenFrom',editIncidentStatus:'incidentStatus',
     editWhatDone:'whatDone',editReason12PM:'reasonAfter12PM',editReason06PM:'reasonAfter6PM',
     editearthingStatus:'separateearthingStatus',editearthingCheckedby:'earthingCheckedby',
     editdetailEarthingremark:'detailEarthingremark',editcablerequirment:'cableRequirmentremark'};
   Object.entries(fields).forEach(([id, key]) => { const el=document.getElementById(id); if(el) el.value=plan[key]||''; });
+  document.getElementById('editPoStatus').value = plan.poStatus === 'Yes' ? 'Yes' : 'No';
+  document.getElementById('editPurposeOfPO').value = plan.poStatus === 'Yes' ? (plan.purposeOfPO || '') : 'No PO Required';
+  syncVisitPoPurpose();
   document.getElementById('editModal').classList.remove('hidden');
+}
+function syncVisitPoPurpose() {
+  const poStatus = document.getElementById('editPoStatus');
+  const purpose = document.getElementById('editPurposeOfPO');
+  if (!poStatus || !purpose) return;
+  const needsPO = poStatus.value === 'Yes';
+  purpose.disabled = !needsPO;
+  if (!needsPO) purpose.value = 'No PO Required';
+  else if (purpose.value === 'No PO Required') purpose.value = '';
 }
 function closeEditModal() { document.getElementById('editModal').classList.add('hidden'); }
 
@@ -1956,7 +1974,10 @@ async function saveEdit() {
     engineer:document.getElementById('editEngineer').value, phase:document.getElementById('editPhase').value,
     roCode:document.getElementById('editRoCode').value, roName:document.getElementById('editRoName').value,
     empId:document.getElementById('editempId').value, incidentId:document.getElementById('editincidentId').value,
-    purpose:document.getElementById('editPurpose').value, date:document.getElementById('editDate').value,
+    purpose:document.getElementById('editPurpose').value,
+    poStatus:document.getElementById('editPoStatus').value,
+    purposeOfPO:document.getElementById('editPurposeOfPO').value,
+    date:document.getElementById('editDate').value,
     issueType:document.getElementById('editIssueType').value, amcQtr:document.getElementById('editAmcQtr').value,
     arrivalTime:document.getElementById('editArrivalTime').value, leaveTime:document.getElementById('editLeaveTime').value,
     supportTakenFrom:document.getElementById('editSupportTakenFrom').value,

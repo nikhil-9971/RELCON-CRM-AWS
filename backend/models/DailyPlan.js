@@ -25,6 +25,19 @@ const PlanSchema = new mongoose.Schema({
   earthingCheckedby: String,
   detailEarthingremark: String,
   cableRequirmentremark: String,
+  // Purchase order and billing tracking belongs to the visit record.
+  poStatus: { type: String, enum: ["Yes", "No"], default: "No" },
+  purposeOfPO: {
+    type: String,
+    enum: ["", "No PO Required", "Visit PO", "Material Replacement PO"],
+    default: "No PO Required",
+  },
+  poNumber: { type: String, default: "" },
+  poDate: { type: String, default: "" },
+  documentCollect: { type: String, enum: ["", "Yes", "No"], default: "" },
+  submitForBilling: { type: String, enum: ["", "Yes", "No"], default: "" },
+  billSubmitTo: { type: String, default: "" },
+  billSubmitDate: { type: String, default: "" },
 
   // // ✅ ADD THESE FLAGS
   // statusSaved: { type: Boolean, default: false }, // HPCL

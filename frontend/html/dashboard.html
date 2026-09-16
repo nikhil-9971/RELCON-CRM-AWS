@@ -932,6 +932,7 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
       <button class="nav-item" onclick="loadPage('materialrequestbuilder.html', this)"><i class="fa-solid fa-diagram-project"></i><span class="nav-txt">Material Request Builder</span></button>
       <button class="nav-item" onclick="loadPage('materialManagement.html', this)"><i class="fa-solid fa-boxes-packing"></i><span class="nav-txt">Material Management</span></button>
       <button id="invoiceManagementLink" class="nav-item" style="display:none" onclick="loadPage('invoiceManagement.html', this)"><i class="fa-solid fa-file-invoice-dollar"></i><span class="nav-txt">Invoice Management</span></button>
+      <button id="poBillingStatusLink" class="nav-item" style="display:none" onclick="loadPage('poBillingStatus.html', this)"><i class="fa-solid fa-file-circle-check"></i><span class="nav-txt">PO Billing Status</span></button>
       <button id="incidentId" class="nav-item" style="display:none" onclick="loadPage('incident.html', this)"><i class="fa-solid fa-triangle-exclamation"></i><span class="nav-txt">Incident Manager</span></button>
       <button class="nav-item" onclick="loadPage('activeVsFaulty.html', this)"><i class="fa-solid fa-scale-balanced"></i><span class="nav-txt">Active vs Faulty</span></button>
       <button class="nav-item" onclick="loadPage('roTimeline.html', this)"><i class="fa-solid fa-timeline"></i><span class="nav-txt">RO Timeline</span></button>
@@ -1315,6 +1316,7 @@ const pageNames = {
   'roExplorer.html':'RO Explorer',
   'logsViewer.html':'Logs Viewer','materialManagement.html':'Material Management',
   'invoiceManagement.html':'Invoice Management','userManagement.html':'User Management',
+  'poBillingStatus.html':'PO Billing Status',
   'attendance.html':'Attendance'
 };
 
@@ -1339,6 +1341,7 @@ const pageSlugs = {
   'materialrequestbuilder.html':'material-request-builder',
   'materialManagement.html':'material-management',
   'invoiceManagement.html':'invoice-management',
+  'poBillingStatus.html':'po-billing-status',
   'incident.html':'incident-manager',
   'romaster.html':'ro-master',
   'activeVsFaulty.html':'active-vs-faulty',
@@ -1525,6 +1528,7 @@ async function fetchUser(){
       document.getElementById("notesTaskLink").style.display="flex";
       document.getElementById("taskManagementLink").style.display="flex";
       document.getElementById("invoiceManagementLink").style.display="flex";
+      document.getElementById("poBillingStatusLink").style.display="flex";
       document.getElementById("incidentId").style.display="flex";
       document.getElementById("engineerActivityLink").style.display="flex";
       document.getElementById("roExplorerLink").style.display="flex";

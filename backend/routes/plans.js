@@ -79,6 +79,8 @@ function sanitizeDailyPlanUpdatePayload(body = {}) {
     if (blockedFields.has(key)) continue;
     payload[key] = value === null || value === undefined ? "" : value;
   }
+  // A visit without a PO must always retain the automatic purpose value.
+  if (payload.poStatus === "No") payload.purposeOfPO = "No PO Required";
   return payload;
 }
 
