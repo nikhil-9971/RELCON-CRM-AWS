@@ -2,8 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+<meta name="theme-color" content="#0B1628"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="RELCON CRM"/>
+<link rel="manifest" href="manifest.webmanifest"/>
+<link rel="apple-touch-icon" href="assets/login.png"/>
 <title>RELCON CRM — Field Operations</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
@@ -804,6 +811,7 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
 
 /* ── MOBILE ── */
 #mobileBar{display:none;height:52px;background:var(--nav-bg);align-items:center;justify-content:space-between;padding:0 16px;flex-shrink:0;border-bottom:1px solid var(--nav-border);}
+#mobileTabs{display:none;}
 .active-link{background:linear-gradient(90deg,rgba(59,130,246,.18),rgba(59,130,246,.06))!important;color:#E8F4FD!important;font-weight:600!important;}
 .active-link i{opacity:1!important;}
 ::-webkit-scrollbar{width:5px;height:5px;}
@@ -819,7 +827,8 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
 
 /* ════ MOBILE ════ */
 @media(max-width:768px){
-  #mobileBar{display:flex;}
+  html,body{height:100%;height:100dvh;background:var(--nav-bg);}
+  #mobileBar{display:flex;height:60px;padding:env(safe-area-inset-top) 16px 0;}
   #nav{
     position:fixed;left:-272px;top:0;
     height:100vh;width:272px!important;min-width:272px!important;
@@ -827,9 +836,15 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
   }
   #nav.mobile-open{left:0;box-shadow:0 0 0 100vw rgba(0,0,0,0.5);}
   #nav.collapsed{width:272px!important;}
-  #right{height:100vh;}
+  #shell{height:calc(100dvh - 124px);}
+  #right{height:100%;}
   #topbar{display:none;}
   #shell{flex-direction:column;}
+  #content{background:#f1f5f9;}
+  #contentFrame{background:#f1f5f9;}
+  #mobileTabs{position:fixed;display:flex;z-index:350;bottom:0;left:0;right:0;height:64px;padding:6px 12px max(6px,env(safe-area-inset-bottom));justify-content:space-around;background:rgba(11,22,40,.98);border-top:1px solid rgba(255,255,255,.08);box-shadow:0 -8px 28px rgba(15,23,42,.14);}
+  .mobile-tab{border:0;background:transparent;color:#94A3B8;min-width:58px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font:600 10px var(--font);cursor:pointer;border-radius:10px;padding:4px 8px;}
+  .mobile-tab i{font-size:17px;}.mobile-tab:active{background:rgba(96,165,250,.16);transform:scale(.96);}.mobile-tab.active{color:#60A5FA;}
 
   /* AI Chat full width */
   #aiChatBox{
@@ -844,8 +859,8 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
   }
 
   /* Smaller FABs */
-  #aiAgentBtn{width:44px;height:44px;bottom:74px;right:12px;font-size:18px;}
-  #chatToggleBtn{width:44px;height:44px;bottom:16px;right:12px;font-size:15px;}
+  #aiAgentBtn{width:44px;height:44px;bottom:132px;right:12px;font-size:18px;}
+  #chatToggleBtn{width:44px;height:44px;bottom:76px;right:12px;font-size:15px;}
 
   /* Modal adjustments */
   .modal{width:96%;max-width:96%;border-radius:12px;}
@@ -873,6 +888,7 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
   <button onclick="document.getElementById('nav').classList.toggle('mobile-open')" style="background:none;border:none;color:rgba(255,255,255,.8);font-size:18px;cursor:pointer;padding:6px;border-radius:6px;"><i class="fa-solid fa-bars"></i></button>
   <span style="color:#fff;font-weight:800;font-size:14px;">⚡ RELCON <em style="color:#60A5FA;font-style:normal;">CRM</em></span>
   <div style="display:flex;gap:6px;">
+    <button id="installAppBtn" onclick="installRelconApp()" title="Install RELCON CRM" style="display:none;background:rgba(96,165,250,.2);border:1px solid rgba(147,197,253,.3);color:#fff;width:34px;height:34px;border-radius:8px;align-items:center;justify-content:center;cursor:pointer;font-size:13px;"><i class="fa-solid fa-download"></i></button>
     <button onclick="openChatBox()" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:#fff;width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;position:relative;">
       <i class="fa-solid fa-comments"></i>
       <span id="mobileMentionBadge" style="position:absolute;top:-3px;right:-3px;background:#dc2626;color:#fff;font-size:8px;width:14px;height:14px;border-radius:50%;display:none;align-items:center;justify-content:center;font-weight:700;"></span>
@@ -1040,6 +1056,14 @@ body{font-family:var(--font);font-size:13.5px;line-height:1.5;color:var(--txt);b
     <div id="content"><iframe id="contentFrame" src="overview.html"></iframe></div>
   </div>
 </div>
+
+<!-- Mobile app navigation: keeps primary actions one thumb-tap away. -->
+<nav id="mobileTabs" aria-label="Mobile navigation">
+  <button class="mobile-tab active" data-page="overview.html" onclick="loadMobilePage('overview.html', this)"><i class="fa-solid fa-house"></i><span>Home</span></button>
+  <button class="mobile-tab" data-page="dailyPlan.html" onclick="loadMobilePage('dailyPlan.html', this)"><i class="fa-solid fa-calendar-plus"></i><span>Plan</span></button>
+  <button class="mobile-tab" data-page="reportsOverview.html" onclick="loadMobilePage('reportsOverview.html', this)"><i class="fa-solid fa-chart-column"></i><span>Reports</span></button>
+  <button class="mobile-tab" onclick="openMobileMenu(this)"><i class="fa-solid fa-bars"></i><span>Menu</span></button>
+</nav>
 
 <!-- ── Loader ── -->
 <div id="globalLoader"><div class="loader-ring"></div></div>
@@ -1228,6 +1252,37 @@ function toggleNavCollapse(){
   nav.classList.toggle("collapsed");
   icon.className = nav.classList.contains("collapsed") ? "fa-solid fa-angles-right" : "fa-solid fa-angles-left";
 }
+function openMobileMenu(){
+  const nav=document.getElementById('nav');
+  nav.classList.add('mobile-open');
+  document.getElementById('navBackdrop').style.display='block';
+}
+function loadMobilePage(page, button){
+  const navButton=[...document.querySelectorAll('#nav .nav-item')].find(el => (el.getAttribute('onclick')||'').includes(page));
+  loadPage(page, navButton || null);
+  document.querySelectorAll('.mobile-tab[data-page]').forEach(el=>el.classList.toggle('active',el===button));
+}
+
+let relconInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', event => {
+  event.preventDefault();
+  relconInstallPrompt = event;
+  const button = document.getElementById('installAppBtn');
+  if (button) button.style.display = 'flex';
+});
+window.addEventListener('appinstalled', () => {
+  relconInstallPrompt = null;
+  const button = document.getElementById('installAppBtn');
+  if (button) button.style.display = 'none';
+});
+async function installRelconApp(){
+  if (!relconInstallPrompt) return;
+  relconInstallPrompt.prompt();
+  await relconInstallPrompt.userChoice;
+  relconInstallPrompt = null;
+  const button = document.getElementById('installAppBtn');
+  if (button) button.style.display = 'none';
+}
 
 /* Mobile nav backdrop */
 document.getElementById('nav').addEventListener('transitionend', function(){
@@ -1368,6 +1423,7 @@ function loadPage(page, el){
   };
   document.querySelectorAll(".nav-item,.nav-parent").forEach(i => i.classList.remove("active-link","active"));
   if(el) el.classList.add("active-link");
+  document.querySelectorAll('.mobile-tab[data-page]').forEach(tab=>tab.classList.toggle('active', tab.dataset.page === page.split('?')[0]));
   const name = Object.entries(pageNames).find(([k]) => page.includes(k));
   if(name) document.getElementById("currentPage").textContent = name[1];
   if(window.innerWidth < 768) document.getElementById("nav").classList.remove("mobile-open");
@@ -1376,6 +1432,12 @@ function loadPage(page, el){
   const fileKey = Object.keys(pageSlugs).find(k => page.includes(k));
   const slug = fileKey ? pageSlugs[fileKey] : 'dashboard';
   history.pushState({ page, slug }, '', '/dashboard#' + slug);
+}
+
+// Register once at the app shell so the CRM can be installed and its shell is
+// available again when a weak field connection drops.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('service-worker.js').catch(err => console.warn('Service worker registration failed:', err)));
 }
 
 // Browser back/forward handle karo — iframe update karo

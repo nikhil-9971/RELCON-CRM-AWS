@@ -1,0 +1,14 @@
+{
+  "name": "RELCON CRM Field Operations",
+  "short_name": "RELCON CRM",
+  "description": "RELCON field operations and visit management.",
+  "start_url": "dashboard.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0B1628",
+  "theme_color": "#0B1628",
+  "icons": [
+    { "src": "assets/login.png", "sizes": "1200x1200", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
