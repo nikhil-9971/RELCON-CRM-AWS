@@ -1419,7 +1419,7 @@ function loadPage(page, el){
   iframe.src = page + (page.includes("?") ? "&" : "?") + "cb=" + Date.now() + tokenParam;
   iframe.onload = () => {
     hideGlobalLoader();
-    try{injectDarkStylesInto(iframe.contentDocument||iframe.contentWindow.document);}catch(e){}
+    try{applyFrameMobileLayout(iframe.contentDocument||iframe.contentWindow.document);injectDarkStylesInto(iframe.contentDocument||iframe.contentWindow.document);}catch(e){}
   };
   document.querySelectorAll(".nav-item,.nav-parent").forEach(i => i.classList.remove("active-link","active"));
   if(el) el.classList.add("active-link");
@@ -1448,7 +1448,7 @@ window.addEventListener('popstate', function(e){
   const tok = localStorage.getItem("token") || "";
   showGlobalLoader();
   iframe.src = page + "?cb=" + Date.now() + (tok ? `&token=${encodeURIComponent(tok)}` : "");
-  iframe.onload = () => { hideGlobalLoader(); };
+  iframe.onload = () => { hideGlobalLoader(); try{applyFrameMobileLayout(iframe.contentDocument||iframe.contentWindow.document);injectDarkStylesInto(iframe.contentDocument||iframe.contentWindow.document);}catch(e){} };
 });
 
 // Reload pe hash se correct page load karo
@@ -1460,7 +1460,7 @@ window.addEventListener('DOMContentLoaded', function(){
     const tok = localStorage.getItem("token") || "";
     showGlobalLoader();
     iframe.src = page + "?cb=" + Date.now() + (tok ? `&token=${encodeURIComponent(tok)}` : "");
-    iframe.onload = () => { hideGlobalLoader(); };
+    iframe.onload = () => { hideGlobalLoader(); try{applyFrameMobileLayout(iframe.contentDocument||iframe.contentWindow.document);injectDarkStylesInto(iframe.contentDocument||iframe.contentWindow.document);}catch(e){} };
     // Breadcrumb update
     const name = pageNames[page];
     if(name) document.getElementById("currentPage").textContent = name;
@@ -1530,6 +1530,54 @@ function injectDarkStylesInto(doc){
     doc.head.appendChild(style);
   }catch(e){}
 }
+
+// Every functional screen is rendered in the same-origin content frame. This
+// shared mobile layer covers legacy screens too, without duplicating the same
+// responsive fixes across forty separate HTML pages.
+function applyFrameMobileLayout(doc){
+  if(!doc || doc.getElementById('relcon-mobile-layout')) return;
+  let viewport=doc.querySelector('meta[name="viewport"]');
+  if(!viewport){ viewport=doc.createElement('meta'); viewport.name='viewport'; doc.head.appendChild(viewport); }
+  viewport.content='width=device-width, initial-scale=1.0, viewport-fit=cover';
+  const style=doc.createElement('style');
+  style.id='relcon-mobile-layout';
+  style.textContent=`
+    @media (max-width:768px){
+      html{font-size:14px!important;-webkit-text-size-adjust:100%;}
+      html,body{width:100%!important;min-width:0!important;max-width:100%!important;overflow-x:hidden!important;}
+      body{padding-bottom:12px!important;}
+      .sf-body,.dv-page,.page-body,.page-content,.content-body,.main-content,main,.container{max-width:100%!important;padding-left:12px!important;padding-right:12px!important;}
+      .sf-page-header,.dv-page-header,.page-header,.sf-toolbar,.dv-toolbar,.toolbar,.filter-bar,.filters,.sf-page-actions,.page-actions{gap:8px!important;}
+      .sf-page-header,.dv-page-header,.page-header,.sf-toolbar,.dv-toolbar,.toolbar,.filter-bar,.filters{flex-wrap:wrap!important;}
+      .sf-page-actions,.page-actions{margin-left:0!important;width:100%!important;justify-content:flex-start!important;flex-wrap:wrap!important;}
+      .sf-form-grid,.dv-form-grid,.dv-form-grid-3,.form-grid,.form-row,.filter-grid,.filters-grid{grid-template-columns:1fr!important;}
+      .sf-filter-group,.filter-group,.field,.form-field{min-width:0!important;flex:1 1 100%!important;}
+      .sf-filter-group input,.sf-filter-group select,.filter-group input,.filter-group select,.field input,.field select,.form-field input,.form-field select,.form-field textarea{width:100%!important;}
+      input,select,textarea{font-size:16px!important;max-width:100%!important;}
+      button,.sf-btn,.dv-btn,.btn{min-height:40px!important;touch-action:manipulation;}
+      .sf-table-card,.dv-table-card,.table-card,.card{border-radius:10px!important;}
+      .sf-modal,.dv-modal,.modal,[role="dialog"]{width:calc(100vw - 20px)!important;max-width:calc(100vw - 20px)!important;max-height:calc(100dvh - 32px)!important;margin:10px!important;}
+      .sf-modal-body,.dv-modal-body,.modal-body{max-height:calc(100dvh - 150px)!important;overflow-y:auto!important;padding:14px!important;}
+      img,canvas,svg,video{max-width:100%!important;height:auto!important;}
+      [style*="width: 1000px"],[style*="width:1000px"],[style*="min-width: 1000px"],[style*="min-width:1000px"]{max-width:100%!important;}
+      .relcon-mobile-table-scroll{display:block!important;max-width:100%!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior-x:contain;}
+      .relcon-mobile-table-scroll table{min-width:max-content!important;}
+      .relcon-mobile-table-scroll th,.relcon-mobile-table-scroll td{white-space:nowrap!important;}
+      .relcon-mobile-table-scroll::-webkit-scrollbar{height:5px;}
+    }
+  `;
+  doc.head.appendChild(style);
+  doc.querySelectorAll('table').forEach(table=>{
+    const scrollParent=table.closest('.sf-table-wrap,.dv-table-scroll,.table-wrap,.table-responsive,.table-container') || table.parentElement;
+    if(scrollParent) scrollParent.classList.add('relcon-mobile-table-scroll');
+  });
+}
+
+// The first screen loads before a navigation click, so apply the same rules
+// to it as soon as its iframe document is ready.
+document.getElementById('contentFrame').addEventListener('load', event=>{
+  try{applyFrameMobileLayout(event.target.contentDocument||event.target.contentWindow.document);injectDarkStylesInto(event.target.contentDocument||event.target.contentWindow.document);}catch(e){}
+});
 
 async function fetchUser(){
   const token=getToken();
