@@ -29,7 +29,7 @@ const PlanSchema = new mongoose.Schema({
   poStatus: { type: String, enum: ["Yes", "No"], default: "No" },
   purposeOfPO: {
     type: String,
-    enum: ["", "No PO Required", "Visit PO", "Material Replacement PO"],
+    enum: ["", "No PO Required", "Visit PO", "Material Replacement PO", "Configuration PO"],
     default: "No PO Required",
   },
   poNumber: { type: String, default: "" },
